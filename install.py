@@ -15,7 +15,7 @@ def print_banner():
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
 ║        EzySpeechTranslate 安装向导                       ║
-║        版本 1.0.0                                        ║
+║        版本 1.0.1                                        ║
 ║                                                          ║
 ╚══════════════════════════════════════════════════════════╝
     """)
@@ -179,18 +179,19 @@ def create_startup_scripts():
     """创建启动脚本快捷方式"""
     if platform.system() == "Windows":
         # 创建 Windows 批处理文件
-        with open('启动系统.bat', 'w', encoding='utf-8') as f:
+        with open('start.bat', 'w', encoding='utf-8') as f:
             f.write('@echo off\n')
-            f.write('call start.bat\n')
-        print("✓ 创建启动脚本: 启动系统.bat")
+            f.write(' """venv\Scripts\\activate""" \n')
+            f.write('python start.py \n')
+        print("✓ 创建启动脚本: start.bat")
 
     else:
         # 创建 Unix shell 脚本
-        with open('启动系统.sh', 'w') as f:
+        with open('start.sh', 'w') as f:
             f.write('#!/bin/bash\n')
-            f.write('./start.sh\n')
-        os.chmod('启动系统.sh', 0o755)
-        print("✓ 创建启动脚本: 启动系统.sh")
+            f.write('./venv/bin/python start.py\n')
+        os.chmod('start.sh', 0o755)
+        print("✓ 创建启动脚本: start.sh")
 
     return True
 

@@ -8,7 +8,7 @@ PORT = 5000       # 服务器端口
 DEBUG = False     # 调试模式（生产环境请设为 False）
 
 # ==================== Whisper 配置 ====================
-WHISPER_MODEL = 'base'  # 可选: tiny, base, small, medium, large
+WHISPER_MODEL = 'tiny'  # 可选: tiny, base, small, medium, large
 """
 模型选择建议:
 - tiny (39M): 速度最快，适合测试

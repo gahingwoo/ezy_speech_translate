@@ -298,9 +298,9 @@ Issues and Pull Requests are welcome\!
 
 ## Changelog
 
-### v1.0.0 (2025-10-18)
+### v1.0.1 (2025-10-19)
 
-  - ✅ Initial release
+  - ✅ Multi Language release
   - ✅ Real-time ASR + Translation
   - ✅ Qt6 Administrator Interface
   - ✅ Web Audience Frontend

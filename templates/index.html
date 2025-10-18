@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EzySpeechTranslate - 听众端</title>
+    <title>EzySpeechTranslate - Real-time Translation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -101,6 +101,14 @@
             color: white;
         }
 
+        .select-box {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            min-width: 180px;
+        }
+
         .slider-container {
             display: flex;
             align-items: center;
@@ -161,20 +169,20 @@
             font-size: 0.8em;
         }
 
-        .text-en {
+        .text-source {
             color: #333;
             margin-bottom: 10px;
             font-size: 1.1em;
         }
 
-        .text-cn {
+        .text-target {
             color: #667eea;
             font-size: 1.3em;
             font-weight: bold;
             line-height: 1.6;
         }
 
-        .subtitle-item.corrected .text-cn {
+        .subtitle-item.corrected .text-target {
             color: #2E7D32;
         }
 
@@ -200,6 +208,11 @@
             background: #1976D2;
         }
 
+        .loading {
+            color: #999;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8em;
@@ -210,7 +223,7 @@
                 align-items: stretch;
             }
 
-            .btn {
+            .btn, .select-box {
                 width: 100%;
             }
         }
@@ -220,35 +233,58 @@
     <div class="container">
         <div class="header">
             <h1>🎙️ EzySpeechTranslate</h1>
-            <p>实时语音翻译系统 - 听众端</p>
+            <p>Real-time Speech Translation System</p>
             <div id="connectionStatus" class="status disconnected">
                 <span>●</span>
-                <span>未连接</span>
+                <span>Disconnected</span>
             </div>
         </div>
 
         <div class="controls">
-            <button class="btn btn-tts" id="toggleTTS">🔊 启用 TTS</button>
+            <label>Target Language:</label>
+            <select class="select-box" id="targetLang">
+                <option value="zh-cn">Chinese (Simplified)</option>
+                <option value="zh-tw">Chinese (Traditional)</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="ru">Russian</option>
+                <option value="ar">Arabic</option>
+                <option value="pt">Portuguese</option>
+                <option value="it">Italian</option>
+                <option value="nl">Dutch</option>
+                <option value="pl">Polish</option>
+                <option value="tr">Turkish</option>
+                <option value="vi">Vietnamese</option>
+                <option value="th">Thai</option>
+                <option value="id">Indonesian</option>
+                <option value="ms">Malay</option>
+                <option value="hi">Hindi</option>
+            </select>
+
+            <button class="btn btn-tts" id="toggleTTS">🔊 Enable TTS</button>
 
             <div class="slider-container">
-                <label>语速:</label>
+                <label>Speed:</label>
                 <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
                 <span id="rateValue">1.0x</span>
             </div>
 
             <div class="slider-container">
-                <label>音量:</label>
+                <label>Volume:</label>
                 <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1">
                 <span id="volumeValue">100%</span>
             </div>
 
-            <button class="btn btn-clear" id="clearBtn">🗑️ 清空字幕</button>
-            <button class="btn btn-download" id="downloadBtn">💾 下载字幕</button>
+            <button class="btn btn-clear" id="clearBtn">🗑️ Clear</button>
+            <button class="btn btn-download" id="downloadBtn">💾 Download</button>
         </div>
 
         <div class="subtitle-area" id="subtitleArea">
             <div class="empty-state">
-                等待翻译数据...
+                Waiting for translation data...
             </div>
         </div>
     </div>
@@ -259,76 +295,111 @@
         let ttsRate = 1.0;
         let ttsVolume = 1.0;
         let translations = [];
+        let targetLang = 'zh-cn';
+        let isTranslating = {};
 
-        // 连接状态
+        // Google Translate API (client-side translation)
+        async function translateText(text, targetLang) {
+            const cacheKey = `${text}_${targetLang}`;
+
+            // Check cache
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            try {
+                // Use Google Translate API via free endpoint
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data && data[0] && data[0][0] && data[0][0][0]) {
+                    const translated = data[0][0][0];
+                    // Cache result
+                    sessionStorage.setItem(cacheKey, translated);
+                    return translated;
+                }
+            } catch (error) {
+                console.error('Translation error:', error);
+            }
+
+            return text; // Return original if translation fails
+        }
+
+        // Connection status
         socket.on('connect', () => {
             updateConnectionStatus(true);
-            console.log('已连接到服务器');
+            console.log('Connected to server');
         });
 
         socket.on('disconnect', () => {
             updateConnectionStatus(false);
-            console.log('与服务器断开连接');
+            console.log('Disconnected from server');
         });
 
-        // 接收历史记录
-        socket.on('history', (history) => {
+        // Receive history
+        socket.on('history', async (history) => {
             translations = history;
-            renderSubtitles();
+            await renderSubtitles();
         });
 
-        // 接收新翻译
-        socket.on('new_translation', (data) => {
+        // Receive new translation
+        socket.on('new_translation', async (data) => {
             translations.push(data);
-            addSubtitle(data);
+            await addSubtitle(data);
 
-            if (ttsEnabled) {
-                speakText(data.corrected);
+            if (ttsEnabled && data.translated) {
+                speakText(data.translated);
             }
         });
 
-        // 接收翻译校正
-        socket.on('translation_corrected', (data) => {
+        // Receive translation correction
+        socket.on('translation_corrected', async (data) => {
             const index = translations.findIndex(t => t.id === data.id);
             if (index !== -1) {
                 translations[index] = data;
-                renderSubtitles();
+                await renderSubtitles();
             }
         });
 
-        // 历史清空
+        // History cleared
         socket.on('history_cleared', () => {
             translations = [];
             renderSubtitles();
         });
 
-        // 更新连接状态
+        // Update connection status
         function updateConnectionStatus(connected) {
             const statusEl = document.getElementById('connectionStatus');
             if (connected) {
                 statusEl.className = 'status connected';
-                statusEl.innerHTML = '<span>●</span><span>已连接</span>';
+                statusEl.innerHTML = '<span>●</span><span>Connected</span>';
             } else {
                 statusEl.className = 'status disconnected';
-                statusEl.innerHTML = '<span>●</span><span>未连接</span>';
+                statusEl.innerHTML = '<span>●</span><span>Disconnected</span>';
             }
         }
 
-        // 渲染所有字幕
-        function renderSubtitles() {
+        // Render all subtitles
+        async function renderSubtitles() {
             const area = document.getElementById('subtitleArea');
 
             if (translations.length === 0) {
-                area.innerHTML = '<div class="empty-state">等待翻译数据...</div>';
+                area.innerHTML = '<div class="empty-state">Waiting for translation data...</div>';
                 return;
             }
 
-            area.innerHTML = translations.map(item => createSubtitleHTML(item)).join('');
+            const subtitles = await Promise.all(
+                translations.map(item => createSubtitleHTML(item))
+            );
+
+            area.innerHTML = subtitles.join('');
             area.scrollTop = area.scrollHeight;
         }
 
-        // 添加单个字幕
-        function addSubtitle(data) {
+        // Add single subtitle
+        async function addSubtitle(data) {
             const area = document.getElementById('subtitleArea');
             const emptyState = area.querySelector('.empty-state');
 
@@ -336,112 +407,174 @@
                 area.innerHTML = '';
             }
 
-            area.innerHTML += createSubtitleHTML(data);
+            const html = await createSubtitleHTML(data);
+            area.innerHTML += html;
             area.scrollTop = area.scrollHeight;
         }
 
-        // 创建字幕 HTML
-        function createSubtitleHTML(item) {
-            const correctedBadge = item.is_corrected ? '<span class="badge">已校对</span>' : '';
+        // Create subtitle HTML
+        async function createSubtitleHTML(item) {
+            const itemId = `subtitle-${item.id}`;
+
+            // Translate if not already done
+            if (!item.translated || item.currentLang !== targetLang) {
+                item.currentLang = targetLang;
+
+                // Show loading state
+                setTimeout(async () => {
+                    const elem = document.getElementById(itemId);
+                    if (elem) {
+                        const targetDiv = elem.querySelector('.text-target');
+                        if (targetDiv) {
+                            targetDiv.innerHTML = '<span class="loading">Translating...</span>';
+                        }
+                    }
+                }, 0);
+
+                // Perform translation
+                item.translated = await translateText(item.corrected, targetLang);
+
+                // Update display
+                setTimeout(() => {
+                    const elem = document.getElementById(itemId);
+                    if (elem) {
+                        const targetDiv = elem.querySelector('.text-target');
+                        if (targetDiv) {
+                            targetDiv.textContent = item.translated;
+                        }
+                    }
+                }, 0);
+            }
+
+            const correctedBadge = item.is_corrected ? '<span class="badge">Corrected</span>' : '';
             const correctedClass = item.is_corrected ? 'corrected' : '';
+            const translatedText = item.translated || 'Translating...';
 
             return `
-                <div class="subtitle-item ${correctedClass}">
+                <div class="subtitle-item ${correctedClass}" id="${itemId}">
                     <div class="timestamp">
                         ${item.timestamp}
                         ${correctedBadge}
-                        <button class="tts-icon" onclick="speakText('${escapeHtml(item.corrected)}')">🔊</button>
+                        <button class="tts-icon" onclick="speakText('${escapeHtml(translatedText)}')">🔊</button>
                     </div>
-                    <div class="text-en">EN: ${escapeHtml(item.english)}</div>
-                    <div class="text-cn">CN: ${escapeHtml(item.corrected)}</div>
+                    <div class="text-source">EN: ${escapeHtml(item.corrected)}</div>
+                    <div class="text-target">${escapeHtml(translatedText)}</div>
                 </div>
             `;
         }
 
-        // HTML 转义
+        // HTML escape
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML.replace(/'/g, "\\'");
         }
 
-        // TTS 功能
+        // TTS function
         function speakText(text) {
             if (!('speechSynthesis' in window)) {
-                alert('您的浏览器不支持 TTS 功能');
+                alert('Your browser does not support TTS');
                 return;
             }
 
-            // 取消当前朗读
             speechSynthesis.cancel();
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-CN';
+            utterance.lang = getLangCode(targetLang);
             utterance.rate = ttsRate;
             utterance.volume = ttsVolume;
 
-            // 尝试使用中文语音
             const voices = speechSynthesis.getVoices();
-            const chineseVoice = voices.find(voice => voice.lang.startsWith('zh'));
-            if (chineseVoice) {
-                utterance.voice = chineseVoice;
+            const voice = voices.find(v => v.lang.startsWith(utterance.lang));
+            if (voice) {
+                utterance.voice = voice;
             }
 
             speechSynthesis.speak(utterance);
         }
 
-        // TTS 切换
+        // Get language code for TTS
+        function getLangCode(lang) {
+            const langMap = {
+                'zh-cn': 'zh-CN',
+                'zh-tw': 'zh-TW',
+                'ja': 'ja-JP',
+                'ko': 'ko-KR',
+                'es': 'es-ES',
+                'fr': 'fr-FR',
+                'de': 'de-DE',
+                'ru': 'ru-RU',
+                'ar': 'ar-SA',
+                'pt': 'pt-PT',
+                'it': 'it-IT'
+            };
+            return langMap[lang] || lang;
+        }
+
+        // Target language change
+        document.getElementById('targetLang').addEventListener('change', async (e) => {
+            targetLang = e.target.value;
+            // Re-translate all items
+            translations.forEach(item => {
+                item.translated = null;
+                item.currentLang = null;
+            });
+            await renderSubtitles();
+        });
+
+        // TTS toggle
         document.getElementById('toggleTTS').addEventListener('click', () => {
             ttsEnabled = !ttsEnabled;
             const btn = document.getElementById('toggleTTS');
 
             if (ttsEnabled) {
-                btn.textContent = '🔇 禁用 TTS';
+                btn.textContent = '🔇 Disable TTS';
                 btn.style.background = '#f44336';
             } else {
-                btn.textContent = '🔊 启用 TTS';
+                btn.textContent = '🔊 Enable TTS';
                 btn.style.background = '#2196F3';
                 speechSynthesis.cancel();
             }
         });
 
-        // 语速控制
+        // Speed control
         document.getElementById('rateSlider').addEventListener('input', (e) => {
             ttsRate = parseFloat(e.target.value);
             document.getElementById('rateValue').textContent = ttsRate.toFixed(1) + 'x';
         });
 
-        // 音量控制
+        // Volume control
         document.getElementById('volumeSlider').addEventListener('input', (e) => {
             ttsVolume = parseFloat(e.target.value);
             document.getElementById('volumeValue').textContent = Math.round(ttsVolume * 100) + '%';
         });
 
-        // 清空字幕
+        // Clear subtitles
         document.getElementById('clearBtn').addEventListener('click', () => {
-            if (confirm('确定要清空所有字幕吗？')) {
+            if (confirm('Clear all subtitles?')) {
                 translations = [];
                 renderSubtitles();
             }
         });
 
-        // 下载字幕
+        // Download subtitles
         document.getElementById('downloadBtn').addEventListener('click', () => {
             if (translations.length === 0) {
-                alert('没有字幕可下载');
+                alert('No subtitles to download');
                 return;
             }
 
-            let content = 'EzySpeechTranslate 字幕文件\n';
-            content += '生成时间: ' + new Date().toLocaleString() + '\n\n';
+            let content = 'EzySpeechTranslate Subtitle File\n';
+            content += 'Generated: ' + new Date().toLocaleString() + '\n';
+            content += 'Target Language: ' + targetLang + '\n\n';
             content += '=' .repeat(60) + '\n\n';
 
             translations.forEach((item, index) => {
                 content += `[${index + 1}] ${item.timestamp}\n`;
-                content += `EN: ${item.english}\n`;
-                content += `CN: ${item.corrected}\n`;
+                content += `EN: ${item.corrected}\n`;
+                content += `${targetLang.toUpperCase()}: ${item.translated || 'Not translated'}\n`;
                 if (item.is_corrected) {
-                    content += `(已校对)\n`;
+                    content += `(Corrected)\n`;
                 }
                 content += '\n' + '-'.repeat(60) + '\n\n';
             });
@@ -450,16 +583,16 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `subtitles_${Date.now()}.txt`;
+            a.download = `subtitles_${targetLang}_${Date.now()}.txt`;
             a.click();
             URL.revokeObjectURL(url);
         });
 
-        // 加载语音列表
+        // Load voice list
         if ('speechSynthesis' in window) {
             speechSynthesis.addEventListener('voiceschanged', () => {
                 const voices = speechSynthesis.getVoices();
-                console.log('可用语音:', voices.filter(v => v.lang.startsWith('zh')));
+                console.log('Available voices:', voices);
             });
         }
     </script>

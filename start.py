@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-EzySpeechTranslate 启动脚本
-跨平台支持 Windows/Linux/macOS
+EzySpeechTranslate Startup Script
+Cross-platform support for Windows/Linux/macOS
 """
 
 import sys
@@ -14,55 +14,55 @@ import signal
 
 
 def print_banner():
-    """打印欢迎横幅"""
+    """Prints the welcome banner"""
     print("""
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
-║           EzySpeechTranslate 启动器                      ║
-║           实时语音翻译系统                                ║
+║             EzySpeechTranslate Launcher                  ║
+║             Real-time Voice Translation System           ║
 ║                                                          ║
 ╚══════════════════════════════════════════════════════════╝
     """)
 
 
 def print_section(title):
-    """打印分节标题"""
+    """Prints a section title"""
     print("\n" + "=" * 60)
     print(f"  {title}")
     print("=" * 60)
 
 
 def check_python_version():
-    """检查 Python 版本"""
+    """Checks the Python version"""
     version = sys.version_info
     if version.major < 3 or (version.major == 3 and version.minor < 8):
-        print(f"❌ Python 版本过低: {version.major}.{version.minor}.{version.micro}")
-        print("需要 Python 3.8 或更高版本")
+        print(f"❌ Python version too low: {version.major}.{version.minor}.{version.micro}")
+        print("Python 3.8 or higher is required")
         return False
     print(f"✓ Python {version.major}.{version.minor}.{version.micro}")
     return True
 
 
 def check_venv():
-    """检查并创建虚拟环境"""
-    print_section("检查虚拟环境")
+    """Checks for and creates the virtual environment"""
+    print_section("Checking Virtual Environment")
 
     if not os.path.exists('venv'):
-        print("虚拟环境不存在，正在创建...")
+        print("Virtual environment does not exist, creating...")
         try:
             subprocess.run([sys.executable, '-m', 'venv', 'venv'], check=True)
-            print("✓ 虚拟环境创建成功")
-            return True, True  # 存在, 新创建
+            print("✓ Virtual environment created successfully")
+            return True, True  # Exists, Newly created
         except Exception as e:
-            print(f"❌ 创建虚拟环境失败: {e}")
+            print(f"❌ Failed to create virtual environment: {e}")
             return False, False
     else:
-        print("✓ 虚拟环境已存在")
+        print("✓ Virtual environment already exists")
         return True, False
 
 
 def get_venv_python():
-    """获取虚拟环境的 Python 路径"""
+    """Gets the path to the virtual environment's Python executable"""
     system = platform.system()
     if system == "Windows":
         return os.path.join('venv', 'Scripts', 'python.exe')
@@ -71,7 +71,7 @@ def get_venv_python():
 
 
 def get_venv_pip():
-    """获取虚拟环境的 pip 路径"""
+    """Gets the path to the virtual environment's pip executable"""
     system = platform.system()
     if system == "Windows":
         return os.path.join('venv', 'Scripts', 'pip.exe')
@@ -80,60 +80,60 @@ def get_venv_pip():
 
 
 def install_dependencies(force=False):
-    """安装依赖"""
-    print_section("检查依赖")
+    """Installs dependencies"""
+    print_section("Checking Dependencies")
 
     pip_path = get_venv_pip()
     marker_file = os.path.join('venv', '.installed')
 
     if os.path.exists(marker_file) and not force:
-        print("✓ 依赖已安装")
+        print("✓ Dependencies already installed")
         return True
 
     if not os.path.exists('requirements.txt'):
-        print("❌ 找不到 requirements.txt")
+        print("❌ requirements.txt not found")
         return False
 
-    print("正在安装依赖包...")
-    print("这可能需要几分钟时间，请耐心等待...\n")
+    print("Installing dependency packages...")
+    print("This may take a few minutes, please be patient...\n")
 
     try:
-        # 升级 pip
+        # Upgrade pip
         subprocess.run([pip_path, 'install', '--upgrade', 'pip'],
                        capture_output=True)
 
-        # 安装依赖
+        # Install dependencies
         result = subprocess.run([pip_path, 'install', '-r', 'requirements.txt'],
                                 capture_output=False)
 
         if result.returncode == 0:
-            # 创建标记文件
+            # Create marker file
             with open(marker_file, 'w') as f:
                 f.write('installed')
-            print("\n✓ 依赖安装完成")
+            print("\n✓ Dependencies installation complete")
             return True
         else:
-            print("\n⚠️  部分依赖安装失败")
+            print("\n⚠️  Some dependencies failed to install")
             return False
 
     except Exception as e:
-        print(f"\n❌ 安装失败: {e}")
+        print(f"\n❌ Installation failed: {e}")
         return False
 
 
 def check_files():
-    """检查必要文件"""
-    print_section("检查项目文件")
+    """Checks for necessary files"""
+    print_section("Checking Project Files")
 
     required_files = {
-        'app.py': '后端服务',
-        'requirements.txt': '依赖列表',
+        'app.py': 'Backend Service',
+        'requirements.txt': 'Dependency List',
     }
 
     optional_files = {
-        'admin_gui.py': 'PyQt6 管理界面',
-        'admin_gui_pyside.py': 'PySide6 管理界面',
-        'templates/index.html': '听众端网页',
+        'admin_gui.py': 'PyQt6 Admin Interface',
+        'admin_gui_pyside.py': 'PySide6 Admin Interface',
+        'templates/index.html': 'Listener Web Page',
     }
 
     all_ok = True
@@ -142,30 +142,30 @@ def check_files():
         if os.path.exists(file):
             print(f"✓ {file} - {desc}")
         else:
-            print(f"❌ {file} - {desc} (缺失)")
+            print(f"❌ {file} - {desc} (Missing)")
             all_ok = False
 
     for file, desc in optional_files.items():
         if os.path.exists(file):
             print(f"✓ {file} - {desc}")
         else:
-            print(f"⚠️  {file} - {desc} (缺失)")
+            print(f"⚠️  {file} - {desc} (Missing)")
 
-    # 创建必要目录
+    # Create necessary directories
     if not os.path.exists('templates'):
-        print("创建 templates 目录...")
+        print("Creating templates directory...")
         os.makedirs('templates', exist_ok=True)
 
     return all_ok
 
 
 def start_backend():
-    """启动后端服务"""
-    print_section("启动后端服务")
+    """Starts the backend service"""
+    print_section("Starting Backend Service")
     print()
-    print("Flask 后端正在启动...")
-    print("服务地址: http://localhost:5000")
-    print("按 Ctrl+C 停止服务")
+    print("Flask backend is starting...")
+    print("Service Address: http://localhost:5000")
+    print("Press Ctrl+C to stop the service")
     print()
 
     python_path = get_venv_python()
@@ -173,164 +173,164 @@ def start_backend():
     try:
         subprocess.run([python_path, 'app.py'])
     except KeyboardInterrupt:
-        print("\n\n后端服务已停止")
+        print("\n\nBackend service stopped")
     except Exception as e:
-        print(f"\n❌ 启动失败: {e}")
+        print(f"\n❌ Startup failed: {e}")
 
 
 def start_admin_gui():
-    """启动管理界面"""
-    print_section("启动管理员界面")
+    """Starts the admin interface"""
+    print_section("Starting Admin Interface")
     print()
 
     python_path = get_venv_python()
 
-    # 首先尝试 PyQt6
+    # First attempt PyQt6
     if os.path.exists('admin_gui.py'):
-        print("尝试启动 PyQt6 管理界面...")
+        print("Attempting to start PyQt6 Admin Interface...")
         try:
             result = subprocess.run([python_path, '-c', 'import PyQt6'],
                                     capture_output=True, timeout=5)
             if result.returncode == 0:
-                print("✓ 使用 PyQt6 版本")
+                print("✓ Using PyQt6 version")
                 subprocess.run([python_path, 'admin_gui.py'])
                 return
             else:
-                print("⚠️  PyQt6 不可用")
+                print("⚠️  PyQt6 not available")
         except:
-            print("⚠️  PyQt6 检查失败")
+            print("⚠️  PyQt6 check failed")
 
-    # 尝试 PySide6
+    # Attempt PySide6
     if os.path.exists('admin_gui_pyside.py'):
-        print("尝试启动 PySide6 管理界面...")
+        print("Attempting to start PySide6 Admin Interface...")
         try:
             result = subprocess.run([python_path, '-c', 'import PySide6'],
                                     capture_output=True, timeout=5)
             if result.returncode == 0:
-                print("✓ 使用 PySide6 版本")
+                print("✓ Using PySide6 version")
                 subprocess.run([python_path, 'admin_gui_pyside.py'])
                 return
             else:
-                print("⚠️  PySide6 不可用")
+                print("⚠️  PySide6 not available")
         except:
-            print("⚠️  PySide6 检查失败")
+            print("⚠️  PySide6 check failed")
 
-    print("\n❌ 无可用的管理界面")
-    print("请安装 PyQt6 或 PySide6:")
+    print("\n❌ No admin interface available")
+    print("Please install PyQt6 or PySide6:")
     print("  pip install PyQt6")
-    print("  或")
+    print("  or")
     print("  pip install PySide6")
 
 
 def start_both():
-    """同时启动后端和管理界面"""
-    print_section("启动完整系统")
+    """Starts both the backend and the admin interface simultaneously"""
+    print_section("Starting Full System")
     print()
 
     python_path = get_venv_python()
     backend_process = None
 
     try:
-        # 启动后端（后台）
-        print("1/2 启动后端服务（后台）...")
+        # Start backend (in background)
+        print("1/2 Starting backend service (background)...")
         backend_process = subprocess.Popen([python_path, 'app.py'],
                                            stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
 
-        # 等待后端启动
-        print("等待后端启动...")
+        # Wait for backend to start
+        print("Waiting for backend to start...")
         time.sleep(3)
 
-        # 检查后端是否正常运行
+        # Check if backend is running normally
         if backend_process.poll() is not None:
-            print("❌ 后端启动失败")
-            print("请先单独启动后端检查错误")
+            print("❌ Backend failed to start")
+            print("Please try starting the backend separately to check for errors")
             return
 
-        print("✓ 后端服务已启动")
+        print("✓ Backend service started")
         print()
 
-        # 启动管理界面
-        print("2/2 启动管理员界面...")
+        # Start admin interface
+        print("2/2 Starting admin interface...")
         start_admin_gui()
 
     except KeyboardInterrupt:
-        print("\n\n正在停止服务...")
+        print("\n\nStopping services...")
     finally:
-        # 清理后端进程
+        # Clean up backend process
         if backend_process:
-            print("关闭后端服务...")
+            print("Shutting down backend service...")
             if platform.system() == "Windows":
                 backend_process.terminate()
             else:
                 backend_process.send_signal(signal.SIGTERM)
 
-            # 等待进程结束
+            # Wait for process to end
             try:
                 backend_process.wait(timeout=5)
-                print("✓ 后端服务已关闭")
+                print("✓ Backend service shut down")
             except subprocess.TimeoutExpired:
                 backend_process.kill()
-                print("✓ 后端服务已强制关闭")
+                print("✓ Backend service forcibly shut down")
 
 
 def run_diagnostics():
-    """运行诊断"""
-    print_section("运行系统诊断")
+    """Runs diagnostics"""
+    print_section("Running System Diagnostics")
     print()
 
     if os.path.exists('diagnose.py'):
         python_path = get_venv_python()
         subprocess.run([python_path, 'diagnose.py'])
     else:
-        print("❌ 找不到 diagnose.py")
+        print("❌ diagnose.py not found")
 
 
 def show_menu():
-    """显示主菜单"""
-    print_section("启动选项")
+    """Displays the main menu"""
+    print_section("Startup Options")
     print()
-    print("[1] 启动后端服务")
-    print("[2] 启动管理员界面")
-    print("[3] 同时启动后端和管理界面（推荐）")
-    print("[4] 运行系统诊断")
-    print("[5] 重新安装依赖")
-    print("[0] 退出")
+    print("[1] Start Backend Service")
+    print("[2] Start Admin Interface")
+    print("[3] Start Both Backend and Admin Interface (Recommended)")
+    print("[4] Run System Diagnostics")
+    print("[5] Reinstall Dependencies")
+    print("[0] Exit")
     print()
 
-    choice = input("请选择 (0-5): ").strip()
+    choice = input("Please select (0-5): ").strip()
     return choice
 
 
 def main():
-    """主函数"""
+    """Main function"""
     print_banner()
 
-    # 检查 Python 版本
+    # Check Python version
     if not check_python_version():
-        input("\n按 Enter 键退出...")
+        input("\nPress Enter to exit...")
         return 1
 
-    # 检查虚拟环境
+    # Check virtual environment
     venv_exists, is_new = check_venv()
     if not venv_exists:
-        input("\n按 Enter 键退出...")
+        input("\nPress Enter to exit...")
         return 1
 
-    # 安装依赖
+    # Install dependencies
     if not install_dependencies(force=is_new):
-        print("\n⚠️  依赖安装有问题，但可以继续")
-        choice = input("是否继续？(y/n): ").strip().lower()
+        print("\n⚠️  There was an issue with dependency installation, but you may continue")
+        choice = input("Do you want to continue? (y/n): ").strip().lower()
         if choice != 'y':
             return 1
 
-    # 检查文件
+    # Check files
     if not check_files():
-        print("\n❌ 缺少必要文件")
-        input("\n按 Enter 键退出...")
+        print("\n❌ Missing required files")
+        input("\nPress Enter to exit...")
         return 1
 
-    # 显示菜单并处理选择
+    # Show menu and process selection
     while True:
         choice = show_menu()
 
@@ -345,27 +345,27 @@ def main():
         elif choice == '5':
             install_dependencies(force=True)
         elif choice == '0':
-            print("\n再见！")
+            print("\nGoodbye!")
             return 0
         else:
-            print("\n❌ 无效选择，请重试")
+            print("\n❌ Invalid choice, please try again")
             time.sleep(1)
 
         print("\n" + "=" * 60)
-        input("按 Enter 键返回菜单...")
-        print("\033[2J\033[H")  # 清屏（跨平台）
+        input("Press Enter to return to the menu...")
+        print("\033[2J\033[H")  # Clear screen (cross-platform)
 
 
 if __name__ == '__main__':
     try:
         sys.exit(main())
     except KeyboardInterrupt:
-        print("\n\n程序被中断")
+        print("\n\nProgram interrupted")
         sys.exit(1)
     except Exception as e:
-        print(f"\n\n发生错误: {e}")
+        print(f"\n\nAn error occurred: {e}")
         import traceback
 
         traceback.print_exc()
-        input("\n按 Enter 键退出...")
+        input("\nPress Enter to exit...")
         sys.exit(1)
