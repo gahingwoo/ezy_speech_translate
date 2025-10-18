@@ -1,0 +1,34 @@
+flask==3.0.0
+flask-socketio==5.3.5
+flask-cors==4.0.0
+openai-whisper==20231117
+pyaudio==0.2.14
+googletrans==4.0.0rc1
+numpy==1.24.3
+python-socketio==5.10.0
+simple-websocket==1.0.0
+
+# Qt6 依赖
+PyQt6==6.6.1
+PyQt6-sip==13.6.0
+requests==2.31.0
+python-socketio[client]==5.10.0
+
+# 注意：不需要 eventlet，使用默认的 simple-websocket 后端
+
+# 可选：使用 DeepL 替代 Google Translate
+# deepl==1.16.1
+
+# 系统依赖说明（需要手动安装）:
+# Ubuntu/Debian:
+#   sudo apt-get install portaudio19-dev python3-pyqt6 ffmpeg
+# macOS:
+#   brew install portaudio ffmpeg
+#   pip install PyQt6
+# Windows:
+#   安装 FFmpeg: https://ffmpeg.org/download.html
+#   $ProjectDir$
+#   venv\Scripts\activate
+#   pip uninstall PyQt6 PyQt6-Qt6 PyQt6-sip -y
+#   pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.2
+#   python -c "from PyQt6.QtCore import QDateTime; print('OK')"

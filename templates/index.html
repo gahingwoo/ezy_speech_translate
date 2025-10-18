@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzySpeechTranslate - 听众端</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status.disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-tts {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-clear {
+            background: #FF9800;
+            color: white;
+        }
+
+        .btn-download {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider {
+            width: 150px;
+        }
+
+        .subtitle-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            min-height: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .subtitle-item.corrected {
+            border-left-color: #4CAF50;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+
+        .text-en {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .text-cn {
+            color: #667eea;
+            font-size: 1.3em;
+            font-weight: bold;
+            line-height: 1.6;
+        }
+
+        .subtitle-item.corrected .text-cn {
+            color: #2E7D32;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 100px 20px;
+            font-size: 1.2em;
+        }
+
+        .tts-icon {
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 5px 10px;
+            border-radius: 5px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .tts-icon:hover {
+            background: #1976D2;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ EzySpeechTranslate</h1>
+            <p>实时语音翻译系统 - 听众端</p>
+            <div id="connectionStatus" class="status disconnected">
+                <span>●</span>
+                <span>未连接</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-tts" id="toggleTTS">🔊 启用 TTS</button>
+
+            <div class="slider-container">
+                <label>语速:</label>
+                <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+                <span id="rateValue">1.0x</span>
+            </div>
+
+            <div class="slider-container">
+                <label>音量:</label>
+                <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1">
+                <span id="volumeValue">100%</span>
+            </div>
+
+            <button class="btn btn-clear" id="clearBtn">🗑️ 清空字幕</button>
+            <button class="btn btn-download" id="downloadBtn">💾 下载字幕</button>
+        </div>
+
+        <div class="subtitle-area" id="subtitleArea">
+            <div class="empty-state">
+                等待翻译数据...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let ttsEnabled = false;
+        let ttsRate = 1.0;
+        let ttsVolume = 1.0;
+        let translations = [];
+
+        // 连接状态
+        socket.on('connect', () => {
+            updateConnectionStatus(true);
+            console.log('已连接到服务器');
+        });
+
+        socket.on('disconnect', () => {
+            updateConnectionStatus(false);
+            console.log('与服务器断开连接');
+        });
+
+        // 接收历史记录
+        socket.on('history', (history) => {
+            translations = history;
+            renderSubtitles();
+        });
+
+        // 接收新翻译
+        socket.on('new_translation', (data) => {
+            translations.push(data);
+            addSubtitle(data);
+
+            if (ttsEnabled) {
+                speakText(data.corrected);
+            }
+        });
+
+        // 接收翻译校正
+        socket.on('translation_corrected', (data) => {
+            const index = translations.findIndex(t => t.id === data.id);
+            if (index !== -1) {
+                translations[index] = data;
+                renderSubtitles();
+            }
+        });
+
+        // 历史清空
+        socket.on('history_cleared', () => {
+            translations = [];
+            renderSubtitles();
+        });
+
+        // 更新连接状态
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            if (connected) {
+                statusEl.className = 'status connected';
+                statusEl.innerHTML = '<span>●</span><span>已连接</span>';
+            } else {
+                statusEl.className = 'status disconnected';
+                statusEl.innerHTML = '<span>●</span><span>未连接</span>';
+            }
+        }
+
+        // 渲染所有字幕
+        function renderSubtitles() {
+            const area = document.getElementById('subtitleArea');
+
+            if (translations.length === 0) {
+                area.innerHTML = '<div class="empty-state">等待翻译数据...</div>';
+                return;
+            }
+
+            area.innerHTML = translations.map(item => createSubtitleHTML(item)).join('');
+            area.scrollTop = area.scrollHeight;
+        }
+
+        // 添加单个字幕
+        function addSubtitle(data) {
+            const area = document.getElementById('subtitleArea');
+            const emptyState = area.querySelector('.empty-state');
+
+            if (emptyState) {
+                area.innerHTML = '';
+            }
+
+            area.innerHTML += createSubtitleHTML(data);
+            area.scrollTop = area.scrollHeight;
+        }
+
+        // 创建字幕 HTML
+        function createSubtitleHTML(item) {
+            const correctedBadge = item.is_corrected ? '<span class="badge">已校对</span>' : '';
+            const correctedClass = item.is_corrected ? 'corrected' : '';
+
+            return `
+                <div class="subtitle-item ${correctedClass}">
+                    <div class="timestamp">
+                        ${item.timestamp}
+                        ${correctedBadge}
+                        <button class="tts-icon" onclick="speakText('${escapeHtml(item.corrected)}')">🔊</button>
+                    </div>
+                    <div class="text-en">EN: ${escapeHtml(item.english)}</div>
+                    <div class="text-cn">CN: ${escapeHtml(item.corrected)}</div>
+                </div>
+            `;
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/'/g, "\\'");
+        }
+
+        // TTS 功能
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) {
+                alert('您的浏览器不支持 TTS 功能');
+                return;
+            }
+
+            // 取消当前朗读
+            speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = ttsRate;
+            utterance.volume = ttsVolume;
+
+            // 尝试使用中文语音
+            const voices = speechSynthesis.getVoices();
+            const chineseVoice = voices.find(voice => voice.lang.startsWith('zh'));
+            if (chineseVoice) {
+                utterance.voice = chineseVoice;
+            }
+
+            speechSynthesis.speak(utterance);
+        }
+
+        // TTS 切换
+        document.getElementById('toggleTTS').addEventListener('click', () => {
+            ttsEnabled = !ttsEnabled;
+            const btn = document.getElementById('toggleTTS');
+
+            if (ttsEnabled) {
+                btn.textContent = '🔇 禁用 TTS';
+                btn.style.background = '#f44336';
+            } else {
+                btn.textContent = '🔊 启用 TTS';
+                btn.style.background = '#2196F3';
+                speechSynthesis.cancel();
+            }
+        });
+
+        // 语速控制
+        document.getElementById('rateSlider').addEventListener('input', (e) => {
+            ttsRate = parseFloat(e.target.value);
+            document.getElementById('rateValue').textContent = ttsRate.toFixed(1) + 'x';
+        });
+
+        // 音量控制
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            ttsVolume = parseFloat(e.target.value);
+            document.getElementById('volumeValue').textContent = Math.round(ttsVolume * 100) + '%';
+        });
+
+        // 清空字幕
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('确定要清空所有字幕吗？')) {
+                translations = [];
+                renderSubtitles();
+            }
+        });
+
+        // 下载字幕
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (translations.length === 0) {
+                alert('没有字幕可下载');
+                return;
+            }
+
+            let content = 'EzySpeechTranslate 字幕文件\n';
+            content += '生成时间: ' + new Date().toLocaleString() + '\n\n';
+            content += '=' .repeat(60) + '\n\n';
+
+            translations.forEach((item, index) => {
+                content += `[${index + 1}] ${item.timestamp}\n`;
+                content += `EN: ${item.english}\n`;
+                content += `CN: ${item.corrected}\n`;
+                if (item.is_corrected) {
+                    content += `(已校对)\n`;
+                }
+                content += '\n' + '-'.repeat(60) + '\n\n';
+            });
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `subtitles_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // 加载语音列表
+        if ('speechSynthesis' in window) {
+            speechSynthesis.addEventListener('voiceschanged', () => {
+                const voices = speechSynthesis.getVoices();
+                console.log('可用语音:', voices.filter(v => v.lang.startsWith('zh')));
+            });
+        }
+    </script>
+</body>
+</html>
