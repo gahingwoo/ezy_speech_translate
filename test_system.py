@@ -6,6 +6,8 @@ EzySpeechTranslate 系统测试脚本
 import sys
 import os
 
+import config
+
 
 def print_header(title):
     print("\n" + "=" * 60)
@@ -185,17 +187,17 @@ def test_network():
 
     import socket
 
-    # 检查端口 5000 是否可用
+    # 检查端口是否可用
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(('localhost', 5000))
+    result = sock.connect_ex(('localhost', config.PORT))
     sock.close()
 
     if result == 0:
-        print("⚠ 端口 5000 已被占用")
+        print(f"⚠ 端口 {config.PORT} 已被占用")
         print("  建议: 关闭占用端口的程序或修改配置")
         return False
     else:
-        print("✓ 端口 5000 可用")
+        print(f"✓ 端口 {config.PORT} 可用")
         return True
 
 
@@ -215,7 +217,7 @@ def generate_report(results):
         print("\n启动方法:")
         print("  1. 启动后端: python app.py")
         print("  2. 启动管理界面: python admin_gui.py")
-        print("  3. 打开浏览器: http://localhost:5000")
+        print(f"  3. 打开浏览器: http://localhost:{config.PORT}")
     else:
         print("\n⚠️  部分测试失败，请先解决上述问题。")
         print("\n常见问题解决:")

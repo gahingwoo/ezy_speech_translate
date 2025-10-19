@@ -24,7 +24,9 @@ python-socketio[client]==5.10.0
 #   sudo apt-get install portaudio19-dev python3-pyqt6 ffmpeg
 # macOS:
 #   brew install portaudio ffmpeg
-#   pip install PyQt6
+#   pip uninstall PyQt6 PyQt6-Qt6 PyQt6-sip -y
+#   pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.2
+#   pip install 'urllib3<2' --force-reinstall
 # Windows:
 #   安装 FFmpeg: https://ffmpeg.org/download.html
 #   $ProjectDir$

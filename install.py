@@ -9,6 +9,8 @@ import os
 import subprocess
 import platform
 
+import config
+
 
 def print_banner():
     print("""
@@ -245,7 +247,7 @@ def show_next_steps():
         print("     venv/bin/python admin_gui.py")
 
     print("\n  3. 打开浏览器访问听众端:")
-    print("     http://localhost:5000")
+    print(f"     http://localhost:{config.PORT}")
 
     print("\n" + "=" * 60)
     print("\n💡 提示:")

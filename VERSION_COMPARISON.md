@@ -17,33 +17,33 @@
 
 ## Feature Comparison / 功能对比
 
-| Feature / 功能 | Single-language<br/>单语言版本 | Multi-language<br/>多语言版本 |
+| Feature / 功能 | Single-language<br/>单语言版本 |  Multi-language<br/>多语言版本   |
 |----------------|:----------------------------:|:---------------------------:|
 | **Backend Files / 后端文件** |
-| File / 文件 | `app.py` | `app_multilang.py` |
-| Translation Location / 翻译位置 | Server / 服务器 | Client / 客户端 |
-| Server Load / 服务器负载 | High / 高 | Low / 低 |
-| Concurrent Users / 并发用户 | Limited / 有限 | Unlimited / 无限 |
+| File / 文件 | `app.py` |     `app_multilang.py`      |
+| Translation Location / 翻译位置 | Server / 服务器 |        Client / 客户端         |
+| Server Load / 服务器负载 | High / 高 |           Low / 低           |
+| Concurrent Users / 并发用户 | Limited / 有限 |       Unlimited / 无限        |
 | **Supported Languages / 支持语言** |
-| Target Languages / 目标语言 | 1 (Chinese) | 100+ |
-| Real-time Switching / 实时切换 | ❌ | ✅ |
+| Target Languages / 目标语言 | 1 (Chinese) |            100+             |
+| Real-time Switching / 实时切换 | ❌ |              ✅              |
 | **Admin Interface / 管理界面** |
-| Files / 文件 | `admin_gui.py`<br/>`admin_gui_pyside.py` | `admin_gui_multilang.py` |
+| Files / 文件 | `admin_gui.py`<br/>`admin_gui_pyside.py` |  `admin_gui_multilang.py`   |
 | Languages / 语言 | English only / 仅英文 | English & Chinese<br/>英文和中文 |
-| Language Switching / 切换语言 | ❌ | ✅ |
+| Language Switching / 切换语言 | ❌ |              ✅              |
 | **Client Interface / 客户端界面** |
-| File / 文件 | `templates/index.html` | `templates/index_multilang.html` |
-| Language Selection / 语言选择 | Fixed / 固定 | Dropdown menu / 下拉菜单 |
-| User Preferences / 用户偏好 | Same for all / 所有人相同 | Individual / 各自选择 |
+| File / 文件 | `templates/index.html` |   `templates/index.html`    |
+| Language Selection / 语言选择 | Fixed / 固定 |    Dropdown menu / 下拉菜单     |
+| User Preferences / 用户偏好 | Same for all / 所有人相同 |      Individual / 各自选择      |
 | **Performance / 性能** |
-| Translation Speed / 翻译速度 | Fast / 快 | Very Fast / 很快 |
-| Scalability / 可扩展性 | Medium / 中等 | Excellent / 优秀 |
-| Caching / 缓存 | Server-side / 服务器端 | Client-side / 客户端 |
+| Translation Speed / 翻译速度 | Fast / 快 |       Very Fast / 很快        |
+| Scalability / 可扩展性 | Medium / 中等 |       Excellent / 优秀        |
+| Caching / 缓存 | Server-side / 服务器端 |      Client-side / 客户端      |
 | **Features / 特性** |
-| TTS Support / TTS 支持 | ✅ | ✅ |
-| Correction / 校对 | ✅ | ✅ |
-| Download Subtitles / 下载字幕 | ✅ | ✅ |
-| WebSocket Sync / WebSocket 同步 | ✅ | ✅ |
+| TTS Support / TTS 支持 | ✅ |              ✅              |
+| Correction / 校对 | ✅ |              ✅              |
+| Download Subtitles / 下载字幕 | ✅ |              ✅              |
+| WebSocket Sync / WebSocket 同步 | ✅ |              ✅              |
 
 ---
 
@@ -151,7 +151,7 @@ cp templates/index.html templates/index_backup.html
 # 将新文件复制到您的目录
 app_multilang.py
 admin_gui_multilang.py
-templates/index_multilang.html
+templates/index.html
 ```
 
 **Step 3: Test / 测试**
@@ -160,7 +160,7 @@ templates/index_multilang.html
 python app_multilang.py
 
 # Test in browser
-http://localhost:5000
+http://localhost:PORT
 ```
 
 **Step 4: Switch / 切换**
@@ -170,7 +170,7 @@ mv app.py app_single.py
 mv app_multilang.py app.py
 
 mv templates/index.html templates/index_single.html
-mv templates/index_multilang.html templates/index.html
+mv templates/index.html templates/index.html
 ```
 
 ### Rollback / 回滚
@@ -448,7 +448,7 @@ python admin_gui.py
 python admin_gui_pyside.py
 
 # Access client
-http://localhost:5000
+http://localhost:PORT
 ```
 
 ### Multi-language / 多语言版本
@@ -464,7 +464,7 @@ python admin_gui_multilang.py --lang en
 python admin_gui_multilang.py --lang cn
 
 # Access client
-http://localhost:5000
+http://localhost:PORT
 # Each user selects target language
 ```
 

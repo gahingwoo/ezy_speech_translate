@@ -143,13 +143,13 @@ python admin_gui_pyside.py
 Access in a browser:
 
 ```
-http://localhost:5000
+http://localhost:PORT
 ```
 
 Or access on another device (ensure on the same network):
 
 ```
-http://[Server_IP]:5000
+http://[Server_IP]:PORT
 ```
 
 ## Workflow

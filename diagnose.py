@@ -8,6 +8,8 @@ import sys
 import subprocess
 import platform
 
+import config
+
 
 def print_section(title):
     print("\n" + "=" * 60)
@@ -214,7 +216,7 @@ def check_server():
 
     try:
         import requests
-        response = requests.get('http://localhost:5000/api/status', timeout=3)
+        response = requests.get(f'http://localhost:{config.PORT}/api/status', timeout=3)
 
         if response.status_code == 200:
             status = response.json()
@@ -236,7 +238,7 @@ def check_server():
         print("❌ 无法连接到后端服务")
         print("\n解决方案:")
         print("1. 启动后端: python app.py")
-        print("2. 检查端口 5000 是否被占用")
+        print(f"2. 检查端口 {config.PORT} 是否被占用")
         return False
     except Exception as e:
         print(f"❌ 检查服务失败: {e}")
@@ -340,7 +342,7 @@ def main():
         print("\n2. 在新终端启动管理界面:")
         print("   python admin_gui.py")
         print("\n3. 在浏览器打开:")
-        print("   http://localhost:5000")
+        print(f"   http://localhost:{config.PORT}")
     print("\n" + "=" * 60 + "\n")
 
 

@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QColor
 import socketio
+import config
 
 # Language strings
 LANG = {
@@ -161,7 +162,7 @@ class AdminWindow(QMainWindow):
         super().__init__()
         self.lang = lang
         self.t = LANG[lang]  # Translation strings
-        self.server_url = 'http://localhost:5000'
+        self.server_url = f'http://localhost:{config.PORT}'
         self.is_recording = False
         self.socket_thread = None
 

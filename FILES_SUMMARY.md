@@ -25,7 +25,7 @@ Congratulations! You now have a complete, production-ready real-time speech tran
 ### Client Interfaces / 客户端界面 (2 versions)
 
 1. **`templates/index.html`** - Single-language client (单语言客户端)
-2. **`templates/index_multilang.html`** - ⭐ **RECOMMENDED** Multi-language (推荐多语言)
+2. **`templates/index.html`** - ⭐ **RECOMMENDED** Multi-language (推荐多语言)
 
 ### Utility Scripts / 工具脚本 (6 files)
 
@@ -72,7 +72,7 @@ python app_multilang.py              # Backend
 python admin_gui_multilang.py        # Admin (choose language)
 
 # 3. Access
-http://localhost:5000                # Client page
+http://localhost:PORT                # Client page
 ```
 
 ### For Development / 开发环境
@@ -236,20 +236,20 @@ python app_multilang.py
 
 ```
 Admin: python admin_gui_multilang.py
-Client: http://localhost:5000
+Client: http://localhost:PORT
 ```
 
 ### LAN / 局域网
 
 ```
 Admin: On server machine
-Client: http://[server-ip]:5000
+Client: http://[server-ip]:PORT
 ```
 
 ### Internet / 互联网
 
 ```
-1. Forward port 5000
+1. Forward port PORT
 2. Use domain or public IP
 3. Add HTTPS (recommended)
 ```

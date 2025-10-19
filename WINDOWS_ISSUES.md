@@ -189,6 +189,11 @@ taskkill /PID 1234 /F
 socketio.run(app, host='0.0.0.0', port=5001, debug=False)
 ```
 
+编辑 `config.py`:
+```python
+PORT=5001
+```
+
 ---
 
 ## 问题 6: 麦克风权限问题

@@ -12,6 +12,8 @@ import platform
 import time
 import signal
 
+import config
+
 
 def print_banner():
     """Prints the welcome banner"""
@@ -164,7 +166,7 @@ def start_backend():
     print_section("Starting Backend Service")
     print()
     print("Flask backend is starting...")
-    print("Service Address: http://localhost:5000")
+    print(f"Service Address: http://localhost:{config.PORT}")
     print("Press Ctrl+C to stop the service")
     print()
 

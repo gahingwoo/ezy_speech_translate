@@ -313,13 +313,13 @@ Response: {
 ### 开发环境
 ```bash
 # 本地运行
-python app.py  # 使用 localhost:5000
+python app.py  
 ```
 
 ### 生产环境
 ```bash
 # 使用 Gunicorn + Nginx
-gunicorn -k eventlet -w 1 -b 0.0.0.0:5000 app:app
+gunicorn -k eventlet -w 1 -b 0.0.0.0:PORT app:app
 ```
 
 ### Docker 部署

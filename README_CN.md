@@ -134,12 +134,12 @@ python admin_gui_pyside.py
 ### 3. 打开听众端
 在浏览器中访问：
 ```
-http://localhost:5000
+http://localhost:{config.PORT}
 ```
 
 或在其他设备上访问（确保在同一网络）：
 ```
-http://[服务器IP]:5000
+http://[服务器IP]:{config.PORT}
 ```
 
 ## 使用流程

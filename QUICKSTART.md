@@ -91,8 +91,8 @@ python admin_gui.py
 ### 听众端操作
 
 1. **打开网页**
-   - 浏览器访问：`http://localhost:5000`
-   - 或局域网：`http://[服务器IP]:5000`
+   - 浏览器访问：`http://localhost:{config.PORT}`
+   - 或局域网：`http://[服务器IP]:{config.PORT}`
 
 2. **查看字幕**
    - 页面自动显示实时翻译
@@ -258,39 +258,39 @@ pip install --upgrade googletrans==4.0.0rc1
 # 或切换到 DeepL API
 ```
 
-### 问题 4: "端口 5000 被占用"
+### 问题 4: "端口被占用"
 
 **解决:**
 ```bash
 # 查找占用进程
 # Windows:
-netstat -ano | findstr :5000
+netstat -ano | findstr :PORT
 
 # Linux/macOS:
-lsof -i :5000
+lsof -i :PORT
 
-# 修改端口（编辑 app.py）
-socketio.run(app, host='0.0.0.0', port=5001)
+# 修改端口（编辑 config.py）
+PORT=5001
 ```
 
 ### 问题 5: "管理界面无法连接服务器"
 
 **检查清单:**
 - [ ] 后端服务是否正在运行
-- [ ] 防火墙是否阻止了端口 5000
+- [ ] 防火墙是否阻止了端口 
 - [ ] 服务器地址是否正确
 
 **解决:**
 ```bash
 # 1. 确认后端正在运行
-curl http://localhost:5000/api/status
+curl http://localhost:PORT/api/status
 
 # 2. 检查防火墙
 # Windows: 允许 Python 通过防火墙
-# Linux: sudo ufw allow 5000
+# Linux: sudo ufw allow PORT
 
 # 3. 修改管理界面服务器地址（admin_gui.py）
-self.server_url = 'http://localhost:5000'
+self.server_url = 'http://localhost:PORT'
 ```
 
 ## 📊 性能优化
@@ -372,7 +372,7 @@ tail -f logs/ezyspeech.log
 - [ ] 所有依赖包已安装
 - [ ] 麦克风已连接（或虚拟声卡已配置）
 - [ ] 系统授予了麦克风权限
-- [ ] 端口 5000 未被占用
+- [ ] 端口未被占用
 - [ ] 网络连接正常（用于翻译 API）
 
 ## 🎉 开始使用

@@ -14,6 +14,8 @@ from PySide6.QtCore import QTimer, Qt, Signal, QThread
 from PySide6.QtGui import QColor
 import socketio
 
+import config
+
 
 class SocketIOThread(QThread):
     """WebSocket 连接线程"""
@@ -68,7 +70,7 @@ class SocketIOThread(QThread):
 class AdminWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.server_url = 'http://localhost:5000'
+        self.server_url = f'http://localhost:{config.PORT}'
         self.is_recording = False
         self.socket_thread = None
 
