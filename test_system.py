@@ -1,261 +1,399 @@
 """
-EzySpeechTranslate 系统测试脚本
-用于检查所有依赖和功能是否正常
+EzySpeechTranslate System Test Script
+Tests all components and connections
 """
 
 import sys
-import os
-
-import config
-
-
-def print_header(title):
-    print("\n" + "=" * 60)
-    print(f"  {title}")
-    print("=" * 60)
+import time
+import requests
+import json
+import yaml
+from datetime import datetime
 
 
-def test_python_version():
-    print_header("检查 Python 版本")
-    version = sys.version_info
-    print(f"Python {version.major}.{version.minor}.{version.micro}")
-
-    if version.major >= 3 and version.minor >= 8:
-        print("✓ Python 版本符合要求 (>= 3.8)")
-        return True
-    else:
-        print("✗ Python 版本过低，需要 >= 3.8")
-        return False
+class Colors:
+    """ANSI color codes"""
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    END = '\033[0m'
+    BOLD = '\033[1m'
 
 
-def test_imports():
-    print_header("检查 Python 依赖包")
+def print_test(name):
+    """Print test name"""
+    print(f"\n{Colors.BLUE}[TEST]{Colors.END} {name}...", end=" ")
+    sys.stdout.flush()
 
-    packages = {
-        'flask': 'Flask',
-        'flask_socketio': 'Flask-SocketIO',
-        'flask_cors': 'Flask-CORS',
-        'whisper': 'OpenAI Whisper',
-        'pyaudio': 'PyAudio',
-        'googletrans': 'Google Translate',
-        'numpy': 'NumPy',
-        'socketio': 'Python-SocketIO',
-    }
 
-    results = {}
-    for module, name in packages.items():
+def print_pass():
+    """Print pass"""
+    print(f"{Colors.GREEN}✓ PASS{Colors.END}")
+
+
+def print_fail(message=""):
+    """Print fail"""
+    print(f"{Colors.RED}✗ FAIL{Colors.END}")
+    if message:
+        print(f"  {Colors.RED}Error: {message}{Colors.END}")
+
+
+def print_warn(message):
+    """Print warning"""
+    print(f"{Colors.YELLOW}⚠ WARNING: {message}{Colors.END}")
+
+
+def print_header(text):
+    """Print section header"""
+    print(f"\n{Colors.BOLD}{'=' * 60}")
+    print(f"  {text}")
+    print(f"{'=' * 60}{Colors.END}\n")
+
+
+class SystemTester:
+    """System testing class"""
+
+    def __init__(self):
+        self.config = None
+        self.base_url = None
+        self.token = None
+        self.tests_passed = 0
+        self.tests_failed = 0
+
+    def load_config(self):
+        """Load configuration"""
+        print_test("Loading configuration")
         try:
-            __import__(module)
-            print(f"✓ {name}")
-            results[module] = True
-        except ImportError:
-            print(f"✗ {name} - 未安装")
-            results[module] = False
+            with open('config.yaml', 'r') as f:
+                self.config = yaml.safe_load(f)
 
-    return all(results.values())
+            host = self.config.get('server', {}).get('host', 'localhost')
+            if host == '0.0.0.0':
+                host = 'localhost'
+            port = self.config.get('server', {}).get('port', 5000)
+            self.base_url = f"http://{host}:{port}"
 
-
-def test_qt6():
-    print_header("检查 Qt6 依赖")
-
-    try:
-        from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtCore import QTimer
-        print("✓ PyQt6 已安装")
-        return True
-    except ImportError:
-        print("✗ PyQt6 未安装")
-        print("  安装命令: pip install PyQt6")
-        return False
-
-
-def test_audio_devices():
-    print_header("检查音频设备")
-
-    try:
-        import pyaudio
-        audio = pyaudio.PyAudio()
-
-        input_devices = []
-        for i in range(audio.get_device_count()):
-            info = audio.get_device_info_by_index(i)
-            if info['maxInputChannels'] > 0:
-                input_devices.append({
-                    'index': i,
-                    'name': info['name'],
-                    'channels': info['maxInputChannels']
-                })
-
-        if input_devices:
-            print(f"✓ 找到 {len(input_devices)} 个输入设备:")
-            for dev in input_devices:
-                print(f"  [{dev['index']}] {dev['name']} ({dev['channels']}ch)")
-            audio.terminate()
+            print_pass()
+            self.tests_passed += 1
             return True
-        else:
-            print("✗ 未找到音频输入设备")
-            audio.terminate()
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
             return False
-    except Exception as e:
-        print(f"✗ 音频设备检查失败: {e}")
-        return False
 
+    def test_dependencies(self):
+        """Test required dependencies"""
+        print_test("Checking dependencies")
 
-def test_whisper_model():
-    print_header("检查 Whisper 模型")
+        required_modules = [
+            'flask',
+            'flask_socketio',
+            'sounddevice',
+            'numpy',
+            'faster_whisper',
+            'yaml',
+            'jwt'
+        ]
 
-    try:
-        import whisper
-        print("正在加载 Whisper base 模型...")
-        model = whisper.load_model("base")
-        print("✓ Whisper 模型加载成功")
-
-        # 测试转录
-        import numpy as np
-        test_audio = np.zeros(16000, dtype=np.float32)
-        result = model.transcribe(test_audio)
-        print("✓ Whisper 转录功能正常")
-        return True
-    except Exception as e:
-        print(f"✗ Whisper 模型加载失败: {e}")
-        return False
-
-
-def test_translator():
-    print_header("检查翻译服务")
-
-    try:
-        from googletrans import Translator
-        translator = Translator()
-
-        # 测试翻译
-        result = translator.translate("Hello", src='en', dest='zh-cn')
-        print(f"✓ Google Translate 正常")
-        print(f"  测试翻译: Hello -> {result.text}")
-        return True
-    except Exception as e:
-        print(f"✗ 翻译服务失败: {e}")
-        print("  注意: Google Translate API 可能有访问限制")
-        return False
-
-
-def test_file_structure():
-    print_header("检查文件结构")
-
-    required_files = {
-        'app.py': 'Flask 后端',
-        'admin_gui.py': 'Qt6 管理界面',
-        'requirements.txt': '依赖列表',
-    }
-
-    required_dirs = {
-        'templates': '网页模板目录',
-    }
-
-    all_ok = True
-
-    for file, desc in required_files.items():
-        if os.path.exists(file):
-            print(f"✓ {file} - {desc}")
-        else:
-            print(f"✗ {file} - {desc} (缺失)")
-            all_ok = False
-
-    for dir, desc in required_dirs.items():
-        if os.path.isdir(dir):
-            print(f"✓ {dir}/ - {desc}")
-        else:
-            print(f"⚠ {dir}/ - {desc} (缺失，将自动创建)")
+        missing = []
+        for module in required_modules:
             try:
-                os.makedirs(dir, exist_ok=True)
-                print(f"  已创建 {dir}/ 目录")
-            except:
-                all_ok = False
+                __import__(module)
+            except ImportError:
+                missing.append(module)
 
-    # 检查 index.html
-    if os.path.exists('templates/index.html'):
-        print("✓ templates/index.html - 听众端网页")
-    else:
-        print("✗ templates/index.html - 听众端网页 (缺失)")
-        all_ok = False
+        if missing:
+            print_fail(f"Missing modules: {', '.join(missing)}")
+            self.tests_failed += 1
+            return False
+        else:
+            print_pass()
+            self.tests_passed += 1
+            return True
 
-    return all_ok
+    def test_ffmpeg(self):
+        """Test FFmpeg installation"""
+        print_test("Checking FFmpeg")
 
+        import subprocess
+        try:
+            result = subprocess.run(['ffmpeg', '-version'],
+                                    capture_output=True, timeout=5)
+            if result.returncode == 0:
+                print_pass()
+                self.tests_passed += 1
+                return True
+            else:
+                print_fail("FFmpeg not working properly")
+                self.tests_failed += 1
+                return False
+        except FileNotFoundError:
+            print_fail("FFmpeg not installed")
+            self.tests_failed += 1
+            return False
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
+            return False
 
-def test_network():
-    print_header("检查网络和端口")
+    def test_audio_devices(self):
+        """Test audio device access"""
+        print_test("Checking audio devices")
 
-    import socket
+        try:
+            import sounddevice as sd
+            devices = sd.query_devices()
+            input_devices = [d for d in devices if d['max_input_channels'] > 0]
 
-    # 检查端口是否可用
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(('localhost', config.PORT))
-    sock.close()
+            if input_devices:
+                print_pass()
+                print(f"  Found {len(input_devices)} input device(s)")
+                self.tests_passed += 1
+                return True
+            else:
+                print_fail("No input devices found")
+                self.tests_failed += 1
+                return False
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
+            return False
 
-    if result == 0:
-        print(f"⚠ 端口 {config.PORT} 已被占用")
-        print("  建议: 关闭占用端口的程序或修改配置")
-        return False
-    else:
-        print(f"✓ 端口 {config.PORT} 可用")
-        return True
+    def test_server_connection(self):
+        """Test server connection"""
+        print_test("Connecting to server")
 
+        try:
+            response = requests.get(f"{self.base_url}/api/health", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                print_pass()
+                print(f"  Status: {data.get('status')}")
+                print(f"  Clients: {data.get('clients')}")
+                self.tests_passed += 1
+                return True
+            else:
+                print_fail(f"HTTP {response.status_code}")
+                self.tests_failed += 1
+                return False
+        except requests.exceptions.ConnectionError:
+            print_fail("Server not running")
+            print_warn("Please start the server with: python app.py")
+            self.tests_failed += 1
+            return False
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
+            return False
 
-def generate_report(results):
-    print_header("测试报告")
+    def test_authentication(self):
+        """Test authentication"""
+        print_test("Testing authentication")
 
-    total = len(results)
-    passed = sum(results.values())
+        try:
+            username = self.config.get('authentication', {}).get('admin_username')
+            password = self.config.get('authentication', {}).get('admin_password')
 
-    print(f"\n总测试项: {total}")
-    print(f"通过: {passed}")
-    print(f"失败: {total - passed}")
-    print(f"成功率: {passed / total * 100:.1f}%")
+            response = requests.post(
+                f"{self.base_url}/api/login",
+                json={'username': username, 'password': password},
+                timeout=5
+            )
 
-    if passed == total:
-        print("\n🎉 所有测试通过！系统已准备就绪。")
-        print("\n启动方法:")
-        print("  1. 启动后端: python app.py")
-        print("  2. 启动管理界面: python admin_gui.py")
-        print(f"  3. 打开浏览器: http://localhost:{config.PORT}")
-    else:
-        print("\n⚠️  部分测试失败，请先解决上述问题。")
-        print("\n常见问题解决:")
-        print("  1. 依赖缺失: pip install -r requirements.txt")
-        print("  2. 音频问题: 检查麦克风连接和系统权限")
-        print("  3. 网络问题: 关闭占用端口的程序")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.token = data.get('token')
+                    print_pass()
+                    self.tests_passed += 1
+                    return True
+                else:
+                    print_fail("Login failed")
+                    self.tests_failed += 1
+                    return False
+            else:
+                print_fail(f"HTTP {response.status_code}")
+                self.tests_failed += 1
+                return False
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
+            return False
+
+    def test_api_endpoints(self):
+        """Test API endpoints"""
+        print_test("Testing API endpoints")
+
+        if not self.token:
+            print_fail("No authentication token")
+            self.tests_failed += 1
+            return False
+
+        headers = {'Authorization': f'Bearer {self.token}'}
+
+        endpoints = [
+            ('/api/config', 'GET'),
+            ('/api/translations', 'GET'),
+        ]
+
+        try:
+            for endpoint, method in endpoints:
+                url = f"{self.base_url}{endpoint}"
+
+                if method == 'GET':
+                    response = requests.get(url, headers=headers, timeout=5)
+                else:
+                    response = requests.post(url, headers=headers, timeout=5)
+
+                if response.status_code not in [200, 201]:
+                    print_fail(f"{endpoint} returned {response.status_code}")
+                    self.tests_failed += 1
+                    return False
+
+            print_pass()
+            self.tests_passed += 1
+            return True
+
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
+            return False
+
+    def test_whisper_model(self):
+        """Test Whisper model loading"""
+        print_test("Testing Whisper model")
+
+        try:
+            from faster_whisper import WhisperModel
+
+            model_size = self.config.get('whisper', {}).get('model_size', 'base')
+            device = self.config.get('whisper', {}).get('device', 'cpu')
+            compute_type = self.config.get('whisper', {}).get('compute_type', 'int8')
+
+            print(f"\n  Loading {model_size} model...", end=" ")
+            sys.stdout.flush()
+
+            model = WhisperModel(model_size, device=device, compute_type=compute_type)
+
+            print_pass()
+            print(f"  Model: {model_size}")
+            print(f"  Device: {device}")
+            self.tests_passed += 1
+            return True
+
+        except Exception as e:
+            print_fail(str(e))
+            self.tests_failed += 1
+            return False
+
+    def test_file_structure(self):
+        """Test file and directory structure"""
+        print_test("Checking file structure")
+
+        import os
+
+        required_files = [
+            'app.py',
+            'admin_gui.py',
+            'config.yaml',
+            'requirements.txt',
+            'README.md'
+        ]
+
+        required_dirs = [
+            'templates',
+            'logs',
+            'exports',
+            'data'
+        ]
+
+        missing_files = [f for f in required_files if not os.path.exists(f)]
+        missing_dirs = [d for d in required_dirs if not os.path.exists(d)]
+
+        if missing_files or missing_dirs:
+            print_fail()
+            if missing_files:
+                print(f"  Missing files: {', '.join(missing_files)}")
+            if missing_dirs:
+                print(f"  Missing directories: {', '.join(missing_dirs)}")
+            self.tests_failed += 1
+            return False
+        else:
+            print_pass()
+            self.tests_passed += 1
+            return True
+
+    def print_summary(self):
+        """Print test summary"""
+        print_header("Test Summary")
+
+        total = self.tests_passed + self.tests_failed
+        percentage = (self.tests_passed / total * 100) if total > 0 else 0
+
+        print(f"Total Tests: {total}")
+        print(f"{Colors.GREEN}Passed: {self.tests_passed}{Colors.END}")
+        print(f"{Colors.RED}Failed: {self.tests_failed}{Colors.END}")
+        print(f"Success Rate: {percentage:.1f}%")
+
+        if self.tests_failed == 0:
+            print(f"\n{Colors.GREEN}{Colors.BOLD}✓ All tests passed!{Colors.END}")
+            print(f"\n{Colors.GREEN}System is ready to use.{Colors.END}")
+        else:
+            print(f"\n{Colors.RED}{Colors.BOLD}✗ Some tests failed.{Colors.END}")
+            print(f"\n{Colors.YELLOW}Please fix the issues and run tests again.{Colors.END}")
+
+    def run_all_tests(self):
+        """Run all tests"""
+        print_header("EzySpeechTranslate System Test")
+        print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # Configuration and dependencies
+        if not self.load_config():
+            print("\n❌ Cannot proceed without configuration")
+            return False
+
+        self.test_dependencies()
+        self.test_ffmpeg()
+        self.test_audio_devices()
+        self.test_file_structure()
+
+        # Server tests
+        print_header("Server Tests")
+        server_running = self.test_server_connection()
+
+        if server_running:
+            self.test_authentication()
+            self.test_api_endpoints()
+        else:
+            print_warn("Skipping server-dependent tests")
+
+        # Model test
+        print_header("Model Tests")
+        self.test_whisper_model()
+
+        # Summary
+        self.print_summary()
+
+        return self.tests_failed == 0
 
 
 def main():
-    print("=" * 60)
-    print("  EzySpeechTranslate 系统测试")
-    print("=" * 60)
-
-    results = {
-        'Python 版本': test_python_version(),
-        'Python 依赖': test_imports(),
-        'Qt6': test_qt6(),
-        '音频设备': test_audio_devices(),
-        'Whisper 模型': test_whisper_model(),
-        '翻译服务': test_translator(),
-        '文件结构': test_file_structure(),
-        '网络端口': test_network(),
-    }
-
-    generate_report(results)
-
-    print("\n" + "=" * 60)
-    print("测试完成！")
-    print("=" * 60 + "\n")
+    """Main entry point"""
+    tester = SystemTester()
+    success = tester.run_all_tests()
+    sys.exit(0 if success else 1)
 
 
 if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n测试被中断")
+        print(f"\n\n{Colors.YELLOW}Tests interrupted by user{Colors.END}")
+        sys.exit(1)
     except Exception as e:
-        print(f"\n\n测试出错: {e}")
+        print(f"\n\n{Colors.RED}Test failed with error: {e}{Colors.END}")
         import traceback
 
         traceback.print_exc()
+        sys.exit(1)

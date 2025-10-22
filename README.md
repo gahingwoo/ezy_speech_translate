@@ -1,311 +1,521 @@
-# EzySpeechTranslate Real-Time Voice Translation System
+                       # 🎙️ EzySpeechTranslate
 
-A complete real-time speech-to-text and translation system, supporting administrator proofreading and audience display.
+A production-ready real-time speech translation system with authentication, admin GUI, and web interface.
 
-## System Architecture
+## ✨ Features
+
+- **Real-time Speech Recognition** using OpenAI Whisper
+- **Multi-language Translation** (100+ languages supported)
+- **Admin Desktop GUI** for transcription correction
+- **Web Client Interface** with live updates
+- **Secure Authentication** with JWT tokens
+- **Configuration Management** via YAML
+- **Export Functionality** (TXT, JSON, SRT formats)
+- **Cross-platform Support** (Windows, macOS, Linux)
+
+## 🏗️ Architecture
 
 ```
-
-Microphone Audio (PC / Virtual Audio Cable)
-│
-▼
-ASR (OpenAI Whisper) Real-Time Transcription
-│
-▼
-English Text Stream (Real-Time)
-│
-▼
-MT (Google Translate) Machine Translation
-│
-▼
-Chinese Machine Translated Text Stream
-│
-▼
-Manual Proofreading (Qt6 Admin Interface)
-│
-▼
-Subtitle Output / TTS Playback
-│
-▼
-Audience End (Web Text Display + TTS)
-
-````
-
-## Features
-
-### Core Features
-- ✅ **Real-Time Speech Recognition**: High-accuracy ASR using OpenAI Whisper
-- ✅ **Automatic Translation**: Real-time translation via Google Translate API (DeepL switch supported)
-- ✅ **Administrator Proofreading**: Qt6 desktop interface for real-time editing and correction of translations
-- ✅ **Audience Display**: Web-based real-time subtitle display, supporting TTS (Text-to-Speech)
-- ✅ **WebSocket Push**: Real-time synchronization for all clients
-- ✅ **Audio Source Selection**: Supports selecting different audio input devices
-- ✅ **History Management**: Complete translation history logging and export functionality
-
-### Admin Features
-- Audio input device selection
-- Real-time translation stream preview
-- Line-by-line editing and proofreading of translations
-- Clear history function
-- Connection status monitoring
-
-### Audience Features
-- Real-time subtitle display
-- Automatic TTS reading (toggle on/off)
-- Speech rate and volume adjustment
-- Manual click-to-read for single subtitles
-- Subtitle file download
-- Proofreading status indicator
-
-## Installation Steps
-
-### 1. System Dependencies
-
-#### Ubuntu/Debian
-```bash
-sudo apt-get update
-sudo apt-get install portaudio19-dev python3-dev python3-pyqt6 ffmpeg
-````
-
-#### macOS
-
-```bash
-brew install portaudio ffmpeg
+┌─────────────────┐
+│   Admin GUI     │ ◄─── Desktop App (Tkinter)
+│  (admin_gui.py) │
+└────────┬────────┘
+         │
+         │ WebSocket + REST API
+         │
+┌────────▼────────┐
+│  Flask Backend  │ ◄─── Server (app.py)
+│    (app.py)     │
+└────────┬────────┘
+         │
+         │ WebSocket
+         │
+┌────────▼────────┐
+│  Web Clients    │ ◄─── Browser Interface
+│  (index.html)   │
+└─────────────────┘
 ```
 
-#### Windows
+## 📋 Prerequisites
 
-  - Install [Python 3.10+](https://www.python.org/downloads/)
-  - Install [FFmpeg](https://ffmpeg.org/download.html)
+- Python 3.8 or higher
+- FFmpeg (for audio processing)
+- Microphone or audio input device
+- 4GB+ RAM (for Whisper model)
 
-### 2\. Python Dependencies
+### Installing FFmpeg
+
+**Windows:**
+```bash
+# Using Chocolatey
+choco install ffmpeg
+
+# Or download from: https://ffmpeg.org/download.html
+```
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Linux:**
+```bash
+sudo apt-get install ffmpeg  # Ubuntu/Debian
+sudo yum install ffmpeg      # CentOS/RHEL
+```
+
+## 🚀 Installation
+
+### 1. Clone or Download the Project
 
 ```bash
-# Create a virtual environment (recommended)
+git clone <repository-url>
+cd EzySpeechTranslate
+```
+
+### 2. Create Virtual Environment
+
+```bash
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# or
-venv\Scripts\activate     # Windows
 
-# Install dependencies
+# Activate it
+# Windows:
+venv\Scripts\activate
+
+# macOS/Linux:
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 3\. Directory Structure
+### 4. Configure the Application
 
+Edit `config.yaml` to customize settings:
+
+```yaml
+# IMPORTANT: Change these in production!
+authentication:
+  admin_username: "admin"
+  admin_password: "your-secure-password"  # CHANGE THIS!
+  jwt_secret: "your-jwt-secret-key"      # CHANGE THIS!
+
+server:
+  secret_key: "your-flask-secret-key"    # CHANGE THIS!
 ```
-EzySpeechTranslate/
-├── app.py              # Flask Backend Service
-├── admin_gui.py        # Qt6 Administrator Interface
-├── requirements.txt    # Python Dependencies
-├── README.md           # This file
-└── templates/
-    └── index.html      # Audience Webpage
-```
 
-## Usage
+## 🎯 Quick Start
 
-### 1\. Start the System (Recommended)
+### 1. Start the Backend Server
 
 ```bash
-# Use the cross-platform Python startup script
-python start.py
-```
-
-This is the simplest way, supporting Windows/Linux/macOS, with perfect Chinese display.
-
-The startup script provides the following options:
-
-  - [1] Start backend service only
-  - [2] Start administrator interface only
-  - [3] Start both simultaneously (Recommended)
-  - [4] Run system diagnostics
-  - [5] Reinstall dependencies
-
-### 2\. Manual Startup
-
-If you need to start manually:
-
-```bash
-# Terminal 1: Start Backend
 python app.py
+```
 
-# Terminal 2: Start Admin Interface
-# PyQt6 version
+The server will start on `http://localhost:5000`
+
+### 2. Launch Admin GUI
+
+In a new terminal:
+
+```bash
 python admin_gui.py
-
-# Or PySide6 version (if PyQt6 has DLL issues)
-python admin_gui_pyside.py
 ```
 
-### 3\. Open Audience End
+**Default credentials:**
+- Username: `admin`
+- Password: `admin123` (change in config.yaml!)
 
-Access in a browser:
+### 3. Open Web Client
 
+Open your browser and navigate to:
 ```
-http://localhost:PORT
-```
-
-Or access on another device (ensure on the same network):
-
-```
-http://[Server_IP]:PORT
+http://localhost:5000
 ```
 
-## Workflow
+## 📖 Usage Guide
 
-### Administrator Operations
+### Admin GUI Workflow
 
-1.  **Select Audio Device**
+1. **Login**
+   - Enter credentials from config.yaml
+   - Click "Login"
 
-      - Click "Refresh Devices" to load available audio inputs
-      - Select the microphone or virtual audio cable from the dropdown menu
-      - To use system audio, a virtual audio cable (like VB-Cable) is recommended
+2. **Select Audio Device**
+   - Choose your microphone from dropdown
+   - Click "Refresh" if device not shown
 
-2.  **Start Recording**
+3. **Start Recording**
+   - Click "🎙️ Start Recording"
+   - Speak into microphone
+   - Transcriptions appear in real-time
 
-      - Click the "▶ Start Recording" button
-      - Speak English into the microphone
-      - The system will automatically detect speech and transcribe it
+4. **Correct Transcriptions**
+   - Select transcription from list
+   - Edit text in "Corrected" field
+   - Click "Save Correction"
+   - Correction broadcasts to all clients
 
-3.  **Proofread Translation**
+5. **Export Data**
+   - Click "Export" button
+   - Choose format (TXT, JSON, SRT)
+   - Save to file
 
-      - The table on the right displays all translation history
-      - Edit the text directly in the "Chinese Translation" column
-      - Click the "Save" button to submit the correction
-      - Proofread translations will be marked in green
+### Web Client Features
 
-4.  **Manage History**
+1. **View Translations**
+   - Real-time subtitle display
+   - Auto-scroll to latest
 
-      - Click "🗑 Clear History" to remove all records
-      - All clients will synchronize the update
+2. **Change Target Language**
+   - Select from dropdown (19 languages)
+   - Translations update automatically
 
-### Audience Operations
+3. **Text-to-Speech (TTS)**
+   - Click "Enable TTS"
+   - Adjust speed and volume
+   - Click 🔊 on individual items
 
-1.  **View Subtitles**
+4. **Download Subtitles**
+   - Click "💾 Download"
+   - Saves formatted transcript
 
-      - Real-time translation results are displayed automatically
-      - Proofread subtitles will show an "Edited" tag
+## ⚙️ Configuration Reference
 
-2.  **TTS Reading**
+### Audio Settings
 
-      - Click "🔊 Enable TTS" to turn on automatic reading
-      - Adjust speech rate (0.5x - 2.0x)
-      - Adjust volume (0% - 100%)
-      - Click the 🔊 icon on a single subtitle to read it individually
+```yaml
+audio:
+  sample_rate: 16000        # Audio sampling rate (Hz)
+  block_duration: 5         # Seconds between transcriptions
+  device_index: null        # null = default device
+```
 
-3.  **Download Subtitles**
+### Whisper Model Settings
 
-      - Click "💾 Download Subtitles" to save the complete record
-      - File format is TXT, including timestamps and bilingual text
+```yaml
+whisper:
+  model_size: "base"        # tiny, base, small, medium, large
+  device: "cpu"             # cpu or cuda (GPU)
+  compute_type: "int8"      # int8, float16, float32
+  language: "en"            # Source language or null
+  beam_size: 5              # Beam search size
+  vad_filter: true          # Voice activity detection
+```
 
-## Advanced Configuration
+**Model Size Guide:**
+- `tiny`: Fastest, least accurate (~75MB)
+- `base`: Good balance (~150MB) **[Recommended]**
+- `small`: Better accuracy (~500MB)
+- `medium`: High accuracy (~1.5GB)
+- `large`: Best accuracy (~3GB)
 
-### Using DeepL API
+### Authentication Settings
 
-To use DeepL instead of Google Translate (for higher translation quality):
+```yaml
+authentication:
+  enabled: true             # Enable/disable auth
+  admin_username: "admin"
+  admin_password: "admin123"
+  session_timeout: 3600     # Seconds
+  jwt_secret: "secret-key"
+```
 
-1.  Register for a [DeepL API](https://www.deepl.com/pro-api) key
-2.  Install the dependency:
-    ```bash
-    pip install deepl
-    ```
-3.  Modify `app.py`:
-    ```python
-    import deepl
-    translator = deepl.Translator("YOUR_API_KEY")
+**⚠️ Security Warning:** Always change default credentials in production!
 
-    # Replace the translation section with:
-    result = translator.translate_text(english_text, target_lang="ZH")
-    chinese_text = result.text
-    ```
+## 🔒 Security Best Practices
 
-### Adjusting Whisper Model
+1. **Change Default Credentials**
+   ```yaml
+   authentication:
+     admin_password: "use-a-strong-password"
+     jwt_secret: "generate-random-secret"
+   ```
 
-Change the model size in `app.py`:
+2. **Use HTTPS in Production**
+   - Configure reverse proxy (nginx, Apache)
+   - Obtain SSL certificate (Let's Encrypt)
+
+3. **Firewall Configuration**
+   ```bash
+   # Only allow necessary ports
+   sudo ufw allow 5000/tcp
+   ```
+
+4. **Environment Variables** (Alternative to config.yaml)
+   ```bash
+   export ADMIN_PASSWORD="secure-password"
+   export JWT_SECRET="random-secret"
+   ```
+
+## 🌐 Deployment
+
+### Production Server with Gunicorn
+
+```bash
+# Install gunicorn
+pip install gunicorn eventlet
+
+# Run with gunicorn
+gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
+```
+
+### Docker Deployment
+
+Create `Dockerfile`:
+
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install FFmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Expose port
+EXPOSE 5000
+
+# Run application
+CMD ["python", "app.py"]
+```
+
+Build and run:
+
+```bash
+docker build -t ezyspeech .
+docker run -p 5000:5000 -v $(pwd)/config.yaml:/app/config.yaml ezyspeech
+```
+
+### Systemd Service (Linux)
+
+Create `/etc/systemd/system/ezyspeech.service`:
+
+```ini
+[Unit]
+Description=EzySpeechTranslate Service
+After=network.target
+
+[Service]
+Type=simple
+User=your-user
+WorkingDirectory=/path/to/EzySpeechTranslate
+Environment="PATH=/path/to/venv/bin"
+ExecStart=/path/to/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable ezyspeech
+sudo systemctl start ezyspeech
+sudo systemctl status ezyspeech
+```
+
+## 🔧 Troubleshooting
+
+### Audio Device Issues
+
+**Problem:** No audio devices found
+
+**Solution:**
+```bash
+# List all audio devices
+python -c "import sounddevice as sd; print(sd.query_devices())"
+
+# Check device permissions (Linux)
+sudo usermod -a -G audio $USER
+```
+
+### Whisper Model Download
+
+**Problem:** Model download fails
+
+**Solution:**
+```bash
+# Pre-download model
+python -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
+```
+
+### WebSocket Connection Failed
+
+**Problem:** Client can't connect to server
+
+**Solution:**
+```bash
+# Check if server is running
+curl http://localhost:5000/api/health
+
+# Check firewall
+sudo ufw status
+```
+
+### High CPU Usage
+
+**Problem:** CPU usage too high
+
+**Solution:**
+- Use smaller Whisper model (tiny or base)
+- Increase `block_duration` in config.yaml
+- Enable GPU acceleration (CUDA)
+
+### Permission Errors (Linux/Mac)
+
+```bash
+# Fix permissions
+chmod +x admin_gui.py app.py
+```
+
+## 📊 API Reference
+
+### REST Endpoints
+
+#### POST `/api/login`
+Authenticate admin user
+
+**Request:**
+```json
+{
+  "username": "admin",
+  "password": "password"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "username": "admin"
+}
+```
+
+#### GET `/api/config`
+Get current configuration (requires auth)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+#### GET `/api/translations`
+Get translation history (requires auth)
+
+#### POST `/api/translations/clear`
+Clear all translations (requires auth)
+
+#### GET `/api/export/<format>`
+Export translations (txt, json, srt)
+
+### WebSocket Events
+
+#### Client → Server
+
+- `admin_connect`: Authenticate admin session
+- `new_transcription`: Send new transcription
+- `correct_translation`: Update translation
+
+#### Server → Client
+
+- `history`: Initial translation history
+- `new_translation`: New translation added
+- `translation_corrected`: Translation updated
+- `history_cleared`: History cleared
+
+## 🎨 Customization
+
+### Adding New Languages
+
+Edit `config.yaml`:
+
+```yaml
+translation:
+  supported_languages:
+    - "your-language-code"
+```
+
+### Custom Styling
+
+Edit `templates/index.html`:
+
+```css
+/* Modify colors, fonts, layout */
+body {
+    background: your-gradient;
+}
+```
+
+### Custom Export Formats
+
+Extend `app.py`:
 
 ```python
-whisper_model = whisper.load_model("base")  # tiny, base, small, medium, large
+@app.route('/api/export/custom')
+def export_custom():
+    # Your custom export logic
+    pass
 ```
 
-| Model | Size | Speed | Accuracy |
-|------|------|-------|----------|
-| tiny | 39M | Fastest | Lower |
-| base | 74M | Fast | Medium |
-| small | 244M | Medium | Good |
-| medium | 769M | Slow | Very Good |
-| large | 1550M | Slowest | Best |
+## 📝 Use Cases
 
-### Using Virtual Audio Cable (Capturing System Audio)
+- 🎓 **Lectures & Presentations**: Real-time translation for international audiences
+- 💼 **Business Meetings**: Multilingual meeting transcription
+- 🎥 **Live Streaming**: Add live subtitles to streams
+- 🏥 **Healthcare**: Doctor-patient communication assistance
+- 📞 **Customer Support**: Real-time call translation
 
-#### Windows
+## 🤝 Contributing
 
-1.  Install [VB-CABLE](https://vb-audio.com/Cable/)
-2.  Set your playback device to VB-Cable
-3.  Select "VB-Cable Output" in the Admin interface
+Contributions welcome! Please:
 
-#### macOS
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Open pull request
 
-1.  Install [BlackHole](https://github.com/ExistentialAudio/BlackHole)
-2.  Create a Multi-Output Device (in Audio MIDI Setup)
-3.  Select the BlackHole device in the Admin interface
+## 📄 License
 
-#### Linux
+MIT License - See LICENSE file for details
 
-Use PulseAudio or PipeWire to create a virtual audio device.
+## 🙏 Acknowledgments
 
-## Troubleshooting
+- OpenAI Whisper for speech recognition
+- Google Translate for translation API
+- Flask & SocketIO for real-time communication
 
-### Issue: Cannot find audio device
+## 📧 Support
 
-  - Check if the microphone is connected correctly
-  - Enable microphone permissions in system settings
-  - Try clicking "Refresh Devices"
+For issues and questions:
+- Create an issue on GitHub
+- Check troubleshooting section
+- Review logs in `logs/app.log`
 
-### Issue: Whisper transcription is inaccurate
+## 🔄 Version History
 
-  - Use a larger model (like medium or large)
-  - Ensure the audio is clear and reduce background noise
-  - Adjust microphone gain
+### v2.0.0 (Current)
+- Use Faster-Whisper
+- Real-time speech recognition
+- Multi-language translation
+- Admin GUI with correction
+- Web client interface
+- JWT authentication
+- Configuration management
 
-### Issue: Poor translation quality
+---
 
-  - Consider using the DeepL API
-  - Manually proofread through the Admin interface
-
-### Issue: Webpage cannot connect
-
-  - Check firewall settings
-  - Ensure the Flask service is running
-  - Try using `0.0.0.0` instead of `localhost`
-
-## Tech Stack
-
-  - **Backend**: Flask + Flask-SocketIO + WebSocket
-  - **ASR**: OpenAI Whisper
-  - **Translation**: Google Translate API / DeepL API
-  - **Admin GUI**: PyQt6
-  - **Audience Frontend**: HTML5 + JavaScript + Socket.IO
-  - **TTS**: Web Speech API
-
-## License
-
-MIT License
-
-## Contribution
-
-Issues and Pull Requests are welcome\!
-
-## Changelog
-
-### v1.0.1 (2025-10-19)
-
-  - ✅ Multi Language release
-  - ✅ Real-time ASR + Translation
-  - ✅ Qt6 Administrator Interface
-  - ✅ Web Audience Frontend
-  - ✅ TTS Support
-  - ✅ Subtitle Download Functionality
-
-
-
+**Made with ❤️ for breaking language barriers**

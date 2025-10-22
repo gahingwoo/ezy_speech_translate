@@ -1,0 +1,94 @@
+# EzySpeechTranslate Configuration File
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 1915
+  debug: false
+  secret_key: "change-this-to-a-random-secret-key-in-production"
+
+# Authentication
+authentication:
+  enabled: true
+  admin_username: "admin"
+  admin_password: "admin123"  # Change this in production!
+  session_timeout: 3600  # seconds
+  jwt_secret: "change-this-jwt-secret-in-production"
+
+# Audio Configuration
+audio:
+  sample_rate: 16000
+  channels: 1
+  block_duration: 5  # seconds between transcriptions
+  silence_threshold: 0.01
+  device_index: null  # null = default device, or specify device index
+
+# Whisper Model Configuration
+whisper:
+  model_size: "base"  # tiny, base, small, medium, large
+  device: "cpu"  # cpu or cuda
+  compute_type: "int8"  # int8, float16, float32
+  language: "en"  # source language, null for auto-detect
+  beam_size: 5
+  vad_filter: true  # Voice Activity Detection
+
+# Translation Configuration
+translation:
+  default_target_language: "zh-cn"
+  cache_enabled: true
+  supported_languages:
+    - "zh-cn"
+    - "zh-tw"
+    - "es"
+    - "fr"
+    - "de"
+    - "ja"
+    - "ko"
+    - "ru"
+    - "ar"
+    - "pt"
+    - "it"
+    - "nl"
+    - "pl"
+    - "tr"
+    - "vi"
+    - "th"
+    - "id"
+    - "ms"
+    - "hi"
+
+# GUI Configuration
+gui:
+  window_title: "EzySpeechTranslate Admin"
+  window_size: "1200x800"
+  theme: "default"
+  font_size: 10
+  auto_scroll: true
+  max_history: 1000
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/app.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Database Configuration (Optional - for persistent storage)
+database:
+  enabled: false
+  type: "sqlite"  # sqlite, postgresql, mysql
+  path: "data/translations.db"
+  # For PostgreSQL/MySQL:
+  # host: "localhost"
+  # port: 5432
+  # username: "user"
+  # password: "pass"
+  # database: "ezyspeech"
+
+# Export Configuration
+export:
+  default_format: "txt"  # txt, srt, vtt, json
+  output_directory: "exports"
+  include_timestamps: true
+  include_corrections: true

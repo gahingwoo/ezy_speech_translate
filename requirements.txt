@@ -1,36 +1,44 @@
-flask==3.0.0
-flask-socketio==5.3.5
-flask-cors==4.0.0
-openai-whisper==20231117
-pyaudio==0.2.14
-googletrans==4.0.0rc1
-numpy==1.24.3
-python-socketio==5.10.0
-simple-websocket==1.0.0
+# EzySpeechTranslate Dependencies
 
-# Qt6 依赖
-PyQt6==6.6.1
-PyQt6-sip==13.6.0
-requests==2.31.0
+# Core Framework
+Flask==3.0.0
+Flask-SocketIO==5.3.5
+Flask-CORS==4.0.0
+
+# WebSocket
+python-socketio==5.10.0
 python-socketio[client]==5.10.0
 
-# 注意：不需要 eventlet，使用默认的 simple-websocket 后端
+# Audio Processing
+sounddevice==0.4.6
+numpy==1.24.3
+av==12.0.0
 
-# 可选：使用 DeepL 替代 Google Translate
-# deepl==1.16.1
+# Speech Recognition
+faster-whisper==1.2.0
+openai-whisper==20231117
 
-# 系统依赖说明（需要手动安装）:
-# Ubuntu/Debian:
-#   sudo apt-get install portaudio19-dev python3-pyqt6 ffmpeg
-# macOS:
-#   brew install portaudio ffmpeg
-#   pip uninstall PyQt6 PyQt6-Qt6 PyQt6-sip -y
-#   pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.2
-#   pip install 'urllib3<2' --force-reinstall
-# Windows:
-#   安装 FFmpeg: https://ffmpeg.org/download.html
-#   $ProjectDir$
-#   venv\Scripts\activate
-#   pip uninstall PyQt6 PyQt6-Qt6 PyQt6-sip -y
-#   pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.2
-#   python -c "from PyQt6.QtCore import QDateTime; print('OK')"
+# Authentication & Security
+PyJWT==2.8.0
+cryptography==41.0.7
+
+# Configuration
+PyYAML==6.0.1
+
+# HTTP Requests
+requests==2.31.0
+
+# GUI (Optional - only for admin_gui.py)
+# tkinter is included with Python on most systems
+
+# Additional utilities
+python-dateutil==2.8.2
+
+# Production Server (optional, recommended for deployment)
+gunicorn==21.2.0
+eventlet==0.33.3
+
+# Database (optional, if using database storage)
+# SQLAlchemy==2.0.23
+# psycopg2-binary==2.9.9  # For PostgreSQL
+# PyMySQL==1.1.0  # For MySQL
