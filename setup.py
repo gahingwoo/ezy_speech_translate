@@ -40,8 +40,8 @@ def check_python_version():
     print_step(1, "Checking Python version...")
     version = sys.version_info
 
-    if version.major < 3 or (version.major == 3 and version.minor < 8):
-        print(f"❌ Python 3.8+ required. Current: {version.major}.{version.minor}")
+    if version.major < 3 or (version.major == 3 and version.minor < 8) or (version.major == 3 and version.minor > 12):
+        print(f"❌ Python 3.8-3.12 required. Current: {version.major}.{version.minor}")
         return False
 
     print(f"✓ Python {version.major}.{version.minor}.{version.micro}")

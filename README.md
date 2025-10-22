@@ -38,7 +38,7 @@ A production-ready real-time speech translation system with authentication, admi
 
 ## 📋 Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8 -3.12
 - FFmpeg (for audio processing)
 - Microphone or audio input device
 - 4GB+ RAM (for Whisper model)
@@ -49,8 +49,8 @@ A production-ready real-time speech translation system with authentication, admi
 ```bash
 # Using Chocolatey
 choco install ffmpeg
-
 # Or download from: https://ffmpeg.org/download.html
+# Or winget install ffmpeg
 ```
 
 **macOS:**
@@ -72,6 +72,7 @@ sudo yum install ffmpeg      # CentOS/RHEL
 git clone https://github.com/gahingwoo/ezy_speech_translate.git
 cd ezy_speech_translate
 ```
+### Either use one key setup script `setup.py`. Or
 
 ### 2. Create Virtual Environment
 
@@ -113,7 +114,9 @@ server:
 ### 1. Start the Backend Server
 
 ```bash
-python app.py
+python app.py 
+# ./start_server.sh (Linux, macOS)
+# ./start_server.bat (Windows)
 ```
 
 The server will start on `http://localhost:5000`
@@ -124,6 +127,8 @@ In a new terminal:
 
 ```bash
 python admin_gui.py
+# ./start_admin.sh (Linux, macOS)
+# ./start_admin.bat (Windows)
 ```
 
 **Default credentials:**
@@ -200,7 +205,7 @@ audio:
 ```yaml
 whisper:
   model_size: "base"        # tiny, base, small, medium, large
-  device: "cpu"             # cpu or cuda (GPU)
+  device: "cpu"             # cpu or cuda (Nvidia GPU)
   compute_type: "int8"      # int8, float16, float32
   language: "en"            # Source language or null
   beam_size: 5              # Beam search size
@@ -262,39 +267,6 @@ pip install gunicorn eventlet
 
 # Run with gunicorn
 gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
-```
-
-### Docker Deployment
-
-Create `Dockerfile`:
-
-```dockerfile
-FROM python:3.10-slim
-
-WORKDIR /app
-
-# Install FFmpeg
-RUN apt-get update && apt-get install -y ffmpeg
-
-# Copy requirements
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Copy application
-COPY . .
-
-# Expose port
-EXPOSE 5000
-
-# Run application
-CMD ["python", "app.py"]
-```
-
-Build and run:
-
-```bash
-docker build -t ezyspeech .
-docker run -p 5000:5000 -v $(pwd)/config.yaml:/app/config.yaml ezyspeech
 ```
 
 ### Systemd Service (Linux)
@@ -507,7 +479,7 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v2.0.0 (Current)
+### v2.0.1 (Current)
 - Use Faster-Whisper
 - Real-time speech recognition
 - Multi-language translation
@@ -515,6 +487,7 @@ For issues and questions:
 - Web client interface
 - JWT authentication
 - Configuration management
+- Srt subtitles format support
 
 ---
 

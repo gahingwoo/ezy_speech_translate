@@ -634,6 +634,69 @@ class AdminGUI:
             self.log(f"Export failed: {e}")
             messagebox.showerror("Error", f"Export failed: {e}")
 
+    def export_as_srt(self, file_path):
+        """
+        Export translations to standard SRT format
+        Compatible with Adobe Premiere Pro and other NLEs
+        """
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                for i, item in enumerate(self.translations, 1):
+                    # Calculate timecode
+                    start_ms = (i - 1) * 5000  # Convert to milliseconds
+                    end_ms = i * 5000
+                    
+                    # Format timecode as HH:MM:SS,mmm
+                    start_time = self._format_srt_time(start_ms)
+                    end_time = self._format_srt_time(end_ms)
+                    
+                    # Write SRT block
+                    f.write(f"{i}\n")  # Subtitle number
+                    f.write(f"{start_time} --> {end_time}\n")  # Timecode
+                    
+                    # Format text - split long lines and handle line breaks
+                    text = item['corrected'] or item['original']
+                    formatted_text = self._format_srt_text(text)
+                    f.write(f"{formatted_text}\n\n")
+                    
+            return True
+        except Exception as e:
+            logger.error(f"SRT export failed: {e}")
+            return False
+
+    def _format_srt_time(self, milliseconds):
+        """
+        Convert milliseconds to SRT timecode format: HH:MM:SS,mmm
+        """
+        hours = milliseconds // 3600000
+        minutes = (milliseconds % 3600000) // 60000
+        seconds = (milliseconds % 60000) // 1000
+        ms = milliseconds % 1000
+        
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d},{ms:03d}"
+
+    def _format_srt_text(self, text, max_line_length=42):
+        """
+        Format subtitle text according to SRT standards
+        - Maximum 2 lines per subtitle
+        - Around 42 characters per line
+        - Proper line breaks
+        """
+        # Remove extra whitespace and line breaks
+        text = ' '.join(text.split())
+        
+        if len(text) <= max_line_length:
+            return text
+            
+        # Find best split point near the middle
+        mid_point = len(text) // 2
+        split_point = text.rfind(' ', 0, mid_point + max_line_length // 2)
+        
+        if split_point == -1:
+            return text
+            
+        return f"{text[:split_point]}\n{text[split_point+1:]}"
+
     def connect_websocket(self):
         """Connect to backend WebSocket"""
         try:
