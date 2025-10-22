@@ -16,6 +16,8 @@ import socketio as sio
 import json
 from datetime import datetime
 import logging
+from system_monitor import SystemMonitor
+import socket
 
 # Setup logging
 logging.basicConfig(
@@ -46,6 +48,7 @@ def check_server_health():
             f"Cannot reach server at {server_host}:{server_port}\nError: {e}\nCannot start app."
         )
         return False
+    return True
 
 class Config:
     """Configuration manager"""
@@ -278,7 +281,7 @@ class AdminGUI:
 
         # Status indicator
         self.status_indicator = ttk.Label(control_frame, text="● Stopped",
-                                          foreground="red", font=('Arial', 10, 'bold'))
+                                          foreground="red", font=('Arial', 15, 'bold'))
         self.status_indicator.grid(row=0, column=4, padx=5)
 
         # Clear and Export buttons
@@ -306,7 +309,7 @@ class AdminGUI:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
 
         self.transcription_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set,
-                                                font=('Arial', 10), height=15)
+                                                font=('Arial', 15), height=15)
         self.transcription_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.config(command=self.transcription_listbox.yview)
 
@@ -315,27 +318,50 @@ class AdminGUI:
 
         self.transcription_listbox.bind('<<ListboxSelect>>', self.on_transcription_select)
 
-        # Correction area
-        correction_frame = ttk.LabelFrame(transcription_frame, text="Correction", padding="10")
-        correction_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        # Correction & System area
+        content_frame = ttk.Frame(transcription_frame)
+        content_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
+        transcription_frame.grid_rowconfigure(1, weight=1)
+        transcription_frame.grid_columnconfigure(0, weight=1)
 
-        ttk.Label(correction_frame, text="Original:").grid(row=0, column=0, sticky=tk.W)
-        self.original_text = scrolledtext.ScrolledText(correction_frame, height=3,
-                                                       width=80, state='disabled')
-        self.original_text.grid(row=1, column=0, pady=5)
+        # Correction For 70%
+        correction_frame = ttk.LabelFrame(content_frame, text="Correction", padding=10)
+        correction_frame.grid(row=0, column=0, sticky="nsew")
+        content_frame.grid_columnconfigure(0, weight=7)
+        content_frame.grid_rowconfigure(0, weight=1)
 
-        ttk.Label(correction_frame, text="Corrected:").grid(row=2, column=0, sticky=tk.W)
-        self.corrected_text = scrolledtext.ScrolledText(correction_frame, height=3, width=80)
-        self.corrected_text.grid(row=3, column=0, pady=5)
+        ttk.Label(correction_frame, text="Original:").grid(row=0, column=0, sticky=tk.W, pady=(0, 2))
+        self.original_text = scrolledtext.ScrolledText(correction_frame, height=8, width=60, state='disabled',
+                                                       font=('Arial', 18))
+        self.original_text.grid(row=1, column=0, sticky="nsew", pady=(0, 5))
+
+        ttk.Label(correction_frame, text="Corrected:").grid(row=2, column=0, sticky=tk.W, pady=(5, 2))
+        self.corrected_text = scrolledtext.ScrolledText(correction_frame, height=8, width=60, font=('Arial', 18))
+        self.corrected_text.grid(row=3, column=0, sticky="nsew", pady=(0, 5))
 
         button_frame = ttk.Frame(correction_frame)
-        button_frame.grid(row=4, column=0, pady=5)
+        button_frame.grid(row=4, column=0, sticky="e", pady=(5, 0))
+        ttk.Button(button_frame, text="Save Correction", command=self.save_correction).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=self.cancel_correction).pack(side=tk.LEFT, padx=5)
 
-        ttk.Button(button_frame, text="Save Correction",
-                   command=self.save_correction).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel",
-                   command=self.cancel_correction).pack(side=tk.LEFT, padx=5)
+        correction_frame.grid_rowconfigure(1, weight=1)
+        correction_frame.grid_rowconfigure(3, weight=1)
+        correction_frame.grid_columnconfigure(0, weight=1)
 
+        # System & Config For 30%
+        sys_frame = ttk.LabelFrame(content_frame, text="System & Config", padding=10)
+        sys_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        content_frame.grid_columnconfigure(1, weight=3)
+
+        self.sys_text = scrolledtext.ScrolledText(sys_frame, height=20, width=40, state='disabled',
+                                                  font=('Consolas', 12))
+        self.sys_text.grid(row=0, column=0, sticky="nsew")
+        sys_frame.grid_rowconfigure(0, weight=1)
+        sys_frame.grid_columnconfigure(0, weight=1)
+
+        # 初始化系统监控
+        self.sys_monitor = SystemMonitor(update_callback=self.update_system_stats, interval=1.0)
+        self.sys_monitor.start()
         # Log tab
         log_frame = ttk.Frame(notebook, padding="10")
         notebook.add(log_frame, text="Log")
@@ -479,6 +505,65 @@ class AdminGUI:
 
             if index in selected_indices or not selected_indices:
                 self.transcription_listbox.selection_set(index)
+
+    def update_system_stats(self, stats):
+        """Update system and config info in the right-bottom text box (pretty formatted)"""
+        cpu = stats.get('cpu', {})
+        mem = stats.get('memory', {})
+        gpus = stats.get('gpu', [])
+
+        def get_local_ip():
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+                s.close()
+                return ip
+            except:
+                return "127.0.0.1"
+
+        # --- Config values ---
+        sample_rate = self.config.get('audio', 'sample_rate')
+        block_duration = self.config.get('audio', 'block_duration')
+        model_size = self.config.get('whisper', 'model_size')
+        beam_size = self.config.get('whisper', 'beam_size')
+        device = self.config.get('whisper', 'device')
+        host = get_local_ip()
+        port = self.config.get('server', 'port')
+
+        # --- GPU Info Formatting ---
+        if gpus:
+            gpu_lines = []
+            for gpu in gpus:
+                gpu_lines.append(
+                    f"  • GPU{gpu.get('id', 0)} {gpu.get('name', 'Unknown')}: "
+                    f"{gpu.get('load', 0):.1f}% | "
+                    f"{gpu.get('memory_used', 0)}/{gpu.get('memory_total', 0)} MB | "
+                    f"{gpu.get('temperature', 0)}°C"
+                )
+            gpu_info = "\n".join(gpu_lines)
+        else:
+            gpu_info = "  • None detected"
+
+        # --- Construct Info Text ---
+        info_text = (
+            f"🕓 {stats.get('timestamp', '')}\n"
+            f"───────────────────────────────\n"
+            f"CPU     : {cpu.get('percent', 0):>5.1f}%   ({cpu.get('freq_current', 0):.1f}/{cpu.get('freq_max', 0):.1f} MHz)\n"
+            f"Memory  : {mem.get('used', 0):>5.2f}/{mem.get('total', 0):.2f} GB  ({mem.get('percent', 0):.1f}%)\n"
+            f"GPU(s)  :\n{gpu_info}\n"
+            f"───────────────────────────────\n"
+            f"Audio   : Sample Rate = {sample_rate}, Block = {block_duration}s\n"
+            f"Whisper : Model = {model_size}, Beam = {beam_size}, Device = {device}\n"
+            f"Server  : {host}:{port}\n"
+        )
+
+        # --- Update Text Widget ---
+        self.sys_text.config(state='normal')
+        self.sys_text.delete(1.0, tk.END)
+        self.sys_text.insert(tk.END, info_text)
+        self.sys_text.config(state='disabled')
+
 
     def clear_history(self):
         """Clear translation history"""
@@ -655,11 +740,13 @@ class AdminGUI:
 
 def main():
     """Main entry point"""
-    check_server_health()
-    root = tk.Tk()
-    app = AdminGUI(root)
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    root.mainloop()
+    if not check_server_health():
+        exit(1)
+    else:
+        root = tk.Tk()
+        app = AdminGUI(root)
+        root.protocol("WM_DELETE_WINDOW", app.on_closing)
+        root.mainloop()
 
 
 if __name__ == '__main__':

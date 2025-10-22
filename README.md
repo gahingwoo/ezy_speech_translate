@@ -1,4 +1,4 @@
-                       # 🎙️ EzySpeechTranslate
+# 🎙️ EzySpeechTranslate
 
 A production-ready real-time speech translation system with authentication, admin GUI, and web interface.
 
@@ -69,8 +69,8 @@ sudo yum install ffmpeg      # CentOS/RHEL
 ### 1. Clone or Download the Project
 
 ```bash
-git clone <repository-url>
-cd EzySpeechTranslate
+git clone https://github.com/gahingwoo/ezy_speech_translate.git
+cd ezy_speech_translate
 ```
 
 ### 2. Create Virtual Environment
