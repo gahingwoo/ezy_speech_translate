@@ -61,7 +61,7 @@ translation:
 # GUI Configuration
 gui:
   window_title: "EzySpeechTranslate Admin"
-  window_size: "1200x800"
+  window_size: "1200x1000"
   theme: "default"
   font_size: 10
   auto_scroll: true
