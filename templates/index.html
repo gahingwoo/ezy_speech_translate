@@ -12,219 +12,481 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --card-bg: white;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --border-color: #e0e0e0;
+            --subtitle-bg: #f8f9fa;
+            --subtitle-border: #667eea;
+            --corrected-bg: #e8f5e9;
+            --corrected-border: #4CAF50;
+            --corrected-text: #2E7D32;
+            --empty-state: #999;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-hover: rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] {
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+            --card-bg: #1e293b;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --subtitle-bg: #0f172a;
+            --subtitle-border: #3b82f6;
+            --corrected-bg: #1e3a20;
+            --corrected-border: #4ade80;
+            --corrected-text: #86efac;
+            --empty-state: #64748b;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --shadow-hover: rgba(0, 0, 0, 0.4);
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s ease;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
         .header {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px var(--shadow);
             text-align: center;
+            transition: all 0.3s ease;
         }
 
         .header h1 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 2.5em;
+            color: var(--subtitle-border);
+            margin-bottom: 8px;
+            font-size: 2.8em;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1em;
         }
 
         .status {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            margin-top: 10px;
+            gap: 8px;
+            padding: 10px 24px;
+            border-radius: 24px;
+            font-weight: 600;
+            margin-top: 16px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
         }
 
         .status.connected {
-            background: #4CAF50;
+            background: #10b981;
             color: white;
         }
 
         .status.disconnected {
-            background: #f44336;
+            background: #ef4444;
             color: white;
         }
 
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         .controls {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px var(--shadow);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .control-group {
             display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 14px 24px;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: all 0.3s;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 6px 20px var(--shadow-hover);
+        }
+
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn-tts {
-            background: #2196F3;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
         }
 
+        .btn-tts.active {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
         .btn-clear {
-            background: #FF9800;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
         }
 
         .btn-download {
-            background: #4CAF50;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-theme {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
             color: white;
         }
 
         .select-box {
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            min-width: 180px;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 15px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .select-box:hover {
+            border-color: var(--subtitle-border);
+        }
+
+        .select-box:focus {
+            outline: none;
+            border-color: var(--subtitle-border);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .slider-container {
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slider-wrapper {
+            display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
         .slider {
-            width: 150px;
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--subtitle-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--subtitle-border);
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .slider::-moz-range-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider-value {
+            color: var(--text-primary);
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
         }
 
         .subtitle-area {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px;
             min-height: 500px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-height: 70vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .subtitle-area::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .subtitle-area::-webkit-scrollbar-track {
+            background: var(--border-color);
+            border-radius: 10px;
+        }
+
+        .subtitle-area::-webkit-scrollbar-thumb {
+            background: var(--subtitle-border);
+            border-radius: 10px;
+        }
+
+        .subtitle-area::-webkit-scrollbar-thumb:hover {
+            background: var(--corrected-border);
         }
 
         .subtitle-item {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-left: 5px solid #667eea;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 10px;
-            animation: slideIn 0.5s ease;
+            background: var(--subtitle-bg);
+            border-left: 4px solid var(--subtitle-border);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            animation: slideIn 0.4s ease;
+            transition: all 0.2s ease;
+        }
+
+        .subtitle-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px var(--shadow);
         }
 
         @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateX(-20px);
+                transform: translateY(-10px);
             }
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateY(0);
             }
         }
 
         .subtitle-item.corrected {
-            border-left-color: #4CAF50;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-left-color: var(--corrected-border);
+            background: var(--corrected-bg);
         }
 
         .timestamp {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 10px;
+            font-weight: 500;
         }
 
         .badge {
-            background: #4CAF50;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.8em;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .text-source {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-        }
-
-        .text-target {
-            color: #667eea;
-            font-size: 1.3em;
-            font-weight: bold;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            font-size: 1em;
             line-height: 1.6;
         }
 
+        .text-target {
+            color: var(--text-primary);
+            font-size: 1.4em;
+            font-weight: 600;
+            line-height: 1.7;
+        }
+
         .subtitle-item.corrected .text-target {
-            color: #2E7D32;
+            color: var(--corrected-text);
         }
 
         .empty-state {
             text-align: center;
-            color: #999;
-            padding: 100px 20px;
+            color: var(--empty-state);
+            padding: 120px 20px;
             font-size: 1.2em;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+            opacity: 0.5;
         }
 
         .tts-icon {
             cursor: pointer;
-            font-size: 1.2em;
-            padding: 5px 10px;
-            border-radius: 5px;
-            background: #2196F3;
+            font-size: 1.1em;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
             border: none;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .tts-icon:hover {
-            background: #1976D2;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }
 
         .loading {
-            color: #999;
+            color: var(--empty-state);
             font-style: italic;
+            animation: fadeInOut 1.5s ease-in-out infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .scroll-to-top {
+            position: fixed;
+            bottom: 120px;
+            right: 32px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scroll-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding: 24px;
+            color: white;
+            font-size: 0.9em;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+            font-weight: 600;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .footer a:hover {
+            color: #fbbf24;
+            text-decoration: underline;
         }
 
         @media (max-width: 768px) {
             .header h1 {
-                font-size: 1.8em;
+                font-size: 2em;
             }
 
             .controls {
-                flex-direction: column;
-                align-items: stretch;
+                grid-template-columns: 1fr;
             }
 
-            .btn, .select-box {
-                width: 100%;
+            .footer {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .scroll-to-top {
+                bottom: 80px;
+                right: 20px;
+                width: 48px;
+                height: 48px;
             }
         }
     </style>
@@ -235,56 +497,106 @@
             <h1>🎙️ EzySpeechTranslate</h1>
             <p>Real-time Speech Translation System</p>
             <div id="connectionStatus" class="status disconnected">
-                <span>●</span>
+                <span class="status-dot"></span>
                 <span>Disconnected</span>
             </div>
         </div>
 
         <div class="controls">
-            <label>Target Language:</label>
-            <select class="select-box" id="targetLang">
-                <option value="zh-cn">Chinese (Simplified)</option>
-                <option value="zh-tw">Chinese (Traditional)</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="ja">Japanese</option>
-                <option value="ko">Korean</option>
-                <option value="ru">Russian</option>
-                <option value="ar">Arabic</option>
-                <option value="pt">Portuguese</option>
-                <option value="it">Italian</option>
-                <option value="nl">Dutch</option>
-                <option value="pl">Polish</option>
-                <option value="tr">Turkish</option>
-                <option value="vi">Vietnamese</option>
-                <option value="th">Thai</option>
-                <option value="id">Indonesian</option>
-                <option value="ms">Malay</option>
-                <option value="hi">Hindi</option>
-            </select>
-
-            <button class="btn btn-tts" id="toggleTTS">🔊 Enable TTS</button>
-
-            <div class="slider-container">
-                <label>Speed:</label>
-                <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
-                <span id="rateValue">1.0x</span>
+            <div class="control-group">
+                <label class="control-label">Target Language</label>
+                <select class="select-box" id="targetLang">
+                    <option value="yue">Cantonese</option>
+                    <option value="zh-cn">Chinese (Simplified)</option>
+                    <option value="zh-tw">Chinese (Traditional)</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="ru">Russian</option>
+                    <option value="ar">Arabic</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="it">Italian</option>
+                    <option value="nl">Dutch</option>
+                    <option value="pl">Polish</option>
+                    <option value="tr">Turkish</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="th">Thai</option>
+                    <option value="id">Indonesian</option>
+                    <option value="ms">Malay</option>
+                    <option value="hi">Hindi</option>
+                </select>
             </div>
 
-            <div class="slider-container">
-                <label>Volume:</label>
-                <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1">
-                <span id="volumeValue">100%</span>
+            <div class="control-group">
+                <label class="control-label">Text-to-Speech</label>
+                <button class="btn btn-tts" id="toggleTTS">
+                    <span>🔊</span>
+                    <span>Enable TTS</span>
+                </button>
             </div>
 
-            <button class="btn btn-clear" id="clearBtn">🗑️ Clear</button>
-            <button class="btn btn-download" id="downloadBtn">💾 Download</button>
+            <div class="control-group">
+                <label class="control-label">Speed</label>
+                <div class="slider-wrapper">
+                    <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+                    <span class="slider-value" id="rateValue">1.0x</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Volume</label>
+                <div class="slider-wrapper">
+                    <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1">
+                    <span class="slider-value" id="volumeValue">100%</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Actions</label>
+                <button class="btn btn-clear" id="clearBtn">
+                    <span>🗑️</span>
+                    <span>Clear</span>
+                </button>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Export</label>
+                <button class="btn btn-download" id="downloadBtn">
+                    <span>💾</span>
+                    <span>Download</span>
+                </button>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Theme</label>
+                <button class="btn btn-theme" id="themeToggle">
+                    <span>🌙</span>
+                    <span>Dark Mode</span>
+                </button>
+            </div>
         </div>
 
         <div class="subtitle-area" id="subtitleArea">
             <div class="empty-state">
-                Waiting for translation data...
+                <div class="empty-state-icon">💬</div>
+                <div>Waiting for translation data...</div>
+                <small style="margin-top: 12px; display: block; opacity: 0.7;">
+                    If no updates appear, please refresh the page
+                </small>
+            </div>
+        </div>
+
+        <button class="scroll-to-top" id="scrollToTop" title="Back to top">↑</button>
+
+        <div class="footer">
+            <div>Made by Ga Hing Woo with ❤️ for breaking language barriers</div>
+            <div>
+                <span>Issues: </span>
+                <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new" target="_blank">
+                    Post it on GitHub
+                </a>
             </div>
         </div>
     </div>
@@ -295,56 +607,142 @@
         let ttsRate = 1.0;
         let ttsVolume = 1.0;
         let translations = [];
-        let targetLang = 'zh-cn';
-        let isTranslating = {};
+        let targetLang = 'yue';
 
-        // Google Translate API (client-side translation)
-        async function translateText(text, targetLang) {
-            const cacheKey = `${text}_${targetLang}`;
+        // Language code mapping for TTS
+        const TTS_LANG_MAP = {
+            'yue': 'zh-HK',      // Cantonese
+            'zh-cn': 'zh-CN',    // Simplified Chinese
+            'zh-tw': 'zh-TW',    // Traditional Chinese
+            'ja': 'ja-JP',       // Japanese
+            'ko': 'ko-KR',       // Korean
+            'es': 'es-ES',       // Spanish
+            'fr': 'fr-FR',       // French
+            'de': 'de-DE',       // German
+            'ru': 'ru-RU',       // Russian
+            'ar': 'ar-SA',       // Arabic
+            'pt': 'pt-PT',       // Portuguese
+            'it': 'it-IT',       // Italian
+            'nl': 'nl-NL',       // Dutch
+            'pl': 'pl-PL',       // Polish
+            'tr': 'tr-TR',       // Turkish
+            'vi': 'vi-VN',       // Vietnamese
+            'th': 'th-TH',       // Thai
+            'id': 'id-ID',       // Indonesian
+            'ms': 'ms-MY',       // Malay
+            'hi': 'hi-IN'        // Hindi
+        };
 
-            // Check cache
-            const cached = sessionStorage.getItem(cacheKey);
-            if (cached) {
-                return cached;
-            }
-
-            try {
-                // Use Google Translate API via free endpoint
-                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (data && data[0] && data[0][0] && data[0][0][0]) {
-                    const translated = data[0][0][0];
-                    // Cache result
-                    sessionStorage.setItem(cacheKey, translated);
-                    return translated;
-                }
-            } catch (error) {
-                console.error('Translation error:', error);
-            }
-
-            return text; // Return original if translation fails
+        // Theme management
+        function initTheme() {
+            const savedTheme = sessionStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
         }
 
-        // Connection status
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            sessionStorage.setItem('theme', newTheme);
+            updateThemeButton(newTheme);
+        }
+
+        function updateThemeButton(theme) {
+            const btn = document.getElementById('themeToggle');
+            const icon = btn.querySelector('span:first-child');
+            const text = btn.querySelector('span:last-child');
+
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = 'Switch To Light Mode';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Switch To Dark Mode';
+            }
+        }
+
+        initTheme();
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        // Scroll to Top functionality
+        const scrollToTopBtn = document.getElementById('scrollToTop');
+        const subtitleArea = document.getElementById('subtitleArea');
+
+        subtitleArea.addEventListener('scroll', () => {
+            if (subtitleArea.scrollTop > 300) {
+                scrollToTopBtn.classList.add('visible');
+            } else {
+                scrollToTopBtn.classList.remove('visible');
+            }
+        });
+
+        scrollToTopBtn.addEventListener('click', () => {
+            subtitleArea.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Translation function
+        async function translateText(text, targetLang) {
+            const cacheKey = `${text}_${targetLang}`;
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) return cached;
+
+            try {
+                let translationLang = targetLang;
+                let translated = text;
+
+                // Special handling for Cantonese
+                if (targetLang === 'yue') {
+                    try {
+                        const yueUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=yue&dt=t&q=${encodeURIComponent(text)}`;
+                        const yueResponse = await fetch(yueUrl);
+                        const yueData = await yueResponse.json();
+
+                        if (yueData && yueData[0] && yueData[0][0] && yueData[0][0][0]) {
+                            translated = yueData[0][0][0];
+                        }
+                    } catch (err) {
+                        console.log('Cantonese translation fallback to zh-TW');
+                        translationLang = 'zh-TW';
+                    }
+                }
+
+                // Standard translation
+                if (translated === text) {
+                    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${translationLang}&dt=t&q=${encodeURIComponent(text)}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (data && data[0] && data[0][0] && data[0][0][0]) {
+                        translated = data[0][0][0];
+                    }
+                }
+
+                sessionStorage.setItem(cacheKey, translated);
+                return translated;
+            } catch (error) {
+                console.error('Translation error:', error);
+                return text + ' (translation failed)';
+            }
+        }
+
+        // Socket.IO event handlers
         socket.on('connect', () => {
             updateConnectionStatus(true);
-            console.log('Connected to server');
         });
 
         socket.on('disconnect', () => {
             updateConnectionStatus(false);
-            console.log('Disconnected from server');
         });
 
-        // Receive history
         socket.on('history', async (history) => {
             translations = history;
             await renderSubtitles();
         });
 
-        // Receive new translation
         socket.on('new_translation', async (data) => {
             translations.push(data);
             await addSubtitle(data);
@@ -354,7 +752,6 @@
             }
         });
 
-        // Receive translation correction
         socket.on('translation_corrected', async (data) => {
             const index = translations.findIndex(t => t.id === data.id);
             if (index !== -1) {
@@ -363,42 +760,48 @@
             }
         });
 
-        // History cleared
         socket.on('history_cleared', () => {
             translations = [];
             renderSubtitles();
         });
 
-        // Update connection status
         function updateConnectionStatus(connected) {
             const statusEl = document.getElementById('connectionStatus');
+            const text = statusEl.querySelector('span:last-child');
+
             if (connected) {
                 statusEl.className = 'status connected';
-                statusEl.innerHTML = '<span>●</span><span>Connected</span>';
+                text.textContent = 'Connected';
             } else {
                 statusEl.className = 'status disconnected';
-                statusEl.innerHTML = '<span>●</span><span>Disconnected</span>';
+                text.textContent = 'Disconnected';
             }
         }
 
-        // Render all subtitles
         async function renderSubtitles() {
             const area = document.getElementById('subtitleArea');
 
             if (translations.length === 0) {
-                area.innerHTML = '<div class="empty-state">Waiting for translation data...</div>';
+                area.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <div>Waiting for translation data...</div>
+                        <small style="margin-top: 12px; display: block; opacity: 0.7;">
+                            If no updates appear, please refresh the page
+                        </small>
+                    </div>
+                `;
                 return;
             }
 
+            const reversedTranslations = [...translations].reverse();
             const subtitles = await Promise.all(
-                translations.map(item => createSubtitleHTML(item))
+                reversedTranslations.map(item => createSubtitleHTML(item))
             );
 
             area.innerHTML = subtitles.join('');
-            area.scrollTop = area.scrollHeight;
         }
 
-        // Add single subtitle
         async function addSubtitle(data) {
             const area = document.getElementById('subtitleArea');
             const emptyState = area.querySelector('.empty-state');
@@ -408,19 +811,15 @@
             }
 
             const html = await createSubtitleHTML(data);
-            area.innerHTML += html;
-            area.scrollTop = area.scrollHeight;
+            area.innerHTML = html + area.innerHTML;
         }
 
-        // Create subtitle HTML
         async function createSubtitleHTML(item) {
             const itemId = `subtitle-${item.id}`;
 
-            // Translate if not already done
             if (!item.translated || item.currentLang !== targetLang) {
                 item.currentLang = targetLang;
 
-                // Show loading state
                 setTimeout(async () => {
                     const elem = document.getElementById(itemId);
                     if (elem) {
@@ -431,10 +830,8 @@
                     }
                 }, 0);
 
-                // Perform translation
                 item.translated = await translateText(item.corrected, targetLang);
 
-                // Update display
                 setTimeout(() => {
                     const elem = document.getElementById(itemId);
                     if (elem) {
@@ -457,64 +854,103 @@
                         ${correctedBadge}
                         <button class="tts-icon" onclick="speakText('${escapeHtml(translatedText)}')">🔊</button>
                     </div>
-                    <div class="text-source">EN: ${escapeHtml(item.corrected)}</div>
+                    <div class="text-source">${escapeHtml(item.corrected)}</div>
                     <div class="text-target">${escapeHtml(translatedText)}</div>
                 </div>
             `;
         }
 
-        // HTML escape
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML.replace(/'/g, "\\'");
         }
 
-        // TTS function
+        // Enhanced TTS function with better voice selection
         function speakText(text) {
             if (!('speechSynthesis' in window)) {
-                alert('Your browser does not support TTS');
+                alert('Your browser does not support text-to-speech');
                 return;
             }
 
             speechSynthesis.cancel();
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = getLangCode(targetLang);
+            // Clean text
+            const cleanText = text.replace(/\s*\([^)]*\)\s*/g, '').trim();
+            if (!cleanText) return;
+
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+
+            // Use unified language mapping
+            const ttsLang = TTS_LANG_MAP[targetLang] || targetLang;
+            utterance.lang = ttsLang;
             utterance.rate = ttsRate;
             utterance.volume = ttsVolume;
 
+            // Enhanced voice selection logic - find the best match
             const voices = speechSynthesis.getVoices();
-            const voice = voices.find(v => v.lang.startsWith(utterance.lang));
-            if (voice) {
-                utterance.voice = voice;
+            let selectedVoice = null;
+
+            // For Apple devices, use more precise matching
+            // Strategy 1: Find exact lang match first
+            selectedVoice = voices.find(v => v.lang === ttsLang);
+
+            // Strategy 2: For languages without exact match, find by language family
+            if (!selectedVoice) {
+                const baseLang = ttsLang.split('-')[0]; // e.g., 'zh', 'ja', 'ko'
+
+                // Special handling for Chinese variants
+                if (baseLang === 'zh') {
+                    const regionCode = ttsLang.split('-')[1]; // 'HK', 'CN', 'TW'
+
+                    // Try to find voice with matching region
+                    selectedVoice = voices.find(v =>
+                        v.lang.startsWith('zh-') && v.lang.includes(regionCode)
+                    );
+
+                    // If no region match, try any Chinese voice
+                    if (!selectedVoice) {
+                        selectedVoice = voices.find(v => v.lang.startsWith('zh-'));
+                    }
+                } else {
+                    // For non-Chinese languages, find by base language code
+                    // Prefer voices that match the specific region code
+                    const regionCode = ttsLang.split('-')[1];
+                    if (regionCode) {
+                        selectedVoice = voices.find(v =>
+                            v.lang.startsWith(baseLang + '-') && v.lang.includes(regionCode)
+                        );
+                    }
+
+                    // If no specific region, use any voice from that language
+                    if (!selectedVoice) {
+                        selectedVoice = voices.find(v => v.lang.startsWith(baseLang + '-'));
+                    }
+
+                    // Last resort: just match base language
+                    if (!selectedVoice) {
+                        selectedVoice = voices.find(v => v.lang.toLowerCase().startsWith(baseLang.toLowerCase()));
+                    }
+                }
             }
 
-            speechSynthesis.speak(utterance);
-        }
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                console.log(`Using voice: ${selectedVoice.name} (${selectedVoice.lang}) for target: ${ttsLang}`);
+            } else {
+                console.warn(`No suitable voice found for ${ttsLang}, using default`);
+            }
 
-        // Get language code for TTS
-        function getLangCode(lang) {
-            const langMap = {
-                'zh-cn': 'zh-CN',
-                'zh-tw': 'zh-TW',
-                'ja': 'ja-JP',
-                'ko': 'ko-KR',
-                'es': 'es-ES',
-                'fr': 'fr-FR',
-                'de': 'de-DE',
-                'ru': 'ru-RU',
-                'ar': 'ar-SA',
-                'pt': 'pt-PT',
-                'it': 'it-IT'
+            utterance.onerror = (e) => {
+                console.error('TTS error:', e);
             };
-            return langMap[lang] || lang;
+
+            speechSynthesis.speak(utterance);
         }
 
         // Target language change
         document.getElementById('targetLang').addEventListener('change', async (e) => {
             targetLang = e.target.value;
-            // Re-translate all items
             translations.forEach(item => {
                 item.translated = null;
                 item.currentLang = null;
@@ -526,13 +962,17 @@
         document.getElementById('toggleTTS').addEventListener('click', () => {
             ttsEnabled = !ttsEnabled;
             const btn = document.getElementById('toggleTTS');
+            const icon = btn.querySelector('span:first-child');
+            const text = btn.querySelector('span:last-child');
 
             if (ttsEnabled) {
-                btn.textContent = '🔇 Disable TTS';
-                btn.style.background = '#f44336';
+                btn.classList.add('active');
+                icon.textContent = '🔇';
+                text.textContent = 'Disable TTS';
             } else {
-                btn.textContent = '🔊 Enable TTS';
-                btn.style.background = '#2196F3';
+                btn.classList.remove('active');
+                icon.textContent = '🔊';
+                text.textContent = 'Enable TTS';
                 speechSynthesis.cancel();
             }
         });
@@ -551,6 +991,10 @@
 
         // Clear subtitles
         document.getElementById('clearBtn').addEventListener('click', () => {
+            if (translations.length === 0) {
+                return;
+            }
+
             if (confirm('Clear all subtitles?')) {
                 translations = [];
                 renderSubtitles();
@@ -564,36 +1008,62 @@
                 return;
             }
 
-            let content = 'EzySpeechTranslate Subtitle File\n';
-            content += 'Generated: ' + new Date().toLocaleString() + '\n';
-            content += 'Target Language: ' + targetLang + '\n\n';
-            content += '=' .repeat(60) + '\n\n';
+            const langName = document.getElementById('targetLang').selectedOptions[0].text;
+            let content = '═══════════════════════════════════════════════════\n';
+            content += '       EzySpeechTranslate Subtitle Export\n';
+            content += '═══════════════════════════════════════════════════\n\n';
+            content += `Generated: ${new Date().toLocaleString()}\n`;
+            content += `Target Language: ${langName}\n`;
+            content += `Total Entries: ${translations.length}\n\n`;
+            content += '═══════════════════════════════════════════════════\n\n';
 
             translations.forEach((item, index) => {
-                content += `[${index + 1}] ${item.timestamp}\n`;
-                content += `EN: ${item.corrected}\n`;
-                content += `${targetLang.toUpperCase()}: ${item.translated || 'Not translated'}\n`;
+                content += `[${String(index + 1).padStart(3, '0')}] ${item.timestamp}\n`;
                 if (item.is_corrected) {
-                    content += `(Corrected)\n`;
+                    content += `      [✓ CORRECTED]\n`;
                 }
-                content += '\n' + '-'.repeat(60) + '\n\n';
+                content += `\n      Original (EN):\n      ${item.corrected}\n`;
+                content += `\n      Translation (${targetLang.toUpperCase()}):\n      ${item.translated || 'Not translated'}\n`;
+                content += `\n${'─'.repeat(55)}\n\n`;
             });
+
+            content += '═══════════════════════════════════════════════════\n';
+            content += '              End of Subtitle File\n';
+            content += '═══════════════════════════════════════════════════\n';
 
             const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `subtitles_${targetLang}_${Date.now()}.txt`;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            a.download = `EzySpeech_${targetLang}_${timestamp}.txt`;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
         });
 
-        // Load voice list
+        // Load voices when available
         if ('speechSynthesis' in window) {
-            speechSynthesis.addEventListener('voiceschanged', () => {
+            let voicesLoaded = false;
+
+            function loadVoices() {
+                if (voicesLoaded) return;
                 const voices = speechSynthesis.getVoices();
-                console.log('Available voices:', voices);
-            });
+                if (voices.length > 0) {
+                    voicesLoaded = true;
+                    console.log(`Loaded ${voices.length} TTS voices`);
+
+                    // Log available languages
+                    const langs = [...new Set(voices.map(v => v.lang))].sort();
+                    console.log('Available TTS languages:', langs);
+                }
+            }
+
+            // Try multiple times to load voices (browser-dependent)
+            speechSynthesis.addEventListener('voiceschanged', loadVoices);
+            loadVoices();
+            setTimeout(loadVoices, 100);
         }
     </script>
 </body>

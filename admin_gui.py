@@ -359,7 +359,7 @@ class AdminGUI:
         sys_frame.grid_rowconfigure(0, weight=1)
         sys_frame.grid_columnconfigure(0, weight=1)
 
-        # 初始化系统监控
+        # Init System Monitoring
         self.sys_monitor = SystemMonitor(update_callback=self.update_system_stats, interval=1.0)
         self.sys_monitor.start()
         # Log tab

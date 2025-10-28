@@ -479,15 +479,10 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v2.0.1 (Current)
-- Use Faster-Whisper
-- Real-time speech recognition
-- Multi-language translation
-- Admin GUI with correction
-- Web client interface
-- JWT authentication
-- Configuration management
-- Srt subtitles format support
+### v2.0.2 (Current)
+- Add Cantonese support
+- A better front-end UI
+
 
 ---
 

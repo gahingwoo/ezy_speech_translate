@@ -34,11 +34,12 @@ whisper:
 
 # Translation Configuration
 translation:
-  default_target_language: "zh-cn"
+  default_target_language: "yue"
   cache_enabled: true
   supported_languages:
     - "zh-cn"
     - "zh-tw"
+    - "yue"
     - "es"
     - "fr"
     - "de"
