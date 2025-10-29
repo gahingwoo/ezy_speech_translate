@@ -1,6 +1,7 @@
 """
-EzySpeechTranslate Backend Server
+EzySpeechTranslate Backend Server - Updated
 Real-time speech recognition and translation system
+Added: Order synchronization support
 """
 
 import os
@@ -64,7 +65,6 @@ app.config['SECRET_KEY'] = config.get('server', 'secret_key')
 CORS(app)
 
 # Initialize SocketIO
-# socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # In-memory storage (replace with database in production)
@@ -174,7 +174,7 @@ def clear_translations():
     """Clear translation history"""
     global translations_history
     translations_history = []
-    socketio.emit('history_cleared', broadcast=True)
+    socketio.emit('history_cleared')
     logger.info("Translation history cleared")
     return jsonify({'success': True})
 
@@ -253,9 +253,9 @@ def handle_new_transcription(data):
 
     translations_history.append(translation_data)
 
-    # Broadcast to all clients
-    socketio.emit('new_translation', translation_data, to=None)
-    logger.info(f"New transcription: {translation_data['corrected'][:50]}...")
+    # Broadcast to all clients (including admin for confirmation)
+    socketio.emit('new_translation', translation_data)
+    logger.info(f"New transcription broadcast: {translation_data['corrected'][:50]}...")
 
 
 @socketio.on('correct_translation')
@@ -274,11 +274,51 @@ def handle_correct_translation(data):
         translations_history[translation_id]['translated'] = None  # Reset translation
 
         # Broadcast correction to all clients
-        socketio.emit('translation_corrected', translations_history[translation_id], broadcast=True)
+        socketio.emit('translation_corrected', translations_history[translation_id])
         logger.info(f"Translation corrected: ID {translation_id}")
         emit('correction_success', {'id': translation_id})
     else:
         emit('error', {'message': 'Invalid translation ID'})
+
+
+@socketio.on('update_order')
+def handle_update_order(data):
+    """Handle order update from admin GUI (drag & drop, sort, etc.)"""
+    if not is_admin(request.sid):
+        emit('error', {'message': 'Unauthorized'})
+        return
+
+    global translations_history
+    new_order = data.get('translations', [])
+
+    if new_order:
+        # Update the global history with new order
+        translations_history = new_order
+
+        # Broadcast the complete new order to all frontend clients (exclude admin)
+        socketio.emit('order_updated', {
+            'translations': translations_history
+        }, include_self=False)
+
+        logger.info(f"Order updated and broadcast: {len(translations_history)} items")
+        emit('order_update_success', {'count': len(translations_history)})
+    else:
+        emit('error', {'message': 'Invalid order data'})
+
+
+@socketio.on('clear_history')
+def handle_clear_history():
+    """Handle clear history request from admin"""
+    if not is_admin(request.sid):
+        emit('error', {'message': 'Unauthorized'})
+        return
+
+    global translations_history
+    translations_history = []
+
+    # Broadcast to all clients
+    socketio.emit('history_cleared')
+    logger.info("History cleared and broadcast")
 
 
 def is_admin(sid):

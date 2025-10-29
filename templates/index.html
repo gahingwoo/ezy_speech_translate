@@ -467,6 +467,29 @@
             text-decoration: underline;
         }
 
+        .sync-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9em;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .sync-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2em;
@@ -492,6 +515,10 @@
     </style>
 </head>
 <body>
+    <div class="sync-indicator" id="syncIndicator">
+        🔄 Order Updated from Admin
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>🎙️ EzySpeechTranslate</h1>
@@ -611,27 +638,36 @@
 
         // Language code mapping for TTS
         const TTS_LANG_MAP = {
-            'yue': 'zh-HK',      // Cantonese
-            'zh-cn': 'zh-CN',    // Simplified Chinese
-            'zh-tw': 'zh-TW',    // Traditional Chinese
-            'ja': 'ja-JP',       // Japanese
-            'ko': 'ko-KR',       // Korean
-            'es': 'es-ES',       // Spanish
-            'fr': 'fr-FR',       // French
-            'de': 'de-DE',       // German
-            'ru': 'ru-RU',       // Russian
-            'ar': 'ar-SA',       // Arabic
-            'pt': 'pt-PT',       // Portuguese
-            'it': 'it-IT',       // Italian
-            'nl': 'nl-NL',       // Dutch
-            'pl': 'pl-PL',       // Polish
-            'tr': 'tr-TR',       // Turkish
-            'vi': 'vi-VN',       // Vietnamese
-            'th': 'th-TH',       // Thai
-            'id': 'id-ID',       // Indonesian
-            'ms': 'ms-MY',       // Malay
-            'hi': 'hi-IN'        // Hindi
+            'yue': 'zh-HK',
+            'zh-cn': 'zh-CN',
+            'zh-tw': 'zh-TW',
+            'ja': 'ja-JP',
+            'ko': 'ko-KR',
+            'es': 'es-ES',
+            'fr': 'fr-FR',
+            'de': 'de-DE',
+            'ru': 'ru-RU',
+            'ar': 'ar-SA',
+            'pt': 'pt-PT',
+            'it': 'it-IT',
+            'nl': 'nl-NL',
+            'pl': 'pl-PL',
+            'tr': 'tr-TR',
+            'vi': 'vi-VN',
+            'th': 'th-TH',
+            'id': 'id-ID',
+            'ms': 'ms-MY',
+            'hi': 'hi-IN'
         };
+
+        // Show sync indicator
+        function showSyncIndicator() {
+            const indicator = document.getElementById('syncIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 3000);
+        }
 
         // Theme management
         function initTheme() {
@@ -694,7 +730,6 @@
                 let translationLang = targetLang;
                 let translated = text;
 
-                // Special handling for Cantonese
                 if (targetLang === 'yue') {
                     try {
                         const yueUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=yue&dt=t&q=${encodeURIComponent(text)}`;
@@ -710,7 +745,6 @@
                     }
                 }
 
-                // Standard translation
                 if (translated === text) {
                     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${translationLang}&dt=t&q=${encodeURIComponent(text)}`;
                     const response = await fetch(url);
@@ -731,19 +765,23 @@
 
         // Socket.IO event handlers
         socket.on('connect', () => {
+            console.log('Connected to server');
             updateConnectionStatus(true);
         });
 
         socket.on('disconnect', () => {
+            console.log('Disconnected from server');
             updateConnectionStatus(false);
         });
 
         socket.on('history', async (history) => {
+            console.log('Received history:', history.length, 'items');
             translations = history;
             await renderSubtitles();
         });
 
         socket.on('new_translation', async (data) => {
+            console.log('Received new translation:', data);
             translations.push(data);
             await addSubtitle(data);
 
@@ -753,6 +791,7 @@
         });
 
         socket.on('translation_corrected', async (data) => {
+            console.log('Translation corrected:', data.id);
             const index = translations.findIndex(t => t.id === data.id);
             if (index !== -1) {
                 translations[index] = data;
@@ -760,9 +799,27 @@
             }
         });
 
+        // NEW: Handle order update from admin
+        socket.on('order_updated', async (data) => {
+            console.log('Order updated from admin:', data.translations.length, 'items');
+            translations = data.translations;
+            await renderSubtitles();
+            showSyncIndicator();
+        });
+
         socket.on('history_cleared', () => {
+            console.log('History cleared');
             translations = [];
             renderSubtitles();
+        });
+
+        // Add error handling
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+
+        socket.on('error', (data) => {
+            console.error('Socket error:', data);
         });
 
         function updateConnectionStatus(connected) {
@@ -794,6 +851,7 @@
                 return;
             }
 
+            // Display in reverse order (newest first) - matching admin display
             const reversedTranslations = [...translations].reverse();
             const subtitles = await Promise.all(
                 reversedTranslations.map(item => createSubtitleHTML(item))
@@ -887,21 +945,20 @@
             utterance.rate = ttsRate;
             utterance.volume = ttsVolume;
 
-            // Enhanced voice selection logic - find the best match
+            // Enhanced voice selection logic
             const voices = speechSynthesis.getVoices();
             let selectedVoice = null;
 
-            // For Apple devices, use more precise matching
             // Strategy 1: Find exact lang match first
             selectedVoice = voices.find(v => v.lang === ttsLang);
 
             // Strategy 2: For languages without exact match, find by language family
             if (!selectedVoice) {
-                const baseLang = ttsLang.split('-')[0]; // e.g., 'zh', 'ja', 'ko'
+                const baseLang = ttsLang.split('-')[0];
 
                 // Special handling for Chinese variants
                 if (baseLang === 'zh') {
-                    const regionCode = ttsLang.split('-')[1]; // 'HK', 'CN', 'TW'
+                    const regionCode = ttsLang.split('-')[1];
 
                     // Try to find voice with matching region
                     selectedVoice = voices.find(v =>
@@ -913,8 +970,7 @@
                         selectedVoice = voices.find(v => v.lang.startsWith('zh-'));
                     }
                 } else {
-                    // For non-Chinese languages, find by base language code
-                    // Prefer voices that match the specific region code
+                    // For non-Chinese languages
                     const regionCode = ttsLang.split('-')[1];
                     if (regionCode) {
                         selectedVoice = voices.find(v =>
@@ -922,12 +978,10 @@
                         );
                     }
 
-                    // If no specific region, use any voice from that language
                     if (!selectedVoice) {
                         selectedVoice = voices.find(v => v.lang.startsWith(baseLang + '-'));
                     }
 
-                    // Last resort: just match base language
                     if (!selectedVoice) {
                         selectedVoice = voices.find(v => v.lang.toLowerCase().startsWith(baseLang.toLowerCase()));
                     }

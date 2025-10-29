@@ -2,6 +2,7 @@
 EzySpeechTranslate Admin GUI - Enhanced Version
 Desktop application for real-time transcription and correction
 New features: Checkbox selection, Add/Delete, Reverse order, Drag & Drop, Dark/Light Theme
+Order synchronization with frontend
 """
 
 import tkinter as tk
@@ -202,10 +203,11 @@ class AudioProcessor:
 class DraggableListbox(tk.Frame):
     """Enhanced Listbox with checkboxes and drag & drop functionality"""
 
-    def __init__(self, parent, theme='light', **kwargs):
+    def __init__(self, parent, theme='light', on_order_changed=None, **kwargs):
         super().__init__(parent)
         self.theme_name = theme
         self.theme = THEMES[theme]
+        self.on_order_changed = on_order_changed  # Callback when order changes
 
         self.configure(bg=self.theme['bg'])
 
@@ -357,6 +359,10 @@ class DraggableListbox(tk.Frame):
             return self.items[index]
         return None
 
+    def get_all_items(self):
+        """Get all items in current order"""
+        return self.items
+
     def update_item(self, index, text):
         """Update item text"""
         if 0 <= index < len(self.items):
@@ -407,6 +413,11 @@ class DraggableListbox(tk.Frame):
             item['frame'].config(relief=tk.RAISED, bg=self.theme['item_bg'])
             item['label'].config(bg=self.theme['item_bg'])
             item['checkbox'].config(bg=self.theme['item_bg'])
+
+            # Notify order changed
+            if self.on_order_changed:
+                self.on_order_changed()
+
         self.drag_data = {"index": None, "widget": None}
 
     def _rebuild_display(self):
@@ -545,6 +556,38 @@ class AdminGUI:
         if hasattr(self, 'log_text'):
             self.log_text.config(bg=theme['text_bg'], fg=theme['text_fg'])
 
+    def on_order_changed(self):
+        """Callback when listbox order changes (after drag & drop)"""
+        # Get current order from listbox
+        current_items = self.transcription_listbox.get_all_items()
+
+        # Update translations list to match new order
+        new_translations = []
+        for item in current_items:
+            new_translations.append(item['data'])
+
+        self.translations = new_translations
+
+        # Sync order to backend/frontend
+        self.sync_order_to_server()
+        self.log("Order changed and synced to server")
+
+    def sync_order_to_server(self):
+        """Synchronize current order to server"""
+        if self.socket and self.socket.connected:
+            try:
+                # Send complete ordered list to server
+                self.socket.emit('update_order', {
+                    'translations': self.translations
+                })
+                logger.info(f"Order synced to server: {len(self.translations)} items")
+            except Exception as e:
+                logger.error(f"Failed to sync order: {e}")
+                self.log(f"Failed to sync order: {e}")
+        else:
+            logger.warning("Socket not connected, cannot sync order")
+            self.log("Socket not connected, cannot sync order")
+
     def create_main_ui(self):
         """Create main application interface"""
         theme = THEMES[self.current_theme]
@@ -622,8 +665,12 @@ class AdminGUI:
         transcription_frame.grid_rowconfigure(0, weight=1)
         transcription_frame.grid_columnconfigure(0, weight=1)
 
-        # Draggable listbox
-        self.transcription_listbox = DraggableListbox(list_container, theme=self.current_theme)
+        # Draggable listbox with order change callback
+        self.transcription_listbox = DraggableListbox(
+            list_container,
+            theme=self.current_theme,
+            on_order_changed=self.on_order_changed
+        )
         self.transcription_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         list_container.grid_rowconfigure(0, weight=1)
@@ -700,6 +747,7 @@ class AdminGUI:
             self.sort_button.config(text="🔼 Oldest First")
 
         self.refresh_listbox()
+        self.sync_order_to_server()
         self.log(f"Sort order changed to: {'Newest First' if self.reverse_order else 'Oldest First'}")
 
     def refresh_listbox(self):
@@ -753,6 +801,7 @@ class AdminGUI:
                 }
                 self.translations.append(translation)
                 self.refresh_listbox()
+                self.sync_order_to_server()
                 self.log(f"Manually added: {text[:50]}...")
                 dialog.destroy()
             else:
@@ -783,6 +832,7 @@ class AdminGUI:
         # Refresh display
         self.refresh_listbox()
         self.cancel_correction()
+        self.sync_order_to_server()
 
         self.log(f"Deleted {len(ids_to_delete)} items")
 
@@ -1112,12 +1162,14 @@ class AdminGUI:
                     # Refresh display
                     self.refresh_listbox()
 
-                    # Send to server
+                    # Send to server (will also sync order)
                     if self.socket:
                         self.socket.emit('new_transcription', {
                             'text': text,
                             'language': language
                         })
+                        # Sync complete order
+                        self.sync_order_to_server()
 
                     self.log(f"New transcription: {text[:50]}...")
 
