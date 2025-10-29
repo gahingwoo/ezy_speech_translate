@@ -36,6 +36,7 @@ python-dateutil==2.8.2
 psutil
 gputil
 matplotlib
+customtkinter
 
 # Production Server (optional, recommended for deployment)
 gunicorn==21.2.0

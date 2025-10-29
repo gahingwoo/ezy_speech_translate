@@ -65,7 +65,7 @@ def check_ffmpeg():
         elif platform.system() == "Darwin":
             print("  - Run: brew install ffmpeg")
         else:
-            print("  - Run: sudo apt-get install ffmpeg")
+            print("  - Run: sudo apt-get install ffmpeg / sudo yum install ffmpeg")
 
         return False
 

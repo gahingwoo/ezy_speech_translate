@@ -5,7 +5,7 @@ A production-ready real-time speech translation system with authentication, admi
 ## ✨ Features
 
 - **Real-time Speech Recognition** using OpenAI Whisper
-- **Multi-language Translation** (100+ languages supported)
+- **Multi-language Translation** (Most languages in the world are supported)
 - **Admin Desktop GUI** for transcription correction
 - **Web Client Interface** with live updates
 - **Secure Authentication** with JWT tokens
@@ -479,9 +479,8 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v2.0.2 (Current)
-- Add Cantonese support
-- A better front-end UI
+### v2.0.3 (Current)
+ - Admin GUI - Rewritten
 
 
 ---

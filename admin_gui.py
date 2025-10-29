@@ -1,14 +1,18 @@
 """
-EzySpeechTranslate Admin GUI - Enhanced Version
-Desktop application for real-time transcription and correction
-New features: Checkbox selection, Add/Delete, Reverse order, Drag & Drop, Dark/Light Theme
-Order synchronization with frontend
+EzySpeechTranslate Admin GUI - Modern Design with CustomTkinter
+Beautiful, modern interface with proper spacing and visual hierarchy
 """
 
-import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext, filedialog
+import customtkinter as ctk
+from tkinter import messagebox, filedialog
 import threading
 import queue
+from dataclasses import dataclass, asdict
+from typing import Optional, Callable, List, Dict, Any
+from datetime import datetime
+from pathlib import Path
+import logging
+
 import sounddevice as sd
 import numpy as np
 from faster_whisper import WhisperModel
@@ -16,1203 +20,1805 @@ import yaml
 import requests
 import socketio as sio
 import json
-from datetime import datetime
-import logging
+
 from system_monitor import SystemMonitor
 import socket
+import platform
+import subprocess
+import os
 
-# Setup logging
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Theme configurations
-THEMES = {
-    'light': {
-        'bg': '#ffffff',
-        'fg': '#000000',
-        'listbox_bg': '#f8f9fa',
-        'listbox_fg': '#212529',
-        'item_bg': '#ffffff',
-        'item_hover': '#e9ecef',
-        'item_drag': '#cfe2ff',
-        'border': '#dee2e6',
-        'button_bg': '#e9ecef',
-        'button_fg': '#212529',
-        'text_bg': '#ffffff',
-        'text_fg': '#000000',
-        'accent': '#0d6efd',
-        'success': '#198754',
-        'danger': '#dc3545',
-        'label_fg': '#495057'
-    },
-    'dark': {
-        'bg': '#212529',
-        'fg': '#f8f9fa',
-        'listbox_bg': '#343a40',
-        'listbox_fg': '#f8f9fa',
-        'item_bg': '#2b3035',
-        'item_hover': '#3d4449',
-        'item_drag': '#1e3a5f',
-        'border': '#495057',
-        'button_bg': '#495057',
-        'button_fg': '#f8f9fa',
-        'text_bg': '#2b3035',
-        'text_fg': '#f8f9fa',
-        'accent': '#0d6efd',
-        'success': '#198754',
-        'danger': '#dc3545',
-        'label_fg': '#adb5bd'
-    }
-}
+# Set appearance mode and color theme
+ctk.set_appearance_mode("system")  # "system", "dark", "light"
+ctk.set_default_color_theme("blue")  # "blue", "green", "dark-blue"
 
 
-def check_server_health():
-    """Check if backend server is reachable"""
-    config = Config()
-    server_host = config.get('server', 'host', default='localhost')
-    server_port = config.get('server', 'port', default=5000)
-    url = f"http://{server_host}:{server_port}/api/health"
+# ============================================================================
+# Data Models
+# ============================================================================
 
-    try:
-        resp = requests.get(url, timeout=3)
-        if resp.status_code != 200:
-            messagebox.showerror(
-                "Server Error",
-                f"Server health check failed with status code {resp.status_code}. Cannot start app."
-            )
-            return False
-    except Exception as e:
-        messagebox.showerror(
-            "Server Error",
-            f"Cannot reach server at {server_host}:{server_port}\nError: {e}\nCannot start app."
-        )
-        return False
-    return True
+@dataclass
+class TranscriptionItem:
+    """Data model for a transcription entry."""
+    id: int
+    timestamp: str
+    original: str
+    corrected: str
+    source_language: str
+    translated: Optional[str] = None
+    is_corrected: bool = False
 
-class Config:
-    """Configuration manager"""
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
 
-    def __init__(self, config_path='config.yaml'):
-        with open(config_path, 'r') as f:
-            self.data = yaml.safe_load(f)
+    def get_display_text(self) -> str:
+        """Generate display text for list view."""
+        marker = " ✓" if self.is_corrected else ""
+        return f"[{self.timestamp}] {self.corrected}{marker}"
+
+
+@dataclass
+class AudioConfig:
+    """Audio processing configuration."""
+    sample_rate: int = 16000
+    block_duration: float = 5.0
+    device_index: Optional[int] = None
+
+
+@dataclass
+class WhisperConfig:
+    """Whisper model configuration."""
+    model_size: str = 'base'
+    device: str = 'cpu'
+    compute_type: str = 'int8'
+    language: Optional[str] = None
+    beam_size: int = 5
+    vad_filter: bool = True
+
+
+# ============================================================================
+# Configuration Management
+# ============================================================================
+
+class ConfigManager:
+    """Manages application configuration."""
+
+    def __init__(self, config_path: str = 'config.yaml'):
+        self.config_path = Path(config_path)
+        self._data = self._load_config()
+
+    def _load_config(self) -> Dict[str, Any]:
+        """Load configuration from YAML file."""
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            logger.warning(f"Config file not found: {self.config_path}")
+            return {}
+        except Exception as e:
+            logger.error(f"Failed to load config: {e}")
+            return {}
 
     def get(self, *keys, default=None):
-        val = self.data
+        """Get nested configuration value."""
+        value = self._data
         for key in keys:
-            if isinstance(val, dict):
-                val = val.get(key)
+            if isinstance(value, dict) and key in value:
+                value = value[key]
             else:
                 return default
-            if val is None:
-                return default
-        return val
+        return value if value is not None else default
 
+    def get_audio_config(self) -> AudioConfig:
+        """Get audio configuration."""
+        return AudioConfig(
+            sample_rate=self.get('audio', 'sample_rate', default=16000),
+            block_duration=self.get('audio', 'block_duration', default=5.0)
+        )
+
+    def get_whisper_config(self) -> WhisperConfig:
+        """Get Whisper configuration."""
+        return WhisperConfig(
+            model_size=self.get('whisper', 'model_size', default='base'),
+            device=self.get('whisper', 'device', default='cpu'),
+            compute_type=self.get('whisper', 'compute_type', default='int8'),
+            language=self.get('whisper', 'language'),
+            beam_size=self.get('whisper', 'beam_size', default=5),
+            vad_filter=self.get('whisper', 'vad_filter', default=True)
+        )
+
+    def get_server_url(self) -> str:
+        """Get server URL."""
+        host = self.get('server', 'host', default='localhost')
+        port = self.get('server', 'port', default=5000)
+        return f"http://{host}:{port}"
+
+
+# ============================================================================
+# Network Services
+# ============================================================================
+
+class ServerHealthChecker:
+    """Checks server health status."""
+
+    def __init__(self, config: ConfigManager):
+        self.config = config
+
+    def check(self, timeout: float = 3.0) -> bool:
+        """Check if server is healthy."""
+        try:
+            url = f"{self.config.get_server_url()}/api/health"
+            response = requests.get(url, timeout=timeout)
+            return response.status_code == 200
+        except Exception as e:
+            logger.debug(f"Health check failed: {e}")
+            return False
+
+
+class AuthenticationService:
+    """Handles user authentication."""
+
+    def __init__(self, config: ConfigManager):
+        self.config = config
+
+    def login(self, username: str, password: str) -> Optional[str]:
+        """Authenticate user and return token."""
+        try:
+            url = f"{self.config.get_server_url()}/api/login"
+            response = requests.post(
+                url,
+                json={'username': username, 'password': password},
+                timeout=6
+            )
+
+            if response.status_code == 200:
+                return response.json().get('token')
+            else:
+                logger.warning(f"Login failed with status: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Login error: {e}")
+            return None
+
+
+class WebSocketManager:
+    """Manages WebSocket connections."""
+
+    def __init__(self, config: ConfigManager, token: str):
+        self.config = config
+        self.token = token
+        self.socket: Optional[sio.Client] = None
+        self._callbacks = {
+            'connect': [],
+            'disconnect': [],
+            'new_transcription': []
+        }
+
+    def connect(self):
+        """Establish WebSocket connection."""
+        try:
+            self.socket = sio.Client()
+
+            @self.socket.event
+            def connect():
+                logger.info("WebSocket connected")
+                self._trigger_callbacks('connect')
+                try:
+                    self.socket.emit('admin_connect', {'token': self.token})
+                except Exception as e:
+                    logger.error(f"Failed to emit admin_connect: {e}")
+
+            @self.socket.event
+            def disconnect():
+                logger.info("WebSocket disconnected")
+                self._trigger_callbacks('disconnect')
+
+            @self.socket.on('new_transcription')
+            def on_new_transcription(data):
+                self._trigger_callbacks('new_transcription', data)
+
+            url = self.config.get_server_url()
+            self.socket.connect(url)
+
+        except Exception as e:
+            logger.error(f"WebSocket connection failed: {e}")
+            raise
+
+    def disconnect(self):
+        """Close WebSocket connection."""
+        if self.socket:
+            try:
+                self.socket.disconnect()
+            except Exception as e:
+                logger.error(f"Error disconnecting WebSocket: {e}")
+
+    def emit(self, event: str, data: Any):
+        """Emit event to server."""
+        if self.socket and getattr(self.socket, 'connected', False):
+            try:
+                self.socket.emit(event, data)
+            except Exception as e:
+                logger.error(f"Failed to emit {event}: {e}")
+
+    def on(self, event: str, callback: Callable):
+        """Register event callback."""
+        if event in self._callbacks:
+            self._callbacks[event].append(callback)
+
+    def _trigger_callbacks(self, event: str, *args):
+        """Trigger all callbacks for an event."""
+        for callback in self._callbacks.get(event, []):
+            try:
+                callback(*args)
+            except Exception as e:
+                logger.error(f"Callback error for {event}: {e}")
+
+
+# ============================================================================
+# Audio Processing
+# ============================================================================
 
 class AudioProcessor:
-    """Audio capture and processing"""
+    """Handles audio capture and transcription."""
 
-    def __init__(self, config, callback):
-        self.config = config
+    def __init__(
+        self,
+        audio_config: AudioConfig,
+        whisper_config: WhisperConfig,
+        callback: Callable[[str, str], None]
+    ):
+        self.audio_config = audio_config
+        self.whisper_config = whisper_config
         self.callback = callback
-        self.sample_rate = config.get('audio', 'sample_rate', default=16000)
-        self.block_duration = config.get('audio', 'block_duration', default=5)
+
         self.buffer = np.zeros(0, dtype=np.float32)
-        self.stream = None
         self.running = False
+        self.stream: Optional[sd.InputStream] = None
 
-        # Initialize Whisper model
-        model_size = config.get('whisper', 'model_size', default='base')
-        device = config.get('whisper', 'device', default='cpu')
-        compute_type = config.get('whisper', 'compute_type', default='int8')
+        self._load_model()
 
-        logger.info(f"Loading Whisper model: {model_size}")
-        self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
+    def _load_model(self):
+        """Load Whisper model."""
+        logger.info("Loading Whisper model...")
+        self.model = WhisperModel(
+            self.whisper_config.model_size,
+            device=self.whisper_config.device,
+            compute_type=self.whisper_config.compute_type
+        )
         logger.info("Whisper model loaded successfully")
 
-    def audio_callback(self, indata, frames, time, status):
-        """Audio stream callback"""
+    def _audio_callback(self, indata, frames, time, status):
+        """Handle incoming audio data."""
         if status:
             logger.warning(f"Audio status: {status}")
 
         self.buffer = np.append(self.buffer, indata[:, 0])
 
-        # Process when buffer is full
-        if len(self.buffer) >= self.sample_rate * self.block_duration:
-            segment = self.buffer[:self.sample_rate * self.block_duration]
-            self.buffer = self.buffer[self.sample_rate * self.block_duration:]
+        required_samples = int(
+            self.audio_config.sample_rate * self.audio_config.block_duration
+        )
 
-            # Process in separate thread to avoid blocking
-            threading.Thread(target=self._transcribe, args=(segment,), daemon=True).start()
+        if len(self.buffer) >= required_samples:
+            segment = self.buffer[:required_samples].copy()
+            self.buffer = self.buffer[required_samples:]
 
-    def _transcribe(self, audio_data):
-        """Transcribe audio segment"""
+            threading.Thread(
+                target=self._transcribe_segment,
+                args=(segment,),
+                daemon=True
+            ).start()
+
+    def _transcribe_segment(self, audio_segment: np.ndarray):
+        """Transcribe audio segment."""
         try:
             segments, info = self.model.transcribe(
-                audio_data,
-                language=self.config.get('whisper', 'language'),
-                beam_size=self.config.get('whisper', 'beam_size', default=5),
-                vad_filter=self.config.get('whisper', 'vad_filter', default=True)
+                audio_segment,
+                language=self.whisper_config.language,
+                beam_size=self.whisper_config.beam_size,
+                vad_filter=self.whisper_config.vad_filter
             )
 
-            text = "".join([s.text for s in segments]).strip()
+            text = "".join(s.text for s in segments).strip()
+            language = getattr(info, 'language', 'en') if info else 'en'
 
             if text:
-                self.callback(text, info.language if hasattr(info, 'language') else 'en')
+                self.callback(text, language)
+
         except Exception as e:
-            logger.error(f"Transcription error: {e}")
+            logger.error(f"Transcription failed: {e}", exc_info=True)
 
-    def start(self, device_index=None):
-        """Start audio capture"""
+    def start(self, device_index: Optional[int] = None):
+        """Start audio capture."""
         if self.running:
+            logger.warning("Audio processor already running")
             return
-
-        self.running = True
-        self.buffer = np.zeros(0, dtype=np.float32)
 
         try:
             self.stream = sd.InputStream(
-                samplerate=self.sample_rate,
+                samplerate=self.audio_config.sample_rate,
                 channels=1,
                 dtype='float32',
-                callback=self.audio_callback,
+                callback=self._audio_callback,
                 device=device_index
             )
             self.stream.start()
-            logger.info("Audio capture started")
+            self.running = True
+            logger.info("Audio stream started")
+
         except Exception as e:
-            logger.error(f"Failed to start audio: {e}")
-            self.running = False
+            logger.error(f"Failed to start audio stream: {e}")
             raise
 
     def stop(self):
-        """Stop audio capture"""
+        """Stop audio capture."""
         if self.stream:
-            self.stream.stop()
-            self.stream.close()
-            self.stream = None
-        self.running = False
-        logger.info("Audio capture stopped")
+            try:
+                self.stream.stop()
+                self.stream.close()
+                self.stream = None
+            except Exception as e:
+                logger.error(f"Error stopping audio stream: {e}")
 
-    def is_running(self):
+        self.running = False
+        logger.info("Audio stream stopped")
+
+    def is_running(self) -> bool:
+        """Check if processor is running."""
         return self.running
 
 
-class DraggableListbox(tk.Frame):
-    """Enhanced Listbox with checkboxes and drag & drop functionality"""
+# ============================================================================
+# Export Functionality
+# ============================================================================
 
-    def __init__(self, parent, theme='light', on_order_changed=None, **kwargs):
-        super().__init__(parent)
-        self.theme_name = theme
-        self.theme = THEMES[theme]
-        self.on_order_changed = on_order_changed  # Callback when order changes
+class TranscriptionExporter:
+    """Export transcriptions to various formats."""
 
-        self.configure(bg=self.theme['bg'])
+    @staticmethod
+    def export_to_text(translations: List[TranscriptionItem], path: str):
+        """Export to plain text format."""
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write("EzySpeechTranslate Export\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 
-        # Create canvas for custom drawing
-        self.canvas = tk.Canvas(self, bg=self.theme['listbox_bg'],
-                               highlightthickness=1,
-                               highlightbackground=self.theme['border'])
-        self.scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+            for item in translations:
+                f.write(f"[{item.id}] {item.timestamp}\n")
+                f.write(f"Original: {item.original}\n")
+                f.write(f"Corrected: {item.corrected}\n")
+                if item.is_corrected:
+                    f.write("(Manually corrected)\n")
+                f.write("-" * 60 + "\n")
 
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    @staticmethod
+    def export_to_json(translations: List[TranscriptionItem], path: str):
+        """Export to JSON format."""
+        data = [item.to_dict() for item in translations]
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
-        # Frame inside canvas
-        self.frame = tk.Frame(self.canvas, bg=self.theme['listbox_bg'])
-        self.canvas_frame = self.canvas.create_window((0, 0), window=self.frame, anchor='nw')
+    @staticmethod
+    def export_to_srt(translations: List[TranscriptionItem], path: str):
+        """Export to SRT subtitle format."""
+        with open(path, 'w', encoding='utf-8') as f:
+            for i, item in enumerate(translations, start=1):
+                start_seconds = (i - 1) * 5
+                end_seconds = i * 5
 
-        # Data storage
-        self.items = []  # List of {id, text, checked, widgets}
-        self.drag_data = {"index": None, "widget": None}
+                start_time = TranscriptionExporter._format_srt_time(start_seconds)
+                end_time = TranscriptionExporter._format_srt_time(end_seconds)
 
-        # Bind events
-        self.frame.bind('<Configure>', self._on_frame_configure)
-        self.canvas.bind('<Configure>', self._on_canvas_configure)
+                f.write(f"{i}\n")
+                f.write(f"{start_time} --> {end_time}\n")
+                f.write(f"{item.corrected}\n\n")
 
-    def apply_theme(self, theme_name):
-        """Apply theme to listbox"""
-        self.theme_name = theme_name
-        self.theme = THEMES[theme_name]
+    @staticmethod
+    def _format_srt_time(seconds: int) -> str:
+        """Format seconds to SRT time format."""
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},000"
 
-        self.configure(bg=self.theme['bg'])
-        self.canvas.configure(bg=self.theme['listbox_bg'],
-                            highlightbackground=self.theme['border'])
-        self.frame.configure(bg=self.theme['listbox_bg'])
 
-        # Update all items
-        for item in self.items:
-            item['frame'].configure(bg=self.theme['item_bg'])
-            item['label'].configure(bg=self.theme['item_bg'], fg=self.theme['listbox_fg'])
-            item['checkbox'].configure(bg=self.theme['item_bg'],
-                                      fg=self.theme['listbox_fg'],
-                                      selectcolor=self.theme['item_bg'])
+# ============================================================================
+# System Utilities
+# ============================================================================
 
-    def _on_frame_configure(self, event=None):
-        """Update scroll region"""
-        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+class SystemInfoProvider:
+    """Provides system information display."""
 
-    def _on_canvas_configure(self, event):
-        """Resize frame to canvas width"""
-        self.canvas.itemconfig(self.canvas_frame, width=event.width)
+    @staticmethod
+    def format_system_info(
+        stats: Dict[str, Any],
+        config: ConfigManager,
+        translation_count: int
+    ) -> str:
+        """Format system stats for display."""
+        cpu = stats.get('cpu', {})
+        mem = stats.get('memory', {})
+        gpus = stats.get('gpu', [])
 
-    def insert(self, index, item_data):
-        """Insert new item with checkbox"""
-        item_frame = tk.Frame(self.frame, bg=self.theme['item_bg'],
-                             relief=tk.RAISED, borderwidth=1)
+        gpu_info = "None"
+        if gpus:
+            lines = [
+                f"GPU{g.get('id', 0)}: {g.get('load', 0):.1f}% | "
+                f"{g.get('temperature', 0)}°C"
+                for g in gpus
+            ]
+            gpu_info = "\n".join(lines)
 
-        # Checkbox
-        var = tk.BooleanVar(value=False)
-        cb = tk.Checkbutton(item_frame, variable=var, bg=self.theme['item_bg'],
-                           fg=self.theme['listbox_fg'],
-                           selectcolor=self.theme['item_bg'],
-                           activebackground=self.theme['item_hover'],
-                           command=lambda: self._on_check_changed(item_data['id']))
-        cb.pack(side=tk.LEFT, padx=5)
+        local_ip = SystemInfoProvider._get_local_ip()
 
-        # Text label
-        label = tk.Label(item_frame, text=item_data['text'],
-                        bg=self.theme['item_bg'],
-                        fg=self.theme['listbox_fg'],
-                        font=('Arial', 12), anchor='w', justify=tk.LEFT)
-        label.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        return (
+            f"⏰ {stats.get('timestamp', '')}\n"
+            f"{'─' * 40}\n"
+            f"CPU: {cpu.get('percent', 0):.1f}%\n"
+            f"Memory: {mem.get('percent', 0):.1f}% "
+            f"({mem.get('used', 0):.1f}/{mem.get('total', 0):.1f} GB)\n"
+            f"GPU(s): {gpu_info}\n"
+            f"{'─' * 40}\n"
+            f"Model: {config.get('whisper', 'model_size', default='base')}\n"
+            f"Device: {config.get('whisper', 'device', default='cpu')}\n"
+            f"Server: {local_ip}:{config.get('server', 'port', default=5000)}\n"
+            f"Items: {translation_count}\n"
+        )
 
-        # Bind drag events
-        item_frame.bind('<Button-1>', lambda e: self._on_drag_start(e, item_data['id']))
-        item_frame.bind('<B1-Motion>', self._on_drag_motion)
-        item_frame.bind('<ButtonRelease-1>', self._on_drag_release)
-        label.bind('<Button-1>', lambda e: self._on_drag_start(e, item_data['id']))
-        label.bind('<B1-Motion>', self._on_drag_motion)
-        label.bind('<ButtonRelease-1>', self._on_drag_release)
+    @staticmethod
+    def _get_local_ip() -> str:
+        """Get local IP address."""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
 
-        # Hover effect
-        def on_enter(e):
-            if self.drag_data["index"] is None:
-                item_frame.configure(bg=self.theme['item_hover'])
-                label.configure(bg=self.theme['item_hover'])
-                cb.configure(bg=self.theme['item_hover'])
 
-        def on_leave(e):
-            if self.drag_data["index"] is None:
-                item_frame.configure(bg=self.theme['item_bg'])
-                label.configure(bg=self.theme['item_bg'])
-                cb.configure(bg=self.theme['item_bg'])
+# ============================================================================
+# Custom UI Components
+# ============================================================================
 
-        item_frame.bind('<Enter>', on_enter)
-        item_frame.bind('<Leave>', on_leave)
-        label.bind('<Enter>', on_enter)
-        label.bind('<Leave>', on_leave)
+class ConnectionStatusBadge(ctk.CTkFrame):
+    """Modern connection status badge."""
 
-        # Store item
-        item_entry = {
-            'id': item_data['id'],
-            'text': item_data['text'],
-            'data': item_data.get('data'),
-            'checked': False,
-            'var': var,
-            'frame': item_frame,
-            'label': label,
-            'checkbox': cb
+    def __init__(self, parent, show_server=False, **kwargs):
+        super().__init__(parent, fg_color="transparent", **kwargs)
+
+        self.show_server = show_server
+
+        # Status dot
+        self.canvas = ctk.CTkCanvas(
+            self,
+            width=12,
+            height=12,
+            bg=self._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"]),
+            highlightthickness=0
+        )
+        self.canvas.pack(side="left", padx=(0, 8))
+
+        # Status label
+        self.label = ctk.CTkLabel(
+            self,
+            text="Disconnected",
+            font=ctk.CTkFont(size=13)
+        )
+        self.label.pack(side="left")
+
+        self.set_status('offline')
+
+    def set_status(self, status: str):
+        """Update connection status."""
+        colors = {
+            'online': '#10b981',
+            'offline': '#ef4444',
+            'connecting': '#f59e0b'
         }
 
-        if index == 'end' or index >= len(self.items):
-            self.items.append(item_entry)
-            item_frame.pack(fill=tk.X, padx=2, pady=1)
+        if self.show_server:
+            texts = {
+                'online': 'Connected to Server',
+                'offline': 'Disconnected from Server',
+                'connecting': 'Connecting to Server...'
+            }
         else:
-            self.items.insert(index, item_entry)
-            self._rebuild_display()
+            texts = {
+                'online': 'Connected',
+                'offline': 'Disconnected',
+                'connecting': 'Connecting...'
+            }
 
-        self._on_frame_configure()
+        color = colors.get(status, '#ef4444')
+        text = texts.get(status, 'Unknown')
 
-    def delete(self, index):
-        """Delete item at index"""
-        if 0 <= index < len(self.items):
-            item = self.items.pop(index)
-            item['frame'].destroy()
-            self._on_frame_configure()
-
-    def get_checked_indices(self):
-        """Get indices of checked items"""
-        return [i for i, item in enumerate(self.items) if item['var'].get()]
-
-    def get_checked_items(self):
-        """Get checked item data"""
-        return [item for item in self.items if item['var'].get()]
-
-    def clear(self):
-        """Clear all items"""
-        for item in self.items:
-            item['frame'].destroy()
-        self.items.clear()
-        self._on_frame_configure()
-
-    def size(self):
-        """Get number of items"""
-        return len(self.items)
-
-    def get_item(self, index):
-        """Get item data at index"""
-        if 0 <= index < len(self.items):
-            return self.items[index]
-        return None
-
-    def get_all_items(self):
-        """Get all items in current order"""
-        return self.items
-
-    def update_item(self, index, text):
-        """Update item text"""
-        if 0 <= index < len(self.items):
-            self.items[index]['text'] = text
-            self.items[index]['label'].config(text=text)
-
-    def _on_check_changed(self, item_id):
-        """Callback when checkbox state changes"""
-        pass
-
-    def _on_drag_start(self, event, item_id):
-        """Start dragging"""
-        for i, item in enumerate(self.items):
-            if item['id'] == item_id:
-                self.drag_data["index"] = i
-                self.drag_data["widget"] = item['frame']
-                item['frame'].config(relief=tk.SUNKEN, bg=self.theme['item_drag'])
-                item['label'].config(bg=self.theme['item_drag'])
-                item['checkbox'].config(bg=self.theme['item_drag'])
-                break
-
-    def _on_drag_motion(self, event):
-        """Handle drag motion"""
-        if self.drag_data["index"] is None:
-            return
-
-        # Get Y position relative to canvas
-        canvas_y = self.canvas.canvasy(event.y_root - self.canvas.winfo_rooty())
-
-        # Find target position
-        for i, item in enumerate(self.items):
-            widget_y = item['frame'].winfo_y()
-            widget_height = item['frame'].winfo_height()
-
-            if widget_y <= canvas_y <= widget_y + widget_height:
-                if i != self.drag_data["index"]:
-                    # Move item
-                    moved_item = self.items.pop(self.drag_data["index"])
-                    self.items.insert(i, moved_item)
-                    self.drag_data["index"] = i
-                    self._rebuild_display()
-                break
-
-    def _on_drag_release(self, event):
-        """End dragging"""
-        if self.drag_data["index"] is not None:
-            item = self.items[self.drag_data["index"]]
-            item['frame'].config(relief=tk.RAISED, bg=self.theme['item_bg'])
-            item['label'].config(bg=self.theme['item_bg'])
-            item['checkbox'].config(bg=self.theme['item_bg'])
-
-            # Notify order changed
-            if self.on_order_changed:
-                self.on_order_changed()
-
-        self.drag_data = {"index": None, "widget": None}
-
-    def _rebuild_display(self):
-        """Rebuild display order"""
-        for item in self.items:
-            item['frame'].pack_forget()
-        for item in self.items:
-            item['frame'].pack(fill=tk.X, padx=2, pady=1)
-        self._on_frame_configure()
+        self.canvas.delete("all")
+        self.canvas.create_oval(2, 2, 10, 10, fill=color, outline=color)
+        self.label.configure(text=text)
 
 
-class AdminGUI:
-    """Main admin GUI application"""
+class TranscriptionCard(ctk.CTkFrame):
+    """Card for displaying a single transcription."""
 
-    def __init__(self, root):
-        self.root = root
-        self.config = Config()
-        self.token = None
-        self.socket = None
-        self.audio_processor = None
-        self.translations = []
-        self.message_queue = queue.Queue()
-        self.reverse_order = True  # Default to newest first
-        self.current_theme = 'light'  # Default theme
+    def __init__(
+        self,
+        parent,
+        item: TranscriptionItem,
+        on_select: Callable,
+        on_drag_start: Callable,
+        on_drag_move: Callable,
+        on_drag_end: Callable,
+        **kwargs
+    ):
+        super().__init__(parent, corner_radius=8, **kwargs)
 
-        # Setup window
-        self.root.title(self.config.get('gui', 'window_title', default='EzySpeechTranslate Admin'))
-        window_size = self.config.get('gui', 'window_size', default='1200x1000')
-        self.root.geometry(window_size)
-
-        # Authentication state
-        self.authenticated = False
-
-        # Create UI
-        self.create_login_ui()
-
-        # Start message queue processor
-        self.process_queue()
-
-    def create_login_ui(self):
-        """Create login interface"""
-        theme = THEMES[self.current_theme]
-
-        self.root.configure(bg=theme['bg'])
-
-        self.login_frame = ttk.Frame(self.root, padding="20")
-        self.login_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Center the login frame
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-
-        ttk.Label(self.login_frame, text="EzySpeechTranslate Admin",
-                  font=('Arial', 24, 'bold')).grid(row=0, column=0, columnspan=2, pady=20)
-
-        ttk.Label(self.login_frame, text="Username:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.username_entry = ttk.Entry(self.login_frame, width=30)
-        self.username_entry.grid(row=1, column=1, pady=5)
-
-        ttk.Label(self.login_frame, text="Password:").grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.password_entry = ttk.Entry(self.login_frame, width=30, show="*")
-        self.password_entry.grid(row=2, column=1, pady=5)
-
-        ttk.Button(self.login_frame, text="Login", command=self.login).grid(
-            row=3, column=0, columnspan=2, pady=20)
-
-        self.status_label = ttk.Label(self.login_frame, text="", foreground="red")
-        self.status_label.grid(row=4, column=0, columnspan=2)
-
-        # Bind Enter key
-        self.password_entry.bind('<Return>', lambda e: self.login())
-
-    def login(self):
-        """Authenticate with backend"""
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-
-        if not username or not password:
-            self.status_label.config(text="Please enter username and password")
-            return
-
-        try:
-            server_host = self.config.get('server', 'host', default='localhost')
-            server_port = self.config.get('server', 'port', default=5000)
-            url = f"http://{server_host}:{server_port}/api/login"
-
-            response = requests.post(url, json={
-                'username': username,
-                'password': password
-            }, timeout=5)
-
-            if response.status_code == 200:
-                data = response.json()
-                self.token = data['token']
-                self.authenticated = True
-                logger.info("Authentication successful")
-
-                # Destroy login frame and create main UI
-                self.login_frame.destroy()
-                self.create_main_ui()
-                self.connect_websocket()
-            else:
-                self.status_label.config(text="Invalid credentials")
-        except requests.exceptions.RequestException as e:
-            self.status_label.config(text=f"Connection error: {str(e)}")
-            logger.error(f"Login error: {e}")
-
-    def toggle_theme(self):
-        """Toggle between light and dark theme"""
-        self.current_theme = 'dark' if self.current_theme == 'light' else 'light'
-        self.apply_theme()
-        self.log(f"Theme changed to: {self.current_theme}")
-
-    def apply_theme(self):
-        """Apply current theme to all widgets"""
-        theme = THEMES[self.current_theme]
-
-        # Update root window
-        self.root.configure(bg=theme['bg'])
-
-        # Update theme button
-        theme_icon = '🌙' if self.current_theme == 'light' else '☀️'
-        self.theme_button.config(text=theme_icon)
-
-        # Update transcription listbox
-        if hasattr(self, 'transcription_listbox'):
-            self.transcription_listbox.apply_theme(self.current_theme)
-
-        # Update text widgets
-        if hasattr(self, 'original_text'):
-            self.original_text.config(bg=theme['text_bg'], fg=theme['text_fg'])
-        if hasattr(self, 'corrected_text'):
-            self.corrected_text.config(bg=theme['text_bg'], fg=theme['text_fg'])
-        if hasattr(self, 'sys_text'):
-            self.sys_text.config(bg=theme['text_bg'], fg=theme['text_fg'])
-        if hasattr(self, 'log_text'):
-            self.log_text.config(bg=theme['text_bg'], fg=theme['text_fg'])
-
-    def on_order_changed(self):
-        """Callback when listbox order changes (after drag & drop)"""
-        # Get current order from listbox
-        current_items = self.transcription_listbox.get_all_items()
-
-        # Update translations list to match new order
-        new_translations = []
-        for item in current_items:
-            new_translations.append(item['data'])
-
-        self.translations = new_translations
-
-        # Sync order to backend/frontend
-        self.sync_order_to_server()
-        self.log("Order changed and synced to server")
-
-    def sync_order_to_server(self):
-        """Synchronize current order to server"""
-        if self.socket and self.socket.connected:
-            try:
-                # Send complete ordered list to server
-                self.socket.emit('update_order', {
-                    'translations': self.translations
-                })
-                logger.info(f"Order synced to server: {len(self.translations)} items")
-            except Exception as e:
-                logger.error(f"Failed to sync order: {e}")
-                self.log(f"Failed to sync order: {e}")
-        else:
-            logger.warning("Socket not connected, cannot sync order")
-            self.log("Socket not connected, cannot sync order")
-
-    def create_main_ui(self):
-        """Create main application interface"""
-        theme = THEMES[self.current_theme]
+        self.item = item
+        self.on_select = on_select
+        self.on_drag_start = on_drag_start
+        self.on_drag_move = on_drag_move
+        self.on_drag_end = on_drag_end
+        self.selected = False
+        self.dragging = False
 
         # Main container
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.pack(fill="both", expand=True)
 
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-        main_frame.grid_rowconfigure(1, weight=1)
-        main_frame.grid_columnconfigure(0, weight=1)
-
-        # Top control panel
-        control_frame = ttk.LabelFrame(main_frame, text="Controls", padding="10")
-        control_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-
-        # Row 1: Audio controls
-        ttk.Label(control_frame, text="Audio Device:").grid(row=0, column=0, padx=5)
-        self.device_var = tk.StringVar()
-        self.device_combo = ttk.Combobox(control_frame, textvariable=self.device_var,
-                                         width=30, state='readonly')
-        self.device_combo.grid(row=0, column=1, padx=5)
-        self.refresh_devices()
-
-        ttk.Button(control_frame, text="Refresh",
-                   command=self.refresh_devices).grid(row=0, column=2, padx=5)
-
-        # Start/Stop button
-        self.record_button = ttk.Button(control_frame, text="🎙️ Start Recording",
-                                        command=self.toggle_recording, width=20)
-        self.record_button.grid(row=0, column=3, padx=5)
-
-        # Status indicator
-        self.status_indicator = ttk.Label(control_frame, text="● Stopped",
-                                          foreground="red", font=('Arial', 15, 'bold'))
-        self.status_indicator.grid(row=0, column=4, padx=5)
-
-        # Theme toggle button
-        theme_icon = '🌙' if self.current_theme == 'light' else '☀️'
-        self.theme_button = ttk.Button(control_frame, text=theme_icon,
-                                       command=self.toggle_theme, width=3)
-        self.theme_button.grid(row=0, column=5, padx=5)
-
-        # Row 2: List controls
-        ttk.Button(control_frame, text="➕ Add New",
-                  command=self.add_new_item).grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        ttk.Button(control_frame, text="🗑️ Delete Selected",
-                  command=self.delete_selected).grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
-        ttk.Button(control_frame, text="✏️ Edit Selected",
-                  command=self.edit_selected).grid(row=1, column=2, padx=5, pady=5, sticky=tk.W)
-
-        # Sort order button
-        self.sort_button = ttk.Button(control_frame, text="🔽 Newest First",
-                                      command=self.toggle_sort_order)
-        self.sort_button.grid(row=1, column=3, padx=5, pady=5)
-
-        # Clear and Export buttons
-        ttk.Button(control_frame, text="Clear History",
-                   command=self.clear_history).grid(row=1, column=4, padx=5, pady=5)
-        ttk.Button(control_frame, text="Export",
-                   command=self.export_translations).grid(row=1, column=5, padx=5, pady=5)
-
-        # Main content area with notebook
-        notebook = ttk.Notebook(main_frame)
-        notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Transcription tab
-        transcription_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(transcription_frame, text="Transcriptions")
-
-        # Transcription list
-        list_container = ttk.Frame(transcription_frame)
-        list_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        transcription_frame.grid_rowconfigure(0, weight=1)
-        transcription_frame.grid_columnconfigure(0, weight=1)
-
-        # Draggable listbox with order change callback
-        self.transcription_listbox = DraggableListbox(
-            list_container,
-            theme=self.current_theme,
-            on_order_changed=self.on_order_changed
+        # Drag handle (left side, larger and more visible)
+        self.drag_handle = ctk.CTkButton(
+            main_container,
+            text="⋮\n⋮",
+            width=40,
+            height=60,
+            font=ctk.CTkFont(size=20, weight="bold"),
+            fg_color=("gray80", "gray25"),
+            hover_color=("gray70", "gray30"),
+            cursor="hand2"
         )
-        self.transcription_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.drag_handle.pack(side="left", padx=(8, 0), pady=8)
 
-        list_container.grid_rowconfigure(0, weight=1)
-        list_container.grid_columnconfigure(0, weight=1)
+        # Bind drag events to handle
+        self.drag_handle.bind("<Button-1>", self._start_drag)
+        self.drag_handle.bind("<B1-Motion>", self._do_drag)
+        self.drag_handle.bind("<ButtonRelease-1>", self._end_drag)
 
-        # Correction & System area
-        content_frame = ttk.Frame(transcription_frame)
-        content_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
-        transcription_frame.grid_rowconfigure(1, weight=1)
-        transcription_frame.grid_columnconfigure(0, weight=1)
+        # Checkbox
+        self.checkbox_var = ctk.BooleanVar(value=False)
+        self.checkbox = ctk.CTkCheckBox(
+            main_container,
+            text="",
+            variable=self.checkbox_var,
+            width=30,
+            command=self.toggle_selection
+        )
+        self.checkbox.pack(side="left", padx=(12, 8), pady=12)
 
-        # Correction panel (70%)
-        correction_frame = ttk.LabelFrame(content_frame, text="Correction", padding=10)
-        correction_frame.grid(row=0, column=0, sticky="nsew")
-        content_frame.grid_columnconfigure(0, weight=7)
+        # Content frame (clickable)
+        self.content_frame = ctk.CTkFrame(main_container, fg_color="transparent", cursor="hand2")
+        self.content_frame.pack(side="left", fill="both", expand=True, padx=8, pady=12)
+
+        # Bind click to select
+        self.content_frame.bind("<Button-1>", lambda e: self.toggle_selection())
+
+        # Timestamp
+        self.timestamp_label = ctk.CTkLabel(
+            self.content_frame,
+            text=item.timestamp,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=("gray50", "gray60"),
+            cursor="hand2"
+        )
+        self.timestamp_label.pack(anchor="w")
+        self.timestamp_label.bind("<Button-1>", lambda e: self.toggle_selection())
+
+        # Text
+        self.text_label = ctk.CTkLabel(
+            self.content_frame,
+            text=item.corrected,
+            font=ctk.CTkFont(size=13),
+            anchor="w",
+            justify="left",
+            wraplength=500,
+            cursor="hand2"
+        )
+        self.text_label.pack(anchor="w", pady=(4, 0))
+        self.text_label.bind("<Button-1>", lambda e: self.toggle_selection())
+
+        # Corrected indicator
+        if item.is_corrected:
+            self.corrected_badge = ctk.CTkLabel(
+                self.content_frame,
+                text="✓ Corrected",
+                font=ctk.CTkFont(size=11),
+                text_color=("#10b981", "#10b981"),
+                cursor="hand2"
+            )
+            self.corrected_badge.pack(anchor="w", pady=(4, 0))
+            self.corrected_badge.bind("<Button-1>", lambda e: self.toggle_selection())
+
+    def _start_drag(self, event):
+        """Start dragging."""
+        self.dragging = True
+        self.drag_start_y = event.y_root
+        self.on_drag_start(self, event)
+        # Visual feedback
+        self.configure(fg_color=("gray90", "gray20"))
+
+    def _do_drag(self, event):
+        """Handle drag motion."""
+        if self.dragging:
+            self.on_drag_move(self, event)
+
+    def _end_drag(self, event):
+        """End dragging."""
+        if self.dragging:
+            self.dragging = False
+            self.on_drag_end(self, event)
+            # Reset visual
+            self.configure(fg_color=("gray95", "gray17"))
+
+    def toggle_selection(self):
+        """Toggle card selection."""
+        self.selected = self.checkbox_var.get()
+        self.on_select()
+
+    def set_selected(self, selected: bool):
+        """Set selection state."""
+        self.selected = selected
+        self.checkbox_var.set(selected)
+
+
+# ============================================================================
+# Application Windows
+# ============================================================================
+
+class LoginWindow(ctk.CTk):
+    """Modern login window."""
+
+    def __init__(
+        self,
+        config: ConfigManager,
+        on_success: Callable[[str], None]
+    ):
+        super().__init__()
+
+        self.config = config
+        self.on_success = on_success
+        self.auth_service = AuthenticationService(config)
+        self.health_checker = ServerHealthChecker(config)
+
+        self._setup_window()
+        self._create_ui()
+        self._start_health_check()
+
+    def _setup_window(self):
+        """Setup window properties."""
+        title = self.config.get('gui', 'window_title', default='EzySpeechTranslate')
+        self.title(f"Login - {title}")
+
+        width, height = 600, 800
+        self.geometry(f"{width}x{height}")
+        self.resizable(False, False)
+
+        self.update_idletasks()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _create_ui(self):
+        """Create UI elements."""
+        # Main container with padding
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=40, pady=40)
+
+        # Logo section
+        logo_frame = ctk.CTkFrame(container, corner_radius=16)
+        logo_frame.pack(fill="x", pady=(0, 24))
+
+        # App icon/emoji
+        icon_label = ctk.CTkLabel(
+            logo_frame,
+            text="🎤",
+            font=ctk.CTkFont(size=64)
+        )
+        icon_label.pack(pady=(32, 16))
+
+        # App name
+        app_name = self.config.get('gui', 'window_title', default='EzySpeechTranslate')
+        title_label = ctk.CTkLabel(
+            logo_frame,
+            text=app_name,
+            font=ctk.CTkFont(size=28, weight="bold")
+        )
+        title_label.pack()
+
+        subtitle_label = ctk.CTkLabel(
+            logo_frame,
+            text="Admin Panel",
+            font=ctk.CTkFont(size=14),
+            text_color=("gray50", "gray60")
+        )
+        subtitle_label.pack(pady=(4, 24))
+
+        # Connection status
+        self.status_badge = ConnectionStatusBadge(logo_frame, show_server=False)
+        self.status_badge.pack(pady=(0, 24))
+
+        # Login form
+        form_frame = ctk.CTkFrame(container, corner_radius=16)
+        form_frame.pack(fill="both", expand=True)
+
+        form_inner = ctk.CTkFrame(form_frame, fg_color="transparent")
+        form_inner.pack(fill="both", expand=True, padx=32, pady=32)
+
+        # Username
+        username_label = ctk.CTkLabel(
+            form_inner,
+            text="Username",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w"
+        )
+        username_label.pack(fill="x", pady=(0, 8))
+
+        self.username_entry = ctk.CTkEntry(
+            form_inner,
+            placeholder_text="Enter your username",
+            height=44,
+            font=ctk.CTkFont(size=14)
+        )
+        self.username_entry.pack(fill="x", pady=(0, 20))
+
+        # Password
+        password_label = ctk.CTkLabel(
+            form_inner,
+            text="Password",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w"
+        )
+        password_label.pack(fill="x", pady=(0, 8))
+
+        self.password_entry = ctk.CTkEntry(
+            form_inner,
+            placeholder_text="Enter your password",
+            show="●",
+            height=44,
+            font=ctk.CTkFont(size=14)
+        )
+        self.password_entry.pack(fill="x", pady=(0, 12))
+
+        # Status label
+        self.status_label = ctk.CTkLabel(
+            form_inner,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=("#ef4444", "#ef4444")
+        )
+        self.status_label.pack(pady=(0, 20))
+
+        # Sign in button
+        self.signin_button = ctk.CTkButton(
+            form_inner,
+            text="Sign In",
+            command=self._handle_login,
+            height=48,
+            font=ctk.CTkFont(size=15, weight="bold"),
+            corner_radius=8
+        )
+        self.signin_button.pack(fill="x")
+
+        # Keyboard bindings
+        self.username_entry.bind("<Return>", lambda e: self.password_entry.focus())
+        self.password_entry.bind("<Return>", lambda e: self._handle_login())
+
+        # Focus on username
+        self.after(100, lambda: self.username_entry.focus())
+
+    def _start_health_check(self):
+        """Start background health check."""
+        def check_loop():
+            is_healthy = self.health_checker.check()
+            status = 'online' if is_healthy else 'offline'
+            self.after(0, lambda s=status: self.status_badge.set_status(s))
+
+            # If offline, show error message
+            if not is_healthy:
+                self.after(0, lambda: self.status_label.configure(
+                    text="⚠️ Cannot connect to server. Please check if the server is running.",
+                    text_color=("#f59e0b", "#f59e0b")
+                ))
+
+        threading.Thread(target=check_loop, daemon=True).start()
+
+    def _handle_login(self):
+        """Handle login attempt."""
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not username or not password:
+            self.status_label.configure(text="Please fill in all fields")
+            return
+
+        self.status_label.configure(
+            text="Authenticating...",
+            text_color=("#3b82f6", "#3b82f6")
+        )
+        self.signin_button.configure(state="disabled")
+
+        def authenticate():
+            token = self.auth_service.login(username, password)
+
+            if token:
+                self.after(0, lambda: self._handle_success(token))
+            else:
+                self.after(0, lambda: (
+                    self.status_label.configure(
+                        text="Invalid credentials",
+                        text_color=("#ef4444", "#ef4444")
+                    ),
+                    self.signin_button.configure(state="normal")
+                ))
+
+        threading.Thread(target=authenticate, daemon=True).start()
+
+    def _handle_success(self, token: str):
+        """Handle successful login."""
+        self.destroy()
+        if callable(self.on_success):
+            self.on_success(token)
+
+
+class AdminGUI(ctk.CTk):
+    """Main admin GUI with modern design."""
+
+    def __init__(self, token: str):
+        super().__init__()
+
+        self.token = token
+        self.config = ConfigManager()
+        self.message_queue = queue.Queue()
+        self.translations: List[TranscriptionItem] = []
+        self.audio_processor: Optional[AudioProcessor] = None
+        self.websocket: Optional[WebSocketManager] = None
+        self.sys_monitor: Optional[SystemMonitor] = None
+
+        # Configuration
+        self.max_history = self.config.get('gui', 'max_history', default=1000)
+        self.auto_scroll = self.config.get('gui', 'auto_scroll', default=True)
+        self.reverse_order = True
+
+        self._setup_window()
+        self._create_ui()
+        self._initialize_services()
+
+    def _setup_window(self):
+        """Setup window properties."""
+        title = self.config.get('gui', 'window_title', default='EzySpeechTranslate Admin')
+        self.title(title)
+        geometry = self.config.get('gui', 'window_size', default='1800x1200')
+        self.geometry(geometry)
+
+        # Maximize window
+        try:
+            self.state('zoomed')
+        except Exception:
+            try:
+                self.attributes('-zoomed', True)
+            except Exception:
+                pass
+
+    def _create_ui(self):
+        """Create all UI elements."""
+        # Top bar
+        self._create_top_bar()
+
+        # Main content
+        self._create_main_content()
+
+        logger.info("Admin GUI initialized")
+
+    def _create_top_bar(self):
+        """Create top navigation bar."""
+        topbar = ctk.CTkFrame(self, height=60, corner_radius=0)
+        topbar.pack(fill="x", padx=0, pady=0)
+        topbar.pack_propagate(False)
+
+        # Left side - connection status
+        left_frame = ctk.CTkFrame(topbar, fg_color="transparent")
+        left_frame.pack(side="left", padx=20)
+
+        self.connection_status = ConnectionStatusBadge(left_frame, show_server=True)
+        self.connection_status.pack(side="left", pady=16)
+
+        # Right side - theme toggle
+        right_frame = ctk.CTkFrame(topbar, fg_color="transparent")
+        right_frame.pack(side="right", padx=20)
+
+        self.theme_switch = ctk.CTkSwitch(
+            right_frame,
+            text="Dark Mode",
+            command=self.toggle_theme,
+            font=ctk.CTkFont(size=13)
+        )
+        self.theme_switch.pack(side="right", pady=16)
+
+        # Set initial theme
+        current_mode = ctk.get_appearance_mode()
+        self.theme_switch.select() if current_mode == "Dark" else self.theme_switch.deselect()
+
+    def _create_main_content(self):
+        """Create main content area."""
+        # Main container with padding
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Control panel
+        self._create_control_panel(main_container)
+
+        # Content grid (2 columns)
+        content_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, pady=(16, 0))
+
+        # Configure grid
+        content_frame.grid_columnconfigure(0, weight=3)
+        content_frame.grid_columnconfigure(1, weight=2)
         content_frame.grid_rowconfigure(0, weight=1)
 
-        ttk.Label(correction_frame, text="Original:").grid(row=0, column=0, sticky=tk.W, pady=(0, 2))
-        self.original_text = scrolledtext.ScrolledText(correction_frame, height=8, width=60,
-                                                       state='disabled', font=('Arial', 14),
-                                                       bg=theme['text_bg'], fg=theme['text_fg'])
-        self.original_text.grid(row=1, column=0, sticky="nsew", pady=(0, 5))
+        # Left column - transcriptions
+        self._create_transcription_panel(content_frame)
 
-        ttk.Label(correction_frame, text="Corrected:").grid(row=2, column=0, sticky=tk.W, pady=(5, 2))
-        self.corrected_text = scrolledtext.ScrolledText(correction_frame, height=8, width=60,
-                                                        font=('Arial', 14),
-                                                        bg=theme['text_bg'], fg=theme['text_fg'])
-        self.corrected_text.grid(row=3, column=0, sticky="nsew", pady=(0, 5))
+        # Right column - editor and system info
+        right_column = ctk.CTkFrame(content_frame, fg_color="transparent")
+        right_column.grid(row=0, column=1, sticky="nsew", padx=(16, 0))
 
-        button_frame = ttk.Frame(correction_frame)
-        button_frame.grid(row=4, column=0, sticky="e", pady=(5, 0))
-        ttk.Button(button_frame, text="Save Correction", command=self.save_correction).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel_correction).pack(side=tk.LEFT, padx=5)
+        self._create_editor_panel(right_column)
+        self._create_system_panel(right_column)
 
-        correction_frame.grid_rowconfigure(1, weight=1)
-        correction_frame.grid_rowconfigure(3, weight=1)
-        correction_frame.grid_columnconfigure(0, weight=1)
+    def _create_control_panel(self, parent):
+        """Create audio control panel."""
+        control_frame = ctk.CTkFrame(parent, corner_radius=12)
+        control_frame.pack(fill="x", pady=0, ipady=4)
 
-        # System & Config panel (30%)
-        sys_frame = ttk.LabelFrame(content_frame, text="System & Config", padding=10)
-        sys_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
-        content_frame.grid_columnconfigure(1, weight=3)
+        inner = ctk.CTkFrame(control_frame, fg_color="transparent")
+        inner.pack(fill="x", padx=24, pady=0, ipady=4)
 
-        self.sys_text = scrolledtext.ScrolledText(sys_frame, height=20, width=40, state='disabled',
-                                                  font=('Consolas', 10),
-                                                  bg=theme['text_bg'], fg=theme['text_fg'])
-        self.sys_text.grid(row=0, column=0, sticky="nsew")
-        sys_frame.grid_rowconfigure(0, weight=1)
-        sys_frame.grid_columnconfigure(0, weight=1)
+        # Header
+        header = ctk.CTkFrame(inner, fg_color="transparent", height=1)
+        header.pack(fill="x", pady=(0, 4))
 
-        # Init System Monitoring
-        self.sys_monitor = SystemMonitor(update_callback=self.update_system_stats, interval=1.0)
+        title = ctk.CTkLabel(
+            header,
+            text="Audio Controls",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        title.pack(side="left")
+
+        # Audio device row
+        device_frame = ctk.CTkFrame(inner, fg_color="transparent", height=48)
+        device_frame.pack(fill="x", pady=(0, 4))
+        device_frame.pack_propagate(False)
+
+        device_label = ctk.CTkLabel(
+            device_frame,
+            text="Audio Device:",
+            font=ctk.CTkFont(size=13)
+        )
+        device_label.pack(side="left", padx=(0, 12))
+
+        self.device_menu = ctk.CTkOptionMenu(
+            device_frame,
+            values=["No devices"],
+            width=300,
+            height=36,
+            font=ctk.CTkFont(size=13)
+        )
+        self.device_menu.pack(side="left", padx=(0, 12))
+
+        refresh_btn = ctk.CTkButton(
+            device_frame,
+            text="⟳",
+            width=40,
+            height=36,
+            command=self.refresh_devices,
+            font=ctk.CTkFont(size=16)
+        )
+        refresh_btn.pack(side="left")
+
+        # Status and record button (fixed width container)
+        recording_container = ctk.CTkFrame(device_frame, fg_color="transparent", width=400)
+        recording_container.pack(side="right")
+        recording_container.pack_propagate(False)
+
+        self.status_label = ctk.CTkLabel(
+            recording_container,
+            text="● Stopped",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=("#ef4444", "#ef4444"),
+            width=120
+        )
+        self.status_label.pack(side="left", padx=(0, 16))
+
+        self.record_button = ctk.CTkButton(
+            recording_container,
+            text="🎙 Start Recording",
+            command=self.toggle_recording,
+            width=220,
+            height=48,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=("#10b981", "#10b981"),
+            hover_color=("#059669", "#059669")
+        )
+        self.record_button.pack(side="left")
+
+        # Action buttons
+        action_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        action_frame.pack(fill="x")
+
+        # Left actions
+        left_actions = ctk.CTkFrame(action_frame, fg_color="transparent")
+        left_actions.pack(side="left")
+
+        add_btn = ctk.CTkButton(
+            left_actions,
+            text="➕ Add",
+            width=100,
+            height=36,
+            command=self.add_new_item,
+            font=ctk.CTkFont(size=13)
+        )
+        add_btn.pack(side="left", padx=(0, 8))
+
+        edit_btn = ctk.CTkButton(
+            left_actions,
+            text="✏️ Edit",
+            width=100,
+            height=36,
+            command=self.edit_selected,
+            font=ctk.CTkFont(size=13)
+        )
+        edit_btn.pack(side="left", padx=(0, 8))
+
+        delete_btn = ctk.CTkButton(
+            left_actions,
+            text="🗑 Delete",
+            width=100,
+            height=36,
+            command=self.delete_selected,
+            fg_color=("#ef4444", "#dc2626"),
+            hover_color=("#dc2626", "#b91c1c"),
+            font=ctk.CTkFont(size=13)
+        )
+        delete_btn.pack(side="left")
+
+        # Right actions
+        right_actions = ctk.CTkFrame(action_frame, fg_color="transparent")
+        right_actions.pack(side="right")
+
+        self.sort_button = ctk.CTkButton(
+            right_actions,
+            text="🔽 Newest First",
+            width=140,
+            height=36,
+            command=self.toggle_sort_order,
+            font=ctk.CTkFont(size=13)
+        )
+        self.sort_button.pack(side="left", padx=(0, 8))
+
+        clear_btn = ctk.CTkButton(
+            right_actions,
+            text="🗑 Clear All",
+            width=110,
+            height=36,
+            command=self.clear_history,
+            fg_color=("#ef4444", "#dc2626"),
+            hover_color=("#dc2626", "#b91c1c"),
+            font=ctk.CTkFont(size=13)
+        )
+        clear_btn.pack(side="left", padx=(0, 8))
+
+        export_btn = ctk.CTkButton(
+            right_actions,
+            text="📤 Export",
+            width=100,
+            height=36,
+            command=self.export_translations,
+            font=ctk.CTkFont(size=13)
+        )
+        export_btn.pack(side="left")
+
+        # Initialize devices
+        self.refresh_devices()
+
+    def _create_transcription_panel(self, parent):
+        """Create transcription list panel."""
+        trans_frame = ctk.CTkFrame(parent, corner_radius=12)
+        trans_frame.grid(row=0, column=0, sticky="nsew")
+
+        # Header
+        header = ctk.CTkFrame(trans_frame, fg_color="transparent")
+        header.pack(fill="x", padx=24, pady=(20, 12))
+
+        title = ctk.CTkLabel(
+            header,
+            text="Transcriptions",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        title.pack(side="left")
+
+        self.item_count_label = ctk.CTkLabel(
+            header,
+            text="0 items",
+            font=ctk.CTkFont(size=13),
+            text_color=("gray50", "gray60")
+        )
+        self.item_count_label.pack(side="right")
+
+        # Scrollable frame for transcriptions
+        self.transcription_scroll = ctk.CTkScrollableFrame(
+            trans_frame,
+            corner_radius=0
+        )
+        self.transcription_scroll.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+        self.transcription_cards: List[TranscriptionCard] = []
+
+    def _create_editor_panel(self, parent):
+        """Create correction editor panel."""
+        editor_frame = ctk.CTkFrame(parent, corner_radius=12)
+        editor_frame.pack(fill="both", expand=True, pady=(0, 16))
+
+        # Header
+        header = ctk.CTkFrame(editor_frame, fg_color="transparent")
+        header.pack(fill="x", padx=20, pady=(16, 12))
+
+        title = ctk.CTkLabel(
+            header,
+            text="Edit & Correct",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        title.pack(side="left")
+
+        # Original text
+        original_label = ctk.CTkLabel(
+            editor_frame,
+            text="Original:",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w"
+        )
+        original_label.pack(fill="x", padx=20, pady=(8, 4))
+
+        self.original_text = ctk.CTkTextbox(
+            editor_frame,
+            height=120,
+            font=ctk.CTkFont(size=13),
+            wrap="word",
+            state="disabled"
+        )
+        self.original_text.pack(fill="x", padx=20, pady=(0, 16))
+
+        # Corrected text
+        corrected_label = ctk.CTkLabel(
+            editor_frame,
+            text="Corrected:",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w"
+        )
+        corrected_label.pack(fill="x", padx=20, pady=(0, 4))
+
+        self.corrected_text = ctk.CTkTextbox(
+            editor_frame,
+            height=120,
+            font=ctk.CTkFont(size=13),
+            wrap="word"
+        )
+        self.corrected_text.pack(fill="x", padx=20, pady=(0, 16))
+
+        # Buttons
+        button_frame = ctk.CTkFrame(editor_frame, fg_color="transparent")
+        button_frame.pack(fill="x", padx=20, pady=(0, 20))
+
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="💾 Save",
+            command=self.save_correction,
+            width=120,
+            height=40,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color=("#10b981", "#10b981"),
+            hover_color=("#059669", "#059669")
+        )
+        save_btn.pack(side="left", padx=(0, 12))
+
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="✖ Cancel",
+            command=self.cancel_correction,
+            width=120,
+            height=40,
+            font=ctk.CTkFont(size=13),
+            fg_color=("gray70", "gray30")
+        )
+        cancel_btn.pack(side="left")
+
+    def _create_system_panel(self, parent):
+        """Create system info panel."""
+        sys_frame = ctk.CTkFrame(parent, corner_radius=12)
+        sys_frame.pack(fill="both")
+
+        # Header
+        header = ctk.CTkFrame(sys_frame, fg_color="transparent")
+        header.pack(fill="x", padx=20, pady=(16, 12))
+
+        title = ctk.CTkLabel(
+            header,
+            text="System Info",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        title.pack(side="left")
+
+        # System info text
+        self.sys_text = ctk.CTkTextbox(
+            sys_frame,
+            height=200,
+            font=ctk.CTkFont(family="Courier", size=12),
+            wrap="none",
+            state="disabled"
+        )
+        self.sys_text.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+    def _initialize_services(self):
+        """Initialize background services."""
+        # System monitor
+        self.sys_monitor = SystemMonitor(
+            update_callback=self.update_system_stats,
+            interval=1.0
+        )
         self.sys_monitor.start()
 
-        # Log tab
-        log_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(log_frame, text="Log")
+        # WebSocket connection
+        self._connect_websocket()
 
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=20, width=100,
-                                                  bg=theme['text_bg'], fg=theme['text_fg'])
-        self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        log_frame.grid_rowconfigure(0, weight=1)
-        log_frame.grid_columnconfigure(0, weight=1)
+        # Queue processor
+        self.process_queue()
 
-        self.log("Admin GUI initialized")
+    def _connect_websocket(self):
+        """Connect to WebSocket server."""
+        try:
+            self.websocket = WebSocketManager(self.config, self.token)
+
+            # Register callbacks
+            self.websocket.on('connect', self._on_ws_connect)
+            self.websocket.on('disconnect', self._on_ws_disconnect)
+            self.websocket.on('new_transcription', self._on_ws_new_transcription)
+
+            self.connection_status.set_status('connecting')
+            self.websocket.connect()
+
+        except Exception as e:
+            logger.error(f"WebSocket connection failed: {e}")
+            self.connection_status.set_status('offline')
+
+    def _on_ws_connect(self):
+        """Handle WebSocket connection."""
+        self.after(0, lambda: self.connection_status.set_status('online'))
+
+    def _on_ws_disconnect(self):
+        """Handle WebSocket disconnection."""
+        self.after(0, lambda: self.connection_status.set_status('offline'))
+
+    def _on_ws_new_transcription(self, data: Dict[str, Any]):
+        """Handle new transcription from server."""
+        text = data.get('text')
+        language = data.get('language', 'en')
+        if text:
+            self.message_queue.put(('transcription', text, language))
+
+    # ========================================================================
+    # Event Handlers
+    # ========================================================================
+
+    def toggle_theme(self):
+        """Toggle between light and dark theme."""
+        current = ctk.get_appearance_mode()
+        new_mode = "Light" if current == "Dark" else "Dark"
+        ctk.set_appearance_mode(new_mode)
+        logger.info(f"Theme changed to {new_mode}")
 
     def toggle_sort_order(self):
-        """Toggle between newest first and oldest first"""
+        """Toggle sort order."""
         self.reverse_order = not self.reverse_order
-
-        if self.reverse_order:
-            self.sort_button.config(text="🔽 Newest First")
-        else:
-            self.sort_button.config(text="🔼 Oldest First")
-
-        self.refresh_listbox()
+        sort_text = "🔽 Newest First" if self.reverse_order else "🔼 Oldest First"
+        self.sort_button.configure(text=sort_text)
+        self.refresh_transcription_list()
         self.sync_order_to_server()
-        self.log(f"Sort order changed to: {'Newest First' if self.reverse_order else 'Oldest First'}")
-
-    def refresh_listbox(self):
-        """Rebuild listbox with current sort order"""
-        self.transcription_listbox.clear()
-
-        items_to_display = list(self.translations)
-        if self.reverse_order:
-            items_to_display.reverse()
-
-        for item in items_to_display:
-            display_text = f"[{item['timestamp']}] {item['corrected']}"
-            if item.get('is_corrected'):
-                display_text += " ✓"
-
-            self.transcription_listbox.insert('end', {
-                'id': item['id'],
-                'text': display_text,
-                'data': item
-            })
-
-    def add_new_item(self):
-        """Add new transcription item manually"""
-        theme = THEMES[self.current_theme]
-
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Add New Transcription")
-        dialog.geometry("600x250")
-        dialog.transient(self.root)
-        dialog.grab_set()
-        dialog.configure(bg=theme['bg'])
-
-        ttk.Label(dialog, text="Enter transcription text:", font=('Arial', 12)).pack(pady=10)
-
-        text_widget = scrolledtext.ScrolledText(dialog, height=6, width=60, font=('Arial', 12),
-                                               bg=theme['text_bg'], fg=theme['text_fg'])
-        text_widget.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
-        text_widget.focus()
-
-        def save_new():
-            text = text_widget.get(1.0, tk.END).strip()
-            if text:
-                translation = {
-                    'id': len(self.translations),
-                    'timestamp': datetime.now().strftime('%H:%M:%S'),
-                    'original': text,
-                    'corrected': text,
-                    'translated': None,
-                    'is_corrected': False,
-                    'source_language': 'manual'
-                }
-                self.translations.append(translation)
-                self.refresh_listbox()
-                self.sync_order_to_server()
-                self.log(f"Manually added: {text[:50]}...")
-                dialog.destroy()
-            else:
-                messagebox.showwarning("Warning", "Text cannot be empty")
-
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=10)
-        ttk.Button(button_frame, text="Save", command=save_new).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-
-    def delete_selected(self):
-        """Delete selected items"""
-        checked_items = self.transcription_listbox.get_checked_items()
-
-        if not checked_items:
-            messagebox.showwarning("Warning", "Please select items to delete")
-            return
-
-        if not messagebox.askyesno("Confirm", f"Delete {len(checked_items)} selected item(s)?"):
-            return
-
-        # Get IDs to delete
-        ids_to_delete = [item['data']['id'] for item in checked_items]
-
-        # Remove from translations
-        self.translations = [t for t in self.translations if t['id'] not in ids_to_delete]
-
-        # Refresh display
-        self.refresh_listbox()
-        self.cancel_correction()
-        self.sync_order_to_server()
-
-        self.log(f"Deleted {len(ids_to_delete)} items")
-
-    def edit_selected(self):
-        """Edit the first selected item"""
-        checked_items = self.transcription_listbox.get_checked_items()
-
-        if not checked_items:
-            messagebox.showwarning("Warning", "Please select an item to edit")
-            return
-
-        if len(checked_items) > 1:
-            messagebox.showinfo("Info", "Only the first selected item will be edited")
-
-        item_data = checked_items[0]['data']
-
-        # Populate correction fields
-        self.original_text.config(state='normal')
-        self.original_text.delete(1.0, tk.END)
-        self.original_text.insert(1.0, item_data.get('original', ''))
-        self.original_text.config(state='disabled')
-
-        self.corrected_text.delete(1.0, tk.END)
-        self.corrected_text.insert(1.0, item_data.get('corrected', ''))
-        self.corrected_text.focus()
 
     def refresh_devices(self):
-        """Refresh audio device list"""
+        """Refresh audio device list."""
         try:
             devices = sd.query_devices()
-            input_devices = []
+            inputs = [
+                f"{i}: {d['name']}"
+                for i, d in enumerate(devices)
+                if d['max_input_channels'] > 0
+            ]
 
-            for i, device in enumerate(devices):
-                if device['max_input_channels'] > 0:
-                    input_devices.append(f"{i}: {device['name']}")
+            if inputs:
+                self.device_menu.configure(values=inputs)
+                self.device_menu.set(inputs[0])
+            else:
+                self.device_menu.configure(values=["No devices found"])
+                self.device_menu.set("No devices found")
 
-            self.device_combo['values'] = input_devices
-            if input_devices:
-                self.device_combo.current(0)
-
-            self.log(f"Found {len(input_devices)} input devices")
         except Exception as e:
-            self.log(f"Error refreshing devices: {e}")
-            messagebox.showerror("Error", f"Failed to refresh devices: {e}")
+            logger.error(f"Failed to query audio devices: {e}")
 
     def toggle_recording(self):
-        """Start or stop audio recording"""
+        """Toggle audio recording."""
         if self.audio_processor is None or not self.audio_processor.is_running():
             self.start_recording()
         else:
             self.stop_recording()
 
     def start_recording(self):
-        """Start audio recording"""
+        """Start audio recording."""
         try:
-            device_str = self.device_var.get()
+            device_str = self.device_menu.get()
+
+            if device_str == "No devices found":
+                messagebox.showerror("Error", "No audio devices available")
+                return
+
             device_index = int(device_str.split(':')[0]) if device_str else None
 
-            # Initialize audio processor if needed
             if self.audio_processor is None:
-                self.audio_processor = AudioProcessor(self.config, self.on_transcription)
+                audio_config = self.config.get_audio_config()
+                whisper_config = self.config.get_whisper_config()
+
+                self.audio_processor = AudioProcessor(
+                    audio_config,
+                    whisper_config,
+                    self.on_transcription
+                )
 
             self.audio_processor.start(device_index)
 
-            # Update UI
-            self.record_button.config(text="⏹️ Stop Recording")
-            self.status_indicator.config(text="● Recording", foreground="green")
-            self.log("Recording started")
+            self.record_button.configure(
+                text="⏹ Stop Recording",
+                fg_color=("#ef4444", "#dc2626"),
+                hover_color=("#dc2626", "#b91c1c")
+            )
+            self.status_label.configure(
+                text="● Recording",
+                text_color=("#10b981", "#10b981")
+            )
 
         except Exception as e:
-            self.log(f"Failed to start recording: {e}")
+            logger.error(f"Start recording failed: {e}")
             messagebox.showerror("Error", f"Failed to start recording: {e}")
 
     def stop_recording(self):
-        """Stop audio recording"""
+        """Stop audio recording."""
         if self.audio_processor:
             self.audio_processor.stop()
 
-        # Update UI
-        self.record_button.config(text="🎙️ Start Recording")
-        self.status_indicator.config(text="● Stopped", foreground="red")
-        self.log("Recording stopped")
+        self.record_button.configure(
+            text="🎙 Start Recording",
+            fg_color=("#10b981", "#10b981"),
+            hover_color=("#059669", "#059669")
+        )
+        self.status_label.configure(
+            text="● Stopped",
+            text_color=("#ef4444", "#ef4444")
+        )
 
-    def on_transcription(self, text, language):
-        """Callback for new transcription"""
+    def on_transcription(self, text: str, language: str):
+        """Handle new transcription."""
         self.message_queue.put(('transcription', text, language))
 
-    def save_correction(self):
-        """Save corrected transcription"""
-        corrected_text = self.corrected_text.get(1.0, tk.END).strip()
-        original_text = self.original_text.get(1.0, tk.END).strip()
+    def refresh_transcription_list(self):
+        """Refresh the transcription list display."""
+        # Clear existing cards
+        for card in self.transcription_cards:
+            card.destroy()
+        self.transcription_cards.clear()
 
-        if not corrected_text:
+        # Get items to display
+        items = list(self.translations[-self.max_history:])
+        if self.reverse_order:
+            items.reverse()
+
+        # Create cards
+        for item in items:
+            card = TranscriptionCard(
+                self.transcription_scroll,
+                item,
+                on_select=lambda: None,
+                on_drag_start=self._on_card_drag_start,
+                on_drag_move=self._on_card_drag_move,
+                on_drag_end=self._on_card_drag_end
+            )
+            card.pack(fill="x", padx=8, pady=4)
+            self.transcription_cards.append(card)
+
+        # Update count
+        self.item_count_label.configure(text=f"{len(items)} items")
+
+        # Auto scroll
+        if self.auto_scroll and items:
+            self.after(100, lambda: self.transcription_scroll._parent_canvas.yview_moveto(1.0))
+
+    def _on_card_drag_start(self, card, event):
+        """Handle drag start."""
+        self._dragging_card = card
+        self._drag_start_index = self.transcription_cards.index(card)
+
+    def _on_card_drag_move(self, card, event):
+        """Handle drag move."""
+        if not hasattr(self, '_dragging_card'):
+            return
+
+        # Find target position
+        for i, target_card in enumerate(self.transcription_cards):
+            if target_card == card:
+                continue
+
+            # Get card position
+            card_y = target_card.winfo_rooty()
+            card_height = target_card.winfo_height()
+
+            # Check if mouse is over this card
+            if card_y <= event.y_root <= card_y + card_height:
+                # Swap positions
+                current_index = self.transcription_cards.index(card)
+                if i != current_index:
+                    # Reorder in list
+                    self.transcription_cards.pop(current_index)
+                    self.transcription_cards.insert(i, card)
+
+                    # Repack all cards
+                    for c in self.transcription_cards:
+                        c.pack_forget()
+                    for c in self.transcription_cards:
+                        c.pack(fill="x", padx=8, pady=4)
+                break
+
+    def _on_card_drag_end(self, card, event):
+        """Handle drag end."""
+        if hasattr(self, '_dragging_card'):
+            # Update translations order
+            self.translations = [c.item for c in self.transcription_cards]
+            if self.reverse_order:
+                self.translations.reverse()
+
+            # Sync to server
+            self.sync_order_to_server()
+
+            del self._dragging_card
+            del self._drag_start_index
+
+    def add_new_item(self):
+        """Show dialog to add new transcription."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Add New Transcription")
+        dialog.geometry("600x400")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # Center dialog
+        self.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - 300
+        y = self.winfo_y() + (self.winfo_height() // 2) - 200
+        dialog.geometry(f"600x400+{x}+{y}")
+
+        # Content
+        container = ctk.CTkFrame(dialog, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=30, pady=30)
+
+        label = ctk.CTkLabel(
+            container,
+            text="Enter transcription text:",
+            font=ctk.CTkFont(size=16, weight="bold")
+        )
+        label.pack(anchor="w", pady=(0, 12))
+
+        text_widget = ctk.CTkTextbox(
+            container,
+            height=200,
+            font=ctk.CTkFont(size=14),
+            wrap="word"
+        )
+        text_widget.pack(fill="both", expand=True, pady=(0, 20))
+        text_widget.focus()
+
+        def save():
+            text = text_widget.get("1.0", "end-1c").strip()
+            if not text:
+                messagebox.showwarning("Warning", "Text cannot be empty")
+                return
+
+            item = TranscriptionItem(
+                id=len(self.translations),
+                timestamp=datetime.now().strftime('%H:%M:%S'),
+                original=text,
+                corrected=text,
+                source_language='manual'
+            )
+
+            self.translations.append(item)
+            self.refresh_transcription_list()
+            self.sync_order_to_server()
+            dialog.destroy()
+
+        # Buttons
+        button_frame = ctk.CTkFrame(container, fg_color="transparent")
+        button_frame.pack(fill="x")
+
+        save_btn = ctk.CTkButton(
+            button_frame,
+            text="💾 Save",
+            command=save,
+            width=140,
+            height=44,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=("#10b981", "#10b981"),
+            hover_color=("#059669", "#059669")
+        )
+        save_btn.pack(side="left", padx=(0, 12))
+
+        cancel_btn = ctk.CTkButton(
+            button_frame,
+            text="✖ Cancel",
+            command=dialog.destroy,
+            width=140,
+            height=44,
+            font=ctk.CTkFont(size=14),
+            fg_color=("gray70", "gray30")
+        )
+        cancel_btn.pack(side="left")
+
+    def delete_selected(self):
+        """Delete selected transcriptions."""
+        selected_cards = [card for card in self.transcription_cards if card.selected]
+
+        if not selected_cards:
+            messagebox.showwarning("Warning", "Please select items to delete")
+            return
+
+        if not messagebox.askyesno("Confirm", f"Delete {len(selected_cards)} item(s)?"):
+            return
+
+        ids_to_delete = {card.item.id for card in selected_cards}
+        self.translations = [
+            t for t in self.translations if t.id not in ids_to_delete
+        ]
+
+        self.refresh_transcription_list()
+        self.cancel_correction()
+        self.sync_order_to_server()
+
+    def edit_selected(self):
+        """Edit selected transcription."""
+        selected_cards = [card for card in self.transcription_cards if card.selected]
+
+        if not selected_cards:
+            messagebox.showwarning("Warning", "Please select an item to edit")
+            return
+
+        if len(selected_cards) > 1:
+            messagebox.showinfo("Info", "Only the first selected item will be edited")
+
+        item = selected_cards[0].item
+
+        self.original_text.configure(state="normal")
+        self.original_text.delete("1.0", "end")
+        self.original_text.insert("1.0", item.original)
+        self.original_text.configure(state="disabled")
+
+        self.corrected_text.delete("1.0", "end")
+        self.corrected_text.insert("1.0", item.corrected)
+        self.corrected_text.focus()
+
+    def save_correction(self):
+        """Save correction to transcription."""
+        corrected = self.corrected_text.get("1.0", "end-1c").strip()
+        original = self.original_text.get("1.0", "end-1c").strip()
+
+        if not corrected:
             messagebox.showwarning("Warning", "Corrected text cannot be empty")
             return
 
-        if not original_text:
+        if not original:
             messagebox.showwarning("Warning", "No item selected")
             return
 
-        # Find matching translation
-        target_item = None
-        for item in self.translations:
-            if item['original'] == original_text:
-                target_item = item
+        # Find matching item
+        target = None
+        for translation in self.translations:
+            if translation.original == original:
+                target = translation
                 break
 
-        if not target_item:
-            messagebox.showwarning("Warning", "Could not find matching transcription")
+        if target is None:
+            messagebox.showwarning("Warning", "Matching item not found")
             return
 
-        # Update translation
-        target_item['corrected'] = corrected_text
-        target_item['is_corrected'] = True
+        target.corrected = corrected
+        target.is_corrected = True
 
-        # Send to server
-        if self.socket:
-            self.socket.emit('correct_translation', {
-                'id': target_item['id'],
-                'corrected_text': corrected_text
+        # Broadcast to server
+        if self.websocket:
+            self.websocket.emit('correct_translation', {
+                'id': target.id,
+                'corrected_text': corrected
             })
 
-        # Refresh display
-        self.refresh_listbox()
-        self.log(f"Correction saved for item {target_item['id']}")
+        self.refresh_transcription_list()
         messagebox.showinfo("Success", "Correction saved and broadcasted")
 
     def cancel_correction(self):
-        """Cancel correction"""
-        self.corrected_text.delete(1.0, tk.END)
-        self.original_text.config(state='normal')
-        self.original_text.delete(1.0, tk.END)
-        self.original_text.config(state='disabled')
-
-    def update_system_stats(self, stats):
-        """Update system and config info"""
-        cpu = stats.get('cpu', {})
-        mem = stats.get('memory', {})
-        gpus = stats.get('gpu', [])
-
-        def get_local_ip():
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(("8.8.8.8", 80))
-                ip = s.getsockname()[0]
-                s.close()
-                return ip
-            except:
-                return "127.0.0.1"
-
-        # Config values
-        sample_rate = self.config.get('audio', 'sample_rate')
-        block_duration = self.config.get('audio', 'block_duration')
-        model_size = self.config.get('whisper', 'model_size')
-        beam_size = self.config.get('whisper', 'beam_size')
-        device = self.config.get('whisper', 'device')
-        host = get_local_ip()
-        port = self.config.get('server', 'port')
-
-        # GPU Info
-        if gpus:
-            gpu_lines = []
-            for gpu in gpus:
-                gpu_lines.append(
-                    f"  • GPU{gpu.get('id', 0)} {gpu.get('name', 'Unknown')}: "
-                    f"{gpu.get('load', 0):.1f}% | "
-                    f"{gpu.get('memory_used', 0)}/{gpu.get('memory_total', 0)} MB | "
-                    f"{gpu.get('temperature', 0)}°C"
-                )
-            gpu_info = "\n".join(gpu_lines)
-        else:
-            gpu_info = "  • None detected"
-
-        # Construct info text
-        info_text = (
-            f"🕓 {stats.get('timestamp', '')}\n"
-            f"───────────────────────────────\n"
-            f"CPU     : {cpu.get('percent', 0):>5.1f}%   ({cpu.get('freq_current', 0):.1f}/{cpu.get('freq_max', 0):.1f} MHz)\n"
-            f"Memory  : {mem.get('used', 0):>5.2f}/{mem.get('total', 0):.2f} GB  ({mem.get('percent', 0):.1f}%)\n"
-            f"GPU(s)  :\n{gpu_info}\n"
-            f"───────────────────────────────\n"
-            f"Audio   : {sample_rate} Hz, {block_duration}s\n"
-            f"Whisper : {model_size}, Beam={beam_size}\n"
-            f"         Device={device}\n"
-            f"Server  : {host}:{port}\n"
-            f"Items   : {len(self.translations)}\n"
-            f"Theme   : {self.current_theme.title()}\n"
-        )
-
-        # Update text widget
-        self.sys_text.config(state='normal')
-        self.sys_text.delete(1.0, tk.END)
-        self.sys_text.insert(tk.END, info_text)
-        self.sys_text.config(state='disabled')
+        """Cancel current correction."""
+        self.corrected_text.delete("1.0", "end")
+        self.original_text.configure(state="normal")
+        self.original_text.delete("1.0", "end")
+        self.original_text.configure(state="disabled")
 
     def clear_history(self):
-        """Clear translation history"""
-        if messagebox.askyesno("Confirm", "Clear all transcriptions?"):
-            self.translations.clear()
-            self.transcription_listbox.clear()
-            self.cancel_correction()
+        """Clear all transcriptions."""
+        if not messagebox.askyesno("Confirm", "Clear all transcriptions?"):
+            return
 
-            if self.socket:
-                self.socket.emit('clear_history')
+        self.translations.clear()
+        self.refresh_transcription_list()
+        self.cancel_correction()
 
-            self.log("History cleared")
+        if self.websocket:
+            self.websocket.emit('clear_history')
 
     def export_translations(self):
-        """Export translations to file"""
+        """Export translations to file."""
         if not self.translations:
             messagebox.showinfo("Info", "No translations to export")
             return
 
-        file_path = filedialog.asksaveasfilename(
+        path = filedialog.asksaveasfilename(
             defaultextension=".txt",
             filetypes=[
                 ("Text files", "*.txt"),
                 ("JSON files", "*.json"),
-                ("SRT Subtitles", "*.srt"),
-                ("All files", "*.*")
+                ("SRT files", "*.srt")
             ]
         )
 
-        if not file_path:
+        if not path:
             return
 
         try:
-            if file_path.endswith('.json'):
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    json.dump(self.translations, f, indent=2, ensure_ascii=False)
+            if path.endswith('.json'):
+                TranscriptionExporter.export_to_json(self.translations, path)
+            elif path.endswith('.srt'):
+                TranscriptionExporter.export_to_srt(self.translations, path)
+            else:
+                TranscriptionExporter.export_to_text(self.translations, path)
 
-            elif file_path.endswith('.srt'):
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    for i, item in enumerate(self.translations, 1):
-                        start_seconds = (i - 1) * 5
-                        end_seconds = i * 5
-                        start_time = f"00:{start_seconds // 60:02d}:{start_seconds % 60:02d},000"
-                        end_time = f"00:{end_seconds // 60:02d}:{end_seconds % 60:02d},000"
-
-                        f.write(f"{i}\n")
-                        f.write(f"{start_time} --> {end_time}\n")
-                        f.write(f"{item['corrected']}\n\n")
-
-            else:  # Default to .txt
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write("EzySpeechTranslate Export\n")
-                    f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    f.write("=" * 60 + "\n\n")
-
-                    for item in self.translations:
-                        f.write(f"[{item['id']}] {item['timestamp']}\n")
-                        f.write(f"Original: {item['original']}\n")
-                        f.write(f"Corrected: {item['corrected']}\n")
-                        if item.get('is_corrected'):
-                            f.write("(Manually corrected)\n")
-                        f.write("-" * 60 + "\n\n")
-
-            self.log(f"Exported to {file_path}")
-            messagebox.showinfo("Success", f"Exported to {file_path}")
+            messagebox.showinfo("Success", f"Exported to {path}")
 
         except Exception as e:
-            self.log(f"Export failed: {e}")
-            messagebox.showerror("Error", f"Export failed: {e}")
+            logger.error(f"Export failed: {e}", exc_info=True)
+            messagebox.showerror("Error", "Export failed")
 
-    def connect_websocket(self):
-        """Connect to backend WebSocket"""
-        try:
-            server_host = self.config.get('server', 'host', default='localhost')
-            server_port = self.config.get('server', 'port', default=5000)
-            url = f"http://{server_host}:{server_port}"
+    def sync_order_to_server(self):
+        """Sync translation order to server."""
+        if self.websocket:
+            self.websocket.emit('update_order', {
+                'translations': [t.to_dict() for t in self.translations]
+            })
 
-            self.socket = sio.Client()
+    def update_system_stats(self, stats: Dict[str, Any]):
+        """Update system stats display."""
+        info = SystemInfoProvider.format_system_info(
+            stats,
+            self.config,
+            len(self.translations)
+        )
 
-            @self.socket.on('connect')
-            def on_connect():
-                self.log("Connected to server")
-                self.socket.emit('admin_connect', {'token': self.token})
-
-            @self.socket.on('disconnect')
-            def on_disconnect():
-                self.log("Disconnected from server")
-
-            @self.socket.on('admin_connected')
-            def on_admin_connected(data):
-                if data.get('success'):
-                    self.log("Admin session authenticated")
-                else:
-                    self.log(f"Admin authentication failed: {data.get('error')}")
-
-            @self.socket.on('correction_success')
-            def on_correction_success(data):
-                self.log(f"Correction confirmed by server: ID {data['id']}")
-
-            @self.socket.on('error')
-            def on_error(data):
-                self.log(f"Server error: {data.get('message')}")
-
-            self.socket.connect(url)
-
-        except Exception as e:
-            self.log(f"WebSocket connection failed: {e}")
-            messagebox.showerror("Error", f"Failed to connect to server: {e}")
+        self.sys_text.configure(state="normal")
+        self.sys_text.delete("1.0", "end")
+        self.sys_text.insert("1.0", info)
+        self.sys_text.configure(state="disabled")
 
     def process_queue(self):
-        """Process message queue from background threads"""
+        """Process message queue."""
         try:
             while True:
-                msg = self.message_queue.get_nowait()
+                item = self.message_queue.get_nowait()
 
-                if msg[0] == 'transcription':
-                    text = msg[1]
-                    language = msg[2]
-
-                    # Add to translations
-                    translation = {
-                        'id': len(self.translations),
-                        'timestamp': datetime.now().strftime('%H:%M:%S'),
-                        'original': text,
-                        'corrected': text,
-                        'translated': None,
-                        'is_corrected': False,
-                        'source_language': language
-                    }
-
-                    self.translations.append(translation)
-
-                    # Refresh display
-                    self.refresh_listbox()
-
-                    # Send to server (will also sync order)
-                    if self.socket:
-                        self.socket.emit('new_transcription', {
-                            'text': text,
-                            'language': language
-                        })
-                        # Sync complete order
-                        self.sync_order_to_server()
-
-                    self.log(f"New transcription: {text[:50]}...")
+                if item[0] == 'transcription':
+                    self._handle_new_transcription(item[1], item[2])
 
         except queue.Empty:
             pass
 
-        # Schedule next check
-        self.root.after(100, self.process_queue)
+        self.after(100, self.process_queue)
 
-    def log(self, message):
-        """Add message to log"""
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        log_message = f"[{timestamp}] {message}\n"
+    def _handle_new_transcription(self, text: str, language: str):
+        """Handle new transcription from queue."""
+        entry = TranscriptionItem(
+            id=len(self.translations),
+            timestamp=datetime.now().strftime('%H:%M:%S'),
+            original=text,
+            corrected=text,
+            source_language=language
+        )
 
-        if hasattr(self, 'log_text'):
-            self.log_text.insert(tk.END, log_message)
-            self.log_text.see(tk.END)
+        self.translations.append(entry)
+        self.refresh_transcription_list()
 
-        logger.info(message)
+        # Trim excess history
+        if len(self.translations) > self.max_history:
+            excess = len(self.translations) - self.max_history
+            self.translations = self.translations[excess:]
+            logger.info(f"Trimmed {excess} excess items")
+
+        # Broadcast to server
+        if self.websocket:
+            self.websocket.emit('new_transcription', {
+                'text': text,
+                'language': language
+            })
+            self.sync_order_to_server()
 
     def on_closing(self):
-        """Handle window closing"""
+        """Handle window close event."""
+        # Stop audio
         if self.audio_processor and self.audio_processor.is_running():
             self.audio_processor.stop()
 
-        if hasattr(self, 'sys_monitor'):
-            self.sys_monitor.stop()
+        # Stop system monitor
+        if self.sys_monitor:
+            try:
+                self.sys_monitor.stop()
+            except Exception as e:
+                logger.error(f"Error stopping system monitor: {e}")
 
-        if self.socket:
-            self.socket.disconnect()
+        # Disconnect WebSocket
+        if self.websocket:
+            try:
+                self.websocket.disconnect()
+            except Exception as e:
+                logger.error(f"Error disconnecting WebSocket: {e}")
 
-        self.root.destroy()
+        self.destroy()
 
+
+# ============================================================================
+# Application Entry Point
+# ============================================================================
 
 def main():
-    """Main entry point"""
-    if not check_server_health():
-        exit(1)
-    else:
-        root = tk.Tk()
-        app = AdminGUI(root)
-        root.protocol("WM_DELETE_WINDOW", app.on_closing)
-        root.mainloop()
+    """Main application entry point."""
+    try:
+        config = ConfigManager()
+
+        def on_login_success(token: str):
+            """Handle successful login."""
+            app = AdminGUI(token)
+            app.protocol("WM_DELETE_WINDOW", app.on_closing)
+            app.mainloop()
+
+        login_window = LoginWindow(config, on_login_success)
+        login_window.mainloop()
+
+    except Exception as e:
+        logger.critical(f"Application failed to start: {e}", exc_info=True)
+        messagebox.showerror("Fatal Error", f"Application failed to start: {e}")
 
 
 if __name__ == '__main__':

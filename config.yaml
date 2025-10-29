@@ -12,7 +12,7 @@ authentication:
   enabled: true
   admin_username: "admin"
   admin_password: "admin123"  # Change this in production!
-  session_timeout: 3600  # seconds
+  session_timeout: 7200  # seconds
   jwt_secret: "change-this-jwt-secret-in-production"
 
 # Audio Configuration
@@ -61,9 +61,9 @@ translation:
 # GUI Configuration
 gui:
   window_title: "EzySpeechTranslate Admin"
-  window_size: "1200x1000"
   theme: "default"
-  font_size: 10
+  window_size: "1800x1200"
+  font_size: 14
   auto_scroll: true
   max_history: 1000
 
