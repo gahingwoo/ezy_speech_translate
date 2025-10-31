@@ -221,11 +221,12 @@ whisper:
 
 # Translation Configuration
 translation:
-  default_target_language: "zh-cn"
+  default_target_language: "yue"
   cache_enabled: true
   supported_languages:
     - "zh-cn"
     - "zh-tw"
+    - "yue"
     - "es"
     - "fr"
     - "de"
@@ -250,7 +251,7 @@ gui:
   window_size: "1200x800"
   theme: "default"
   font_size: 10
-  auto_scroll: true
+  auto_scroll: false # Use True if it is Oldest first order
   max_history: 1000
 
 # Logging Configuration
@@ -273,6 +274,11 @@ export:
   output_directory: "exports"
   include_timestamps: true
   include_corrections: true
+  
+sentence_merging:
+  enabled: true
+  max_buffer_words: 200
+  min_sentence_words: 15
 """
 
     # Write config file

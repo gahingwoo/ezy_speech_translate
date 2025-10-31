@@ -479,8 +479,8 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v2.0.3 (Current)
- - Admin GUI - Rewritten
+### v2.0.4 (Current)
+ - Add Smart Sentence Merger
 
 
 ---

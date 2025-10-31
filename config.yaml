@@ -64,7 +64,7 @@ gui:
   theme: "default"
   window_size: "1800x1200"
   font_size: 14
-  auto_scroll: true
+  auto_scroll: false # Use True if it is Oldest first order
   max_history: 1000
 
 # Logging Configuration
@@ -93,3 +93,8 @@ export:
   output_directory: "exports"
   include_timestamps: true
   include_corrections: true
+
+sentence_merging:
+  enabled: true
+  max_buffer_words: 200
+  min_sentence_words: 15
