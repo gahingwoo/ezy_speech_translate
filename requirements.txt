@@ -1,48 +1,98 @@
 # EzySpeechTranslate Dependencies
+# Version 3
 
+# ============================================
 # Core Framework
+# ============================================
 Flask==3.0.0
 Flask-SocketIO==5.3.5
 Flask-CORS==4.0.0
 
-# WebSocket
+# ============================================
+# WebSocket Communication
+# ============================================
 python-socketio==5.10.0
 python-socketio[client]==5.10.0
+eventlet==0.33.3
 
-# Audio Processing
+# ============================================
+# Audio Processing (Optional - for future features)
+# ============================================
 sounddevice==0.4.6
 numpy==1.24.3
-av==12.0.0
+# av==12.0.0  # Uncomment if using audio recording features
 
-# Speech Recognition
-faster-whisper==1.2.0
-openai-whisper==20231117
+# ============================================
+# Speech Recognition (Optional - if using server-side recognition)
+# ============================================
+# faster-whisper==1.2.0  # Uncomment if using Whisper on server
+# openai-whisper==20231117
 
+# ============================================
 # Authentication & Security
+# ============================================
 PyJWT==2.8.0
 cryptography==41.0.7
 
-# Configuration
+# ============================================
+# Configuration Management
+# ============================================
 PyYAML==6.0.1
 
+# ============================================
 # HTTP Requests
+# ============================================
 requests==2.31.0
 
-# GUI (Optional - only for admin_gui.py)
-# tkinter is included with Python on most systems
-
-# Additional utilities
+# ============================================
+# Date/Time Utilities
+# ============================================
 python-dateutil==2.8.2
-psutil
-gputil
-matplotlib
-customtkinter
 
-# Production Server (optional, recommended for deployment)
+# ============================================
+# System Utilities (Optional)
+# ============================================
+psutil==5.9.6
+
+# ============================================
+# Production Server (Recommended)
+# ============================================
 gunicorn==21.2.0
-eventlet==0.33.3
 
-# Database (optional, if using database storage)
+# ============================================
+# Database Support (Optional)
+# ============================================
+# Uncomment if using database storage:
 # SQLAlchemy==2.0.23
 # psycopg2-binary==2.9.9  # For PostgreSQL
-# PyMySQL==1.1.0  # For MySQL
+# PyMySQL==1.1.0          # For MySQL
+
+# ============================================
+# Development Tools (Optional)
+# ============================================
+# Uncomment for development:
+# pytest==7.4.3           # Testing framework
+# black==23.12.1          # Code formatter
+# flake8==6.1.0           # Linter
+# mypy==1.7.1             # Type checker
+
+# ============================================
+# NOTES
+# ============================================
+# 1. This minimal setup uses Web Speech API (browser-based)
+#    for speech recognition, reducing server requirements
+#
+# 2. If you need server-side speech recognition:
+#    - Uncomment faster-whisper and openai-whisper
+#    - Ensure FFmpeg is installed on system
+#    - Requires more RAM (2GB+)
+#
+# 3. For production deployments:
+#    - Use gunicorn with eventlet worker
+#    - Enable database support if needed
+#    - Consider adding monitoring tools
+#
+# 4. Python version compatibility: 3.8-3.12
+#
+# 5. Installation:
+#    pip install -r requirements.txt

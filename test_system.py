@@ -89,9 +89,7 @@ class SystemTester:
         required_modules = [
             'flask',
             'flask_socketio',
-            'sounddevice',
             'numpy',
-            'faster_whisper',
             'yaml',
             'jwt'
         ]
@@ -111,31 +109,6 @@ class SystemTester:
             print_pass()
             self.tests_passed += 1
             return True
-
-    def test_ffmpeg(self):
-        """Test FFmpeg installation"""
-        print_test("Checking FFmpeg")
-
-        import subprocess
-        try:
-            result = subprocess.run(['ffmpeg', '-version'],
-                                    capture_output=True, timeout=5)
-            if result.returncode == 0:
-                print_pass()
-                self.tests_passed += 1
-                return True
-            else:
-                print_fail("FFmpeg not working properly")
-                self.tests_failed += 1
-                return False
-        except FileNotFoundError:
-            print_fail("FFmpeg not installed")
-            self.tests_failed += 1
-            return False
-        except Exception as e:
-            print_fail(str(e))
-            self.tests_failed += 1
-            return False
 
     def test_audio_devices(self):
         """Test audio device access"""
@@ -179,7 +152,7 @@ class SystemTester:
                 return False
         except requests.exceptions.ConnectionError:
             print_fail("Server not running")
-            print_warn("Please start the server with: python app.py")
+            print_warn("Please start the server with: python user_server.py")
             self.tests_failed += 1
             return False
         except Exception as e:
@@ -260,33 +233,6 @@ class SystemTester:
             self.tests_failed += 1
             return False
 
-    def test_whisper_model(self):
-        """Test Whisper model loading"""
-        print_test("Testing Whisper model")
-
-        try:
-            from faster_whisper import WhisperModel
-
-            model_size = self.config.get('whisper', {}).get('model_size', 'base')
-            device = self.config.get('whisper', {}).get('device', 'cpu')
-            compute_type = self.config.get('whisper', {}).get('compute_type', 'int8')
-
-            print(f"\n  Loading {model_size} model...", end=" ")
-            sys.stdout.flush()
-
-            model = WhisperModel(model_size, device=device, compute_type=compute_type)
-
-            print_pass()
-            print(f"  Model: {model_size}")
-            print(f"  Device: {device}")
-            self.tests_passed += 1
-            return True
-
-        except Exception as e:
-            print_fail(str(e))
-            self.tests_failed += 1
-            return False
-
     def test_file_structure(self):
         """Test file and directory structure"""
         print_test("Checking file structure")
@@ -294,8 +240,8 @@ class SystemTester:
         import os
 
         required_files = [
-            'app.py',
-            'admin_gui.py',
+            'user_server.py',
+            'admin_server.py',
             'config.yaml',
             'requirements.txt',
             'README.md'
@@ -354,7 +300,6 @@ class SystemTester:
             return False
 
         self.test_dependencies()
-        self.test_ffmpeg()
         self.test_audio_devices()
         self.test_file_structure()
 
@@ -367,10 +312,6 @@ class SystemTester:
             self.test_api_endpoints()
         else:
             print_warn("Skipping server-dependent tests")
-
-        # Model test
-        print_header("Model Tests")
-        self.test_whisper_model()
 
         # Summary
         self.print_summary()
