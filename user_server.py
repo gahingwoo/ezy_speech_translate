@@ -80,7 +80,13 @@ def require_auth(f):
         if not config.get('authentication', 'enabled', default=True):
             return f(*args, **kwargs)
 
+        # Try to get token from header first
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
+
+        # If not in header, try URL parameter (for export/download links)
+        if not token:
+            token = request.args.get('token', '')
+
         if not token:
             return jsonify({'error': 'No token provided'}), 401
 
@@ -383,9 +389,9 @@ def internal_error(error):
 
 # Main entry point
 if __name__ == '__main__':
-    logger.info("Starting EzySpeechTranslate Server...")
+    logger.info("Starting EzySpeechTranslate Server (Simplified Version)...")
     logger.info(f"Authentication: {'Enabled' if config.get('authentication', 'enabled') else 'Disabled'}")
-    logger.info(f"Server: http://{config.get('server', 'host')}:{config.get('server', 'port')}")
+    logger.info(f"Server: {config.get('server', 'host')}:{config.get('server', 'port')}")
 
     # Create necessary directories
     for directory in ['logs', 'exports', 'data', 'templates']:

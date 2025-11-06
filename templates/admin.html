@@ -47,8 +47,8 @@
         .pf-c-page__header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 0 2rem;
-            height: 60px;
+            padding: 0 1rem;
+            min-height: 60px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -56,12 +56,15 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            gap: 0.5rem;
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 0;
         }
 
         .brand {
@@ -71,6 +74,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .connection-badge {
@@ -81,6 +85,7 @@
             border-radius: 3px;
             font-size: 0.875rem;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .connection-badge.online {
@@ -151,7 +156,6 @@
         .pf-c-page__main {
             display: flex;
             height: calc(100vh - 60px);
-            padding-bottom: 60px; 
         }
 
         /* Sidebar */
@@ -162,6 +166,155 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        /* About Button */
+        .about-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .about-btn:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+        }
+
+        /* About Modal */
+        .about-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .about-modal.active {
+            display: flex;
+        }
+
+        .about-content {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px var(--shadow);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .about-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .about-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .about-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .about-close:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .about-body {
+            color: var(--text);
+            line-height: 1.8;
+        }
+
+        .about-body h3 {
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .about-body p {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .about-links {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .about-link {
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .about-link:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .about-version {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.813rem;
+            color: var(--text-secondary);
         }
 
         .sidebar-section {
@@ -271,16 +424,16 @@
             margin-top: 1rem;
         }
 
-        /* Interim Results Display - ENLARGED */
+        /* Interim Results Display */
         .interim-display {
             background: rgba(0, 102, 204, 0.05);
             border: 1px dashed var(--primary);
             border-radius: 3px;
             padding: 1rem;
-            font-size: 0.938rem; /* 增大字体 */
+            font-size: 0.938rem;
             font-style: italic;
             color: var(--text-secondary);
-            min-height: 100px; /* 增加高度 */
+            min-height: 100px;
             max-height: 200px;
             overflow-y: auto;
             transition: opacity 0.3s;
@@ -351,7 +504,7 @@
             border: 1px solid var(--border);
             border-radius: 3px;
             padding: 1rem;
-            cursor: pointer;
+            cursor: move;
             transition: all 0.2s;
             display: flex;
             gap: 1rem;
@@ -368,8 +521,31 @@
             border-color: var(--primary);
         }
 
+        .transcription-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .transcription-card.drag-over {
+            border-top: 3px solid var(--primary);
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            user-select: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
         .card-checkbox {
             margin-top: 0.25rem;
+            cursor: pointer;
         }
 
         .card-content {
@@ -416,9 +592,9 @@
             opacity: 0.5;
         }
 
-        /* Edit Panel (Right Side) - ENLARGED */
+        /* Edit Panel (Right Side) */
         .edit-panel {
-            width: 450px; /* 增加宽度 */
+            width: 450px;
             background: var(--surface);
             border-left: 1px solid var(--border);
             display: flex;
@@ -437,18 +613,17 @@
             margin-bottom: 1rem;
         }
 
-        /* ENLARGED TEXTAREAS */
         textarea {
             width: 100%;
-            padding: 1rem; /* 增加内边距 */
+            padding: 1rem;
             border: 1px solid var(--border);
             border-radius: 3px;
             background: var(--bg);
             color: var(--text);
-            font-size: 1rem; /* 增大字体 */
+            font-size: 1rem;
             font-family: inherit;
             resize: vertical;
-            min-height: 150px; /* 显著增加最小高度 */
+            min-height: 150px;
             line-height: 1.6;
         }
 
@@ -503,11 +678,45 @@
             .edit-panel {
                 display: none;
             }
+
+            .pf-c-page__main {
+                padding-bottom: 140px;
+            }
         }
 
         @media (max-width: 768px) {
+            .pf-c-page__header {
+                padding: 0 1rem;
+                height: auto;
+                min-height: 60px;
+                flex-wrap: wrap;
+            }
+
+            .header-left {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .brand {
+                font-size: 1rem;
+            }
+
+            .brand span:last-child {
+                display: none;
+            }
+
+            .header-right {
+                gap: 0.5rem;
+            }
+
+            .theme-toggle span:last-child,
+            .logout-btn span:last-child {
+                display: none;
+            }
+
             .pf-c-page__main {
                 flex-direction: column;
+                padding-bottom: 160px;
             }
 
             .pf-c-page__sidebar {
@@ -515,6 +724,166 @@
                 border-right: none;
                 border-bottom: 1px solid var(--border);
             }
+
+            .sidebar-section {
+                padding: 1rem;
+            }
+
+            .pf-c-page__main-section {
+                padding: 1rem;
+            }
+
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .transcription-card {
+                padding: 0.75rem;
+                gap: 0.5rem;
+            }
+
+            .card-text {
+                font-size: 0.875rem;
+            }
+
+            /* Mobile drag handle - larger touch target */
+            .drag-handle {
+                font-size: 1.5rem;
+                padding: 0.5rem;
+                margin: -0.5rem;
+            }
+
+            /* Simplify footer on mobile */
+            .page-footer {
+                font-size: 0.75rem !important;
+                padding: 0.75rem 1rem !important;
+            }
+
+            .footer-content > div {
+                margin-bottom: 0.25rem !important;
+            }
+
+            .footer-link {
+                font-size: 0.75rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .connection-badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            .content-title {
+                font-size: 1.25rem;
+            }
+
+            .interim-display {
+                font-size: 0.813rem;
+                min-height: 80px;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .pf-c-button {
+                min-height: 44px; /* Minimum touch target */
+            }
+
+            .card-checkbox {
+                width: 24px;
+                height: 24px;
+            }
+
+            .transcription-card {
+                min-height: 60px;
+            }
+
+            /* Make drag handle more prominent on touch */
+            .drag-handle {
+                font-size: 1.75rem;
+                color: var(--primary);
+            }
+        }
+
+        /* Footer Styles */
+        .page-footer {
+            text-align: center;
+            padding: 1rem;
+            border-top: 2px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            z-index: 100;
+            box-shadow: 0 -4px 12px var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .footer-heart {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: heartbeat 2s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            10%, 30% { transform: scale(1.1); }
+            20% { transform: scale(0.95); }
+        }
+
+        .footer-divider {
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            margin: 0.5rem auto;
+        }
+
+        .footer-link {
+            color: var(--primary);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            background: rgba(0, 102, 204, 0.05);
+            border: 1px solid transparent;
+        }
+
+        .footer-link:hover {
+            background: rgba(0, 102, 204, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+        }
+
+        .footer-link-icon {
+            font-size: 1.1em;
+            transition: transform 0.3s ease;
+        }
+
+        .footer-link:hover .footer-link-icon {
+            transform: translateX(4px);
         }
     </style>
 </head>
@@ -559,7 +928,7 @@
             <div class="header-left">
                 <div class="brand">
                     <span>🎙️</span>
-                    <span>EzySpeechTranslate - Admin Panel</span>
+                    <span>EzySpeechTranslate Admin</span>
                 </div>
                 <div id="statusBadge" class="connection-badge offline">
                     <span class="status-dot"></span>
@@ -618,12 +987,6 @@
                     </div>
 
                     <div class="control-group">
-                        <button id="flushBtn" class="pf-c-button pf-c-button--secondary" onclick="flushBuffer()">
-                            📤 Send Buffered Text
-                        </button>
-                    </div>
-
-                    <div class="control-group">
                         <label class="control-label">Recognizing...</label>
                         <div id="interimDisplay" class="interim-display inactive">
                             <span id="interimText">Waiting for speech...</span>
@@ -650,6 +1013,10 @@
                         Transcriptions
                         <span class="count-badge" id="itemCount">0</span>
                     </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <span>⋮⋮</span>
+                        <span>Drag to reorder</span>
+                    </div>
                 </div>
 
                 <div id="transcriptionsList" class="transcription-list">
@@ -692,45 +1059,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <div style="
-        text-align: center;
-        padding: 8px;
-        border-top: 1px solid var(--border);
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: var(--surface);
-        z-index: 100;
-        box-shadow: 0 -2px 4px var(--shadow);
-    ">
-        <div style="margin-bottom: 4px;">
-            Made with ❤️ by Ga Hing Woo for breaking language barriers
-        </div>
-        <div style="font-style: bold; margin-bottom: 4px;">
-            💪 Let's make the world a better place by doing small things.
-        </div>
-        <div>
-            <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose" 
-               target="_blank" 
-               style="
-                color: var(--primary);
-                text-decoration: none;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-               "
-            >
-                <span>Issues?</span>
-                <span>Post on GitHub</span>
-                <span style="font-size: 1.1em;">→</span>
-            </a>
-        </div>
-    </div>
-
     <script>
         // ============================================
         // Configuration
@@ -746,6 +1074,60 @@
         let autoRestartEnabled = true;
         let restartTimeout = null;
         let finalTranscript = '';
+
+        // ============================================
+        // Mobile Menu Management
+        // ============================================
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggle = document.getElementById('mobileMenuToggle');
+
+            const isOpen = sidebar.classList.contains('mobile-open');
+
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                toggle.classList.remove('active');
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+                toggle.classList.add('active');
+            }
+        }
+
+        // Close mobile menu when clicking outside
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggle = document.getElementById('mobileMenuToggle');
+
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            toggle.classList.remove('active');
+        }
+
+        // ============================================
+        // About Modal Management
+        // ============================================
+        function showAbout() {
+            document.getElementById('aboutModal').classList.add('active');
+        }
+
+        function hideAbout(event) {
+            // Only close if clicking outside content or on close button
+            if (!event || event.target.id === 'aboutModal' || event.target.classList.contains('about-close')) {
+                document.getElementById('aboutModal').classList.remove('active');
+            }
+        }
+
+        // Close about modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideAbout();
+                closeMobileMenu();
+            }
+        });
 
         // ============================================
         // Theme Management
@@ -905,8 +1287,9 @@
                 console.log('✅ Admin connected response:', response);
                 if (!response.success) {
                     console.error('❌ Admin connection rejected:', response.error);
-                    alert('Admin authentication failed. Please logout and login again.');
-                    setTimeout(() => logout(), 2000);
+                    alert('Session expired. Please login again.');
+                    localStorage.removeItem('authToken');
+                    location.reload();
                 }
             });
 
@@ -922,7 +1305,15 @@
 
             socket.on('error', (error) => {
                 console.error('❌ Socket error:', error);
-                alert('Socket error: ' + (error.message || JSON.stringify(error)));
+
+                // Check if it's an authentication error
+                if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Invalid token'))) {
+                    alert('Session expired. Please login again.');
+                    localStorage.removeItem('authToken');
+                    location.reload();
+                } else {
+                    alert('Socket error: ' + (error.message || JSON.stringify(error)));
+                }
             });
 
             socket.on('history', (history) => {
@@ -952,18 +1343,6 @@
             socket.on('history_cleared', () => {
                 translations = [];
                 renderTranscriptions();
-            });
-
-            socket.on('fragment_pending', (data) => {
-                console.log('⏳ Fragment buffered:', data);
-                updateInterimDisplay(`⏳ Buffered: ${data.fragment.substring(0, 60)}...`, true);
-            });
-
-            socket.on('flush_result', (data) => {
-                console.log('✅ Flush result:', data);
-                if (data.success) {
-                    alert(`Flushed ${data.token_count} tokens:\n"${data.text.substring(0, 100)}..."`);
-                }
             });
         }
 
@@ -1026,21 +1405,17 @@
                 isRecording = true;
                 updateRecordButton();
                 updateInterimDisplay('🎤 Listening...', true);
-
-                // Show auto-restart badge
                 document.getElementById('autoRestartBadge').style.display = 'flex';
             };
 
             recognition.onend = () => {
                 console.log('🛑 Speech recognition ended');
 
-                // Send any remaining text
                 if (finalTranscript.trim()) {
                     sendTranscription(finalTranscript.trim());
                     finalTranscript = '';
                 }
 
-                // Auto-restart if recording is still active
                 if (isRecording && autoRestartEnabled) {
                     console.log('🔄 Auto-restarting in 300ms...');
                     clearTimeout(restartTimeout);
@@ -1051,7 +1426,6 @@
                                 console.log('✅ Recognition restarted');
                             } catch (e) {
                                 console.error('❌ Restart failed:', e);
-                                // Try again in 1 second
                                 setTimeout(() => {
                                     if (isRecording) {
                                         try {
@@ -1082,7 +1456,6 @@
                     case 'no-speech':
                         console.log('⚠️ No speech detected - will auto-restart');
                         updateInterimDisplay('⚠️ No speech detected...', true);
-                        // Don't stop - let onend handle restart
                         break;
 
                     case 'audio-capture':
@@ -1096,7 +1469,6 @@
                     case 'network':
                         console.error('❌ Network error - will retry');
                         updateInterimDisplay('⚠️ Network error, retrying...', true);
-                        // Let onend handle restart
                         break;
 
                     case 'not-allowed':
@@ -1120,11 +1492,9 @@
                     const transcript = event.results[i][0].transcript;
 
                     if (event.results[i].isFinal) {
-                        // Final result - add to buffer
                         finalTranscript += transcript + ' ';
                         console.log('✅ Final:', transcript);
 
-                        // Send immediately
                         sendTranscription(finalTranscript.trim());
                         finalTranscript = '';
 
@@ -1135,7 +1505,6 @@
                             }
                         }, 500);
                     } else {
-                        // Interim result - just display
                         interimTranscript += transcript;
                     }
                 }
@@ -1169,7 +1538,6 @@
                 timestamp: new Date().toISOString()
             });
 
-            // Visual feedback
             updateInterimDisplay('✓ Sent: ' + text.substring(0, 50) + '...', true);
         }
 
@@ -1210,7 +1578,6 @@
                 console.error('Failed to start:', error);
 
                 if (error.message && error.message.includes('already started')) {
-                    // Already running, just update UI
                     isRecording = true;
                     updateRecordButton();
                     updateInterimDisplay('🎤 Listening...', true);
@@ -1224,9 +1591,8 @@
         function stopRecording() {
             console.log('⏹️ Stopping recording');
             isRecording = false;
-            autoRestartEnabled = false;  // Disable auto-restart
+            autoRestartEnabled = false;
 
-            // Clear any pending restart
             if (restartTimeout) {
                 clearTimeout(restartTimeout);
                 restartTimeout = null;
@@ -1239,7 +1605,6 @@
             updateRecordButton();
             document.getElementById('autoRestartBadge').style.display = 'none';
 
-            // Re-enable auto-restart for next time
             setTimeout(() => {
                 autoRestartEnabled = true;
             }, 1000);
@@ -1261,21 +1626,14 @@
             }
         }
 
-        function flushBuffer() {
-            if (!socket || !socket.connected) {
-                alert('Not connected to server');
-                return;
-            }
-
-            if (confirm('Send all buffered text to client?\n\nThis will force the system to output incomplete sentences.')) {
-                console.log('📤 Requesting buffer flush...');
-                socket.emit('flush_pending');
-            }
-        }
-
         // ============================================
-        // Transcription Management
+        // Transcription Management with Drag & Drop + Touch Support
         // ============================================
+        let draggedElement = null;
+        let draggedIndex = null;
+        let touchStartY = 0;
+        let touchElement = null;
+
         function renderTranscriptions() {
             const list = document.getElementById('transcriptionsList');
             document.getElementById('itemCount').textContent = translations.length;
@@ -1294,20 +1652,175 @@
             }
 
             const reversed = [...translations].reverse();
-            list.innerHTML = reversed.map(item => `
+            list.innerHTML = reversed.map((item, index) => `
                 <div class="transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
-                     onclick="selectItem(${item.id})">
-                    <input type="checkbox" class="card-checkbox" onclick="event.stopPropagation()">
+                     draggable="true"
+                     data-id="${item.id}"
+                     data-index="${index}"
+                     onclick="selectItem(${item.id})"
+                     ondragstart="handleDragStart(event, ${index})"
+                     ondragend="handleDragEnd(event)"
+                     ondragover="handleDragOver(event)"
+                     ondrop="handleDrop(event, ${index})"
+                     ontouchstart="handleTouchStart(event, ${index})"
+                     ontouchmove="handleTouchMove(event)"
+                     ontouchend="handleTouchEnd(event)">
+                    <div class="drag-handle"
+                         onmousedown="event.stopPropagation()"
+                         ontouchstart="event.stopPropagation()">⋮⋮</div>
+                    <input type="checkbox"
+                           class="card-checkbox"
+                           data-id="${item.id}"
+                           ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
+                           onclick="handleCheckboxClick(event, ${item.id})">
                     <div class="card-content">
                         <div class="card-header">
                             <span class="card-time">${item.timestamp}</span>
                             ${item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : ''}
-                            ${item.is_merged ? '<span class="card-badge" style="background: var(--primary);">🔗 Merged</span>' : ''}
                         </div>
                         <div class="card-text">${escapeHtml(item.corrected)}</div>
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Desktop drag handlers
+        function handleDragStart(event, index) {
+            draggedElement = event.target;
+            draggedIndex = index;
+            event.target.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/html', event.target.innerHTML);
+        }
+
+        function handleDragEnd(event) {
+            event.target.classList.remove('dragging');
+            document.querySelectorAll('.transcription-card').forEach(card => {
+                card.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(event) {
+            if (event.preventDefault) {
+                event.preventDefault();
+            }
+            event.dataTransfer.dropEffect = 'move';
+
+            const target = event.target.closest('.transcription-card');
+            if (target && target !== draggedElement) {
+                target.classList.add('drag-over');
+            }
+
+            return false;
+        }
+
+        function handleDrop(event, dropIndex) {
+            if (event.stopPropagation) {
+                event.stopPropagation();
+            }
+
+            event.target.closest('.transcription-card')?.classList.remove('drag-over');
+
+            if (draggedIndex !== dropIndex) {
+                reorderTranslations(draggedIndex, dropIndex);
+            }
+
+            return false;
+        }
+
+        // Touch handlers for mobile
+        function handleTouchStart(event, index) {
+            // Only handle if touching the drag handle
+            if (!event.target.classList.contains('drag-handle')) {
+                return;
+            }
+
+            event.preventDefault();
+            touchElement = event.currentTarget;
+            draggedIndex = index;
+            touchStartY = event.touches[0].clientY;
+
+            touchElement.classList.add('dragging');
+        }
+
+        function handleTouchMove(event) {
+            if (!touchElement) return;
+
+            event.preventDefault();
+            const touch = event.touches[0];
+            const deltaY = touch.clientY - touchStartY;
+
+            // Move the element visually
+            touchElement.style.transform = `translateY(${deltaY}px)`;
+            touchElement.style.zIndex = '1000';
+
+            // Find which card we're hovering over
+            const cards = document.querySelectorAll('.transcription-card');
+            let targetIndex = -1;
+
+            cards.forEach((card, idx) => {
+                const rect = card.getBoundingClientRect();
+                const cardMiddle = rect.top + rect.height / 2;
+
+                if (touch.clientY < cardMiddle && idx > 0) {
+                    card.classList.add('drag-over');
+                    targetIndex = idx;
+                } else {
+                    card.classList.remove('drag-over');
+                }
+            });
+        }
+
+        function handleTouchEnd(event) {
+            if (!touchElement) return;
+
+            event.preventDefault();
+
+            // Reset visual state
+            touchElement.style.transform = '';
+            touchElement.style.zIndex = '';
+            touchElement.classList.remove('dragging');
+
+            // Find drop target
+            const cards = document.querySelectorAll('.transcription-card');
+            let dropIndex = -1;
+
+            cards.forEach((card, idx) => {
+                if (card.classList.contains('drag-over')) {
+                    dropIndex = idx;
+                    card.classList.remove('drag-over');
+                }
+            });
+
+            // Perform reorder if valid
+            if (dropIndex !== -1 && dropIndex !== draggedIndex) {
+                reorderTranslations(draggedIndex, dropIndex);
+            }
+
+            touchElement = null;
+            draggedIndex = null;
+        }
+
+        // Shared reorder logic
+        function reorderTranslations(fromIndex, toIndex) {
+            // Reverse array is displayed, so convert indices
+            const actualFromIndex = translations.length - 1 - fromIndex;
+            const actualToIndex = translations.length - 1 - toIndex;
+
+            // Reorder the array
+            const [removed] = translations.splice(actualFromIndex, 1);
+            translations.splice(actualToIndex, 0, removed);
+
+            // Send update to server
+            socket.emit('update_order', { translations });
+
+            // Re-render
+            renderTranscriptions();
+        }
+
+        function handleCheckboxClick(event, id) {
+            event.stopPropagation();
+            selectItem(id);
         }
 
         function selectItem(id) {
@@ -1373,7 +1886,6 @@
 
             alert('✅ Correction saved and broadcasted to all clients!');
 
-            // Clear selection
             setTimeout(() => {
                 cancelCorrection();
             }, 500);
@@ -1400,7 +1912,17 @@
             const format = prompt('Export format:\n\n• txt - Plain text\n• json - JSON data\n• srt - Subtitle format\n\nEnter format:', 'txt');
             if (!format) return;
 
-            window.open(`${SERVER_URL}/api/export/${format}`, '_blank');
+            // Create download URL with authentication token
+            const exportUrl = `${SERVER_URL}/api/export/${format}?token=${encodeURIComponent(authToken)}`;
+
+            // Open in new tab
+            const link = document.createElement('a');
+            link.href = exportUrl;
+            link.target = '_blank';
+            link.download = `transcriptions.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // ============================================
@@ -1436,7 +1958,6 @@
                     `Status: ${data.status}\n` +
                     `Clients: ${data.clients}\n` +
                     `Translations: ${data.translations}\n` +
-                    `Buffers: ${data.pending_buffers || 0}\n` +
                     `Recording: ${isRecording ? '🔴 Active' : '⚪ Stopped'}\n` +
                     `Language: ${recognitionLanguage}`;
             } catch (error) {
@@ -1457,13 +1978,11 @@
         // Keyboard Shortcuts
         // ============================================
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + R: Toggle recording
             if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
                 e.preventDefault();
                 toggleRecording();
             }
 
-            // Ctrl/Cmd + S: Save correction
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 if (selectedItem) {
@@ -1471,7 +1990,6 @@
                 }
             }
 
-            // Escape: Cancel correction
             if (e.key === 'Escape') {
                 if (selectedItem) {
                     cancelCorrection();
@@ -1479,9 +1997,6 @@
             }
         });
 
-        // ============================================
-        // Initialization Complete
-        // ============================================
         console.log('✅ EzySpeechTranslate Admin Panel Ready');
         console.log('📝 Keyboard Shortcuts:');
         console.log('   Ctrl+R: Toggle recording');

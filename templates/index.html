@@ -47,8 +47,8 @@
         .pf-c-page__header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 0 2rem;
-            height: 60px;
+            padding: 0 1rem;
+            min-height: 60px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -56,12 +56,15 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            gap: 0.5rem;
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 0.75rem;
+            flex: 1;
+            min-width: 0;
         }
 
         .brand {
@@ -71,6 +74,7 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .connection-badge {
@@ -81,6 +85,7 @@
             border-radius: 3px;
             font-size: 0.875rem;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .connection-badge.online {
@@ -149,7 +154,53 @@
         .pf-c-page__main {
             display: flex;
             height: calc(100vh - 60px);
-            padding-bottom: 100px;
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 1.25rem;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+        }
+
+        .mobile-menu-toggle.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Mobile Sidebar Overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
         }
 
         /* Sidebar */
@@ -160,6 +211,155 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        /* About Button */
+        .about-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .about-btn:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+        }
+
+        /* About Modal - Same as admin */
+        .about-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .about-modal.active {
+            display: flex;
+        }
+
+        .about-content {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px var(--shadow);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .about-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .about-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .about-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .about-close:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .about-body {
+            color: var(--text);
+            line-height: 1.8;
+        }
+
+        .about-body h3 {
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .about-body p {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .about-links {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .about-link {
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .about-link:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .about-version {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.813rem;
+            color: var(--text-secondary);
         }
 
         .sidebar-section {
@@ -495,14 +695,126 @@
         }
 
         @media (max-width: 768px) {
+            /* Show mobile menu toggle */
+            .mobile-menu-toggle {
+                display: flex;
+            }
+
+            /* Hide sidebar by default on mobile */
+            .pf-c-page__sidebar {
+                position: fixed;
+                top: 60px;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 1000;
+                transform: translateX(-100%);
+            }
+
+            .pf-c-page__sidebar.mobile-open {
+                transform: translateX(0);
+                box-shadow: 4px 0 12px var(--shadow);
+            }
+
+            .pf-c-page__header {
+                padding: 0 1rem;
+                height: auto;
+                min-height: 60px;
+                flex-wrap: wrap;
+            }
+
+            .header-left {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .brand {
+                font-size: 1rem;
+            }
+
+            .header-right {
+                gap: 0.5rem;
+            }
+
+            .theme-toggle span:last-child,
+            .about-btn span:last-child {
+                display: none;
+            }
+
             .pf-c-page__main {
                 flex-direction: column;
             }
 
-            .pf-c-page__sidebar {
+            .pf-c-page__main-section {
+                padding: 1rem;
                 width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
+            }
+
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .translation-card {
+                padding: 1rem;
+            }
+
+            .text-source {
+                font-size: 0.875rem;
+            }
+
+            .text-target {
+                font-size: 1rem;
+            }
+
+            .tts-icon {
+                padding: 0.375rem 0.625rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .connection-badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
+
+            .content-title {
+                font-size: 1.25rem;
+            }
+
+            .card-time {
+                font-size: 0.75rem;
+            }
+
+            .text-target {
+                font-size: 0.938rem;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .pf-c-button {
+                min-height: 44px;
+            }
+
+            .tts-icon {
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            .translation-card {
+                min-height: 80px;
+            }
+
+            .slider::-webkit-slider-thumb {
+                width: 24px;
+                height: 24px;
+            }
+
+            .slider::-moz-range-thumb {
+                width: 24px;
+                height: 24px;
             }
         }
     </style>
@@ -515,9 +827,12 @@
     <!-- Header -->
     <header class="pf-c-page__header">
         <div class="header-left">
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
+                <span>☰</span>
+            </button>
             <div class="brand">
                 <span>🎙️</span>
-                <span>EzySpeechTranslate - UserClient</span>
+                <span>EzySpeechTranslate</span>
             </div>
             <div id="statusBadge" class="connection-badge offline">
                 <span class="status-dot"></span>
@@ -525,6 +840,10 @@
             </div>
         </div>
         <div class="header-right">
+            <button class="about-btn" onclick="showAbout()">
+                <span>ℹ️</span>
+                <span>About</span>
+            </button>
             <button class="theme-toggle" onclick="toggleTheme()">
                 <span id="themeIcon">🌙</span>
                 <span id="themeText">Dark</span>
@@ -532,10 +851,13 @@
         </div>
     </header>
 
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+
     <!-- Main Content -->
     <div class="pf-c-page__main">
         <!-- Sidebar -->
-        <aside class="pf-c-page__sidebar">
+        <aside class="pf-c-page__sidebar" id="sidebar">
             <div class="sidebar-section">
                 <h3 class="sidebar-title">Translation Settings</h3>
 
@@ -633,42 +955,57 @@
         </section>
     </div>
 
-    <!-- Footer -->
-    <div style="
-        text-align: center;
-        padding: 8px;
-        border-top: 1px solid var(--border);
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: var(--surface);
-        z-index: 100;
-        box-shadow: 0 -2px 4px var(--shadow);
-    ">
-        <div style="margin-bottom: 4px;">
-            Made with ❤️ by Ga Hing Woo for breaking language barriers
-        </div>
-        <div style="font-style: bold; margin-bottom: 4px;">
-            🌍 Because everyone deserves to be understood
-        </div>
-        <div>
-            <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose" 
-               target="_blank" 
-               style="
-                color: var(--primary);
-                text-decoration: none;
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-               "
-            >
-                <span>Issues?</span>
-                <span>Post on GitHub</span>
-                <span style="font-size: 1.1em;">→</span>
-            </a>
+    <!-- About Modal -->
+    <div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title">
+                    <span>🎙️</span>
+                    <span>EzySpeechTranslate</span>
+                </div>
+                <button class="about-close" onclick="hideAbout()">✕</button>
+            </div>
+            <div class="about-body">
+                <p><strong>Real-time Speech Translation System</strong></p>
+                <p>🌍 Because everyone deserves to be understood</p>
+
+                <h3>Features</h3>
+                <p>• Real-time speech translation<br>
+                   • 20+ languages supported<br>
+                   • Text-to-Speech with adjustable speed<br>
+                   • Download subtitles<br>
+                   • Mobile-friendly interface</p>
+
+                <h3>How to Use</h3>
+                <p>1. Wait for translations from admin<br>
+                   2. Select your target language<br>
+                   3. Enable TTS to hear translations<br>
+                   4. Download subtitles anytime</p>
+
+                <h3>Made with ❤️ by</h3>
+                <p>Ga Hing Woo</p>
+
+                <div class="about-links">
+                    <a href="https://github.com/gahingwoo/ezy_speech_translate"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="about-link">
+                        <span>⭐</span>
+                        <span>Star on GitHub</span>
+                    </a>
+                    <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="about-link">
+                        <span>💬</span>
+                        <span>Feedback</span>
+                    </a>
+                </div>
+
+                <div class="about-version">
+                    v3.0.1 • Open Source • MIT License
+                </div>
+            </div>
         </div>
     </div>
 
@@ -703,6 +1040,59 @@
             'ms': 'ms-MY',
             'hi': 'hi-IN'
         };
+
+        // ============================================
+        // Mobile Menu Management
+        // ============================================
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggle = document.getElementById('mobileMenuToggle');
+
+            const isOpen = sidebar.classList.contains('mobile-open');
+
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+                toggle.classList.remove('active');
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('active');
+                toggle.classList.add('active');
+            }
+        }
+
+        // Close mobile menu when clicking outside
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggle = document.getElementById('mobileMenuToggle');
+
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            toggle.classList.remove('active');
+        }
+
+        // ============================================
+        // About Modal Management
+        // ============================================
+        function showAbout() {
+            document.getElementById('aboutModal').classList.add('active');
+        }
+
+        function hideAbout(event) {
+            if (!event || event.target.id === 'aboutModal' || event.target.classList.contains('about-close')) {
+                document.getElementById('aboutModal').classList.remove('active');
+            }
+        }
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideAbout();
+                closeMobileMenu();
+            }
+        });
 
         // Show sync indicator
         function showSyncIndicator() {
