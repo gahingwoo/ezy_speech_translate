@@ -590,15 +590,8 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.0.0 (Current)
-- ✨ Unified user interface matching admin style
-- ✨ Click-to-select transcriptions with checkbox integration
-- ✨ Custom port selection during setup
-- ✨ Removed sentence merger (direct pass-through)
-- ✨ Improved dark mode support
-- ✨ Enhanced keyboard shortcuts
-- 🐛 Fixed connection stability issues
-- 📚 Updated documentation
+### v3.0.1 (Current)
+- ✨ Add user interface and admin interface support for mobile devices
 
 ---
 

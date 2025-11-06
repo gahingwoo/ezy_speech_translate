@@ -43,7 +43,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Header / Navigation */
         .pf-c-page__header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
@@ -132,6 +131,7 @@
         }
 
         .theme-toggle,
+        .about-btn,
         .logout-btn {
             background: none;
             border: 1px solid var(--border);
@@ -147,18 +147,80 @@
         }
 
         .theme-toggle:hover,
+        .about-btn:hover,
         .logout-btn:hover {
             background: var(--bg);
             border-color: var(--primary);
         }
 
-        /* Main Layout */
+        .header-right .theme-toggle,
+        .header-right .about-btn {
+            display: flex;
+        }
+
+        .sidebar-menu-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-menu-section .theme-toggle,
+        .sidebar-menu-section .about-btn {
+            display: none;
+            width: 100%;
+            justify-content: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 1.25rem;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: var(--bg);
+            border-color: var(--primary);
+        }
+
+        .mobile-menu-toggle.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
         .pf-c-page__main {
             display: flex;
             height: calc(100vh - 60px);
         }
 
-        /* Sidebar */
         .pf-c-page__sidebar {
             width: 280px;
             background: var(--surface);
@@ -169,27 +231,6 @@
             transition: transform 0.3s ease;
         }
 
-        /* About Button */
-        .about-btn {
-            background: none;
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 0.5rem 1rem;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-        }
-
-        .about-btn:hover {
-            background: var(--bg);
-            border-color: var(--primary);
-        }
-
-        /* About Modal */
         .about-modal {
             display: none;
             position: fixed;
@@ -210,9 +251,11 @@
         .about-content {
             background: var(--surface);
             border-radius: 8px;
-            padding: 2rem;
-            max-width: 500px;
+            padding: 1.5rem;
+            max-width: 400px;
             width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
             box-shadow: 0 10px 40px var(--shadow);
             animation: modalSlideIn 0.3s ease;
         }
@@ -232,13 +275,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
             border-bottom: 2px solid var(--border);
         }
 
         .about-title {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
             color: var(--primary);
             display: flex;
@@ -249,11 +292,11 @@
         .about-close {
             background: none;
             border: none;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             color: var(--text-secondary);
             cursor: pointer;
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -268,35 +311,36 @@
 
         .about-body {
             color: var(--text);
-            line-height: 1.8;
+            line-height: 1.6;
+            font-size: 0.875rem;
         }
 
         .about-body h3 {
-            font-size: 1.1rem;
-            margin-top: 1rem;
+            font-size: 1rem;
+            margin-top: 0.75rem;
             margin-bottom: 0.5rem;
             color: var(--primary);
         }
 
         .about-body p {
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
             color: var(--text-secondary);
         }
 
         .about-links {
             display: flex;
             gap: 0.5rem;
-            margin-top: 1.5rem;
+            margin-top: 1rem;
             flex-wrap: wrap;
         }
 
         .about-link {
-            padding: 0.5rem 1rem;
+            padding: 0.5rem 0.75rem;
             background: var(--primary);
             color: white;
             text-decoration: none;
             border-radius: 4px;
-            font-size: 0.875rem;
+            font-size: 0.813rem;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
@@ -310,10 +354,10 @@
 
         .about-version {
             text-align: center;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
             border-top: 1px solid var(--border);
-            font-size: 0.813rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
         }
 
@@ -424,7 +468,6 @@
             margin-top: 1rem;
         }
 
-        /* Interim Results Display */
         .interim-display {
             background: rgba(0, 102, 204, 0.05);
             border: 1px dashed var(--primary);
@@ -450,7 +493,6 @@
             opacity: 0.5;
         }
 
-        /* Main Content */
         .pf-c-page__main-section {
             flex: 1;
             overflow-y: auto;
@@ -492,7 +534,6 @@
             padding: 0.5rem 1rem;
         }
 
-        /* Transcription List */
         .transcription-list {
             display: flex;
             flex-direction: column;
@@ -592,7 +633,6 @@
             opacity: 0.5;
         }
 
-        /* Edit Panel (Right Side) */
         .edit-panel {
             width: 450px;
             background: var(--surface);
@@ -649,7 +689,6 @@
             border: 1px solid var(--border);
         }
 
-        /* Auto-restart indicator */
         .auto-restart-badge {
             display: inline-flex;
             align-items: center;
@@ -663,7 +702,6 @@
             margin-top: 0.5rem;
         }
 
-        /* Responsive */
         @media (max-width: 1200px) {
             .edit-panel {
                 width: 400px;
@@ -685,6 +723,36 @@
         }
 
         @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex;
+            }
+
+            /* Hide theme and about in header, show in sidebar */
+            .header-right .theme-toggle,
+            .header-right .about-btn {
+                display: none;
+            }
+
+            .sidebar-menu-section .theme-toggle,
+            .sidebar-menu-section .about-btn {
+                display: flex;
+            }
+
+            .pf-c-page__sidebar {
+                position: fixed;
+                top: 60px;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 1000;
+                transform: translateX(-100%);
+            }
+
+            .pf-c-page__sidebar.mobile-open {
+                transform: translateX(0);
+                box-shadow: 4px 0 12px var(--shadow);
+            }
+
             .pf-c-page__header {
                 padding: 0 1rem;
                 height: auto;
@@ -709,7 +777,24 @@
                 gap: 0.5rem;
             }
 
+            .theme-toggle,
+            .about-btn {
+                padding: 0.375rem;
+                min-width: 36px;
+                height: 36px;
+            }
+
             .theme-toggle span:last-child,
+            .about-btn span:last-child {
+                display: none;
+            }
+
+            .logout-btn {
+                padding: 0.375rem;
+                min-width: 36px;
+                height: 36px;
+            }
+
             .logout-btn span:last-child {
                 display: none;
             }
@@ -717,12 +802,6 @@
             .pf-c-page__main {
                 flex-direction: column;
                 padding-bottom: 160px;
-            }
-
-            .pf-c-page__sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
             }
 
             .sidebar-section {
@@ -748,25 +827,10 @@
                 font-size: 0.875rem;
             }
 
-            /* Mobile drag handle - larger touch target */
             .drag-handle {
                 font-size: 1.5rem;
                 padding: 0.5rem;
                 margin: -0.5rem;
-            }
-
-            /* Simplify footer on mobile */
-            .page-footer {
-                font-size: 0.75rem !important;
-                padding: 0.75rem 1rem !important;
-            }
-
-            .footer-content > div {
-                margin-bottom: 0.25rem !important;
-            }
-
-            .footer-link {
-                font-size: 0.75rem !important;
             }
         }
 
@@ -790,10 +854,9 @@
             }
         }
 
-        /* Touch device optimizations */
         @media (hover: none) and (pointer: coarse) {
             .pf-c-button {
-                min-height: 44px; /* Minimum touch target */
+                min-height: 44px;
             }
 
             .card-checkbox {
@@ -805,85 +868,40 @@
                 min-height: 60px;
             }
 
-            /* Make drag handle more prominent on touch */
             .drag-handle {
                 font-size: 1.75rem;
                 color: var(--primary);
             }
         }
 
-        /* Footer Styles */
-        .page-footer {
-            text-align: center;
-            padding: 1rem;
-            border-top: 2px solid var(--border);
-            color: var(--text-secondary);
+        .sidebar-menu-item {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text);
+            cursor: pointer;
             font-size: 0.875rem;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--surface);
-            z-index: 100;
-            box-shadow: 0 -4px 12px var(--shadow);
-            backdrop-filter: blur(10px);
-        }
-
-        .footer-content {
-            max-width: 1200px;
-            margin: 0 auto;
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .footer-heart {
-            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            animation: heartbeat 2s ease-in-out infinite;
+            gap: 0.75rem;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
         }
 
-        @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            10%, 30% { transform: scale(1.1); }
-            20% { transform: scale(0.95); }
-        }
-
-        .footer-divider {
-            width: 40px;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--primary), transparent);
-            margin: 0.5rem auto;
-        }
-
-        .footer-link {
-            color: var(--primary);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-            background: rgba(0, 102, 204, 0.05);
-            border: 1px solid transparent;
-        }
-
-        .footer-link:hover {
-            background: rgba(0, 102, 204, 0.1);
+        .sidebar-menu-item:hover {
+            background: var(--bg);
             border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
         }
 
-        .footer-link-icon {
-            font-size: 1.1em;
-            transition: transform 0.3s ease;
+        .sidebar-menu-item:last-child {
+            margin-bottom: 0;
         }
 
-        .footer-link:hover .footer-link-icon {
-            transform: translateX(4px);
+        .theme-toggle,
+        .about-btn {
+            display: none;
         }
     </style>
 </head>
@@ -926,6 +944,9 @@
         <!-- Header -->
         <header class="pf-c-page__header">
             <div class="header-left">
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
+                    <span>☰</span>
+                </button>
                 <div class="brand">
                     <span>🎙️</span>
                     <span>EzySpeechTranslate Admin</span>
@@ -936,10 +957,6 @@
                 </div>
             </div>
             <div class="header-right">
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="themeIcon">🌙</span>
-                    <span id="themeText">Dark</span>
-                </button>
                 <button class="logout-btn" onclick="logout()">
                     <span>🚪</span>
                     <span>Logout</span>
@@ -947,10 +964,13 @@
             </div>
         </header>
 
+        <!-- Mobile Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+
         <!-- Main Content -->
         <div class="pf-c-page__main">
             <!-- Sidebar -->
-            <aside class="pf-c-page__sidebar">
+            <aside class="pf-c-page__sidebar" id="sidebar">
                 <div class="sidebar-section">
                     <h3 class="sidebar-title">Audio Controls</h3>
 
@@ -1003,6 +1023,22 @@
                         <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()">Clear All</button>
                     </div>
                     <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;" onclick="exportData()">📤 Export</button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Settings</h3>
+                    <div class="control-group">
+                        <button class="sidebar-menu-item" onclick="toggleTheme(); closeMobileMenu();">
+                            <span id="themeIcon">🌙</span>
+                            <span id="themeText">Dark Mode</span>
+                        </button>
+                    </div>
+                    <div class="control-group">
+                        <button class="sidebar-menu-item" onclick="showAbout(); closeMobileMenu();">
+                            <span>ℹ️</span>
+                            <span>About</span>
+                        </button>
+                    </div>
                 </div>
             </aside>
 
@@ -1059,10 +1095,54 @@
         </div>
     </div>
 
+    <!-- About Modal -->
+    <div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title">
+                    <span>🎙️</span>
+                    <span>EzySpeechTranslate</span>
+                </div>
+                <button class="about-close" onclick="hideAbout()">✕</button>
+            </div>
+            <div class="about-body">
+                <p><strong>Real-time Speech Translation</strong></p>
+                <p>🌍 Breaking language barriers</p>
+
+                <h3>Features</h3>
+                <p>• 20+ languages supported<br>
+                   • Real-time transcription<br>
+                   • Auto-correction<br>
+                   • Export functionality</p>
+
+                <h3>Made with ❤️ by</h3>
+                <p>Ga Hing Woo</p>
+
+                <div class="about-links">
+                    <a href="https://github.com/gahingwoo/ezy_speech_translate"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="about-link">
+                        <span>⭐</span>
+                        <span>GitHub</span>
+                    </a>
+                    <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="about-link">
+                        <span>💬</span>
+                        <span>Feedback</span>
+                    </a>
+                </div>
+
+                <div class="about-version">
+                    v3.0.1 • Open Source • MIT License
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // ============================================
-        // Configuration
-        // ============================================
         let SERVER_URL = '';
         let socket = null;
         let authToken = null;
@@ -1075,9 +1155,6 @@
         let restartTimeout = null;
         let finalTranscript = '';
 
-        // ============================================
-        // Mobile Menu Management
-        // ============================================
         function toggleMobileMenu() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -1096,7 +1173,6 @@
             }
         }
 
-        // Close mobile menu when clicking outside
         function closeMobileMenu() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -1107,39 +1183,36 @@
             toggle.classList.remove('active');
         }
 
-        // ============================================
-        // About Modal Management
-        // ============================================
         function showAbout() {
             document.getElementById('aboutModal').classList.add('active');
         }
 
         function hideAbout(event) {
-            // Only close if clicking outside content or on close button
             if (!event || event.target.id === 'aboutModal' || event.target.classList.contains('about-close')) {
                 document.getElementById('aboutModal').classList.remove('active');
             }
         }
 
-        // Close about modal with Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                hideAbout();
-                closeMobileMenu();
-            }
-        });
-
-        // ============================================
-        // Theme Management
-        // ============================================
         function toggleTheme() {
             const current = document.documentElement.getAttribute('data-theme');
             const newTheme = current === 'light' ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
 
-            document.getElementById('themeIcon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-            document.getElementById('themeText').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+            updateThemeUI(newTheme);
+        }
+
+        function updateThemeUI(theme) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+
+            if (theme === 'dark') {
+                if (icon) icon.textContent = '☀️';
+                if (text) text.textContent = 'Light Mode';
+            } else {
+                if (icon) icon.textContent = '🌙';
+                if (text) text.textContent = 'Dark Mode';
+            }
         }
 
         function toggleLoginTheme() {
@@ -1152,18 +1225,13 @@
             document.getElementById('loginThemeText').textContent = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
         }
 
-        // Initialize theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        const storedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', storedTheme);
 
-        // Update theme button on page load
         window.addEventListener('DOMContentLoaded', () => {
-            if (savedTheme === 'dark') {
-                const themeIcon = document.getElementById('themeIcon');
-                const themeText = document.getElementById('themeText');
-                if (themeIcon) themeIcon.textContent = '☀️';
-                if (themeText) themeText.textContent = 'Light';
+            updateThemeUI(storedTheme);
 
+            if (storedTheme === 'dark') {
                 const loginThemeIcon = document.getElementById('loginThemeIcon');
                 const loginThemeText = document.getElementById('loginThemeText');
                 if (loginThemeIcon) loginThemeIcon.textContent = '☀️';
@@ -1171,9 +1239,31 @@
             }
         });
 
-        // ============================================
-        // Login & Authentication
-        // ============================================
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideAbout();
+                closeMobileMenu();
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                toggleRecording();
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (selectedItem) {
+                    saveCorrection();
+                }
+            }
+
+            if (e.key === 'Escape') {
+                if (selectedItem) {
+                    cancelCorrection();
+                }
+            }
+        });
+
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -1223,13 +1313,11 @@
             }
         }
 
-        // Enter key login
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('password').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') login();
             });
 
-            // Load server configuration
             try {
                 const response = await fetch('/api/config');
                 const config = await response.json();
@@ -1240,7 +1328,6 @@
                 SERVER_URL = `${window.location.protocol}//${window.location.hostname}:1915`;
             }
 
-            // Check for saved auth token
             const savedToken = localStorage.getItem('authToken');
             if (savedToken) {
                 authToken = savedToken;
@@ -1256,9 +1343,6 @@
             startSystemMonitor();
         }
 
-        // ============================================
-        // WebSocket Connection
-        // ============================================
         function connectWebSocket() {
             console.log('🔌 Connecting to WebSocket:', SERVER_URL);
             console.log('🔑 Using token:', authToken ? 'Yes' : 'No');
@@ -1274,7 +1358,6 @@
                 console.log('✅ WebSocket connected - SID:', socket.id);
                 updateStatus(true);
 
-                // Send admin connect with token
                 if (authToken) {
                     console.log('📤 Sending admin_connect...');
                     socket.emit('admin_connect', { token: authToken });
@@ -1306,7 +1389,6 @@
             socket.on('error', (error) => {
                 console.error('❌ Socket error:', error);
 
-                // Check if it's an authentication error
                 if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Invalid token'))) {
                     alert('Session expired. Please login again.');
                     localStorage.removeItem('authToken');
@@ -1350,16 +1432,13 @@
             const badge = document.getElementById('statusBadge');
             if (connected) {
                 badge.className = 'connection-badge online';
-                badge.querySelector('span:last-child').textContent = 'Connected to Server';
+                badge.querySelector('span:last-child').textContent = 'User Server is Oline';
             } else {
                 badge.className = 'connection-badge offline';
-                badge.querySelector('span:last-child').textContent = 'Disconnected';
+                badge.querySelector('span:last-child').textContent = 'User Server is Offline';
             }
         }
 
-        // ============================================
-        // Speech Recognition with Auto-Restart
-        // ============================================
         async function loadAudioDevices() {
             const select = document.getElementById('deviceSelect');
 
@@ -1552,9 +1631,6 @@
             }
         }
 
-        // ============================================
-        // Recording Controls
-        // ============================================
         async function toggleRecording() {
             if (!recognition) {
                 alert('Speech Recognition not initialized. Please refresh.');
@@ -1626,9 +1702,6 @@
             }
         }
 
-        // ============================================
-        // Transcription Management with Drag & Drop + Touch Support
-        // ============================================
         let draggedElement = null;
         let draggedIndex = null;
         let touchStartY = 0;
@@ -1684,7 +1757,6 @@
             `).join('');
         }
 
-        // Desktop drag handlers
         function handleDragStart(event, index) {
             draggedElement = event.target;
             draggedIndex = index;
@@ -1728,9 +1800,7 @@
             return false;
         }
 
-        // Touch handlers for mobile
         function handleTouchStart(event, index) {
-            // Only handle if touching the drag handle
             if (!event.target.classList.contains('drag-handle')) {
                 return;
             }
@@ -1750,11 +1820,9 @@
             const touch = event.touches[0];
             const deltaY = touch.clientY - touchStartY;
 
-            // Move the element visually
             touchElement.style.transform = `translateY(${deltaY}px)`;
             touchElement.style.zIndex = '1000';
 
-            // Find which card we're hovering over
             const cards = document.querySelectorAll('.transcription-card');
             let targetIndex = -1;
 
@@ -1776,12 +1844,10 @@
 
             event.preventDefault();
 
-            // Reset visual state
             touchElement.style.transform = '';
             touchElement.style.zIndex = '';
             touchElement.classList.remove('dragging');
 
-            // Find drop target
             const cards = document.querySelectorAll('.transcription-card');
             let dropIndex = -1;
 
@@ -1792,7 +1858,6 @@
                 }
             });
 
-            // Perform reorder if valid
             if (dropIndex !== -1 && dropIndex !== draggedIndex) {
                 reorderTranslations(draggedIndex, dropIndex);
             }
@@ -1801,20 +1866,15 @@
             draggedIndex = null;
         }
 
-        // Shared reorder logic
         function reorderTranslations(fromIndex, toIndex) {
-            // Reverse array is displayed, so convert indices
             const actualFromIndex = translations.length - 1 - fromIndex;
             const actualToIndex = translations.length - 1 - toIndex;
 
-            // Reorder the array
             const [removed] = translations.splice(actualFromIndex, 1);
             translations.splice(actualToIndex, 0, removed);
 
-            // Send update to server
             socket.emit('update_order', { translations });
 
-            // Re-render
             renderTranscriptions();
         }
 
@@ -1834,9 +1894,6 @@
             renderTranscriptions();
         }
 
-        // ============================================
-        // CRUD Operations
-        // ============================================
         function addNewItem() {
             const text = prompt('Enter transcription text:');
             if (!text) return;
@@ -1912,10 +1969,8 @@
             const format = prompt('Export format:\n\n• txt - Plain text\n• json - JSON data\n• srt - Subtitle format\n\nEnter format:', 'txt');
             if (!format) return;
 
-            // Create download URL with authentication token
             const exportUrl = `${SERVER_URL}/api/export/${format}?token=${encodeURIComponent(authToken)}`;
 
-            // Open in new tab
             const link = document.createElement('a');
             link.href = exportUrl;
             link.target = '_blank';
@@ -1925,9 +1980,6 @@
             document.body.removeChild(link);
         }
 
-        // ============================================
-        // System Monitor
-        // ============================================
         function startSystemMonitor() {
             updateSystemInfo();
             setInterval(updateSystemInfo, 2000);
@@ -1965,37 +2017,11 @@
             }
         }
 
-        // ============================================
-        // Utility Functions
-        // ============================================
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
-
-        // ============================================
-        // Keyboard Shortcuts
-        // ============================================
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-                e.preventDefault();
-                toggleRecording();
-            }
-
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                if (selectedItem) {
-                    saveCorrection();
-                }
-            }
-
-            if (e.key === 'Escape') {
-                if (selectedItem) {
-                    cancelCorrection();
-                }
-            }
-        });
 
         console.log('✅ EzySpeechTranslate Admin Panel Ready');
         console.log('📝 Keyboard Shortcuts:');
