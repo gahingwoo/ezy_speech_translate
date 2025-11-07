@@ -26,7 +26,7 @@ except Exception as e:
     config = {}
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 

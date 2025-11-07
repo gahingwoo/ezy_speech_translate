@@ -132,8 +132,8 @@ def copy_web_template():
     """Copy web template to templates directory"""
     print_step(7, "Setting up web interface...")
 
-    if not os.path.exists("templates/index.html"):
-        print("⚠️  Please ensure index.html is in templates/ directory")
+    if not os.path.exists("templates/user.html"):
+        print("⚠️  Please ensure user.html is in templates/ directory")
         print("   You can create it manually from the provided HTML")
         return True
 

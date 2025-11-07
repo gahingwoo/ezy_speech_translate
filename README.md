@@ -34,7 +34,7 @@ A production-ready real-time speech translation system with secure authenticatio
           │
 ┌─────────▼───────────┐
 │   User Clients      │ ◄─── Browser Interface
-│   (index.html)      │      Real-time translations
+│   (user.html)      │      Real-time translations
 └─────────────────────┘
 ```
 
@@ -519,7 +519,7 @@ translation:
     - "your-language-code"
 ```
 
-Add to `index.html`:
+Add to `user.html`:
 
 ```html
 <option value="your-code">Your Language Name</option>
@@ -527,7 +527,7 @@ Add to `index.html`:
 
 ### Custom Styling
 
-Modify CSS variables in `index.html` or `admin.html`:
+Modify CSS variables in `user.html` or `admin.html`:
 
 ```css
 :root {
@@ -590,8 +590,9 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.0.1 (Current)
-- ✨ Add user interface and admin interface support for mobile devices
+### v3.0.2 (Current)
+- Add asr warmup
+- Separate js, css, and html.
 
 ---
 

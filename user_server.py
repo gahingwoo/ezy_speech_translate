@@ -60,7 +60,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.config['SECRET_KEY'] = config.get('server', 'secret_key')
 CORS(app)
 
@@ -109,7 +109,7 @@ def require_auth(f):
 @app.route('/')
 def index():
     """Main client interface"""
-    return render_template('index.html')
+    return render_template('user.html')
 
 
 @app.route('/admin')
