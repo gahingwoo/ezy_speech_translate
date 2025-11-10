@@ -18,8 +18,8 @@ eventlet==0.33.3
 # ============================================
 # Audio Processing (Optional - for future features)
 # ============================================
-sounddevice==0.4.6
-numpy==1.24.3
+# sounddevice==0.4.6
+# numpy==1.24.3
 # av==12.0.0  # Uncomment if using audio recording features
 
 # ============================================

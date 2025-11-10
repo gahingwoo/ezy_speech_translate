@@ -1,6 +1,6 @@
 """
-EzySpeechTranslate Admin Frontend Server
-Serves the admin HTML interface on a separate port
+EzySpeechTranslate Admin Frontend Server (HTTPS Version)
+Serves the admin HTML interface securely with eventlet SSL
 """
 
 from flask import Flask, render_template, jsonify
@@ -9,6 +9,8 @@ from flask_socketio import SocketIO
 import yaml
 import logging
 import os
+import eventlet
+import eventlet.wsgi
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +35,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Admin server configuration
 ADMIN_PORT = config.get('admin_server', {}).get('port', 5001)
 ADMIN_HOST = config.get('admin_server', {}).get('host', '0.0.0.0')
-MAIN_SERVER_PORT = config.get('server', {}).get('port', 5000)
+MAIN_SERVER_PORT = config.get('server', {}).get('port', 1915)
 
 @app.route('/')
 def index():
@@ -58,17 +60,35 @@ def not_found(error):
     return {'error': 'Not found'}, 404
 
 if __name__ == '__main__':
-    logger.info(f"Starting EzySpeechTranslate Admin Frontend Server...")
-    logger.info(f"Admin Interface: http://{ADMIN_HOST}:{ADMIN_PORT}")
+    logger.info("Starting EzySpeechTranslate Admin Frontend Server (HTTPS)...")
+    logger.info(f"Admin Interface: https://{ADMIN_HOST}:{ADMIN_PORT}")
     logger.info(f"User Client should be running on: http://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 
-    # Create templates directory if not exists
+    # Ensure templates directory exists
     os.makedirs('templates', exist_ok=True)
 
-    # Replace app.run() with socketio.run()
-    socketio.run(
-        app,
-        host=ADMIN_HOST,
-        port=ADMIN_PORT,
-        debug=config.get('admin_server', {}).get('debug', False)
-    )
+    cert_file = 'cert.pem'
+    key_file = 'key.pem'
+
+    if not (os.path.exists(cert_file) and os.path.exists(key_file)):
+        logger.error("SSL certificate or key not found!")
+        print("\nGenerate with:\n")
+        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
+        exit(1)
+
+    try:
+        listener = eventlet.listen((ADMIN_HOST, ADMIN_PORT))
+        ssl_listener = eventlet.wrap_ssl(
+            listener,
+            certfile=cert_file,
+            keyfile=key_file,
+            server_side=True
+        )
+
+        eventlet.wsgi.server(ssl_listener, app)
+    except PermissionError:
+        logger.error(f"Permission denied on port {ADMIN_PORT}. Try port > 1024 or run with sudo.")
+    except OSError as e:
+        logger.error(f"Failed to bind on {ADMIN_PORT}: {e}")
+    except Exception as e:
+        logger.error(f"Server failed to start: {e}")

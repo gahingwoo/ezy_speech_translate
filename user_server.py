@@ -1,5 +1,5 @@
 """
-EzySpeechTranslate Backend Server - Simplified Version
+EzySpeechTranslate Backend Server - Simplified HTTPS Version
 Real-time speech recognition and translation system
 Removed: Sentence merging functionality
 """
@@ -9,7 +9,7 @@ import yaml
 import logging
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 import jwt
@@ -17,40 +17,38 @@ from functools import wraps
 import hashlib
 
 
-# Configuration loader
+# Configuration Loader 
 class Config:
     def __init__(self, config_path='config.yaml'):
         with open(config_path, 'r') as f:
             self.data = yaml.safe_load(f)
 
     def get(self, *keys, default=None):
-        """Get nested config value"""
+        """Safely get nested config value"""
         val = self.data
         for key in keys:
             if isinstance(val, dict):
-                val = val.get(key)
+                val = val.get(key, default)
             else:
-                return default
-            if val is None:
                 return default
         return val
 
 
-# Initialize config
 config = Config()
 
-# Setup logging
-log_dir = os.path.dirname(config.get('logging', 'file', default='logs/app.log'))
-if log_dir and not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+
+# Logging Setup 
+log_file = config.get('logging', 'file', default='logs/app.log')
+log_dir = os.path.dirname(log_file)
+os.makedirs(log_dir, exist_ok=True)
 
 logging.basicConfig(
     level=config.get('logging', 'level', default='INFO'),
-    format=config.get('logging', 'format'),
+    format=config.get('logging', 'format', default='%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
     handlers=[
         RotatingFileHandler(
-            config.get('logging', 'file', default='logs/app.log'),
-            maxBytes=config.get('logging', 'max_bytes', default=10485760),
+            log_file,
+            maxBytes=config.get('logging', 'max_bytes', default=10 * 1024 * 1024),
             backupCount=config.get('logging', 'backup_count', default=5)
         ),
         logging.StreamHandler()
@@ -59,31 +57,28 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
-app = Flask(__name__, static_folder='static')
-app.config['SECRET_KEY'] = config.get('server', 'secret_key')
-CORS(app)
 
-# Initialize SocketIO
+# Flask Initialization 
+app = Flask(__name__, static_folder='static')
+app.config['SECRET_KEY'] = config.get('server', 'secret_key', default='changeme')
+CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-# In-memory storage
+
+# In-memory Storage 
 translations_history = []
 connected_clients = set()
 admin_sessions = {}
 
 
-# Authentication decorator
+# Authentication
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not config.get('authentication', 'enabled', default=True):
             return f(*args, **kwargs)
 
-        # Try to get token from header first
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
-
-        # If not in header, try URL parameter (for export/download links)
         if not token:
             token = request.args.get('token', '')
 
@@ -93,7 +88,7 @@ def require_auth(f):
         try:
             jwt.decode(
                 token,
-                config.get('authentication', 'jwt_secret'),
+                config.get('authentication', 'jwt_secret', default='secret'),
                 algorithms=['HS256']
             )
             return f(*args, **kwargs)
@@ -387,20 +382,43 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 
-# Main entry point
+# HTTPS Server Start 
 if __name__ == '__main__':
-    logger.info("Starting EzySpeechTranslate Server (Simplified Version)...")
-    logger.info(f"Authentication: {'Enabled' if config.get('authentication', 'enabled') else 'Disabled'}")
-    logger.info(f"Server: {config.get('server', 'host')}:{config.get('server', 'port')}")
+    logger.info("Starting EzySpeechTranslate Server (Simplified HTTPS Version)...")
 
-    # Create necessary directories
+    auth_enabled = config.get('authentication', 'enabled', default=True)
+    logger.info(f"Authentication: {'Enabled' if auth_enabled else 'Disabled'}")
+
+    host = config.get('server', 'host', default='0.0.0.0')
+    port = config.get('server', 'port', default=5000)
+    debug = config.get('server', 'debug', default=False)
+
+    logger.info(f"Server: {host}:{port}")
+
     for directory in ['logs', 'exports', 'data', 'templates']:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        os.makedirs(directory, exist_ok=True)
 
-    socketio.run(
-        app,
-        host=config.get('server', 'host', default='0.0.0.0'),
-        port=config.get('server', 'port', default=5000),
-        debug=config.get('server', 'debug', default=False)
-    )
+    cert_file = 'cert.pem'
+    key_file = 'key.pem'
+    if not (os.path.exists(cert_file) and os.path.exists(key_file)):
+        logger.error("SSL certificate or key not found!")
+        print("\nGenerate with:\n")
+        print("  openssl req -x509 -newkey rsa:4096 -nodes \\")
+        print("    -out cert.pem -keyout key.pem -days 365 \\")
+        print('    -subj "/CN=localhost"\n')
+        exit(1)
+
+    try:
+        import eventlet
+        import eventlet.wsgi
+
+        listener = eventlet.listen((host, port))
+        ssl_listener = eventlet.wrap_ssl(listener, certfile=cert_file, keyfile=key_file, server_side=True)
+        logger.info(f"Server is running at https://{host}:{port}")
+        eventlet.wsgi.server(ssl_listener, app)
+    except PermissionError:
+        logger.error(f"Permission denied on port {port}. Try port > 1024 or run with sudo.")
+    except OSError as e:
+        logger.error(f"Failed to bind on port {port}: {e}")
+    except Exception as e:
+        logger.error(f"Server failed to start: {e}")

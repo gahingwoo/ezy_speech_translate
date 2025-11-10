@@ -40,7 +40,7 @@ A production-ready real-time speech translation system with secure authenticatio
 
 ## 📋 Prerequisites
 
-- Python 3.8-3.12
+- Python 3.8-3.14
 - Microphone or audio input device
 - Modern web browser (Chrome/Edge recommended for speech recognition)
 - 2GB+ RAM
@@ -102,7 +102,7 @@ start_server.bat
 venv/bin/python user_server.py
 ```
 
-The server starts on `http://localhost:1915` (or your configured port)
+The server starts on `https://localhost:1915` (or your configured port)
 
 ### 2. Launch Admin Interface
 
@@ -119,13 +119,14 @@ start_admin.bat
 venv/bin/python admin_server.py
 ```
 
-Admin interface: `http://localhost:1916` (or your configured port)
+Admin interface: `https://localhost:1916` (or your configured port)
 
 ### 3. Access User Interface
 
 Open your browser:
+
 ```
-http://localhost:1915
+https://localhost:1915
 ```
 
 ## 📖 Usage Guide
@@ -133,11 +134,13 @@ http://localhost:1915
 ### Admin Interface Workflow
 
 1. **Login**
-   - Open `http://localhost:1916`
+   
+   - Open `https://localhost:1916`
    - Enter username and  password from config.yaml
    - Click "Sign In"
 
 2. **Start Recording**
+   
    - Select source language (English, Chinese, etc.)
    - Choose audio device (usually "System Default")
    - Click "🎙️ Start Recording"
@@ -145,6 +148,7 @@ http://localhost:1915
    - Speech is automatically recognized and sent
 
 3. **View & Edit Transcriptions**
+   
    - Transcriptions appear in real-time
    - **Click on a card** to select it (checkbox auto-checks)
    - Edit text in "Corrected" field
@@ -152,6 +156,7 @@ http://localhost:1915
    - All connected users see the update instantly
 
 4. **Export Data**
+   
    - Click "📤 Export" button
    - Choose format:
      - **txt** - Plain text with formatting
@@ -161,22 +166,26 @@ http://localhost:1915
 ### User Interface Features
 
 1. **View Translations**
+   
    - Real-time subtitle display
    - Newest translations appear at top
    - Automatic translation to target language
 
 2. **Change Target Language**
+   
    - Select from 20+ languages
    - Translations update automatically
    - Supports: Chinese (Cantonese/Mandarin), Japanese, Korean, Spanish, French, German, and more
 
 3. **Text-to-Speech (TTS)**
+   
    - Click "Enable TTS" to auto-play translations
    - Adjust speed (0.5x to 2.0x)
    - Adjust volume (0% to 100%)
    - Click 🔊 on individual items to hear them
 
 4. **Download Subtitles**
+   
    - Click "💾 Download Subtitles"
    - Saves formatted transcript with timestamps
    - Includes both original and translated text
@@ -217,9 +226,11 @@ authentication:
 ### 1. Change Default Credentials
 
 **During setup:**
+
 - Use strong, unique passwords
 
 **In production:**
+
 ```yaml
 authentication:
   admin_password: "Use-A-Very-Strong-Password-Here"
@@ -227,6 +238,7 @@ authentication:
 ```
 
 Generate secure secrets:
+
 ```python
 import secrets
 print(secrets.token_hex(32))  # For secret keys
@@ -235,23 +247,10 @@ print(secrets.token_urlsafe(16))  # For passwords
 
 ### 2. Use HTTPS in Production
 
-Configure reverse proxy (nginx example):
+Generate SSL Certificate
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:1915;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
+```shell
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
 ```
 
 ### 3. Firewall Configuration
@@ -332,6 +331,7 @@ WantedBy=multi-user.target
 Enable and start:
 
 ```bash
+sudo chcon -R -t bin_t /path/to/venv/bin/ # do this if using SELinux
 sudo systemctl enable ezyspeech-main ezyspeech-admin
 sudo systemctl start ezyspeech-main ezyspeech-admin
 sudo systemctl status ezyspeech-main ezyspeech-admin
@@ -344,6 +344,7 @@ sudo systemctl status ezyspeech-main ezyspeech-admin
 **Problem:** `Address already in use` error
 
 **Solution:**
+
 ```bash
 # Find process using port
 # Linux/macOS:
@@ -362,9 +363,10 @@ taskkill /PID <PID> /F
 **Problem:** Admin/client can't connect
 
 **Solution:**
+
 ```bash
 # 1. Check if server is running
-curl http://localhost:1915/api/health
+curl https://localhost:1915/api/health
 
 # 2. Check firewall
 sudo ufw status
@@ -380,9 +382,10 @@ tail -f logs/app.log
 **Problem:** Browser says "not supported"
 
 **Solution:**
+
 - Use Chrome or Edge (required for Web Speech API)
 - Allow microphone permissions
-- Check if running on HTTPS (required for production)
+- Check if running on HTTPS
 - Verify microphone is working in system settings
 
 ### No Audio Devices
@@ -390,6 +393,7 @@ tail -f logs/app.log
 **Problem:** No microphone found
 
 **Solution:**
+
 ```bash
 # Check system audio
 # Linux:
@@ -410,6 +414,7 @@ sudo usermod -a -G audio $USER
 **Problem:** Translations show "translation failed"
 
 **Solution:**
+
 - Check internet connection (Google Translate API)
 - Clear browser cache
 - Try different target language
@@ -420,9 +425,11 @@ sudo usermod -a -G audio $USER
 ### REST Endpoints
 
 #### POST `/api/login`
+
 Authenticate admin user
 
 **Request:**
+
 ```json
 {
   "username": "admin",
@@ -431,6 +438,7 @@ Authenticate admin user
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -440,26 +448,33 @@ Authenticate admin user
 ```
 
 #### GET `/api/config`
+
 Get configuration (requires auth)
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 ```
 
 #### GET `/api/translations`
+
 Get translation history (requires auth)
 
 #### POST `/api/translations/clear`
+
 Clear all translations (requires auth)
 
 #### GET `/api/export/<format>`
+
 Export translations (txt, json, srt)
 
 #### GET `/api/health`
+
 Health check endpoint
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -474,11 +489,13 @@ Health check endpoint
 #### Client → Server
 
 - `admin_connect`: Authenticate admin session
+  
   ```javascript
   socket.emit('admin_connect', { token: 'JWT_TOKEN' });
   ```
 
 - `new_transcription`: Send new transcription
+  
   ```javascript
   socket.emit('new_transcription', {
     text: 'Hello world',
@@ -488,6 +505,7 @@ Health check endpoint
   ```
 
 - `correct_translation`: Update translation
+  
   ```javascript
   socket.emit('correct_translation', {
     id: 0,
@@ -496,6 +514,7 @@ Health check endpoint
   ```
 
 - `clear_history`: Clear all translations
+  
   ```javascript
   socket.emit('clear_history');
   ```
@@ -590,9 +609,8 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.0.2 (Current)
-- Add asr warmup
-- Separate js, css, and html.
+### v3.0.3 (Current)
+- Using https
 
 ---
 
