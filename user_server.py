@@ -1,7 +1,6 @@
 """
 EzySpeechTranslate Backend Server - Simplified HTTPS Version
 Real-time speech recognition and translation system
-Removed: Sentence merging functionality
 """
 
 import os

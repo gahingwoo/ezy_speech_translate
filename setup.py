@@ -1,6 +1,6 @@
 """
 EzySpeechTranslate Setup Script
-Automated installation and configuration with custom port selection
+Automated installation and configuration with SSL certificate generation
 """
 
 import os
@@ -27,7 +27,12 @@ def run_command(cmd, check=True):
     try:
         result = subprocess.run(cmd, shell=True, check=check,
                                 capture_output=True, text=True)
-        return result.returncode == 0
+        if result.returncode == 0:
+            return True
+        else:
+            if result.stderr:
+                print(f"Error output: {result.stderr}")
+            return False
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
         return False
@@ -44,6 +49,22 @@ def check_python_version():
 
     print(f"✓ Python {version.major}.{version.minor}.{version.micro}")
     return True
+
+
+def check_openssl():
+    """Check if OpenSSL is available"""
+    print_step(2, "Checking OpenSSL...")
+
+    if run_command("openssl version", check=False):
+        result = subprocess.run("openssl version", shell=True,
+                              capture_output=True, text=True)
+        print(f"✓ OpenSSL available: {result.stdout.strip()}")
+        return True
+    else:
+        print("⚠️  OpenSSL not found in PATH")
+        print("   SSL certificates will need to be generated manually")
+        return False
+
 
 def create_virtual_env():
     """Create virtual environment"""
@@ -95,7 +116,7 @@ def create_directories():
     """Create necessary directories"""
     print_step(5, "Creating directories...")
 
-    directories = ['logs', 'exports', 'data', 'templates']
+    directories = ['logs', 'exports', 'data', 'templates', 'static', 'static/css', 'static/js']
 
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
@@ -104,50 +125,79 @@ def create_directories():
     return True
 
 
-def generate_secrets():
-    """Generate random secret keys"""
-    return {
-        'secret_key': secrets.token_hex(32),
-        'jwt_secret': secrets.token_hex(32),
-        'admin_password': secrets.token_urlsafe(16)
-    }
+def generate_ssl_certificates():
+    """Generate self-signed SSL certificates"""
+    print_step(6, "Generating SSL certificates...")
 
+    # Check if certificates already exist
+    if os.path.exists("cert.pem") and os.path.exists("key.pem"):
+        print("✓ SSL certificates already exist")
+        print("  cert.pem - Certificate file")
+        print("  key.pem  - Private key file")
+        return True
 
-def get_port_input(prompt, default):
-    """Get and validate port input"""
-    while True:
-        try:
-            port_input = input(f"{prompt} [{default}]: ").strip() or str(default)
-            port = int(port_input)
+    # Try to generate certificates
+    print("Generating self-signed SSL certificates...")
+    print("(These will be valid for 365 days)")
 
-            if port < 1024 or port > 65535:
-                print("⚠️  Port must be between 1024 and 65535")
-                continue
+    # Prepare OpenSSL command
+    openssl_cmd = (
+        'openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem '
+        '-days 365 -nodes'
+    )
 
-            return port
-        except ValueError:
-            print("⚠️  Invalid port number. Please enter a number.")
+    if run_command(openssl_cmd, check=False):
+        print("✓ SSL certificates generated successfully")
+        print("  cert.pem - Certificate file")
+        print("  key.pem  - Private key file")
+        return True
+    else:
+        print("\n⚠️  Could not auto-generate SSL certificates")
+        print("\nPlease run this command manually:")
+        print("-" * 60)
+        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem \\")
+        print("  -days 365 -nodes")
+        print("-" * 60)
+        print("\nOr on Windows:")
+        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
+        print("\n(You can continue setup, but servers won't start without certificates)")
+
+        # Ask user if they want to continue
+        response = input("\nContinue setup anyway? (y/n) [y]: ").strip().lower()
+        if response in ['', 'y', 'yes']:
+            return True
+        else:
+            return False
+
 
 def copy_web_template():
     """Copy web template to templates directory"""
     print_step(7, "Setting up web interface...")
 
+    templates_ready = True
+
     if not os.path.exists("templates/user.html"):
-        print("⚠️  Please ensure user.html is in templates/ directory")
-        print("   You can create it manually from the provided HTML")
-        return True
+        print("⚠️  templates/user.html not found")
+        templates_ready = False
 
     if not os.path.exists("templates/admin.html"):
-        print("⚠️  Please ensure admin.html is in templates/ directory")
-        print("   You can create it manually from the provided HTML")
-        return True
+        print("⚠️  templates/admin.html not found")
+        templates_ready = False
 
-    print("✓ Web interface ready")
+    if not templates_ready:
+        print("\n⚠️  Please ensure HTML templates are in templates/ directory")
+        print("   You need to create:")
+        print("   - templates/user.html")
+        print("   - templates/admin.html")
+    else:
+        print("✓ Web interface templates found")
+
     return True
+
 
 def create_run_scripts():
     """Create convenient run scripts"""
-    print_step(9, "Creating run scripts...")
+    print_step(8, "Creating run scripts...")
 
     if platform.system() == "Windows":
         # Windows batch files
@@ -186,6 +236,44 @@ def create_run_scripts():
     return True
 
 
+def verify_setup():
+    """Verify that all required files are present"""
+    print_step(9, "Verifying setup...")
+
+    required_files = {
+        'config.yaml': 'Configuration file',
+        'user_server.py': 'Main server',
+        'admin_server.py': 'Admin server',
+        'requirements.txt': 'Dependencies list'
+    }
+
+    optional_files = {
+        'cert.pem': 'SSL certificate',
+        'key.pem': 'SSL private key',
+        'templates/user.html': 'User interface',
+        'templates/admin.html': 'Admin interface'
+    }
+
+    all_good = True
+
+    print("\nRequired files:")
+    for file, desc in required_files.items():
+        if os.path.exists(file):
+            print(f"  ✓ {file} - {desc}")
+        else:
+            print(f"  ✗ {file} - {desc} (MISSING!)")
+            all_good = False
+
+    print("\nOptional files:")
+    for file, desc in optional_files.items():
+        if os.path.exists(file):
+            print(f"  ✓ {file} - {desc}")
+        else:
+            print(f"  ⚠ {file} - {desc} (missing)")
+
+    return all_good
+
+
 def print_success_message():
     """Print setup completion message"""
     print_header("🎉 Setup Complete!")
@@ -219,27 +307,45 @@ def print_success_message():
         print("   # Or: venv/bin/python admin_server.py")
 
     print(f"\n3. Open web interfaces:")
-    print(f"   User Interface:  http://localhost:{server_port}")
-    print(f"   Admin Interface: http://localhost:{admin_port}")
+    print(f"   User Interface:  https://localhost:{server_port}")
+    print(f"   Admin Interface: https://localhost:{admin_port}")
+
+    print("\n   ⚠️  You'll see a security warning (self-signed certificate)")
+    print("       Click 'Advanced' → 'Proceed to localhost' to continue")
 
     print("\n📋 Important Files:")
     print("-" * 60)
     print("  • config.yaml       - Main configuration")
+    print("  • cert.pem, key.pem - SSL certificates")
     print("  • logs/app.log      - Application logs")
     print("  • README.md         - Full documentation")
 
-    print("\n🔒 Security Reminders:")
+    print("\n🔒 SSL Certificates:")
     print("-" * 60)
+    if os.path.exists("cert.pem") and os.path.exists("key.pem"):
+        print("  ✓ Self-signed certificates generated")
+        print("  • Valid for 365 days")
+        print("  • Suitable for development/local use")
+        print("  • Use proper certificates in production")
+    else:
+        print("  ⚠️  SSL certificates not found!")
+        print("  • Run: openssl req -x509 -newkey rsa:4096 \\")
+        print("           -keyout key.pem -out cert.pem -days 365 -nodes")
+
+    print("\n🔐 Security Reminders:")
+    print("-" * 60)
+    print("  • Default admin credentials are in config.yaml")
     print("  • Change passwords in production")
-    print("  • Use HTTPS in production deployments")
+    print("  • Self-signed certs are for development only")
+    print("  • Use real SSL certificates in production")
 
     print("\n💡 Tips:")
     print("-" * 60)
     print("  • See README.md for detailed usage instructions")
     print("  • Check logs/app.log for troubleshooting")
-    print("  • Use 'base' model for best performance/accuracy balance")
     print(f"  • Main server runs on port {server_port}")
     print(f"  • Admin interface runs on port {admin_port}")
+    print("  • Use Chrome/Edge for best Speech Recognition support")
 
     print("\n" + "=" * 60)
     print("\nHappy translating! 🌍")
@@ -254,14 +360,24 @@ def main():
     if not check_python_version():
         sys.exit(1)
 
+    has_openssl = check_openssl()
+
     # Setup steps
     steps = [
         ("Creating virtual environment", create_virtual_env),
         ("Installing dependencies", install_dependencies),
         ("Creating directories", create_directories),
-        ("Setting up web interface", copy_web_template),
-        ("Creating run scripts", create_run_scripts)
     ]
+
+    # Add SSL generation if OpenSSL is available
+    if has_openssl:
+        steps.append(("Generating SSL certificates", generate_ssl_certificates))
+
+    steps.extend([
+        ("Setting up web interface", copy_web_template),
+        ("Creating run scripts", create_run_scripts),
+        ("Verifying setup", verify_setup)
+    ])
 
     for step_name, step_func in steps:
         if not step_func():
