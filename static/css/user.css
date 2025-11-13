@@ -1,9 +1,13 @@
+/* ===================================
+   Base Styles & Reset
+   =================================== */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* CSS Variables for Light Theme */
 :root {
     --primary: #0066cc;
     --primary-hover: #0052a3;
@@ -18,6 +22,7 @@
     --shadow: rgba(3, 3, 3, 0.16);
 }
 
+/* CSS Variables for Dark Theme */
 [data-theme="dark"] {
     --bg: #1b1d21;
     --surface: #2b2d31;
@@ -35,7 +40,9 @@ body {
     transition: all 0.3s ease;
 }
 
-/* Header */
+/* ===================================
+   Header
+   =================================== */
 .pf-c-page__header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
@@ -69,6 +76,7 @@ body {
     white-space: nowrap;
 }
 
+/* Connection Status Badge */
 .connection-badge {
     display: flex;
     align-items: center;
@@ -133,45 +141,7 @@ body {
     }
 }
 
-.header-right {
-    display: none;
-}
-
-.theme-toggle, .about-btn {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.5rem 1rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
-}
-
-.theme-toggle:hover, .about-btn:hover {
-    background: var(--bg);
-    border-color: var(--primary);
-}
-
-.header-right .theme-toggle,
-.header-right .about-btn {
-    display: flex;
-}
-
-.sidebar-menu-section {
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.sidebar-menu-section .theme-toggle,
-.sidebar-menu-section .about-btn {
-    display: none;
-}
-
-/* Mobile Menu Toggle */
+/* Mobile Menu Toggle Button */
 .mobile-menu-toggle {
     display: none;
     background: none;
@@ -218,13 +188,17 @@ body {
     opacity: 1;
 }
 
-/* Main Layout */
+/* ===================================
+   Main Layout
+   =================================== */
 .pf-c-page__main {
     display: flex;
     height: calc(100vh - 60px);
 }
 
-/* Sidebar */
+/* ===================================
+   Sidebar
+   =================================== */
 .pf-c-page__sidebar {
     width: 320px;
     background: var(--surface);
@@ -274,10 +248,9 @@ body {
     margin-bottom: 0;
 }
 
-.sidebar-menu-item-icon {
-    font-size: 1.1rem;
-}
-
+/* ===================================
+   Form Controls
+   =================================== */
 .control-group {
     margin-bottom: 1.25rem;
 }
@@ -311,6 +284,7 @@ select:focus {
     box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
 }
 
+/* Buttons */
 .pf-c-button {
     width: 100%;
     padding: 0.625rem 1rem;
@@ -420,7 +394,9 @@ select:focus {
     text-align: right;
 }
 
-/* Main Content */
+/* ===================================
+   Main Content
+   =================================== */
 .pf-c-page__main-section {
     flex: 1;
     overflow-y: auto;
@@ -452,7 +428,9 @@ select:focus {
     font-weight: 600;
 }
 
-/* Translation List */
+/* ===================================
+   Translation List
+   =================================== */
 .translation-list {
     display: flex;
     flex-direction: column;
@@ -567,7 +545,9 @@ select:focus {
     }
 }
 
-/* Sync Indicator */
+/* ===================================
+   Sync Indicator
+   =================================== */
 .sync-indicator {
     position: fixed;
     top: 80px;
@@ -591,7 +571,9 @@ select:focus {
     transform: translateY(0);
 }
 
-/* About Modal */
+/* ===================================
+   About Modal
+   =================================== */
 .about-modal {
     display: none;
     position: fixed;
@@ -722,7 +704,9 @@ select:focus {
     color: var(--text-secondary);
 }
 
-/* Responsive */
+/* ===================================
+   Responsive Design
+   =================================== */
 @media (max-width: 992px) {
     .pf-c-page__sidebar {
         width: 280px;
@@ -732,20 +716,6 @@ select:focus {
 @media (max-width: 768px) {
     .mobile-menu-toggle {
         display: flex;
-    }
-
-    /* Hide header buttons, show in sidebar */
-    .header-right .theme-toggle,
-    .header-right .about-btn {
-        display: none;
-    }
-
-    .sidebar-menu-section .theme-toggle,
-    .sidebar-menu-section .about-btn {
-        display: flex;
-        width: 100%;
-        justify-content: flex-start;
-        margin-bottom: 0.5rem;
     }
 
     .pf-c-page__sidebar {
@@ -781,22 +751,6 @@ select:focus {
     }
 
     .brand span:last-child {
-        display: none;
-    }
-
-    .header-right {
-        gap: 0.25rem;
-    }
-
-    .theme-toggle,
-    .about-btn {
-        padding: 0.375rem;
-        min-width: 36px;
-        height: 36px;
-    }
-
-    .theme-toggle span:last-child,
-    .about-btn span:last-child {
         display: none;
     }
 
@@ -866,6 +820,7 @@ select:focus {
     }
 }
 
+/* Touch Device Enhancements */
 @media (hover: none) and (pointer: coarse) {
     .pf-c-button {
         min-height: 44px;

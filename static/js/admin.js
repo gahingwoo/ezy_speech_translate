@@ -1019,7 +1019,7 @@ async function updateSystemInfo() {
             `Status: ${data.status}\n` +
             `Clients: ${data.clients}\n` +
             `Translations: ${data.translations}\n` +
-            `Recording: ${isRecording ? '🔴 Active' : '⚪ Stopped'}\n` +
+            `Recording: ${isRecording ? '🟢 Active' : '⚪ Stopped'}\n` +
             `Language: ${recognitionLanguage}`;
     } catch (error) {
         console.error('Failed to fetch system info:', error);

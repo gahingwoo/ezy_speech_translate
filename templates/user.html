@@ -5,198 +5,211 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EzySpeechTranslate - Real-time Translation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
-<link rel="stylesheet" href="/static/css/user.css">
+    <link rel="stylesheet" href="/static/css/user.css">
 </head>
 <body data-theme="light">
-    <div class="sync-indicator" id="syncIndicator">
-        🔄 Translations Updated
-    </div>
+<!-- Sync notification indicator -->
+<div class="sync-indicator" id="syncIndicator">
+    🔄 Translations Updated
+</div>
 
-    <!-- Header -->
-    <header class="pf-c-page__header">
-        <div class="header-left">
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
-                <span>☰</span>
-            </button>
-            <div class="brand">
+<!-- Header -->
+<header class="pf-c-page__header">
+    <div class="header-left">
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
+            <span>☰</span>
+        </button>
+        <div class="brand">
+            <span>🎙️</span>
+            <span>EzySpeechTranslate</span>
+        </div>
+        <div id="statusBadge" class="connection-badge waiting">
+            <span class="status-dot"></span>
+            <span>Waiting</span>
+        </div>
+    </div>
+</header>
+
+<!-- Mobile Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+
+<!-- Main Content -->
+<div class="pf-c-page__main">
+    <!-- Sidebar -->
+    <aside class="pf-c-page__sidebar" id="sidebar">
+        <!-- Translation Settings Section -->
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Translation Settings</h3>
+
+            <div class="control-group">
+                <label class="control-label">Target Language</label>
+                <select id="targetLang" onchange="changeLanguage()">
+                    <option value="yue">Cantonese (粵語)</option>
+                    <option value="zh-cn">Chinese Simplified (简体中文)</option>
+                    <option value="zh-tw">Chinese Traditional (繁體中文)</option>
+                    <option value="ja">Japanese (日本語)</option>
+                    <option value="ko">Korean (한국어)</option>
+                    <option value="es">Spanish (Español)</option>
+                    <option value="fr">French (Français)</option>
+                    <option value="de">German (Deutsch)</option>
+                    <option value="ru">Russian (Русский)</option>
+                    <option value="ar">Arabic (العربية)</option>
+                    <option value="pt">Portuguese (Português)</option>
+                    <option value="it">Italian (Italiano)</option>
+                    <option value="nl">Dutch (Nederlands)</option>
+                    <option value="pl">Polish (Polski)</option>
+                    <option value="tr">Turkish (Türkçe)</option>
+                    <option value="vi">Vietnamese (Tiếng Việt)</option>
+                    <option value="th">Thai (ไทย)</option>
+                    <option value="id">Indonesian (Bahasa Indonesia)</option>
+                    <option value="ms">Malay (Bahasa Melayu)</option>
+                    <option value="hi">Hindi (हिन्दी)</option>
+                    <option value="ta">Tamil (தமிழ்)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Text-to-Speech Section -->
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Text-to-Speech</h3>
+
+            <div class="control-group">
+                <button id="toggleTTS" class="pf-c-button pf-c-button--primary" onclick="toggleTTS()">
+                    <span>🔊</span>
+                    <span>Enable Auto TTS</span>
+                </button>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Voice</label>
+                <select id="voiceSelect" onchange="changeVoice()">
+                    <option value="">Loading voices...</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Speed</label>
+                <div class="slider-wrapper">
+                    <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1" oninput="updateRate()">
+                    <span class="slider-value" id="rateValue">1.0x</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Volume</label>
+                <div class="slider-wrapper">
+                    <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1" oninput="updateVolume()">
+                    <span class="slider-value" id="volumeValue">100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Actions</h3>
+
+            <div class="control-group">
+                <button class="pf-c-button pf-c-button--success" onclick="exportData()">
+                    <span>💾</span>
+                    <span>Download Subtitles</span>
+                </button>
+            </div>
+
+            <div class="control-group">
+                <button class="pf-c-button pf-c-button--secondary" onclick="clearLocal()">
+                    <span>🗑️</span>
+                    <span>Clear Display</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="sidebar-section">
+            <h3 class="sidebar-title">Settings</h3>
+
+            <div class="control-group">
+                <button class="sidebar-menu-item" onclick="toggleTheme()">
+                    <span id="themeIcon">🌙</span>
+                    <span id="themeText">Dark Mode</span>
+                </button>
+            </div>
+
+            <div class="control-group">
+                <button class="sidebar-menu-item" onclick="showAbout()">
+                    <span>ℹ️</span>
+                    <span>About</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Section -->
+    <section class="pf-c-page__main-section">
+        <div class="content-header">
+            <h2 class="content-title">
+                Live Translations
+                <span class="count-badge" id="itemCount">0</span>
+            </h2>
+        </div>
+
+        <div id="translationsList" class="translation-list">
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div>Waiting for translations...</div>
+                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                    Translations will appear here in real-time
+                </small>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- About Modal -->
+<div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
+    <div class="about-content" onclick="event.stopPropagation()">
+        <div class="about-header">
+            <div class="about-title">
                 <span>🎙️</span>
                 <span>EzySpeechTranslate</span>
             </div>
-            <div id="statusBadge" class="connection-badge waiting">
-                <span class="status-dot"></span>
-                <span>Waiting</span>
-            </div>
+            <button class="about-close" onclick="hideAbout()">✕</button>
         </div>
-    </header>
+        <div class="about-body">
+            <p><strong>Real-time Speech Translation</strong></p>
+            <p>🌍 Everyone deserves to be understood</p>
 
-    <!-- Mobile Sidebar Overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+            <h3>Features</h3>
+            <p>• 20+ languages supported<br>
+                • Text-to-Speech with voice selection<br>
+                • Download subtitles<br>
+                • Mobile-friendly</p>
 
-    <!-- Main Content -->
-    <div class="pf-c-page__main">
-        <!-- Sidebar -->
-        <aside class="pf-c-page__sidebar" id="sidebar">
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Translation Settings</h3>
+            <h3>Made with ❤️ by</h3>
+            <p>Ga Hing Woo</p>
 
-                <div class="control-group">
-                    <label class="control-label">Target Language</label>
-                    <select id="targetLang" onchange="changeLanguage()">
-                        <option value="yue">Cantonese (粵語)</option>
-                        <option value="zh-cn">Chinese Simplified (简体中文)</option>
-                        <option value="zh-tw">Chinese Traditional (繁體中文)</option>
-                        <option value="ja">Japanese (日本語)</option>
-                        <option value="ko">Korean (한국어)</option>
-                        <option value="es">Spanish (Español)</option>
-                        <option value="fr">French (Français)</option>
-                        <option value="de">German (Deutsch)</option>
-                        <option value="ru">Russian (Русский)</option>
-                        <option value="ar">Arabic (العربية)</option>
-                        <option value="pt">Portuguese (Português)</option>
-                        <option value="it">Italian (Italiano)</option>
-                        <option value="nl">Dutch (Nederlands)</option>
-                        <option value="pl">Polish (Polski)</option>
-                        <option value="tr">Turkish (Türkçe)</option>
-                        <option value="vi">Vietnamese (Tiếng Việt)</option>
-                        <option value="th">Thai (ไทย)</option>
-                        <option value="id">Indonesian (Bahasa Indonesia)</option>
-                        <option value="ms">Malay (Bahasa Melayu)</option>
-                        <option value="hi">Hindi (हिन्दी)</option>
-                    </select>
-                </div>
+            <div class="about-links">
+                <a href="https://github.com/gahingwoo/ezy_speech_translate"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="about-link">
+                    <span>⭐</span>
+                    <span>GitHub</span>
+                </a>
+                <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="about-link">
+                    <span>💬</span>
+                    <span>Feedback</span>
+                </a>
             </div>
 
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Text-to-Speech</h3>
-
-                <div class="control-group">
-                    <button id="toggleTTS" class="pf-c-button pf-c-button--primary" onclick="toggleTTS()">
-                        <span>🔊</span>
-                        <span>Enable TTS</span>
-                    </button>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Speed</label>
-                    <div class="slider-wrapper">
-                        <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1" oninput="updateRate()">
-                        <span class="slider-value" id="rateValue">1.0x</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Volume</label>
-                    <div class="slider-wrapper">
-                        <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1" oninput="updateVolume()">
-                        <span class="slider-value" id="volumeValue">100%</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Actions</h3>
-
-                <div class="control-group">
-                    <button class="pf-c-button pf-c-button--success" onclick="exportData()">
-                        <span>💾</span>
-                        <span>Download Subtitles</span>
-                    </button>
-                </div>
-
-                <div class="control-group">
-                    <button class="pf-c-button pf-c-button--secondary" onclick="clearLocal()">
-                        <span>🗑️</span>
-                        <span>Clear Display</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="sidebar-section">
-                <h3 class="sidebar-title">Settings</h3>
-                
-                <div class="control-group">
-                    <button class="sidebar-menu-item" onclick="toggleTheme()">
-                        <span id="themeIcon">🌙</span>
-                        <span id="themeText">Dark Mode</span>
-                    </button>
-                </div>
-
-                <div class="control-group">
-                    <button class="sidebar-menu-item" onclick="showAbout()">
-                        <span>ℹ️</span>
-                        <span>About</span>
-                    </button>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Section -->
-        <section class="pf-c-page__main-section">
-            <div class="content-header">
-                <h2 class="content-title">
-                    Live Translations
-                    <span class="count-badge" id="itemCount">0</span>
-                </h2>
-            </div>
-
-            <div id="translationsList" class="translation-list">
-                <div class="empty-state">
-                    <div class="empty-icon">💬</div>
-                    <div>Waiting for translations...</div>
-                    <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
-                        Translations will appear here in real-time
-                    </small>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- About Modal -->
-    <div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
-        <div class="about-content" onclick="event.stopPropagation()">
-            <div class="about-header">
-                <div class="about-title">
-                    <span>🎙️</span>
-                    <span>EzySpeechTranslate</span>
-                </div>
-                <button class="about-close" onclick="hideAbout()">✕</button>
-            </div>
-            <div class="about-body">
-                <p><strong>Real-time Speech Translation</strong></p>
-                <p>🌍 Everyone deserves to be understood</p>
-
-                <h3>Features</h3>
-                <p>• 20+ languages supported<br>
-                   • Text-to-Speech<br>
-                   • Download subtitles<br>
-                   • Mobile-friendly</p>
-
-                <h3>Made with ❤️ by</h3>
-                <p>Ga Hing Woo</p>
-
-                <div class="about-links">
-                    <a href="https://github.com/gahingwoo/ezy_speech_translate"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="about-link">
-                        <span>⭐</span>
-                        <span>GitHub</span>
-                    </a>
-                    <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="about-link">
-                        <span>💬</span>
-                        <span>Feedback</span>
-                    </a>
-                </div>
-
-                <div class="about-version">
-                    v3.0.3 • Open Source • MIT License
-                </div>
+            <div class="about-version">
+                v3.1.0 • Open Source • MIT License
             </div>
         </div>
     </div>
+</div>
 
 <script src="/static/js/user.js"></script>
 </body>

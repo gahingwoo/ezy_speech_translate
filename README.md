@@ -609,8 +609,8 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.0.3 (Current)
-- Using https
+### v3.1.0 (Current)
+- User can pick TTS voices
 
 ---
 

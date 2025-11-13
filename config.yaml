@@ -57,7 +57,7 @@ database:
 # Export Configuration
 # ============================================
 export:
-  default_format: "txt"              # Default export format (txt, srt, json)
+  default_format: "srt"              # Default export format (txt, srt, json)
   output_directory: "exports"        # Directory for exported files
   include_timestamps: true           # Include timestamps in exports
   include_corrections: true          # Include correction status in exports
