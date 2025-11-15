@@ -4,46 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EzySpeechTranslate - Real-time Translation</title>
+    <meta name="description" content="Real-time speech translation with TTS support for 20+ languages">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <link rel="stylesheet" href="/static/css/user.css">
 </head>
 <body data-theme="light">
-<!-- Sync notification indicator -->
-<div class="sync-indicator" id="syncIndicator">
+<!-- Sync Notification Indicator -->
+<div class="sync-indicator" id="syncIndicator" aria-live="polite">
     🔄 Translations Updated
 </div>
 
 <!-- Header -->
-<header class="pf-c-page__header">
+<header class="pf-c-page__header" role="banner">
     <div class="header-left">
-        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
-            <span>☰</span>
+        <button
+                class="mobile-menu-toggle"
+                onclick="toggleMobileMenu()"
+                id="mobileMenuToggle"
+                aria-label="Toggle mobile menu"
+                aria-expanded="false">
+            <span aria-hidden="true">☰</span>
         </button>
         <div class="brand">
-            <span>🎙️</span>
+            <span aria-hidden="true">🎙️</span>
             <span>EzySpeechTranslate</span>
         </div>
-        <div id="statusBadge" class="connection-badge waiting">
-            <span class="status-dot"></span>
+        <div id="statusBadge" class="connection-badge waiting" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
             <span>Waiting</span>
         </div>
     </div>
+
+    <!-- Desktop Search -->
+    <div class="header-search-desktop" id="headerSearchDesktop">
+        <input
+                type="search"
+                class="search-input-header"
+                id="searchInput"
+                placeholder="🔍 Search..."
+                oninput="handleSearch()"
+                aria-label="Search translations"
+        >
+    </div>
+
+    <!-- Mobile Search Toggle -->
+    <button
+            class="mobile-search-toggle"
+            id="mobileSearchToggle"
+            onclick="toggleMobileSearch()"
+            aria-label="Toggle search">
+        <span>🔍</span>
+    </button>
 </header>
 
-<!-- Mobile Sidebar Overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+<!-- Mobile Search Bar -->
+<div class="mobile-search-bar" id="mobileSearchBar">
+    <div class="mobile-search-container">
+        <input
+                type="search"
+                class="search-input-mobile"
+                id="searchInputMobile"
+                placeholder="Search translations..."
+                oninput="handleSearch()"
+                aria-label="Search translations"
+        >
+    </div>
+    <div class="search-results-info" id="searchResultsInfo" style="display: none;" role="status" aria-live="polite"></div>
+</div>
 
-<!-- Main Content -->
+<!-- Mobile Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()" aria-hidden="true"></div>
+
+<!-- Main Content Container -->
 <div class="pf-c-page__main">
     <!-- Sidebar -->
-    <aside class="pf-c-page__sidebar" id="sidebar">
+    <aside class="pf-c-page__sidebar" id="sidebar" role="complementary" aria-label="Settings and controls">
+
         <!-- Translation Settings Section -->
-        <div class="sidebar-section">
+        <section class="sidebar-section">
             <h3 class="sidebar-title">Translation Settings</h3>
 
             <div class="control-group">
-                <label class="control-label">Target Language</label>
-                <select id="targetLang" onchange="changeLanguage()">
+                <label class="control-label" for="targetLang">Target Language</label>
+                <select id="targetLang" onchange="changeLanguage()" aria-label="Select target language">
                     <option value="yue">Cantonese (粵語)</option>
                     <option value="zh-cn">Chinese Simplified (简体中文)</option>
                     <option value="zh-tw">Chinese Traditional (繁體中文)</option>
@@ -62,99 +105,160 @@
                     <option value="vi">Vietnamese (Tiếng Việt)</option>
                     <option value="th">Thai (ไทย)</option>
                     <option value="id">Indonesian (Bahasa Indonesia)</option>
-                    <option value="ms">Malay (Bahasa Melayu)</option>
+                    <option value="ms">Malay (Bahasa Malaysia)</option>
                     <option value="hi">Hindi (हिन्दी)</option>
                     <option value="ta">Tamil (தமிழ்)</option>
                 </select>
             </div>
-        </div>
+        </section>
 
         <!-- Text-to-Speech Section -->
-        <div class="sidebar-section">
+        <section class="sidebar-section">
             <h3 class="sidebar-title">Text-to-Speech</h3>
 
             <div class="control-group">
-                <button id="toggleTTS" class="pf-c-button pf-c-button--primary" onclick="toggleTTS()">
-                    <span>🔊</span>
-                    <span>Enable Auto TTS</span>
+                <button
+                        id="toggleTTS"
+                        class="pf-c-button pf-c-button--primary"
+                        onclick="toggleTTS()"
+                        aria-pressed="false">
+                    <span aria-hidden="true">🔊</span>
+                    <span>Enable TTS</span>
                 </button>
             </div>
 
             <div class="control-group">
-                <label class="control-label">Voice</label>
-                <select id="voiceSelect" onchange="changeVoice()">
+                <label class="control-label" for="voiceSelect">Voice</label>
+                <select id="voiceSelect" onchange="changeVoice()" aria-label="Select voice">
                     <option value="">Loading voices...</option>
                 </select>
             </div>
 
             <div class="control-group">
-                <label class="control-label">Speed</label>
+                <label class="control-label" for="rateSlider">Speed</label>
                 <div class="slider-wrapper">
-                    <input type="range" class="slider" id="rateSlider" min="0.5" max="2" step="0.1" value="1" oninput="updateRate()">
+                    <input
+                            type="range"
+                            class="slider"
+                            id="rateSlider"
+                            min="0.5"
+                            max="2"
+                            step="0.1"
+                            value="1"
+                            oninput="updateRate()"
+                            aria-label="Speech rate">
                     <span class="slider-value" id="rateValue">1.0x</span>
                 </div>
             </div>
 
             <div class="control-group">
-                <label class="control-label">Volume</label>
+                <label class="control-label" for="volumeSlider">Volume</label>
                 <div class="slider-wrapper">
-                    <input type="range" class="slider" id="volumeSlider" min="0" max="1" step="0.1" value="1" oninput="updateVolume()">
+                    <input
+                            type="range"
+                            class="slider"
+                            id="volumeSlider"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value="1"
+                            oninput="updateVolume()"
+                            aria-label="Speech volume">
                     <span class="slider-value" id="volumeValue">100%</span>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Actions Section -->
-        <div class="sidebar-section">
-            <h3 class="sidebar-title">Actions</h3>
+        <!-- Export Section -->
+        <section class="sidebar-section">
+            <h3 class="sidebar-title">Export</h3>
 
             <div class="control-group">
-                <button class="pf-c-button pf-c-button--success" onclick="exportData()">
-                    <span>💾</span>
-                    <span>Download Subtitles</span>
+                <label class="control-label" for="exportFormat">Format</label>
+                <select id="exportFormat" aria-label="Select export format">
+                    <option value="txt">📄 Text (TXT)</option>
+                    <option value="json">📋 JSON</option>
+                    <option value="csv">📊 CSV</option>
+                    <option value="srt">🎬 Subtitle (SRT)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <button
+                        class="pf-c-button pf-c-button--success"
+                        onclick="exportData()"
+                        aria-label="Download translations">
+                    <span aria-hidden="true">💾</span>
+                    <span>Download</span>
                 </button>
             </div>
 
             <div class="control-group">
-                <button class="pf-c-button pf-c-button--secondary" onclick="clearLocal()">
-                    <span>🗑️</span>
+                <button
+                        class="pf-c-button pf-c-button--secondary"
+                        onclick="clearLocal()"
+                        aria-label="Clear display">
+                    <span aria-hidden="true">🗑️</span>
                     <span>Clear Display</span>
                 </button>
             </div>
-        </div>
+        </section>
 
         <!-- Settings Section -->
-        <div class="sidebar-section">
+        <section class="sidebar-section">
             <h3 class="sidebar-title">Settings</h3>
 
             <div class="control-group">
-                <button class="sidebar-menu-item" onclick="toggleTheme()">
-                    <span id="themeIcon">🌙</span>
+                <label class="control-label" for="fontSizeSlider">Font Size</label>
+                <div class="slider-wrapper">
+                    <input
+                            type="range"
+                            class="slider"
+                            id="fontSizeSlider"
+                            min="12"
+                            max="24"
+                            step="1"
+                            value="18"
+                            oninput="updateFontSize()"
+                            aria-label="Translation font size">
+                    <span class="slider-value" id="fontSizeValue">18px</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button
+                        class="sidebar-menu-item"
+                        onclick="toggleTheme()"
+                        aria-label="Toggle theme">
+                    <span id="themeIcon" aria-hidden="true">🌙</span>
                     <span id="themeText">Dark Mode</span>
                 </button>
             </div>
 
             <div class="control-group">
-                <button class="sidebar-menu-item" onclick="showAbout()">
-                    <span>ℹ️</span>
+                <button
+                        class="sidebar-menu-item"
+                        onclick="showAbout()"
+                        aria-label="About">
+                    <span aria-hidden="true">ℹ️</span>
                     <span>About</span>
                 </button>
             </div>
-        </div>
+        </section>
     </aside>
 
     <!-- Main Section -->
-    <section class="pf-c-page__main-section">
+    <section class="pf-c-page__main-section" role="main" aria-label="Translation list">
         <div class="content-header">
             <h2 class="content-title">
                 Live Translations
-                <span class="count-badge" id="itemCount">0</span>
+                <span class="count-badge" id="itemCount" aria-label="Translation count">0</span>
             </h2>
         </div>
 
-        <div id="translationsList" class="translation-list">
-            <div class="empty-state">
-                <div class="empty-icon">💬</div>
+        <div id="translationsList" class="translation-list" role="list">
+            <div class="empty-state" role="status">
+                <div class="empty-icon" aria-hidden="true">💬</div>
                 <div>Waiting for translations...</div>
                 <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
                     Translations will appear here in real-time
@@ -165,14 +269,19 @@
 </div>
 
 <!-- About Modal -->
-<div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
+<div class="about-modal" id="aboutModal" onclick="hideAbout(event)" role="dialog" aria-labelledby="aboutTitle" aria-modal="true">
     <div class="about-content" onclick="event.stopPropagation()">
         <div class="about-header">
-            <div class="about-title">
-                <span>🎙️</span>
+            <div class="about-title" id="aboutTitle">
+                <span aria-hidden="true">🎙️</span>
                 <span>EzySpeechTranslate</span>
             </div>
-            <button class="about-close" onclick="hideAbout()">✕</button>
+            <button
+                    class="about-close"
+                    onclick="hideAbout()"
+                    aria-label="Close about dialog">
+                ✕
+            </button>
         </div>
         <div class="about-body">
             <p><strong>Real-time Speech Translation</strong></p>
@@ -181,7 +290,9 @@
             <h3>Features</h3>
             <p>• 20+ languages supported<br>
                 • Text-to-Speech with voice selection<br>
-                • Download subtitles<br>
+                • Multiple export formats (TXT, JSON, CSV, SRT)<br>
+                • Real-time search<br>
+                • Customizable font size<br>
                 • Mobile-friendly</p>
 
             <h3>Made with ❤️ by</h3>
@@ -205,11 +316,20 @@
             </div>
 
             <div class="about-version">
-                v3.1.0 • Open Source • MIT License
+                v3.2.0 • Open Source • MIT License
             </div>
         </div>
     </div>
 </div>
+
+<!-- Scroll to Top Button -->
+<button
+        class="scroll-to-top"
+        id="scrollToTopBtn"
+        onclick="scrollToTop()"
+        aria-label="Scroll to top">
+    ↑
+</button>
 
 <script src="/static/js/user.js"></script>
 </body>

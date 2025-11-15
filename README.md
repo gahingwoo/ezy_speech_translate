@@ -609,8 +609,10 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.1.0 (Current)
-- User can pick TTS voices
+### v3.2.0 (Current)
+- Multiple export formats (TXT, JSON, CSV, SRT) for user
+- Real-time search
+- Customizable font size
 
 ---
 
