@@ -1,89 +1,104 @@
 """
 EzySpeechTranslate Setup Script
-Automated installation and configuration with SSL certificate generation
+
+structure:
+  app/
+    admin/
+    user/
+    core/
+    templates/
+    static/css/
+    static/js/
+  config/ssl/
+  logs/
+  exports/
+  data/
+  scripts/
 """
 
 import os
 import sys
 import subprocess
 import platform
-import secrets
 
+
+# ---------------------------
+# Utility Functions
+# ---------------------------
 
 def print_header(text):
-    """Print formatted header"""
     print("\n" + "=" * 60)
     print(f"  {text}")
     print("=" * 60 + "\n")
 
 
 def print_step(step_num, text):
-    """Print step number"""
     print(f"\n[{step_num}] {text}")
 
 
-def run_command(cmd, check=True):
-    """Run shell command"""
+def run(cmd):
+    """Run shell command and return True/False."""
     try:
-        result = subprocess.run(cmd, shell=True, check=check,
-                                capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, shell=True, check=False,
+            capture_output=True, text=True
+        )
         if result.returncode == 0:
             return True
         else:
-            if result.stderr:
-                print(f"Error output: {result.stderr}")
+            print(result.stderr.strip())
             return False
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
+    except Exception as e:
+        print(f"Error running command: {e}")
         return False
 
+
+# ---------------------------
+# Checks
+# ---------------------------
 
 def check_python_version():
-    """Check Python version"""
     print_step(1, "Checking Python version...")
-    version = sys.version_info
-
-    if version.major < 3 or (version.major == 3 and version.minor < 8) or (version.major == 3 and version.minor > 14):
-        print(f"❌ Python 3.8-3.14 required. Current: {version.major}.{version.minor}")
+    v = sys.version_info
+    if not (3, 8) <= (v.major, v.minor) <= (3, 14):
+        print(f"❌ Require Python 3.8 ~ 3.14, found {v.major}.{v.minor}")
         return False
-
-    print(f"✓ Python {version.major}.{version.minor}.{version.micro}")
+    print(f"✓ Python {v.major}.{v.minor}.{v.micro}")
     return True
 
 
 def check_openssl():
-    """Check if OpenSSL is available"""
-    print_step(2, "Checking OpenSSL...")
-
-    if run_command("openssl version", check=False):
-        result = subprocess.run("openssl version", shell=True,
-                              capture_output=True, text=True)
-        print(f"✓ OpenSSL available: {result.stdout.strip()}")
+    print_step(2, "Checking OpenSSL availability...")
+    if run("openssl version"):
+        out = subprocess.run("openssl version", shell=True,
+                             capture_output=True, text=True)
+        print(f"✓ OpenSSL available: {out.stdout.strip()}")
         return True
     else:
-        print("⚠️  OpenSSL not found in PATH")
-        print("   SSL certificates will need to be generated manually")
+        print("⚠️ OpenSSL not found. SSL cert generation skipped.")
         return False
 
 
-def create_virtual_env():
-    """Create virtual environment"""
+# ---------------------------
+# Virtual Environment
+# ---------------------------
+
+def create_venv():
     print_step(3, "Creating virtual environment...")
 
     if os.path.exists("venv"):
-        print("✓ Virtual environment already exists")
+        print("✓ venv already exists")
         return True
 
-    if run_command(f"{sys.executable} -m venv venv"):
-        print("✓ Virtual environment created")
+    if run(f"{sys.executable} -m venv venv"):
+        print("✓ venv created")
         return True
     else:
-        print("❌ Failed to create virtual environment")
+        print("❌ Failed to create venv")
         return False
 
 
-def get_pip_command():
-    """Get pip command based on platform"""
+def get_pip():
     if platform.system() == "Windows":
         return "venv\\Scripts\\pip"
     else:
@@ -91,311 +106,185 @@ def get_pip_command():
 
 
 def install_dependencies():
-    """Install Python dependencies"""
     print_step(4, "Installing dependencies...")
-    print("This may take several minutes...")
 
-    pip_cmd = get_pip_command()
+    pip = get_pip()
 
-    # Upgrade pip
-    print("\nUpgrading pip...")
-    if not run_command(f"{pip_cmd} install --upgrade pip"):
-        print("⚠ Failed to upgrade pip, continuing anyway...")
+    print("Upgrading pip...")
+    run(f"{pip} install --upgrade pip")
 
-    # Install requirements
-    print("\nInstalling packages...")
-    if run_command(f"{pip_cmd} install -r requirements.txt"):
+    print("Installing requirements.txt...")
+    if run(f"{pip} install -r requirements.txt"):
         print("✓ Dependencies installed")
         return True
-    else:
-        print("❌ Failed to install dependencies")
-        return False
+
+    print("❌ Failed to install dependencies")
+    return False
 
 
-def create_directories():
-    """Create necessary directories"""
-    print_step(5, "Creating directories...")
+# ---------------------------
+# Project Structure
+# ---------------------------
 
-    directories = ['logs', 'exports', 'data', 'templates', 'static', 'static/css', 'static/js']
+def ensure_directories():
+    print_step(5, "Ensuring project directory structure...")
 
-    for directory in directories:
-        os.makedirs(directory, exist_ok=True)
-        print(f"✓ Created: {directory}/")
+    dirs = [
+        "logs",
+        "config/ssl",
+        "app/templates",
+        "app/static/css",
+        "app/static/js",
+        "scripts"
+    ]
+
+    for d in dirs:
+        os.makedirs(d, exist_ok=True)
+        print(f"✓ {d}/")
 
     return True
 
 
-def generate_ssl_certificates():
-    """Generate self-signed SSL certificates"""
-    print_step(6, "Generating SSL certificates...")
+# ---------------------------
+# SSL Certificate
+# ---------------------------
 
-    # Check if certificates already exist
-    if os.path.exists("cert.pem") and os.path.exists("key.pem"):
-        print("✓ SSL certificates already exist")
-        print("  cert.pem - Certificate file")
-        print("  key.pem  - Private key file")
+def generate_ssl():
+    print_step(6, "Checking SSL certificate...")
+
+    cert = "config/ssl/cert.pem"
+    key = "config/ssl/key.pem"
+
+    if os.path.exists(cert) and os.path.exists(key):
+        print("✓ SSL already exists")
         return True
 
-    # Try to generate certificates
-    print("Generating self-signed SSL certificates...")
-    print("(These will be valid for 365 days)")
-
-    # Prepare OpenSSL command
-    openssl_cmd = (
-        'openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem '
-        '-days 365 -nodes'
+    print("Generating self-signed certificate (valid 365 days)...")
+    cmd = (
+        "openssl req -x509 -newkey rsa:2048 -nodes "
+        f"-keyout {key} -out {cert} -days 365 "
+        '-subj "/CN=localhost"'
     )
 
-    if run_command(openssl_cmd, check=False):
-        print("✓ SSL certificates generated successfully")
-        print("  cert.pem - Certificate file")
-        print("  key.pem  - Private key file")
+    if run(cmd):
+        print("✓ SSL generated")
         return True
-    else:
-        print("\n⚠️  Could not auto-generate SSL certificates")
-        print("\nPlease run this command manually:")
-        print("-" * 60)
-        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem \\")
-        print("  -days 365 -nodes")
-        print("-" * 60)
-        print("\nOr on Windows:")
-        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
-        print("\n(You can continue setup, but servers won't start without certificates)")
 
-        # Ask user if they want to continue
-        response = input("\nContinue setup anyway? (y/n) [y]: ").strip().lower()
-        if response in ['', 'y', 'yes']:
-            return True
-        else:
-            return False
+    print("⚠️ Failed to auto-generate SSL.")
+    print("   You may generate manually later.")
+    return True  # not fatal
 
 
-def copy_web_template():
-    """Copy web template to templates directory"""
-    print_step(7, "Setting up web interface...")
-
-    templates_ready = True
-
-    if not os.path.exists("templates/user.html"):
-        print("⚠️  templates/user.html not found")
-        templates_ready = False
-
-    if not os.path.exists("templates/admin.html"):
-        print("⚠️  templates/admin.html not found")
-        templates_ready = False
-
-    if not templates_ready:
-        print("\n⚠️  Please ensure HTML templates are in templates/ directory")
-        print("   You need to create:")
-        print("   - templates/user.html")
-        print("   - templates/admin.html")
-    else:
-        print("✓ Web interface templates found")
-
-    return True
-
+# ---------------------------
+# Run Scripts
+# ---------------------------
 
 def create_run_scripts():
-    """Create convenient run scripts"""
-    print_step(8, "Creating run scripts...")
+    print_step(7, "Creating run scripts...")
+
+    # admin → app/admin/server.py
+    # user  → app/user/server.py
 
     if platform.system() == "Windows":
-        # Windows batch files
-        with open("start_server.bat", 'w') as f:
-            f.write("@echo off\n")
-            f.write("echo Starting EzySpeechTranslate Main Server...\n")
-            f.write("venv\\Scripts\\python user_server.py\n")
-            f.write("pause\n")
-
-        with open("start_admin.bat", 'w') as f:
-            f.write("@echo off\n")
-            f.write("echo Starting Admin Interface...\n")
-            f.write("venv\\Scripts\\python admin_server.py\n")
-            f.write("pause\n")
-
-        print("✓ Created start_server.bat and start_admin.bat")
-
+        with open("start_server.bat", "w") as f:
+            f.write("venv\\Scripts\\python app\\user\\server.py\n")
+        with open("start_admin.bat", "w") as f:
+            f.write("venv\\Scripts\\python app\\admin\\server.py\n")
     else:
-        # Unix shell scripts
-        with open("start_server.sh", 'w') as f:
+        with open("start_server.sh", "w") as f:
             f.write("#!/bin/bash\n")
-            f.write("echo 'Starting EzySpeechTranslate Main Server...'\n")
-            f.write("venv/bin/python user_server.py\n")
-
-        with open("start_admin.sh", 'w') as f:
+            f.write("venv/bin/python app/user/server.py\n")
+        with open("start_admin.sh", "w") as f:
             f.write("#!/bin/bash\n")
-            f.write("echo 'Starting Admin Interface...'\n")
-            f.write("venv/bin/python admin_server.py\n")
+            f.write("venv/bin/python app/admin/server.py\n")
+        run("chmod +x start_server.sh")
+        run("chmod +x start_admin.sh")
 
-        # Make executable
-        os.chmod("start_server.sh", 0o755)
-        os.chmod("start_admin.sh", 0o755)
-
-        print("✓ Created start_server.sh and start_admin.sh")
-
+    print("✓ Run scripts created")
     return True
 
 
-def verify_setup():
-    """Verify that all required files are present"""
-    print_step(9, "Verifying setup...")
+# ---------------------------
+# Verify Structure
+# ---------------------------
 
-    required_files = {
-        'config.yaml': 'Configuration file',
-        'user_server.py': 'Main server',
-        'admin_server.py': 'Admin server',
-        'requirements.txt': 'Dependencies list'
-    }
+def verify():
+    print_step(8, "Verifying project files...")
 
-    optional_files = {
-        'cert.pem': 'SSL certificate',
-        'key.pem': 'SSL private key',
-        'templates/user.html': 'User interface',
-        'templates/admin.html': 'Admin interface'
-    }
+    required = [
+        "app/user/server.py",
+        "app/admin/server.py",
+        "requirements.txt",
+        "config/config.yaml"
+    ]
 
-    all_good = True
-
-    print("\nRequired files:")
-    for file, desc in required_files.items():
-        if os.path.exists(file):
-            print(f"  ✓ {file} - {desc}")
+    ok = True
+    for f in required:
+        if os.path.exists(f):
+            print(f"  ✓ {f}")
         else:
-            print(f"  ✗ {file} - {desc} (MISSING!)")
-            all_good = False
+            print(f"  ✗ {f} (missing)")
+            ok = False
 
-    print("\nOptional files:")
-    for file, desc in optional_files.items():
-        if os.path.exists(file):
-            print(f"  ✓ {file} - {desc}")
-        else:
-            print(f"  ⚠ {file} - {desc} (missing)")
-
-    return all_good
+    return ok
 
 
-def print_success_message():
-    """Print setup completion message"""
+# ---------------------------
+# Success Message
+# ---------------------------
+
+def success():
     print_header("🎉 Setup Complete!")
 
-    # Read ports from config
-    try:
-        import yaml
-        with open("config.yaml", 'r') as f:
-            config = yaml.safe_load(f)
-        server_port = config.get('server', {}).get('port', 1915)
-        admin_port = config.get('admin_server', {}).get('port', 1916)
-    except:
-        server_port = 1915
-        admin_port = 1916
+    print("Start user server:")
+    print("  ./start_server.sh")
 
-    print("EzySpeechTranslate is ready to use!")
-    print("\n📚 Quick Start Guide:")
-    print("-" * 60)
+    print("Start admin panel:")
+    print("  ./start_admin.sh")
 
-    if platform.system() == "Windows":
-        print("\n1. Start the main server:")
-        print("   start_server.bat")
-        print("\n2. In a new terminal, start admin interface:")
-        print("   start_admin.bat")
-    else:
-        print("\n1. Start the main server:")
-        print("   ./start_server.sh")
-        print("   # Or: venv/bin/python user_server.py")
-        print("\n2. In a new terminal, start admin interface:")
-        print("   ./start_admin.sh")
-        print("   # Or: venv/bin/python admin_server.py")
+    print("\nSSL certs saved in config/ssl/")
+    print("------------------------------")
+    print("cert.pem")
+    print("key.pem")
+    print("------------------------------")
 
-    print(f"\n3. Open web interfaces:")
-    print(f"   User Interface:  https://localhost:{server_port}")
-    print(f"   Admin Interface: https://localhost:{admin_port}")
+    print("Logs saved in logs/app.log (once app starts)")
+    print("\nHave fun 😎")
 
-    print("\n   ⚠️  You'll see a security warning (self-signed certificate)")
-    print("       Click 'Advanced' → 'Proceed to localhost' to continue")
 
-    print("\n📋 Important Files:")
-    print("-" * 60)
-    print("  • config.yaml       - Main configuration")
-    print("  • cert.pem, key.pem - SSL certificates")
-    print("  • logs/app.log      - Application logs")
-    print("  • README.md         - Full documentation")
-
-    print("\n🔒 SSL Certificates:")
-    print("-" * 60)
-    if os.path.exists("cert.pem") and os.path.exists("key.pem"):
-        print("  ✓ Self-signed certificates generated")
-        print("  • Valid for 365 days")
-        print("  • Suitable for development/local use")
-        print("  • Use proper certificates in production")
-    else:
-        print("  ⚠️  SSL certificates not found!")
-        print("  • Run: openssl req -x509 -newkey rsa:4096 \\")
-        print("           -keyout key.pem -out cert.pem -days 365 -nodes")
-
-    print("\n🔐 Security Reminders:")
-    print("-" * 60)
-    print("  • Default admin credentials are in config.yaml")
-    print("  • Change passwords in production")
-    print("  • Self-signed certs are for development only")
-    print("  • Use real SSL certificates in production")
-
-    print("\n💡 Tips:")
-    print("-" * 60)
-    print("  • See README.md for detailed usage instructions")
-    print("  • Check logs/app.log for troubleshooting")
-    print(f"  • Main server runs on port {server_port}")
-    print(f"  • Admin interface runs on port {admin_port}")
-    print("  • Use Chrome/Edge for best Speech Recognition support")
-
-    print("\n" + "=" * 60)
-    print("\nHappy translating! 🌍")
-
+# ---------------------------
+# Main
+# ---------------------------
 
 def main():
-    """Main setup function"""
     print_header("EzySpeechTranslate Setup")
-    print("This script will install and configure EzySpeechTranslate")
 
-    # Check prerequisites
     if not check_python_version():
         sys.exit(1)
 
-    has_openssl = check_openssl()
+    openssl_ok = check_openssl()
 
-    # Setup steps
     steps = [
-        ("Creating virtual environment", create_virtual_env),
-        ("Installing dependencies", install_dependencies),
-        ("Creating directories", create_directories),
+        create_venv,
+        install_dependencies,
+        ensure_directories,
     ]
 
-    # Add SSL generation if OpenSSL is available
-    if has_openssl:
-        steps.append(("Generating SSL certificates", generate_ssl_certificates))
+    if openssl_ok:
+        steps.append(generate_ssl)
 
-    steps.extend([
-        ("Setting up web interface", copy_web_template),
-        ("Creating run scripts", create_run_scripts),
-        ("Verifying setup", verify_setup)
-    ])
+    steps += [
+        create_run_scripts,
+        verify,
+    ]
 
-    for step_name, step_func in steps:
-        if not step_func():
-            print(f"\n❌ Setup failed at: {step_name}")
+    for step in steps:
+        if not step():
+            print("\n❌ Setup failed.")
             sys.exit(1)
 
-    # Success
-    print_success_message()
+    success()
 
 
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Setup interrupted by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n\n❌ Setup failed with error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+if __name__ == "__main__":
+    main()

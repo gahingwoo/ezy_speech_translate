@@ -11,6 +11,11 @@ import json
 import yaml
 from datetime import datetime
 
+# Add project root to path
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, PROJECT_ROOT)
+os.chdir(PROJECT_ROOT)
+
 
 class Colors:
     """ANSI color codes"""
@@ -68,12 +73,22 @@ class SystemTester:
         self.tests_passed = 0
         self.tests_failed = 0
         self.use_https = False
+        self.project_root = PROJECT_ROOT
+        self.config_dir = os.path.join(self.project_root, 'config')
+        self.ssl_dir = os.path.join(self.config_dir, 'ssl')
 
     def load_config(self):
         """Load configuration"""
         print_test("Loading configuration")
         try:
-            with open('config.yaml', 'r') as f:
+            config_path = os.path.join(self.config_dir, 'config.yaml')
+            
+            if not os.path.exists(config_path):
+                print_fail(f"Config file not found at {config_path}")
+                self.tests_failed += 1
+                return False
+            
+            with open(config_path, 'r') as f:
                 self.config = yaml.safe_load(f)
 
             host = self.config.get('server', {}).get('host', 'localhost')
@@ -84,7 +99,9 @@ class SystemTester:
             admin_port = self.config.get('admin_server', {}).get('port', 1916)
 
             # Check if using HTTPS
-            self.use_https = os.path.exists('cert.pem') and os.path.exists('key.pem')
+            cert_file = os.path.join(self.ssl_dir, 'cert.pem')
+            key_file = os.path.join(self.ssl_dir, 'key.pem')
+            self.use_https = os.path.exists(cert_file) and os.path.exists(key_file)
             protocol = 'https' if self.use_https else 'http'
 
             self.base_url = f"{protocol}://{host}:{main_port}"
@@ -94,6 +111,7 @@ class SystemTester:
             print_info(f"Main Server: {self.base_url}")
             print_info(f"Admin Server: {self.admin_url}")
             print_info(f"Protocol: {protocol.upper()}")
+            print_info(f"Project Root: {self.project_root}")
 
             self.tests_passed += 1
             return True
@@ -106,8 +124,11 @@ class SystemTester:
         """Test SSL certificates"""
         print_test("Checking SSL certificates")
 
-        cert_exists = os.path.exists('cert.pem')
-        key_exists = os.path.exists('key.pem')
+        cert_file = os.path.join(self.ssl_dir, 'cert.pem')
+        key_file = os.path.join(self.ssl_dir, 'key.pem')
+
+        cert_exists = os.path.exists(cert_file)
+        key_exists = os.path.exists(key_file)
 
         if cert_exists and key_exists:
             print_pass()
@@ -116,7 +137,7 @@ class SystemTester:
             try:
                 import subprocess
                 result = subprocess.run(
-                    ['openssl', 'x509', '-in', 'cert.pem', '-noout', '-dates'],
+                    ['openssl', 'x509', '-in', cert_file, '-noout', '-dates'],
                     capture_output=True,
                     text=True,
                     timeout=5
@@ -128,7 +149,7 @@ class SystemTester:
 
                 # Check certificate subject
                 result = subprocess.run(
-                    ['openssl', 'x509', '-in', 'cert.pem', '-noout', '-subject'],
+                    ['openssl', 'x509', '-in', cert_file, '-noout', '-subject'],
                     capture_output=True,
                     text=True,
                     timeout=5
@@ -157,18 +178,24 @@ class SystemTester:
                 print_info("✗ key.pem missing")
 
             print_warn("Generate certificates with:")
-            print_warn("  openssl req -x509 -newkey rsa:4096 -keyout key.pem \\")
-            print_warn("    -out cert.pem -days 365 -nodes")
+            print_warn(f"  mkdir -p {self.ssl_dir}")
+            print_warn(f"  cd {self.ssl_dir}")
+            print_warn("  openssl req -x509 -newkey rsa:2048 -nodes \\")
+            print_warn("    -out cert.pem -keyout key.pem -days 365 \\")
+            print_warn('    -subj "/CN=localhost"')
 
             self.tests_failed += 1
             return False
 
         else:
             print_warn("No SSL certificates found (HTTP mode)")
+            print_info(f"Certificate directory: {self.ssl_dir}")
             print_info("Generate certificates with:")
-            print_info("  openssl req -x509 -newkey rsa:4096 -keyout key.pem \\")
-            print_info("    -out cert.pem -days 365 -nodes")
-            print_info("Or run: python setup.py")
+            print_info(f"  mkdir -p {self.ssl_dir}")
+            print_info(f"  cd {self.ssl_dir}")
+            print_info("  openssl req -x509 -newkey rsa:2048 -nodes \\")
+            print_info("    -out cert.pem -keyout key.pem -days 365 \\")
+            print_info('    -subj "/CN=localhost"')
 
             # Not a failure, just a warning
             self.tests_passed += 1
@@ -181,9 +208,11 @@ class SystemTester:
         required_modules = [
             ('flask', 'Flask'),
             ('flask_socketio', 'Flask-SocketIO'),
+            ('flask_cors', 'Flask-CORS'),
             ('yaml', 'PyYAML'),
             ('jwt', 'PyJWT'),
-            ('eventlet', 'eventlet')
+            ('eventlet', 'eventlet'),
+            ('requests', 'requests')
         ]
 
         missing = []
@@ -270,7 +299,7 @@ class SystemTester:
 
         except requests.exceptions.ConnectionError:
             print_fail("Server not running")
-            print_warn("Start server with: python user_server.py")
+            print_warn("Start server with: python app/user/server.py")
             print_info(f"Expected URL: {self.base_url}")
             self.tests_failed += 1
             return False
@@ -304,7 +333,7 @@ class SystemTester:
 
         except requests.exceptions.ConnectionError:
             print_fail("Admin server not running")
-            print_warn("Start with: python admin_server.py")
+            print_warn("Start with: python app/admin/server.py")
             print_info(f"Expected URL: {self.admin_url}")
             self.tests_failed += 1
             return False
@@ -320,7 +349,7 @@ class SystemTester:
 
         try:
             username = self.config.get('authentication', {}).get('admin_username', 'admin')
-            password = self.config.get('authentication', {}).get('admin_password', 'admin')
+            password = self.config.get('authentication', {}).get('admin_password', 'admin123')
 
             response = requests.post(
                 f"{self.base_url}/api/login",
@@ -395,47 +424,48 @@ class SystemTester:
         """Test file and directory structure"""
         print_test("Checking file structure")
 
-        required_files = [
-            'user_server.py',
-            'admin_server.py',
-            'config.yaml',
-            'requirements.txt'
-        ]
-
         required_dirs = [
-            'templates',
-            'static',
-            'logs',
-            'exports',
-            'data'
+            ('app', 'Application directory'),
+            ('app/user', 'User server directory'),
+            ('app/admin', 'Admin server directory'),
+            ('app/templates', 'Templates directory'),
+            ('app/static', 'Static files directory'),
+            ('config', 'Configuration directory'),
+            ('logs', 'Logs directory'),
         ]
 
-        optional_files = [
-            'cert.pem',
-            'key.pem',
-            'README.md',
-            'setup.py'
+        required_files = [
+            ('config/config.yaml', 'Configuration file'),
+            ('app/user/server.py', 'User server'),
+            ('app/admin/server.py', 'Admin server'),
         ]
 
-        missing_files = [f for f in required_files if not os.path.exists(f)]
-        missing_dirs = [d for d in required_dirs if not os.path.exists(d)]
+        missing_dirs = []
+        missing_files = []
 
-        if missing_files or missing_dirs:
+        for dir_path, desc in required_dirs:
+            full_path = os.path.join(self.project_root, dir_path)
+            if not os.path.exists(full_path):
+                missing_dirs.append(f"{desc} ({dir_path})")
+
+        for file_path, desc in required_files:
+            full_path = os.path.join(self.project_root, file_path)
+            if not os.path.exists(full_path):
+                missing_files.append(f"{desc} ({file_path})")
+
+        if missing_dirs or missing_files:
             print_fail()
-            if missing_files:
-                print_info(f"Missing files: {', '.join(missing_files)}")
             if missing_dirs:
-                print_info(f"Missing directories: {', '.join(missing_dirs)}")
+                for item in missing_dirs:
+                    print_info(f"✗ Missing: {item}")
+            if missing_files:
+                for item in missing_files:
+                    print_info(f"✗ Missing: {item}")
             self.tests_failed += 1
             return False
         else:
             print_pass()
-
-            # Check optional files
-            found_optional = [f for f in optional_files if os.path.exists(f)]
-            if found_optional:
-                print_info(f"Optional: {', '.join(found_optional)}")
-
+            print_info(f"Project structure is valid")
             self.tests_passed += 1
             return True
 
@@ -469,6 +499,7 @@ class SystemTester:
         """Run all tests"""
         print_header("EzySpeechTranslate System Test")
         print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Project Root: {self.project_root}\n")
 
         # Suppress SSL warnings for testing
         import urllib3
@@ -481,10 +512,10 @@ class SystemTester:
             print("\n❌ Cannot proceed without configuration")
             return False
 
+        self.test_file_structure()
         self.test_ssl_certificates()
         self.test_dependencies()
         self.test_audio_devices()
-        self.test_file_structure()
 
         # Server tests
         print_header("Server Tests")
@@ -496,7 +527,7 @@ class SystemTester:
             self.test_api_endpoints()
         else:
             print_warn("Skipping server-dependent tests")
-            print_info("Start server with: python user_server.py")
+            print_info("Start server with: python app/user/server.py")
 
         # Summary
         self.print_summary()
