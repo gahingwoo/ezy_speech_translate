@@ -10,9 +10,56 @@ let autoRestartEnabled = true;
 let restartTimeout = null;
 let finalTranscript = '';
 let recognitionAttempts = 0;
-const MAX_SILENT_TIME = 30000; // 30 seconds
+const MAX_SILENT_TIME = 15000; // 30 seconds
 let lastSpeechTimestamp = Date.now();
-let warmupTimeout = null;
+
+// XSS Protection
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return '';
+
+    // Remove HTML tags and dangerous characters
+    return input
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;')
+        .trim();
+}
+
+function validateText(text, maxLength = 5000) {
+    if (!text || typeof text !== 'string') {
+        return { valid: false, error: 'Invalid input' };
+    }
+
+    const trimmed = text.trim();
+
+    if (trimmed.length === 0) {
+        return { valid: false, error: 'Text cannot be empty' };
+    }
+
+    if (trimmed.length > maxLength) {
+        return { valid: false, error: `Text too long (max ${maxLength} characters)` };
+    }
+
+    // Check for suspicious patterns
+    const dangerousPatterns = [
+        /<script/i,
+        /javascript:/i,
+        /on\w+\s*=/i,  // onclick=, onerror=, etc.
+        /<iframe/i,
+        /<object/i,
+        /<embed/i
+    ];
+
+    for (let pattern of dangerousPatterns) {
+        if (pattern.test(trimmed)) {
+            return { valid: false, error: 'Invalid characters detected' };
+        }
+    }
+
+    return { valid: true, text: sanitizeInput(trimmed) };
+}
 
 function toggleMobileMenu() {
     const sidebar = document.getElementById('sidebar');
@@ -128,8 +175,25 @@ async function login() {
     const password = document.getElementById('password').value;
     const errorEl = document.getElementById('loginError');
 
+    // Validate inputs
     if (!username || !password) {
         errorEl.textContent = 'Please fill in all fields';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    // Sanitize username (prevent XSS in error messages)
+    const sanitizedUsername = sanitizeInput(username);
+
+    // Basic validation
+    if (sanitizedUsername.length > 50) {
+        errorEl.textContent = 'Username too long';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    if (password.length > 100) {
+        errorEl.textContent = 'Password too long';
         errorEl.style.display = 'block';
         return;
     }
@@ -138,7 +202,10 @@ async function login() {
         const response = await fetch(`${SERVER_URL}/api/login`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username, password})
+            body: JSON.stringify({
+                username: sanitizedUsername,
+                password: password
+            })
         });
 
         const data = await response.json();
@@ -320,8 +387,8 @@ async function loadAudioDevices() {
         const audioInputs = devices.filter(device => device.kind === 'audioinput');
 
         select.innerHTML = audioInputs.length === 0
-            ? '<option>🎤 System Default</option>'
-            : '<option>🎤 System Default (Best Available)</option>';
+            ? '<option>System Default</option>'
+            : '<option>System Default</option>';
 
         stream.getTracks().forEach(track => track.stop());
 
@@ -335,65 +402,22 @@ async function loadAudioDevices() {
     }
 }
 
-function warmupRecognition() {
-    console.log('🎤 Warming up speech recognition...');
-    updateInterimDisplay('🎤 Warming up... Please wait....', true);
-    // Create a short-lived recognition instance for warmup
-    const warmupRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    warmupRecognition.lang = recognitionLanguage;
-    warmupRecognition.continuous = false;
-    warmupRecognition.interimResults = false;
-    
-    warmupRecognition.onend = () => {
-        console.log('✅ Warmup complete');
-        startMainRecognition();
-    };
-    
-    warmupRecognition.onerror = (event) => {
-        console.warn('⚠️ Warmup error:', event.error);
-        startMainRecognition();
-    };
-    
-    try {
-        warmupRecognition.start();
-    } catch (error) {
-        console.error('❌ Warmup failed:', error);
-        startMainRecognition();
-    }
-}
-
-function startMainRecognition() {
-    if (!recognition) return;
-    
-    recognition.onresult = handleRecognitionResult;
-    recognition.onerror = handleRecognitionError;
-    recognition.onend = handleRecognitionEnd;
-    
-    try {
-        recognition.start();
-        lastSpeechTimestamp = Date.now();
-        console.log('🎤 Main recognition started');
-    } catch (error) {
-        console.error('❌ Start failed:', error);
-        handleRecognitionError({ error: 'start_failed' });
-    }
-}
-
 function handleRecognitionResult(event) {
     let interimTranscript = '';
-    
+
     for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
-        lastSpeechTimestamp = Date.now(); // Update timestamp on speech
+        const confidence = event.results[i][0].confidence;
+        lastSpeechTimestamp = Date.now();
 
         if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
-            console.log('✅ Final:', transcript);
-            
-            sendTranscription(finalTranscript.trim());
+            console.log('✅ Final:', transcript, 'Confidence:', confidence);
+
+            sendTranscription(finalTranscript.trim(), confidence);
             finalTranscript = '';
-            recognitionAttempts = 0; // Reset attempts on successful speech
-            
+            recognitionAttempts = 0;
+
             updateInterimDisplay('✓ Sent', true);
             setTimeout(() => {
                 if (isRecording) {
@@ -404,7 +428,7 @@ function handleRecognitionResult(event) {
             interimTranscript += transcript;
         }
     }
-    
+
     if (interimTranscript.trim()) {
         updateInterimDisplay(interimTranscript, true);
         console.log('💭 Interim:', interimTranscript.substring(0, 50) + '...');
@@ -413,7 +437,7 @@ function handleRecognitionResult(event) {
 
 function handleRecognitionError(event) {
     console.error('❌ Recognition error:', event.error);
-    
+
     switch (event.error) {
         case 'no-speech':
             const silentTime = Date.now() - lastSpeechTimestamp;
@@ -424,12 +448,12 @@ function handleRecognitionError(event) {
                 updateInterimDisplay('Waiting for speech...', true);
             }
             break;
-            
+
         case 'network':
             updateInterimDisplay('⚠️ Network error, retrying...', true);
             setTimeout(restartRecognition, 1000);
             break;
-            
+
         default:
             recognitionAttempts++;
             if (recognitionAttempts < 3) {
@@ -443,12 +467,12 @@ function handleRecognitionError(event) {
 
 function handleRecognitionEnd() {
     console.log('🛑 Recognition ended');
-    
+
     if (finalTranscript.trim()) {
-        sendTranscription(finalTranscript.trim());
+        sendTranscription(finalTranscript.trim(), undefined);
         finalTranscript = '';
     }
-    
+
     if (isRecording && autoRestartEnabled) {
         console.log('🔄 Auto-restarting...');
         restartRecognition();
@@ -457,9 +481,9 @@ function handleRecognitionEnd() {
 
 function restartRecognition() {
     if (!isRecording) return;
-    
-    clearTimeout(warmupTimeout);
-    warmupTimeout = setTimeout(() => {
+
+    clearTimeout(restartTimeout);
+    restartTimeout = setTimeout(() => {
         console.log('🔄 Restarting recognition...');
         try {
             recognition.abort();
@@ -495,7 +519,7 @@ function setupRecognitionHandlers() {
         console.log('🛑 Speech recognition ended');
 
         if (finalTranscript.trim()) {
-            sendTranscription(finalTranscript.trim());
+            sendTranscription(finalTranscript.trim(), undefined);
             finalTranscript = '';
         }
 
@@ -573,12 +597,13 @@ function setupRecognitionHandlers() {
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
+            const confidence = event.results[i][0].confidence;
 
             if (event.results[i].isFinal) {
                 finalTranscript += transcript + ' ';
-                console.log('✅ Final:', transcript);
+                console.log('✅ Final:', transcript, 'Confidence:', confidence);
 
-                sendTranscription(finalTranscript.trim());
+                sendTranscription(finalTranscript.trim(), confidence);
                 finalTranscript = '';
 
                 updateInterimDisplay('✓ Sent', true);
@@ -607,31 +632,45 @@ function updateInterimDisplay(text, active) {
     display.className = active ? 'interim-display active' : 'interim-display inactive';
 }
 
-function sendTranscription(text) {
+function sendTranscription(text, confidence) {
     if (!text || !socket || !socket.connected) {
         console.warn('⚠️ Cannot send - no text or no connection');
         return;
     }
 
-    console.log(`📤 SENDING TO SERVER: "${text}"`);
+    // Validate and sanitize input
+    const validation = validateText(text);
+    if (!validation.valid) {
+        console.error('❌ Invalid input:', validation.error);
+        updateInterimDisplay('⚠️ ' + validation.error, false);
+        return;
+    }
+
+    const sanitizedText = validation.text;
+    console.log(`📤 SENDING TO SERVER: "${sanitizedText}" (confidence: ${confidence})`);
 
     socket.emit('new_transcription', {
-        text: text,
+        text: sanitizedText,
         language: recognitionLanguage.split('-')[0],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        confidence: confidence
     });
 
-    updateInterimDisplay('✓ Sent: ' + text.substring(0, 50) + '...', true);
+    updateInterimDisplay('✓ Sent: ' + sanitizedText.substring(0, 50) + '...', true);
 }
 
 function updateRecordButton() {
     const btn = document.getElementById('recordBtn');
+    const langSelect = document.getElementById('sourceLangSelect');
+
     if (isRecording) {
         btn.textContent = '⏹️ Stop Recording';
         btn.className = 'pf-c-button pf-c-button--danger recording';
+        langSelect.disabled = true;
     } else {
         btn.textContent = '🎙️ Start Recording';
         btn.className = 'pf-c-button pf-c-button--success';
+        langSelect.disabled = false;
     }
 }
 
@@ -647,7 +686,18 @@ async function toggleRecording() {
         finalTranscript = '';
         recognition.lang = recognitionLanguage;
         updateRecordButton();
-        warmupRecognition();
+
+        // 直接启动，不需要 warmup
+        try {
+            recognition.start();
+            lastSpeechTimestamp = Date.now();
+            console.log('🎤 Recognition started directly');
+        } catch (error) {
+            console.error('❌ Start failed:', error);
+            isRecording = false;
+            updateRecordButton();
+            alert('Failed to start recording: ' + error.message);
+        }
     } else {
         stopRecording();
     }
@@ -696,19 +746,17 @@ function stopRecording() {
 }
 
 function changeSourceLanguage() {
+    if (isRecording) {
+        alert('⚠️ Cannot change language while recording. Please stop recording first.');
+        const select = document.getElementById('sourceLangSelect');
+        select.value = recognitionLanguage;
+        return;
+    }
+
     const select = document.getElementById('sourceLangSelect');
     const oldLang = recognitionLanguage;
     recognitionLanguage = select.value;
     console.log(`🌍 Language: ${oldLang} → ${recognitionLanguage}`);
-
-    if (isRecording) {
-        console.log('🔄 Restarting with new language...');
-        stopRecording();
-        setTimeout(() => {
-            autoRestartEnabled = true;
-            startRecording();
-        }, 1000);
-    }
 }
 
 let draggedElement = null;
@@ -756,6 +804,7 @@ function renderTranscriptions() {
                            ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
                            onclick="handleCheckboxClick(event, ${item.id})">
                     <div class="card-content">
+                        ${item.confidence ? `<span class="card-confidence">confidence: ${Math.round(item.confidence * 100)}%</span>` : ''}
                         <div class="card-header">
                             <span class="card-time">${item.timestamp}</span>
                             ${item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : ''}
@@ -897,8 +946,10 @@ function selectItem(id) {
     if (!item) return;
 
     selectedItem = item;
-    document.getElementById('originalText').value = item.original;
-    document.getElementById('correctedText').value = item.corrected;
+
+    // Sanitize before displaying in textarea
+    document.getElementById('originalText').value = sanitizeInput(item.original);
+    document.getElementById('correctedText').value = sanitizeInput(item.corrected);
 
     renderTranscriptions();
 }
@@ -907,8 +958,15 @@ function addNewItem() {
     const text = prompt('Enter transcription text:');
     if (!text) return;
 
+    // Validate and sanitize input
+    const validation = validateText(text);
+    if (!validation.valid) {
+        alert('❌ ' + validation.error);
+        return;
+    }
+
     socket.emit('new_transcription', {
-        text: text,
+        text: validation.text,
         language: 'manual'
     });
 }
@@ -940,14 +998,17 @@ function saveCorrection() {
     }
 
     const corrected = document.getElementById('correctedText').value.trim();
-    if (!corrected) {
-        alert('Corrected text cannot be empty');
+
+    // Validate and sanitize input
+    const validation = validateText(corrected);
+    if (!validation.valid) {
+        alert('❌ ' + validation.error);
         return;
     }
 
     socket.emit('correct_translation', {
         id: selectedItem.id,
-        corrected_text: corrected
+        corrected_text: validation.text
     });
 
     alert('✅ Correction saved and broadcasted to all clients!');
@@ -1001,17 +1062,15 @@ async function updateSystemInfo() {
         });
         const data = await response.json();
 
-        const timestamp = data.timestamp ?
-            new Date(data.timestamp).toLocaleString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            }) :
-            new Date().toLocaleTimeString();
+        const timestamp = new Date().toLocaleString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
 
         document.getElementById('systemInfo').textContent =
             `⏰ ${timestamp}\n` +

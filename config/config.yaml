@@ -25,7 +25,7 @@ authentication:
   enabled: true                      # Enable/disable authentication
   admin_username: "admin"            # Admin username
   admin_password: "admin123"         # CHANGE THIS IN PRODUCTION!
-  session_timeout: 7200              # Session timeout in seconds (2 hours)
+  session_timeout: 7200              # Session timeout in seconds (4 hours)
   jwt_secret: "change-this-jwt-secret-in-production"  # CHANGE THIS!
 
 # ============================================

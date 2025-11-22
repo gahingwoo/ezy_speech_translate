@@ -376,7 +376,8 @@ def handle_new_transcription(data):
         'corrected': raw_text,
         'translated': None,
         'is_corrected': False,
-        'source_language': data.get('language', 'en') if data else 'en'
+        'source_language': data.get('language', 'en') if data else 'en',
+        'confidence': data.get('confidence')
     }
 
     translations_history.append(translation_data)

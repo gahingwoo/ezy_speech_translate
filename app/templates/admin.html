@@ -8,241 +8,241 @@
     <link rel="stylesheet" href="/static/css/admin.css">
 </head>
 <body data-theme="light">
-    <!-- Login Screen -->
-    <div id="loginScreen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg);">
-        <div style="background: var(--surface); padding: 3rem; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow); width: 100%; max-width: 450px; border: 1px solid var(--border);">
-            <div style="text-align: center; margin-bottom: 2.5rem;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🎙️</div>
-                <h1 style="font-size: 1.75rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;">Admin Login</h1>
-                <p style="color: var(--text-secondary); font-size: 0.938rem;">Sign in to access the admin panel</p>
-            </div>
+<!-- Login Screen -->
+<div id="loginScreen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg);">
+    <div style="background: var(--surface); padding: 3rem; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow); width: 100%; max-width: 450px; border: 1px solid var(--border);">
+        <div style="text-align: center; margin-bottom: 2.5rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎙️</div>
+            <h1 style="font-size: 1.75rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;">Admin Login</h1>
+            <p style="color: var(--text-secondary); font-size: 0.938rem;">Sign in to access the admin panel</p>
+        </div>
 
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.875rem;">Username</label>
-                <input type="text" id="username" placeholder="Enter your username" autocomplete="username" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.938rem; background: var(--bg); color: var(--text); transition: all 0.2s;">
-            </div>
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.875rem;">Username</label>
+            <input type="text" id="username" placeholder="Enter your username" autocomplete="username" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.938rem; background: var(--bg); color: var(--text); transition: all 0.2s;">
+        </div>
 
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.875rem;">Password</label>
-                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.938rem; background: var(--bg); color: var(--text); transition: all 0.2s;">
-            </div>
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.875rem;">Password</label>
+            <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.938rem; background: var(--bg); color: var(--text); transition: all 0.2s;">
+        </div>
 
-            <div id="loginError" style="color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; padding: 0.75rem; background: rgba(238, 0, 0, 0.1); border-radius: 3px; border-left: 3px solid var(--danger); display: none;"></div>
+        <div id="loginError" style="color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; padding: 0.75rem; background: rgba(238, 0, 0, 0.1); border-radius: 3px; border-left: 3px solid var(--danger); display: none;"></div>
 
-            <button onclick="login()" id="loginButton" style="width: 100%; padding: 0.875rem; background: var(--primary); color: white; border: none; border-radius: 3px; font-size: 0.938rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                Sign In
+        <button onclick="login()" id="loginButton" style="width: 100%; padding: 0.875rem; background: var(--primary); color: white; border: none; border-radius: 3px; font-size: 0.938rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            Sign In
+        </button>
+
+        <div style="margin-top: 1.5rem; text-align: center;">
+            <button onclick="toggleLoginTheme()" style="background: none; border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 3px; cursor: pointer; font-size: 0.875rem;">
+                <span id="loginThemeIcon">🌙</span> <span id="loginThemeText">Dark Mode</span>
             </button>
+        </div>
+    </div>
+</div>
 
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <button onclick="toggleLoginTheme()" style="background: none; border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 3px; cursor: pointer; font-size: 0.875rem;">
-                    <span id="loginThemeIcon">🌙</span> <span id="loginThemeText">Dark Mode</span>
-                </button>
+<!-- Main App -->
+<div id="mainApp" style="display: none;">
+    <!-- Header -->
+    <header class="pf-c-page__header">
+        <div class="header-left">
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
+                <span>☰</span>
+            </button>
+            <div class="brand">
+                <span>🎙️</span>
+                <span>EzySpeechTranslate Admin</span>
+            </div>
+            <div id="statusBadge" class="connection-badge offline">
+                <span class="status-dot"></span>
+                <span>Disconnected</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="logout-btn" onclick="logout()">
+                <span>🚪</span>
+                <span>Logout</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+
+    <!-- Main Content -->
+    <div class="pf-c-page__main">
+        <!-- Sidebar -->
+        <aside class="pf-c-page__sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Audio Controls</h3>
+
+                <div class="control-group">
+                    <label class="control-label">Source Language</label>
+                    <select id="sourceLangSelect" onchange="changeSourceLanguage()">
+                        <option value="en-US">English (US)</option>
+                        <option value="en-GB">English (UK)</option>
+                        <option value="zh-CN">中文 (普通话)</option>
+                        <option value="yue-Hant-HK">粵語</option>
+                        <option value="ja-JP">日本語</option>
+                        <option value="ko-KR">한국어</option>
+                        <option value="es-ES">Español</option>
+                        <option value="fr-FR">Français</option>
+                        <option value="de-DE">Deutsch</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Audio Device</label>
+                    <select id="deviceSelect">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button id="recordBtn" class="pf-c-button pf-c-button--success" onclick="toggleRecording()">
+                        🎙️ Start Recording
+                    </button>
+                    <div class="auto-restart-badge" style="display: none;" id="autoRestartBadge">
+                        <span>🔄</span>
+                        <span>Auto-restart enabled</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Recognizing...</label>
+                    <div id="interimDisplay" class="interim-display inactive">
+                        <span id="interimText">Waiting for speech...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Actions</h3>
+                <div class="button-group">
+                    <button class="pf-c-button pf-c-button--primary" onclick="addNewItem()">➕ Add</button>
+                    <button class="pf-c-button pf-c-button--primary" onclick="editSelected()">✏️ Edit</button>
+                    <button class="pf-c-button pf-c-button--danger" onclick="deleteSelected()">🗑️ Delete</button>
+                    <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()">Clear All</button>
+                </div>
+                <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;" onclick="exportData()">📤 Export</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">Settings</h3>
+                <div class="control-group">
+                    <button class="sidebar-menu-item" onclick="toggleTheme(); closeMobileMenu();">
+                        <span id="themeIcon">🌙</span>
+                        <span id="themeText">Dark Mode</span>
+                    </button>
+                </div>
+                <div class="control-group">
+                    <button class="sidebar-menu-item" onclick="showAbout(); closeMobileMenu();">
+                        <span>ℹ️</span>
+                        <span>About</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Section -->
+        <section class="pf-c-page__main-section">
+            <div class="content-header">
+                <h2 class="content-title">
+                    Transcriptions
+                    <span class="count-badge" id="itemCount">0</span>
+                </h2>
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                    <span>⋮⋮</span>
+                    <span>Drag to reorder</span>
+                </div>
+            </div>
+
+            <div id="transcriptionsList" class="transcription-list">
+                <div class="empty-state">
+                    <div class="empty-icon">💬</div>
+                    <div>No transcriptions yet</div>
+                    <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                        Start recording to see transcriptions
+                    </small>
+                </div>
+            </div>
+        </section>
+
+        <!-- Edit Panel -->
+        <aside class="edit-panel">
+            <div class="panel-section">
+                <h3 class="panel-title">Edit & Correct</h3>
+
+                <div class="control-group">
+                    <label class="control-label">Original</label>
+                    <textarea id="originalText" disabled></textarea>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Corrected (Edit Here)</label>
+                    <textarea id="correctedText" placeholder="Select an item to edit..."></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="pf-c-button pf-c-button--success" onclick="saveCorrection()">💾 Save</button>
+                    <button class="pf-c-button pf-c-button--secondary" onclick="cancelCorrection()">✖️ Cancel</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="panel-title">System Info</h3>
+                <div id="systemInfo" class="system-info">Loading...</div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<!-- About Modal -->
+<div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
+    <div class="about-content" onclick="event.stopPropagation()">
+        <div class="about-header">
+            <div class="about-title">
+                <span>🎙️</span>
+                <span>EzySpeechTranslate</span>
+            </div>
+            <button class="about-close" onclick="hideAbout()">✕</button>
+        </div>
+        <div class="about-body">
+            <p><strong>Real-time Speech Translation</strong></p>
+            <p>🌍 Breaking language barriers</p>
+
+            <h3>Features</h3>
+            <p>• 20+ languages supported<br>
+                • Real-time transcription<br>
+                • Auto-correction<br>
+                • Export functionality</p>
+
+            <h3>Made with ❤️ by</h3>
+            <p>Ga Hing Woo</p>
+
+            <div class="about-links">
+                <a href="https://github.com/gahingwoo/ezy_speech_translate"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="about-link">
+                    <span>⭐</span>
+                    <span>GitHub</span>
+                </a>
+                <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="about-link">
+                    <span>💬</span>
+                    <span>Feedback</span>
+                </a>
+            </div>
+
+            <div class="about-version">
+                v3.2.1 • Open Source • MIT License
             </div>
         </div>
     </div>
-
-    <!-- Main App -->
-    <div id="mainApp" style="display: none;">
-        <!-- Header -->
-        <header class="pf-c-page__header">
-            <div class="header-left">
-                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuToggle">
-                    <span>☰</span>
-                </button>
-                <div class="brand">
-                    <span>🎙️</span>
-                    <span>EzySpeechTranslate Admin</span>
-                </div>
-                <div id="statusBadge" class="connection-badge offline">
-                    <span class="status-dot"></span>
-                    <span>Disconnected</span>
-                </div>
-            </div>
-            <div class="header-right">
-                <button class="logout-btn" onclick="logout()">
-                    <span>🚪</span>
-                    <span>Logout</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- Mobile Sidebar Overlay -->
-        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
-
-        <!-- Main Content -->
-        <div class="pf-c-page__main">
-            <!-- Sidebar -->
-            <aside class="pf-c-page__sidebar" id="sidebar">
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">Audio Controls</h3>
-
-                    <div class="control-group">
-                        <label class="control-label">Source Language</label>
-                        <select id="sourceLangSelect" onchange="changeSourceLanguage()">
-                            <option value="en-US">English (US)</option>
-                            <option value="en-GB">English (UK)</option>
-                            <option value="zh-CN">中文 (普通话)</option>
-                            <option value="yue-Hant-HK">粵語 (香港)</option>
-                            <option value="ja-JP">日本語</option>
-                            <option value="ko-KR">한국어</option>
-                            <option value="es-ES">Español</option>
-                            <option value="fr-FR">Français</option>
-                            <option value="de-DE">Deutsch</option>
-                        </select>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="control-label">Audio Device</label>
-                        <select id="deviceSelect">
-                            <option>Loading...</option>
-                        </select>
-                    </div>
-
-                    <div class="control-group">
-                        <button id="recordBtn" class="pf-c-button pf-c-button--success" onclick="toggleRecording()">
-                            🎙️ Start Recording
-                        </button>
-                        <div class="auto-restart-badge" style="display: none;" id="autoRestartBadge">
-                            <span>🔄</span>
-                            <span>Auto-restart enabled</span>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="control-label">Recognizing...</label>
-                        <div id="interimDisplay" class="interim-display inactive">
-                            <span id="interimText">Waiting for speech...</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">Actions</h3>
-                    <div class="button-group">
-                        <button class="pf-c-button pf-c-button--primary" onclick="addNewItem()">➕ Add</button>
-                        <button class="pf-c-button pf-c-button--primary" onclick="editSelected()">✏️ Edit</button>
-                        <button class="pf-c-button pf-c-button--danger" onclick="deleteSelected()">🗑️ Delete</button>
-                        <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()">Clear All</button>
-                    </div>
-                    <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;" onclick="exportData()">📤 Export</button>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title">Settings</h3>
-                    <div class="control-group">
-                        <button class="sidebar-menu-item" onclick="toggleTheme(); closeMobileMenu();">
-                            <span id="themeIcon">🌙</span>
-                            <span id="themeText">Dark Mode</span>
-                        </button>
-                    </div>
-                    <div class="control-group">
-                        <button class="sidebar-menu-item" onclick="showAbout(); closeMobileMenu();">
-                            <span>ℹ️</span>
-                            <span>About</span>
-                        </button>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Section -->
-            <section class="pf-c-page__main-section">
-                <div class="content-header">
-                    <h2 class="content-title">
-                        Transcriptions
-                        <span class="count-badge" id="itemCount">0</span>
-                    </h2>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
-                        <span>⋮⋮</span>
-                        <span>Drag to reorder</span>
-                    </div>
-                </div>
-
-                <div id="transcriptionsList" class="transcription-list">
-                    <div class="empty-state">
-                        <div class="empty-icon">💬</div>
-                        <div>No transcriptions yet</div>
-                        <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
-                            Start recording to see transcriptions
-                        </small>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Edit Panel -->
-            <aside class="edit-panel">
-                <div class="panel-section">
-                    <h3 class="panel-title">Edit & Correct</h3>
-
-                    <div class="control-group">
-                        <label class="control-label">Original</label>
-                        <textarea id="originalText" disabled></textarea>
-                    </div>
-
-                    <div class="control-group">
-                        <label class="control-label">Corrected (Edit Here)</label>
-                        <textarea id="correctedText" placeholder="Select an item to edit..."></textarea>
-                    </div>
-
-                    <div class="button-group">
-                        <button class="pf-c-button pf-c-button--success" onclick="saveCorrection()">💾 Save</button>
-                        <button class="pf-c-button pf-c-button--secondary" onclick="cancelCorrection()">✖️ Cancel</button>
-                    </div>
-                </div>
-
-                <div class="panel-section">
-                    <h3 class="panel-title">System Info</h3>
-                    <div id="systemInfo" class="system-info">Loading...</div>
-                </div>
-            </aside>
-        </div>
-    </div>
-
-    <!-- About Modal -->
-    <div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
-        <div class="about-content" onclick="event.stopPropagation()">
-            <div class="about-header">
-                <div class="about-title">
-                    <span>🎙️</span>
-                    <span>EzySpeechTranslate</span>
-                </div>
-                <button class="about-close" onclick="hideAbout()">✕</button>
-            </div>
-            <div class="about-body">
-                <p><strong>Real-time Speech Translation</strong></p>
-                <p>🌍 Breaking language barriers</p>
-
-                <h3>Features</h3>
-                <p>• 20+ languages supported<br>
-                   • Real-time transcription<br>
-                   • Auto-correction<br>
-                   • Export functionality</p>
-
-                <h3>Made with ❤️ by</h3>
-                <p>Ga Hing Woo</p>
-
-                <div class="about-links">
-                    <a href="https://github.com/gahingwoo/ezy_speech_translate"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="about-link">
-                        <span>⭐</span>
-                        <span>GitHub</span>
-                    </a>
-                    <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="about-link">
-                        <span>💬</span>
-                        <span>Feedback</span>
-                    </a>
-                </div>
-
-                <div class="about-version">
-                    v3.2.0 • Open Source • MIT License
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="/static/js/admin.js"></script>
+</div>
+<script src="/static/js/admin.js"></script>
 </body>
 </html>

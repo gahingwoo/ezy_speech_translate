@@ -19,22 +19,22 @@ A production-ready real-time speech translation system with secure authenticatio
 
 ```
 ┌─────────────────────┐
-│   Admin Interface   │ ◄─── Web Interface (Port 1916)
-│  (admin_server.py)  │      Modern, responsive GUI
+│   Admin Backend     │ ◄─── Admin Server (Port 1916)
+│(app/admin/server.py)│      Admin Interface
 └─────────┬───────────┘
           │
           │ WebSocket + REST API
           │
 ┌─────────▼───────────┐
-│   Main Backend      │ ◄─── Server (Port 1915)
-│  (user_server.py)   │      Flask + SocketIO
+│   Main Backend      │ ◄─── Main (User) Server (Port 1915)
+│(app/user/server.py) │      
 └─────────┬───────────┘
           │
           │ WebSocket
           │
 ┌─────────▼───────────┐
 │   User Clients      │ ◄─── Browser Interface
-│   (user.html)      │      Real-time translations
+│   (user.html)       │      Real-time translations
 └─────────────────────┘
 ```
 
@@ -99,7 +99,7 @@ start_server.bat
 ./start_server.sh
 
 # Or manually:
-venv/bin/python user_server.py
+venv/bin/python ./app/user/server.py
 ```
 
 The server starts on `https://localhost:1915` (or your configured port)
@@ -116,7 +116,7 @@ start_admin.bat
 ./start_admin.sh
 
 # Or manually:
-venv/bin/python admin_server.py
+venv/bin/python ./app/admin/server.py
 ```
 
 Admin interface: `https://localhost:1916` (or your configured port)
@@ -302,7 +302,7 @@ Type=simple
 User=your-user
 WorkingDirectory=/path/to/ezy_speech_translate
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python user_server.py
+ExecStart=/path/to/venv/bin/python ./app/user/server.py
 Restart=always
 
 [Install]
@@ -321,7 +321,7 @@ Type=simple
 User=your-user
 WorkingDirectory=/path/to/ezy_speech_translate
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python admin_server.py
+ExecStart=/path/to/venv/bin/python ./app/admin/server.py
 Restart=always
 
 [Install]
@@ -609,13 +609,11 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.2.0 (Current)
-- Multiple export formats (TXT, JSON, CSV, SRT) for user
-- Real-time search
-- Customizable font size
+### v3.2.1 (Current)
+- Add asr confidence shown on admin
 
 ---
 
 **Made with ❤️ by Ga Hing Woo for breaking language barriers**
 
-🌍 *Because everyone deserves to be understood*
+🌍 *Because everyone deserves to be understood*doc
