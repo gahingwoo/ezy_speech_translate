@@ -8,41 +8,6 @@
     <link rel="stylesheet" href="/static/css/admin.css">
 </head>
 <body data-theme="light">
-<!-- Login Screen -->
-<div id="loginScreen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg);">
-    <div style="background: var(--surface); padding: 3rem; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow); width: 100%; max-width: 450px; border: 1px solid var(--border);">
-        <div style="text-align: center; margin-bottom: 2.5rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🎙️</div>
-            <h1 style="font-size: 1.75rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;">Admin Login</h1>
-            <p style="color: var(--text-secondary); font-size: 0.938rem;">Sign in to access the admin panel</p>
-        </div>
-
-        <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.875rem;">Username</label>
-            <input type="text" id="username" placeholder="Enter your username" autocomplete="username" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.938rem; background: var(--bg); color: var(--text); transition: all 0.2s;">
-        </div>
-
-        <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.875rem;">Password</label>
-            <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 3px; font-size: 0.938rem; background: var(--bg); color: var(--text); transition: all 0.2s;">
-        </div>
-
-        <div id="loginError" style="color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; padding: 0.75rem; background: rgba(238, 0, 0, 0.1); border-radius: 3px; border-left: 3px solid var(--danger); display: none;"></div>
-
-        <button onclick="login()" id="loginButton" style="width: 100%; padding: 0.875rem; background: var(--primary); color: white; border: none; border-radius: 3px; font-size: 0.938rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            Sign In
-        </button>
-
-        <div style="margin-top: 1.5rem; text-align: center;">
-            <button onclick="toggleLoginTheme()" style="background: none; border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 3px; cursor: pointer; font-size: 0.875rem;">
-                <span id="loginThemeIcon">🌙</span> <span id="loginThemeText">Dark Mode</span>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Main App -->
-<div id="mainApp" style="display: none;">
     <!-- Header -->
     <header class="pf-c-page__header">
         <div class="header-left">
@@ -195,54 +160,54 @@
             </div>
         </aside>
     </div>
-</div>
 
-<!-- About Modal -->
-<div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
-    <div class="about-content" onclick="event.stopPropagation()">
-        <div class="about-header">
-            <div class="about-title">
-                <span>🎙️</span>
-                <span>EzySpeechTranslate</span>
+    <!-- About Modal -->
+    <div class="about-modal" id="aboutModal" onclick="hideAbout(event)">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title">
+                    <span>🎙️</span>
+                    <span>EzySpeechTranslate</span>
+                </div>
+                <button class="about-close" onclick="hideAbout()">✕</button>
             </div>
-            <button class="about-close" onclick="hideAbout()">✕</button>
-        </div>
-        <div class="about-body">
-            <p><strong>Real-time Speech Translation</strong></p>
-            <p>🌍 Breaking language barriers</p>
+            <div class="about-body">
+                <p><strong>Real-time Speech Translation</strong></p>
+                <p>🌍 Breaking language barriers</p>
 
-            <h3>Features</h3>
-            <p>• 20+ languages supported<br>
-                • Real-time transcription<br>
-                • Auto-correction<br>
-                • Export functionality</p>
+                <h3>Features</h3>
+                <p>• 20+ languages supported<br>
+                    • Real-time transcription<br>
+                    • Auto-correction<br>
+                    • Export functionality</p>
 
-            <h3>Made with ❤️ by</h3>
-            <p>Ga Hing Woo</p>
+                <h3>Made with ❤️ by</h3>
+                <p>Ga Hing Woo</p>
 
-            <div class="about-links">
-                <a href="https://github.com/gahingwoo/ezy_speech_translate"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="about-link">
-                    <span>⭐</span>
-                    <span>GitHub</span>
-                </a>
-                <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="about-link">
-                    <span>💬</span>
-                    <span>Feedback</span>
-                </a>
-            </div>
+                <div class="about-links">
+                    <a class="about-link"
+                       href="https://github.com/gahingwoo/ezy_speech_translate"
+                       rel="noopener noreferrer"
+                       target="_blank">
+                        <span>⭐</span>
+                        <span>GitHub</span>
+                    </a>
+                    <a class="about-link"
+                       href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                       rel="noopener noreferrer"
+                       target="_blank">
+                        <span>💬</span>
+                        <span>Feedback</span>
+                    </a>
+                </div>
 
-            <div class="about-version">
-                v3.2.2 • Open Source • MIT License
+                <div class="about-version">
+                    v3.2.2 • Open Source • MIT License
+                </div>
             </div>
         </div>
     </div>
-</div>
-<script src="/static/js/admin.js"></script>
+
+    <script src="/static/js/admin.js"></script>
 </body>
 </html>

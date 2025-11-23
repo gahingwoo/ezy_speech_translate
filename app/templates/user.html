@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>EzySpeechTranslate - Real-time Translation</title>
-    <meta name="description" content="Real-time speech translation with TTS support for 20+ languages">
+    <meta content="Real-time speech translation with TTS support for 20+ languages" name="description">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
-    <link rel="stylesheet" href="/static/css/user.css">
+    <link href="/static/css/user.css" rel="stylesheet">
 </head>
 <body data-theme="light">
 <!-- Sync Notification Indicator -->
-<div class="sync-indicator" id="syncIndicator" aria-live="polite">
+<div aria-live="polite" class="sync-indicator" id="syncIndicator">
     🔄 Translations Updated
 </div>
 
@@ -18,19 +18,19 @@
 <header class="pf-c-page__header" role="banner">
     <div class="header-left">
         <button
-                class="mobile-menu-toggle"
-                onclick="toggleMobileMenu()"
-                id="mobileMenuToggle"
+                aria-expanded="false"
                 aria-label="Toggle mobile menu"
-                aria-expanded="false">
+                class="mobile-menu-toggle"
+                id="mobileMenuToggle"
+                onclick="toggleMobileMenu()">
             <span aria-hidden="true">☰</span>
         </button>
         <div class="brand">
             <span aria-hidden="true">🎙️</span>
             <span>EzySpeechTranslate</span>
         </div>
-        <div id="statusBadge" class="connection-badge waiting" role="status" aria-live="polite">
-            <span class="status-dot" aria-hidden="true"></span>
+        <div aria-live="polite" class="connection-badge waiting" id="statusBadge" role="status">
+            <span aria-hidden="true" class="status-dot"></span>
             <span>Waiting</span>
         </div>
     </div>
@@ -38,21 +38,21 @@
     <!-- Desktop Search -->
     <div class="header-search-desktop" id="headerSearchDesktop">
         <input
-                type="search"
+                aria-label="Search translations"
                 class="search-input-header"
                 id="searchInput"
-                placeholder="🔍 Search..."
                 oninput="handleSearch()"
-                aria-label="Search translations"
+                placeholder="🔍 Search..."
+                type="search"
         >
     </div>
 
     <!-- Mobile Search Toggle -->
     <button
+            aria-label="Toggle search"
             class="mobile-search-toggle"
             id="mobileSearchToggle"
-            onclick="toggleMobileSearch()"
-            aria-label="Toggle search">
+            onclick="toggleMobileSearch()">
         <span>🔍</span>
     </button>
 </header>
@@ -61,24 +61,25 @@
 <div class="mobile-search-bar" id="mobileSearchBar">
     <div class="mobile-search-container">
         <input
-                type="search"
+                aria-label="Search translations"
                 class="search-input-mobile"
                 id="searchInputMobile"
-                placeholder="Search translations..."
                 oninput="handleSearch()"
-                aria-label="Search translations"
+                placeholder="Search translations..."
+                type="search"
         >
     </div>
-    <div class="search-results-info" id="searchResultsInfo" style="display: none;" role="status" aria-live="polite"></div>
+    <div aria-live="polite" class="search-results-info" id="searchResultsInfo" role="status"
+         style="display: none;"></div>
 </div>
 
 <!-- Mobile Sidebar Overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()" aria-hidden="true"></div>
+<div aria-hidden="true" class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
 
 <!-- Main Content Container -->
 <div class="pf-c-page__main">
     <!-- Sidebar -->
-    <aside class="pf-c-page__sidebar" id="sidebar" role="complementary" aria-label="Settings and controls">
+    <aside aria-label="Settings and controls" class="pf-c-page__sidebar" id="sidebar" role="complementary">
 
         <!-- Translation Settings Section -->
         <section class="sidebar-section">
@@ -86,7 +87,7 @@
 
             <div class="control-group">
                 <label class="control-label" for="displayMode">Display Mode</label>
-                <select id="displayMode" onchange="changeDisplayMode()" aria-label="Select display mode">
+                <select aria-label="Select display mode" id="displayMode" onchange="changeDisplayMode()">
                     <option value="translation">Translation</option>
                     <option value="transcription">Transcription Only</option>
                 </select>
@@ -94,7 +95,7 @@
 
             <div class="control-group" id="languageSelectGroup">
                 <label class="control-label" for="targetLang">Target Language</label>
-                <select id="targetLang" onchange="changeLanguage()" aria-label="Select target language">
+                <select aria-label="Select target language" id="targetLang" onchange="changeLanguage()">
                     <option value="yue">Cantonese (粵語)</option>
                     <option value="zh-cn">Chinese Simplified (简体中文)</option>
                     <option value="zh-tw">Chinese Traditional (繁體中文)</option>
@@ -126,10 +127,10 @@
 
             <div class="control-group">
                 <button
-                        id="toggleTTS"
+                        aria-pressed="false"
                         class="pf-c-button pf-c-button--primary"
-                        onclick="toggleTTS()"
-                        aria-pressed="false">
+                        id="toggleTTS"
+                        onclick="toggleTTS()">
                     <span aria-hidden="true">🔊</span>
                     <span>Enable TTS</span>
                 </button>
@@ -137,7 +138,7 @@
 
             <div class="control-group">
                 <label class="control-label" for="voiceSelect">Voice</label>
-                <select id="voiceSelect" onchange="changeVoice()" aria-label="Select voice">
+                <select aria-label="Select voice" id="voiceSelect" onchange="changeVoice()">
                     <option value="">Loading voices...</option>
                 </select>
             </div>
@@ -146,15 +147,15 @@
                 <label class="control-label" for="rateSlider">Speed</label>
                 <div class="slider-wrapper">
                     <input
-                            type="range"
+                            aria-label="Speech rate"
                             class="slider"
                             id="rateSlider"
-                            min="0.5"
                             max="2"
-                            step="0.1"
-                            value="1"
+                            min="0.5"
                             oninput="updateRate()"
-                            aria-label="Speech rate">
+                            step="0.1"
+                            type="range"
+                            value="1">
                     <span class="slider-value" id="rateValue">1.0x</span>
                 </div>
             </div>
@@ -163,15 +164,15 @@
                 <label class="control-label" for="volumeSlider">Volume</label>
                 <div class="slider-wrapper">
                     <input
-                            type="range"
+                            aria-label="Speech volume"
                             class="slider"
                             id="volumeSlider"
-                            min="0"
                             max="1"
-                            step="0.1"
-                            value="1"
+                            min="0"
                             oninput="updateVolume()"
-                            aria-label="Speech volume">
+                            step="0.1"
+                            type="range"
+                            value="1">
                     <span class="slider-value" id="volumeValue">100%</span>
                 </div>
             </div>
@@ -183,7 +184,7 @@
 
             <div class="control-group">
                 <label class="control-label" for="exportFormat">Format</label>
-                <select id="exportFormat" aria-label="Select export format">
+                <select aria-label="Select export format" id="exportFormat">
                     <option value="txt">📄 Text (TXT)</option>
                     <option value="json">📋 JSON</option>
                     <option value="csv">📊 CSV</option>
@@ -193,9 +194,9 @@
 
             <div class="control-group">
                 <button
+                        aria-label="Download translations"
                         class="pf-c-button pf-c-button--success"
-                        onclick="exportData()"
-                        aria-label="Download translations">
+                        onclick="exportData()">
                     <span aria-hidden="true">💾</span>
                     <span>Download</span>
                 </button>
@@ -203,9 +204,9 @@
 
             <div class="control-group">
                 <button
+                        aria-label="Clear display"
                         class="pf-c-button pf-c-button--secondary"
-                        onclick="clearLocal()"
-                        aria-label="Clear display">
+                        onclick="clearLocal()">
                     <span aria-hidden="true">🗑️</span>
                     <span>Clear Display</span>
                 </button>
@@ -220,34 +221,34 @@
                 <label class="control-label" for="fontSizeSlider">Font Size</label>
                 <div class="slider-wrapper">
                     <input
-                            type="range"
+                            aria-label="Translation font size"
                             class="slider"
                             id="fontSizeSlider"
-                            min="12"
                             max="24"
-                            step="1"
-                            value="18"
+                            min="12"
                             oninput="updateFontSize()"
-                            aria-label="Translation font size">
+                            step="1"
+                            type="range"
+                            value="18">
                     <span class="slider-value" id="fontSizeValue">18px</span>
                 </div>
             </div>
 
             <div class="control-group">
                 <button
+                        aria-label="Toggle theme"
                         class="sidebar-menu-item"
-                        onclick="toggleTheme()"
-                        aria-label="Toggle theme">
-                    <span id="themeIcon" aria-hidden="true">🌙</span>
+                        onclick="toggleTheme()">
+                    <span aria-hidden="true" id="themeIcon">🌙</span>
                     <span id="themeText">Dark Mode</span>
                 </button>
             </div>
 
             <div class="control-group">
                 <button
+                        aria-label="Reset settings"
                         class="sidebar-menu-item"
-                        onclick="resetSettings()"
-                        aria-label="Reset settings">
+                        onclick="resetSettings()">
                     <span aria-hidden="true">🔄</span>
                     <span>Reset Settings</span>
                 </button>
@@ -255,9 +256,9 @@
 
             <div class="control-group">
                 <button
+                        aria-label="About"
                         class="sidebar-menu-item"
-                        onclick="showAbout()"
-                        aria-label="About">
+                        onclick="showAbout()">
                     <span aria-hidden="true">ℹ️</span>
                     <span>About</span>
                 </button>
@@ -266,19 +267,19 @@
     </aside>
 
     <!-- Main Section -->
-    <section class="pf-c-page__main-section" role="main" aria-label="Translation list">
+    <section aria-label="Translation list" class="pf-c-page__main-section" role="main">
         <div class="content-header">
             <h2 class="content-title" id="mainTitle">
                 <span id="mainTitleText">Live Translations</span>
-                <span class="count-badge" id="itemCount" aria-label="Translation count">0</span>
+                <span aria-label="Translation count" class="count-badge" id="itemCount">0</span>
             </h2>
         </div>
 
-        <div id="translationsList" class="translation-list" role="list">
+        <div class="translation-list" id="translationsList" role="list">
             <div class="empty-state" role="status">
-                <div class="empty-icon" aria-hidden="true">💬</div>
+                <div aria-hidden="true" class="empty-icon">💬</div>
                 <div id="emptyStateText">Waiting for translations...</div>
-                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;" id="emptyStateDesc">
+                <small id="emptyStateDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;">
                     Translations will appear here in real-time
                 </small>
             </div>
@@ -287,7 +288,8 @@
 </div>
 
 <!-- About Modal -->
-<div class="about-modal" id="aboutModal" onclick="hideAbout(event)" role="dialog" aria-labelledby="aboutTitle" aria-modal="true">
+<div aria-labelledby="aboutTitle" aria-modal="true" class="about-modal" id="aboutModal" onclick="hideAbout(event)"
+     role="dialog">
     <div class="about-content" onclick="event.stopPropagation()">
         <div class="about-header">
             <div class="about-title" id="aboutTitle">
@@ -295,9 +297,9 @@
                 <span>EzySpeechTranslate</span>
             </div>
             <button
+                    aria-label="Close about dialog"
                     class="about-close"
-                    onclick="hideAbout()"
-                    aria-label="Close about dialog">
+                    onclick="hideAbout()">
                 ✕
             </button>
         </div>
@@ -317,17 +319,17 @@
             <p>Ga Hing Woo</p>
 
             <div class="about-links">
-                <a href="https://github.com/gahingwoo/ezy_speech_translate"
-                   target="_blank"
+                <a class="about-link"
+                   href="https://github.com/gahingwoo/ezy_speech_translate"
                    rel="noopener noreferrer"
-                   class="about-link">
+                   target="_blank">
                     <span>⭐</span>
                     <span>GitHub</span>
                 </a>
-                <a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-                   target="_blank"
+                <a class="about-link"
+                   href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
                    rel="noopener noreferrer"
-                   class="about-link">
+                   target="_blank">
                     <span>💬</span>
                     <span>Feedback</span>
                 </a>
@@ -342,10 +344,10 @@
 
 <!-- Scroll to Top Button -->
 <button
+        aria-label="Scroll to top"
         class="scroll-to-top"
         id="scrollToTopBtn"
-        onclick="scrollToTop()"
-        aria-label="Scroll to top">
+        onclick="scrollToTop()">
     ↑
 </button>
 

@@ -3,7 +3,7 @@ EzySpeechTranslate Admin Frontend Server (HTTPS Version)
 Serves the admin HTML interface securely with eventlet SSL
 """
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, redirect, url_for
 from flask_cors import CORS
 from flask_socketio import SocketIO
 import yaml
@@ -63,10 +63,22 @@ MAIN_SERVER_PORT = config.get("server", {}).get("port", 1915)
 # ──────────────────────────────────────────
 @app.route("/")
 def index():
+    """Redirect root to login page"""
+    return redirect(url_for('login_page'))
+
+@app.route("/login")
+def login_page():
+    """Serve login page"""
+    return render_template("login.html")
+
+@app.route("/admin")
+def admin_page():
+    """Serve admin dashboard page"""
     return render_template("admin.html")
 
 @app.route("/api/config")
 def get_config():
+    """API endpoint to get server configuration"""
     return jsonify({
         "mainServerPort": MAIN_SERVER_PORT,
         "adminPort": ADMIN_PORT
@@ -74,10 +86,12 @@ def get_config():
 
 @app.route("/health")
 def health():
+    """Health check endpoint"""
     return {"status": "healthy", "service": "admin-frontend"}, 200
 
 @app.errorhandler(404)
 def not_found(error):
+    """Handle 404 errors"""
     return {"error": "Not found"}, 404
 
 
@@ -86,7 +100,8 @@ def not_found(error):
 # ──────────────────────────────────────────
 if __name__ == "__main__":
     logger.info("Starting EzySpeechTranslate Admin Server...")
-    logger.info(f"Admin Interface: https://{ADMIN_HOST}:{ADMIN_PORT}")
+    logger.info(f"Login Page: https://{ADMIN_HOST}:{ADMIN_PORT}/login")
+    logger.info(f"Admin Interface: https://{ADMIN_HOST}:{ADMIN_PORT}/admin")
     logger.info(f"User Client expected at: http://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 
     cert_file = os.path.join(SSL_DIR, "cert.pem")

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Login - EzySpeechTranslate Admin</title>
+    <link href="/static/css/admin.css" rel="stylesheet">
+    <link href="/static/css/login.css" rel="stylesheet">
+</head>
+<body data-theme="light">
+<div class="login-wrapper">
+    <div class="login-box">
+        <div class="login-logo">
+            <div class="login-logo-icon">🎙️</div>
+            <h1>Admin Login</h1>
+            <p>Sign in to access the admin panel</p>
+        </div>
+
+        <form class="login-form" id="loginForm" onsubmit="return false;">
+            <div class="control-group">
+                <label class="control-label" for="username">Username</label>
+                <input
+                        autocomplete="username"
+                        id="username"
+                        placeholder="Enter your username"
+                        required
+                        type="text">
+            </div>
+
+            <div class="control-group">
+                <label class="control-label" for="password">Password</label>
+                <input
+                        autocomplete="current-password"
+                        id="password"
+                        placeholder="Enter your password"
+                        required
+                        type="password">
+            </div>
+
+            <div class="login-error" id="loginError"></div>
+
+            <button class="login-submit" id="loginButton" type="submit">
+                Sign In
+            </button>
+        </form>
+
+        <div class="login-footer">
+            <button class="theme-btn" onclick="toggleLoginTheme()">
+                <span id="loginThemeIcon">🌙</span>
+                <span id="loginThemeText">Dark Mode</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/login.js"></script>
+</body>
+</html>

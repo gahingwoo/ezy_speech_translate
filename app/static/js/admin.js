@@ -10,14 +10,12 @@ let autoRestartEnabled = true;
 let restartTimeout = null;
 let finalTranscript = '';
 let recognitionAttempts = 0;
-const MAX_SILENT_TIME = 15000; // 30 seconds
+const MAX_SILENT_TIME = 15000;
 let lastSpeechTimestamp = Date.now();
 
 // XSS Protection
 function sanitizeInput(input) {
     if (typeof input !== 'string') return '';
-
-    // Remove HTML tags and dangerous characters
     return input
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -42,11 +40,10 @@ function validateText(text, maxLength = 5000) {
         return { valid: false, error: `Text too long (max ${maxLength} characters)` };
     }
 
-    // Check for suspicious patterns
     const dangerousPatterns = [
         /<script/i,
         /javascript:/i,
-        /on\w+\s*=/i,  // onclick=, onerror=, etc.
+        /on\w+\s*=/i,
         /<iframe/i,
         /<object/i,
         /<embed/i
@@ -121,34 +118,58 @@ function updateThemeUI(theme) {
     }
 }
 
-function toggleLoginTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
-    const newTheme = current === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-
-    document.getElementById('loginThemeIcon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    document.getElementById('loginThemeText').textContent = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        localStorage.removeItem('authToken');
+        if (recognition && isRecording) {
+            stopRecording();
+        }
+        if (socket) {
+            socket.disconnect();
+        }
+        window.location.href = '/login';
+    }
 }
 
-const storedTheme = localStorage.getItem('theme') || 'light';
-document.documentElement.setAttribute('data-theme', storedTheme);
-
-window.addEventListener('DOMContentLoaded', () => {
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    // Apply saved theme
+    const storedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', storedTheme);
     updateThemeUI(storedTheme);
 
-    if (storedTheme === 'dark') {
-        const loginThemeIcon = document.getElementById('loginThemeIcon');
-        const loginThemeText = document.getElementById('loginThemeText');
-        if (loginThemeIcon) loginThemeIcon.textContent = '☀️';
-        if (loginThemeText) loginThemeText.textContent = 'Light Mode';
+    // Load server config
+    try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        SERVER_URL = `${window.location.protocol}//${window.location.hostname}:${config.mainServerPort}`;
+        console.log('Main server URL:', SERVER_URL);
+    } catch (error) {
+        console.error('Failed to load config:', error);
+        SERVER_URL = `${window.location.protocol}//${window.location.hostname}:1915`;
     }
+
+    // Check authentication
+    authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+        window.location.href = '/login';
+        return;
+    }
+
+    // Initialize app
+    loadAudioDevices();
+    startSystemMonitor();
+    connectWebSocket();
 });
 
+// Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         hideAbout();
         closeMobileMenu();
+        if (selectedItem) {
+            cancelCorrection();
+        }
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
@@ -162,112 +183,7 @@ document.addEventListener('keydown', (e) => {
             saveCorrection();
         }
     }
-
-    if (e.key === 'Escape') {
-        if (selectedItem) {
-            cancelCorrection();
-        }
-    }
 });
-
-async function login() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const errorEl = document.getElementById('loginError');
-
-    // Validate inputs
-    if (!username || !password) {
-        errorEl.textContent = 'Please fill in all fields';
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    // Sanitize username (prevent XSS in error messages)
-    const sanitizedUsername = sanitizeInput(username);
-
-    // Basic validation
-    if (sanitizedUsername.length > 50) {
-        errorEl.textContent = 'Username too long';
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    if (password.length > 100) {
-        errorEl.textContent = 'Password too long';
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    try {
-        const response = await fetch(`${SERVER_URL}/api/login`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: sanitizedUsername,
-                password: password
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.success && data.token) {
-            authToken = data.token;
-            localStorage.setItem('authToken', authToken);
-            showMainApp();
-            connectWebSocket();
-        } else {
-            errorEl.textContent = 'Invalid credentials';
-            errorEl.style.display = 'block';
-        }
-    } catch (error) {
-        errorEl.textContent = 'Connection failed. Is the server running?';
-        errorEl.style.display = 'block';
-        console.error('Login error:', error);
-    }
-}
-
-function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        localStorage.removeItem('authToken');
-        if (recognition && isRecording) {
-            stopRecording();
-        }
-        if (socket) {
-            socket.disconnect();
-        }
-        location.reload();
-    }
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('password').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') login();
-    });
-
-    try {
-        const response = await fetch('/api/config');
-        const config = await response.json();
-        SERVER_URL = `${window.location.protocol}//${window.location.hostname}:${config.mainServerPort}`;
-        console.log('Main server URL:', SERVER_URL);
-    } catch (error) {
-        console.error('Failed to load config:', error);
-        SERVER_URL = `${window.location.protocol}//${window.location.hostname}:1915`;
-    }
-
-    const savedToken = localStorage.getItem('authToken');
-    if (savedToken) {
-        authToken = savedToken;
-        showMainApp();
-        connectWebSocket();
-    }
-});
-
-function showMainApp() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    loadAudioDevices();
-    startSystemMonitor();
-}
 
 function connectWebSocket() {
     console.log('🔌 Connecting to WebSocket:', SERVER_URL);
@@ -287,8 +203,6 @@ function connectWebSocket() {
         if (authToken) {
             console.log('📤 Sending admin_connect...');
             socket.emit('admin_connect', {token: authToken});
-        } else {
-            console.warn('⚠️ No authToken available!');
         }
     });
 
@@ -298,7 +212,7 @@ function connectWebSocket() {
             console.error('❌ Admin connection rejected:', response.error);
             alert('Session expired. Please login again.');
             localStorage.removeItem('authToken');
-            location.reload();
+            window.location.href = '/login';
         }
     });
 
@@ -318,9 +232,7 @@ function connectWebSocket() {
         if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Invalid token'))) {
             alert('Session expired. Please login again.');
             localStorage.removeItem('authToken');
-            location.reload();
-        } else {
-            alert('Socket error: ' + (error.message || JSON.stringify(error)));
+            window.location.href = '/login';
         }
     });
 
@@ -358,7 +270,7 @@ function updateStatus(connected) {
     const badge = document.getElementById('statusBadge');
     if (connected) {
         badge.className = 'connection-badge online';
-        badge.querySelector('span:last-child').textContent = 'User Server is Oline';
+        badge.querySelector('span:last-child').textContent = 'User Server is Online';
     } else {
         badge.className = 'connection-badge offline';
         badge.querySelector('span:last-child').textContent = 'User Server is Offline';
@@ -386,10 +298,7 @@ async function loadAudioDevices() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioInputs = devices.filter(device => device.kind === 'audioinput');
 
-        select.innerHTML = audioInputs.length === 0
-            ? '<option>System Default</option>'
-            : '<option>System Default</option>';
-
+        select.innerHTML = '<option>System Default</option>';
         stream.getTracks().forEach(track => track.stop());
 
         console.log(`✅ Speech Recognition initialized`);
@@ -400,108 +309,6 @@ async function loadAudioDevices() {
         select.innerHTML = '<option>❌ Access denied</option>';
         alert('⚠️ Microphone access denied!\n\nPlease allow microphone access.');
     }
-}
-
-function handleRecognitionResult(event) {
-    let interimTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        const confidence = event.results[i][0].confidence;
-        lastSpeechTimestamp = Date.now();
-
-        if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-            console.log('✅ Final:', transcript, 'Confidence:', confidence);
-
-            sendTranscription(finalTranscript.trim(), confidence);
-            finalTranscript = '';
-            recognitionAttempts = 0;
-
-            updateInterimDisplay('✓ Sent', true);
-            setTimeout(() => {
-                if (isRecording) {
-                    updateInterimDisplay('🎤 Listening...', true);
-                }
-            }, 500);
-        } else {
-            interimTranscript += transcript;
-        }
-    }
-
-    if (interimTranscript.trim()) {
-        updateInterimDisplay(interimTranscript, true);
-        console.log('💭 Interim:', interimTranscript.substring(0, 50) + '...');
-    }
-}
-
-function handleRecognitionError(event) {
-    console.error('❌ Recognition error:', event.error);
-
-    switch (event.error) {
-        case 'no-speech':
-            const silentTime = Date.now() - lastSpeechTimestamp;
-            if (silentTime > MAX_SILENT_TIME) {
-                console.log('⚠️ Long silence detected, restarting...');
-                restartRecognition();
-            } else {
-                updateInterimDisplay('Waiting for speech...', true);
-            }
-            break;
-
-        case 'network':
-            updateInterimDisplay('⚠️ Network error, retrying...', true);
-            setTimeout(restartRecognition, 1000);
-            break;
-
-        default:
-            recognitionAttempts++;
-            if (recognitionAttempts < 3) {
-                console.log(`🔄 Retry attempt ${recognitionAttempts}...`);
-                setTimeout(restartRecognition, 1000);
-            } else {
-                handleRecognitionFailure(event.error);
-            }
-    }
-}
-
-function handleRecognitionEnd() {
-    console.log('🛑 Recognition ended');
-
-    if (finalTranscript.trim()) {
-        sendTranscription(finalTranscript.trim(), undefined);
-        finalTranscript = '';
-    }
-
-    if (isRecording && autoRestartEnabled) {
-        console.log('🔄 Auto-restarting...');
-        restartRecognition();
-    }
-}
-
-function restartRecognition() {
-    if (!isRecording) return;
-
-    clearTimeout(restartTimeout);
-    restartTimeout = setTimeout(() => {
-        console.log('🔄 Restarting recognition...');
-        try {
-            recognition.abort();
-            recognition.start();
-            lastSpeechTimestamp = Date.now();
-        } catch (error) {
-            console.error('❌ Restart failed:', error);
-            handleRecognitionFailure('restart_failed');
-        }
-    }, 300);
-}
-
-function handleRecognitionFailure(error) {
-    console.error('❌ Recognition failed:', error);
-    isRecording = false;
-    updateRecordButton();
-    updateInterimDisplay(`Error: ${error}`, false);
-    document.getElementById('autoRestartBadge').style.display = 'none';
 }
 
 function setupRecognitionHandlers() {
@@ -638,7 +445,6 @@ function sendTranscription(text, confidence) {
         return;
     }
 
-    // Validate and sanitize input
     const validation = validateText(text);
     if (!validation.valid) {
         console.error('❌ Invalid input:', validation.error);
@@ -687,11 +493,10 @@ async function toggleRecording() {
         recognition.lang = recognitionLanguage;
         updateRecordButton();
 
-        // 直接启动，不需要 warmup
         try {
             recognition.start();
             lastSpeechTimestamp = Date.now();
-            console.log('🎤 Recognition started directly');
+            console.log('🎤 Recognition started');
         } catch (error) {
             console.error('❌ Start failed:', error);
             isRecording = false;
@@ -700,26 +505,6 @@ async function toggleRecording() {
         }
     } else {
         stopRecording();
-    }
-}
-
-function startRecording() {
-    try {
-        finalTranscript = '';
-        recognition.lang = recognitionLanguage;
-        recognition.start();
-        console.log(`🚀 Starting (language: ${recognitionLanguage})`);
-    } catch (error) {
-        console.error('Failed to start:', error);
-
-        if (error.message && error.message.includes('already started')) {
-            isRecording = true;
-            updateRecordButton();
-            updateInterimDisplay('🎤 Listening...', true);
-            document.getElementById('autoRestartBadge').style.display = 'flex';
-        } else {
-            alert(`Failed to start recording: ${error.message}`);
-        }
     }
 }
 
@@ -770,49 +555,49 @@ function renderTranscriptions() {
 
     if (translations.length === 0) {
         list.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">💬</div>
-                        <div>No transcriptions yet</div>
-                        <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
-                            Start recording to see transcriptions
-                        </small>
-                    </div>
-                `;
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div>No transcriptions yet</div>
+                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                    Start recording to see transcriptions
+                </small>
+            </div>
+        `;
         return;
     }
 
     const reversed = [...translations].reverse();
     list.innerHTML = reversed.map((item, index) => `
-                <div class="transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
-                     draggable="true"
-                     data-id="${item.id}"
-                     data-index="${index}"
-                     onclick="selectItem(${item.id})"
-                     ondragstart="handleDragStart(event, ${index})"
-                     ondragend="handleDragEnd(event)"
-                     ondragover="handleDragOver(event)"
-                     ondrop="handleDrop(event, ${index})"
-                     ontouchstart="handleTouchStart(event, ${index})"
-                     ontouchmove="handleTouchMove(event)"
-                     ontouchend="handleTouchEnd(event)">
-                    <div class="drag-handle"
-                         onmousedown="event.stopPropagation()"
-                         ontouchstart="event.stopPropagation()">⋮⋮</div>
-                    <input type="checkbox"
-                           class="card-checkbox"
-                           data-id="${item.id}"
-                           ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
-                           onclick="handleCheckboxClick(event, ${item.id})">
-                    <div class="card-content">
-                        ${item.confidence ? `<span class="card-confidence">confidence: ${Math.round(item.confidence * 100)}%</span>` : ''}
-                        <div class="card-header">
-                            <span class="card-time">${item.timestamp}</span>
-                            ${item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : ''}
-                        </div>
-                        <div class="card-text">${escapeHtml(item.corrected)}</div>
-                    </div>
+        <div class="transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
+             draggable="true"
+             data-id="${item.id}"
+             data-index="${index}"
+             onclick="selectItem(${item.id})"
+             ondragstart="handleDragStart(event, ${index})"
+             ondragend="handleDragEnd(event)"
+             ondragover="handleDragOver(event)"
+             ondrop="handleDrop(event, ${index})"
+             ontouchstart="handleTouchStart(event, ${index})"
+             ontouchmove="handleTouchMove(event)"
+             ontouchend="handleTouchEnd(event)">
+            <div class="drag-handle"
+                 onmousedown="event.stopPropagation()"
+                 ontouchstart="event.stopPropagation()">⋮⋮</div>
+            <input type="checkbox"
+                   class="card-checkbox"
+                   data-id="${item.id}"
+                   ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
+                   onclick="handleCheckboxClick(event, ${item.id})">
+            <div class="card-content">
+                ${item.confidence ? `<span class="card-confidence">confidence: ${Math.round(item.confidence * 100)}%</span>` : ''}
+                <div class="card-header">
+                    <span class="card-time">${item.timestamp}</span>
+                    ${item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : ''}
                 </div>
-            `).join('');
+                <div class="card-text">${escapeHtml(item.corrected)}</div>
+            </div>
+        </div>
+    `).join('');
 }
 
 function handleDragStart(event, index) {
@@ -947,7 +732,6 @@ function selectItem(id) {
 
     selectedItem = item;
 
-    // Sanitize before displaying in textarea
     document.getElementById('originalText').value = sanitizeInput(item.original);
     document.getElementById('correctedText').value = sanitizeInput(item.corrected);
 
@@ -958,7 +742,6 @@ function addNewItem() {
     const text = prompt('Enter transcription text:');
     if (!text) return;
 
-    // Validate and sanitize input
     const validation = validateText(text);
     if (!validation.valid) {
         alert('❌ ' + validation.error);
@@ -999,7 +782,6 @@ function saveCorrection() {
 
     const corrected = document.getElementById('correctedText').value.trim();
 
-    // Validate and sanitize input
     const validation = validateText(corrected);
     if (!validation.valid) {
         alert('❌ ' + validation.error);
