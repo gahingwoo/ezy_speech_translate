@@ -609,8 +609,9 @@ For issues and questions:
 
 ## 🔄 Version History
 
-### v3.2.1 (Current)
-- Add asr confidence shown on admin
+### v3.2.2 (Current)
+- Add transcription only function
+- Add reset settings button
 
 ---
 

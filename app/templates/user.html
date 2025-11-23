@@ -82,9 +82,17 @@
 
         <!-- Translation Settings Section -->
         <section class="sidebar-section">
-            <h3 class="sidebar-title">Translation Settings</h3>
+            <h3 class="sidebar-title">Display Settings</h3>
 
             <div class="control-group">
+                <label class="control-label" for="displayMode">Display Mode</label>
+                <select id="displayMode" onchange="changeDisplayMode()" aria-label="Select display mode">
+                    <option value="translation">Translation</option>
+                    <option value="transcription">Transcription Only</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="languageSelectGroup">
                 <label class="control-label" for="targetLang">Target Language</label>
                 <select id="targetLang" onchange="changeLanguage()" aria-label="Select target language">
                     <option value="yue">Cantonese (粵語)</option>
@@ -238,6 +246,16 @@
             <div class="control-group">
                 <button
                         class="sidebar-menu-item"
+                        onclick="resetSettings()"
+                        aria-label="Reset settings">
+                    <span aria-hidden="true">🔄</span>
+                    <span>Reset Settings</span>
+                </button>
+            </div>
+
+            <div class="control-group">
+                <button
+                        class="sidebar-menu-item"
                         onclick="showAbout()"
                         aria-label="About">
                     <span aria-hidden="true">ℹ️</span>
@@ -250,8 +268,8 @@
     <!-- Main Section -->
     <section class="pf-c-page__main-section" role="main" aria-label="Translation list">
         <div class="content-header">
-            <h2 class="content-title">
-                Live Translations
+            <h2 class="content-title" id="mainTitle">
+                <span id="mainTitleText">Live Translations</span>
                 <span class="count-badge" id="itemCount" aria-label="Translation count">0</span>
             </h2>
         </div>
@@ -259,8 +277,8 @@
         <div id="translationsList" class="translation-list" role="list">
             <div class="empty-state" role="status">
                 <div class="empty-icon" aria-hidden="true">💬</div>
-                <div>Waiting for translations...</div>
-                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                <div id="emptyStateText">Waiting for translations...</div>
+                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;" id="emptyStateDesc">
                     Translations will appear here in real-time
                 </small>
             </div>
@@ -289,11 +307,11 @@
 
             <h3>Features</h3>
             <p>• 20+ languages supported<br>
+                • Transcription and Translation<br>
                 • Text-to-Speech with voice selection<br>
                 • Multiple export formats (TXT, JSON, CSV, SRT)<br>
                 • Real-time search<br>
                 • Customizable font size<br>
-                • Mobile-friendly</p>
 
             <h3>Made with ❤️ by</h3>
             <p>Ga Hing Woo</p>
@@ -316,7 +334,7 @@
             </div>
 
             <div class="about-version">
-                v3.2.1 • Open Source • MIT License
+                v3.2.2 • Open Source • MIT License
             </div>
         </div>
     </div>
