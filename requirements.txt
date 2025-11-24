@@ -33,6 +33,9 @@ eventlet==0.33.3
 # ============================================
 PyJWT==2.8.0
 cryptography==41.0.7
+flask-limiter==3.5.0
+flask-talisman==1.1.0
+python-dotenv==1.0.0
 
 # ============================================
 # Configuration Management

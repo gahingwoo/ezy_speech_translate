@@ -1,106 +1,136 @@
-# EzySpeechTranslate Configuration File
-# Version 3.0.0
+# EzySpeechTranslate Production Configuration
+# Version 3
 
 # ============================================
 # Main Server Configuration
 # ============================================
 server:
-  host: "0.0.0.0"                    # 0.0.0.0 = all interfaces, 127.0.0.1 = localhost only
-  port: 1915                         # Main server port (user interface + API)
-  debug: false                       # Set to true for development only
-  secret_key: "change-this-to-a-random-secret-key-in-production"
+  host: "0.0.0.0"                    # Listen on all interfaces
+  port: 1915                         # User frontend port
+  debug: false                       # NEVER enable in production
+  secret_key: "{{ GENERATE_RANDOM_SECRET_64_CHARS }}"  # MUST CHANGE!
 
 # ============================================
 # Admin Frontend Server Configuration
 # ============================================
 admin_server:
-  host: "0.0.0.0"                    # Admin interface host
-  port: 1916                         # Admin interface port (must be different from main)
-  debug: false                       # Set to true for development only
+  host: "0.0.0.0"                    # Admin interface
+  port: 1916                         # Admin port (separate from main)
+  debug: false                       # NEVER enable in production
 
 # ============================================
 # Authentication Settings
 # ============================================
 authentication:
-  enabled: true                      # Enable/disable authentication
-  admin_username: "admin"            # Admin username
-  admin_password: "admin123"         # CHANGE THIS IN PRODUCTION!
-  session_timeout: 7200              # Session timeout in seconds (4 hours)
-  jwt_secret: "change-this-jwt-secret-in-production"  # CHANGE THIS!
+  enabled: true                      # Keep enabled for security
+  admin_username: "admin"  # Change from default "admin"
+  admin_password: "admin123"  # MUST CHANGE - Use strong password!
+  session_timeout: 7200              # 2 hours (7200 seconds)
+  jwt_secret: "{{ GENERATE_RANDOM_JWT_SECRET }}"  # MUST CHANGE!
 
 # ============================================
 # Logging Configuration
 # ============================================
 logging:
-  level: "INFO"                      # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  file: "logs/app.log"               # Log file path
-  max_bytes: 10485760                # Max log file size (10MB)
-  backup_count: 5                    # Number of backup log files to keep
+  level: "INFO"                      # Use INFO or WARNING in production
+  file: "logs/app.log"               # Main application log
+  max_bytes: 10485760                # 10MB per log file
+  backup_count: 5                    # Keep 5 backup files
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 # ============================================
 # Database Configuration (Optional)
 # ============================================
 database:
-  enabled: false                     # Enable persistent database storage
+  enabled: false                     # Enable if you need persistent storage
   type: "sqlite"                     # Options: sqlite, postgresql, mysql
-  path: "data/translations.db"       # SQLite database file path
+  path: "data/translations.db"       # SQLite path
 
-  # For PostgreSQL/MySQL (uncomment and configure if using):
+  # For PostgreSQL/MySQL:
   # host: "localhost"
   # port: 5432
-  # username: "user"
-  # password: "password"
+  # username: "{{ DB_USERNAME }}"
+  # password: "{{ DB_PASSWORD }}"
   # database: "ezyspeech"
 
 # ============================================
 # Export Configuration
 # ============================================
 export:
-  default_format: "srt"              # Default export format (txt, srt, json)
-  output_directory: "exports"        # Directory for exported files
-  include_timestamps: true           # Include timestamps in exports
-  include_corrections: true          # Include correction status in exports
+  default_format: "srt"              # Default: srt, txt, json, csv
+  output_directory: "exports"        # Export directory
+  include_timestamps: true
+  include_corrections: true
 
 # ============================================
-# Advanced Settings
+# Advanced Settings - Security Hardened
 # ============================================
 advanced:
   # WebSocket settings
   websocket:
-    ping_timeout: 60                 # WebSocket ping timeout (seconds)
-    ping_interval: 25                # WebSocket ping interval (seconds)
-    max_message_size: 1048576        # Max WebSocket message size (1MB)
+    ping_timeout: 60                 # Connection timeout (seconds)
+    ping_interval: 25                # Keep-alive interval (seconds)
+    max_message_size: 1048576        # 1MB max message size
 
   # Performance settings
   performance:
-    max_concurrent_translations: 10  # Max concurrent translation requests
-    translation_timeout: 30          # Translation request timeout (seconds)
-    cache_size: 1000                 # Number of translations to cache
+    max_concurrent_translations: 10  # Concurrent translation limit
+    translation_timeout: 30          # Request timeout (seconds)
+    cache_size: 1000                 # Max translations to cache
 
   # Security settings
   security:
-    cors_origins: "*"                # CORS allowed origins (* = all, or list specific domains)
-    rate_limit_enabled: false        # Enable rate limiting (for production)
-    max_requests_per_minute: 60      # Max API requests per minute per IP
+    # IMPORTANT: Change CORS in production!
+    # Development: Use "*"
+    # Production: Specify your domain(s)
+    cors_origins: "*"
+    # Or multiple origins:
+    # cors_origins:
+    #   - "https://yourdomain.com"
+    #   - "https://admin.yourdomain.com"
+
+    rate_limit_enabled: true         # Enable in production
+    max_requests_per_minute: 60      # Requests per IP per minute
 
 # ============================================
 # Feature Flags
 # ============================================
 features:
-  text_to_speech: true               # Enable TTS in user interface
-  real_time_sync: true               # Enable real-time synchronization
-  export_enabled: true               # Enable export functionality
-  dark_mode: true                    # Enable dark mode toggle
+  text_to_speech: true               # Enable TTS
+  real_time_sync: true               # Enable real-time sync
+  export_enabled: true               # Allow exports
+  dark_mode: true                    # Dark mode toggle
 
 # ============================================
-# NOTES
+# PRODUCTION DEPLOYMENT CHECKLIST
 # ============================================
-# 1. IMPORTANT: Change all default passwords and secrets in production!
-# 2. Use environment variables for sensitive data in production
-# 3. Enable HTTPS in production deployments
-# 4. Adjust model_size based on your hardware capabilities
-# 5. Set authentication.enabled = false only for testing
-# 6. Use 'base' model for best performance/accuracy balance
-# 7. Ports must be different for server and admin_server
-# 8. Default ports: 1915 (main), 1916 (admin)
+# Before deploying to production:
+#
+# 1. Change server.secret_key to random 64+ character string
+# 2. Change authentication.admin_password to strong password
+# 3. Change authentication.jwt_secret to random string
+# 4. Change authentication.admin_username from "admin"
+# 5. Set advanced.security.cors_origins to your domain(s)
+# 6. Enable advanced.security.rate_limit_enabled = true
+# 7. Set server.debug = false
+# 8. Set admin_server.debug = false
+# 9. Set logging.level to "INFO" or "WARNING"
+# 10. Generate proper SSL certificates (not self-signed)
+# 11. Set up firewall rules
+# 12. Configure reverse proxy (Nginx/Apache)
+# 13. Set up log rotation
+# 14. Configure backup strategy
+# 15. Test all security features
+#
+# ============================================
+# GENERATE SECURE SECRETS
+# ============================================
+# Run this Python command to generate secrets:
+#
+#   python3 -c "import secrets; print('SECRET_KEY:', secrets.token_hex(32)); print('JWT_SECRET:', secrets.token_hex(32))"
+#
+# Or use this bash command:
+#
+#   openssl rand -hex 32
+#
+# ============================================
