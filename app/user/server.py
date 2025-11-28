@@ -21,6 +21,7 @@ import eventlet
 import eventlet.wsgi
 import secrets
 import re
+import sys
 from collections import defaultdict
 import time
 
@@ -38,47 +39,63 @@ STATIC_DIR = os.path.join(APP_DIR, "static")
 os.chdir(BASE_DIR)
 
 # ──────────────────────────────────────────
-# Configuration Loader
+# Secure Configuration Loader
 # ──────────────────────────────────────────
-class Config:
-    def __init__(self, config_path='config/config.yaml'):
-        try:
-            with open(config_path, 'r') as f:
-                self.data = yaml.safe_load(f) or {}
-        except FileNotFoundError:
-            print(f"Error: Configuration file not found at {config_path}")
-            self.data = {}
+sys.path.insert(0, os.path.join(BASE_DIR, 'config'))
 
-    def get(self, *keys, default=None):
-        """Safely get nested config value"""
-        val = self.data
-        for key in keys:
-            if isinstance(val, dict):
-                val = val.get(key)
-                if val is None:
+try:
+    from secure_loader import SecureConfig
+    config_loader = SecureConfig(os.path.join(CONFIG_DIR, 'config.yaml'))
+
+    def get_config(*keys, default=None):
+        return config_loader.get(*keys, default=default)
+
+    logging.getLogger("config_loader").info("✓ Loaded encrypted configuration")
+
+except ImportError:
+    logging.getLogger("config_loader").warning("Secure loader not found, falling back to YAML config")
+
+    class ConfigFallback:
+        def __init__(self, config_path='config/config.yaml'):
+            try:
+                with open(config_path, 'r') as f:
+                    self.data = yaml.safe_load(f) or {}
+            except FileNotFoundError:
+                print(f"Error: Configuration file not found at {config_path}")
+                self.data = {}
+
+        def get(self, *keys, default=None):
+            val = self.data
+            for key in keys:
+                if isinstance(val, dict):
+                    val = val.get(key)
+                    if val is None:
+                        return default
+                else:
                     return default
-            else:
-                return default
-        return val if val is not None else default
+            return val if val is not None else default
 
-config = Config()
+    config_loader = ConfigFallback('config/config.yaml')
+
+    def get_config(*keys, default=None):
+        return config_loader.get(*keys, default=default)
 
 # ──────────────────────────────────────────
 # Logging Setup with Security Logging
 # ──────────────────────────────────────────
-log_file = config.get('logging', 'file', default='logs/app.log')
+log_file = get_config('logging', 'file', default='logs/app.log')
 log_dir = os.path.dirname(log_file) or 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
 logging.basicConfig(
-    level=config.get('logging', 'level', default='INFO'),
-    format=config.get('logging', 'format',
-                     default='%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
+    level=get_config('logging', 'level', default='INFO'),
+    format=get_config('logging', 'format',
+                      default='%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
     handlers=[
         RotatingFileHandler(
             log_file,
-            maxBytes=config.get('logging', 'max_bytes', default=10 * 1024 * 1024),
-            backupCount=config.get('logging', 'backup_count', default=5)
+            maxBytes=get_config('logging', 'max_bytes', default=10 * 1024 * 1024),
+            backupCount=get_config('logging', 'backup_count', default=5)
         ),
         logging.StreamHandler()
     ]
@@ -110,7 +127,7 @@ app = Flask(__name__,
             static_url_path='/static')
 
 # Secure configuration
-secret_key = config.get('server', 'secret_key')
+secret_key = get_config('server', 'secret_key')
 if not secret_key or secret_key == 'changeme':
     secret_key = secrets.token_hex(32)
     logger.warning("Using generated secret key. Set a permanent key in config!")
@@ -123,7 +140,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max request
 
 # CORS with restrictions from config
-cors_origins = config.get('advanced', 'security', 'cors_origins')
+cors_origins = get_config('advanced', 'security', 'cors_origins')
 if cors_origins is None or cors_origins == '*':
     allowed_origins = '*'
 else:
@@ -134,9 +151,9 @@ socketio = SocketIO(
     app,
     cors_allowed_origins=allowed_origins,
     async_mode='eventlet',
-    ping_timeout=config.get('advanced', 'websocket', 'ping_timeout') or 60,
-    ping_interval=config.get('advanced', 'websocket', 'ping_interval') or 25,
-    max_http_buffer_size=config.get('advanced', 'websocket', 'max_message_size') or 1048576
+    ping_timeout=get_config('advanced', 'websocket', 'ping_timeout', default=60),
+    ping_interval=get_config('advanced', 'websocket', 'ping_interval', default=25),
+    max_http_buffer_size=get_config('advanced', 'websocket', 'max_message_size', default=1048576)
 )
 
 # Security Headers
@@ -162,8 +179,8 @@ Talisman(
 )
 
 # Rate Limiting - check if enabled in config
-rate_limit_enabled = config.get('advanced', 'security', 'rate_limit_enabled')
-max_requests = config.get('advanced', 'security', 'max_requests_per_minute') or 60
+rate_limit_enabled = get_config('advanced', 'security', 'rate_limit_enabled', default=True)
+max_requests = get_config('advanced', 'security', 'max_requests_per_minute', default=60)
 
 if rate_limit_enabled:
     limiter = Limiter(
@@ -288,7 +305,7 @@ def validate_jwt_token(token):
     try:
         decoded = jwt.decode(
             token,
-            config.get('authentication', 'jwt_secret', default='secret'),
+            get_config('authentication', 'jwt_secret', default='secret'),
             algorithms=['HS256'],
             options={"verify_exp": True}
         )
@@ -303,7 +320,7 @@ def validate_jwt_token(token):
 # ──────────────────────────────────────────
 # In-memory Storage with Limits from Config
 # ──────────────────────────────────────────
-MAX_HISTORY_SIZE = config.get('advanced', 'performance', 'cache_size') or 1000
+MAX_HISTORY_SIZE = get_config('advanced', 'performance', 'cache_size', default=1000)
 translations_history = []
 connected_clients = set()
 admin_sessions = {}
@@ -363,7 +380,7 @@ def after_request(response):
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not config.get('authentication', 'enabled', default=True):
+        if not get_config('authentication', 'enabled', default=True):
             return f(*args, **kwargs)
 
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
@@ -384,7 +401,7 @@ def require_auth(f):
 
 def is_admin(sid):
     """Check if session is authenticated admin"""
-    if not config.get('authentication', 'enabled', default=True):
+    if not get_config('authentication', 'enabled', default=True):
         return True
     return sid in admin_sessions
 
@@ -430,10 +447,10 @@ def login():
     # Verify credentials
     password_hash = hashlib.sha256(password.encode()).hexdigest()
     stored_password_hash = hashlib.sha256(
-        config.get('authentication', 'admin_password', default='admin123').encode()
+        get_config('authentication', 'admin_password', default='admin123').encode()
     ).hexdigest()
 
-    if (username == config.get('authentication', 'admin_username', default='admin') and
+    if (username == get_config('authentication', 'admin_username', default='admin') and
             password_hash == stored_password_hash):
 
         # Generate secure token
@@ -441,12 +458,12 @@ def login():
             {
                 'username': username,
                 'exp': datetime.utcnow() + timedelta(
-                    seconds=config.get('authentication', 'session_timeout', default=7200)
+                    seconds=get_config('authentication', 'session_timeout', default=7200)
                 ),
                 'iat': datetime.utcnow(),
                 'jti': secrets.token_hex(16)
             },
-            config.get('authentication', 'jwt_secret', default='secret'),
+            get_config('authentication', 'jwt_secret', default='secret'),
             algorithm='HS256'
         )
 
@@ -468,15 +485,15 @@ def login():
 @limiter.limit("30 per minute")
 @require_auth
 @check_ip_access
-def get_config():
+def get_runtime_config():
     """Get current configuration (filtered)"""
     # Only return non-sensitive config
     return jsonify({
         'audio': {
-            'sample_rate': config.get('audio', 'sample_rate'),
-            'channels': config.get('audio', 'channels')
+            'sample_rate': get_config('audio', 'sample_rate'),
+            'channels': get_config('audio', 'channels')
         },
-        'mainServerPort': config.get('server', 'port', default=1915)
+        'mainServerPort': get_config('server', 'port', default=1915)
     })
 
 @app.route('/api/translations', methods=['GET'])
@@ -619,7 +636,7 @@ def handle_admin_connect(data):
 
     token = data.get('token')
 
-    if not config.get('authentication', 'enabled', default=True):
+    if not get_config('authentication', 'enabled', default=True):
         admin_sessions[request.sid] = 'admin'
         emit('admin_connected', {'success': True})
         return
@@ -745,11 +762,11 @@ def internal_error(error):
 if __name__ == '__main__':
     logger.info("Starting EzySpeechTranslate Backend Server...")
 
-    auth_enabled = config.get('authentication', 'enabled', default=True)
+    auth_enabled = get_config('authentication', 'enabled', default=True)
     logger.info(f"Authentication: {'Enabled' if auth_enabled else 'Disabled'}")
 
-    host = config.get('server', 'host', default='0.0.0.0')
-    port = config.get('server', 'port', default=1915)
+    host = get_config('server', 'host', default='0.0.0.0')
+    port = get_config('server', 'port', default=1915)
 
     logger.info(f"Security logging: logs/security.log")
 

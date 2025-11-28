@@ -592,9 +592,8 @@ Have questions or issues?
 - **Discussions**: Join [GitHub Discussions](https://github.com/gahingwoo/ezy_speech_translate/discussions)
 
 ## Version History
-- v3.2.2 (Current)
-- Add transcription only function
-- Add reset settings button
+- v3.3.0 (Current)
+- Update security
 
 
 ---
@@ -605,6 +604,6 @@ Have questions or issues?
 
 🌍 *Ezy-Speech - Let language no longer stand in the way of connection.*
 
-[⬆ Back to Top](#-ezyspeech translate)
+[Back to Top](#-ezyspeechtranslate)
 
 </div>

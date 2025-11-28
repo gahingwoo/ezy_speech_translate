@@ -9,6 +9,7 @@ from flask_socketio import SocketIO
 import yaml
 import logging
 import os
+import sys
 import eventlet
 import eventlet.wsgi
 import hashlib
@@ -52,29 +53,57 @@ security_logger.addHandler(security_handler)
 security_logger.setLevel(logging.INFO)
 
 # ──────────────────────────────────────────
-# Load config.yaml
+# Secure Configuration Loader
 # ──────────────────────────────────────────
+sys.path.insert(0, os.path.join(BASE_DIR, 'config'))
+
 config_file_path = os.path.join(CONFIG_DIR, "config.yaml")
 
 try:
-    with open(config_file_path, "r") as f:
-        config = yaml.safe_load(f)
-except Exception as e:
-    logger.error(f"Failed to load config ({config_file_path}): {e}")
-    config = {}
+    from secure_loader import SecureConfig
+    config_loader = SecureConfig(os.path.join(CONFIG_DIR, 'config.yaml'))
+
+    def get_config(*keys, default=None):
+        return config_loader.get(*keys, default=default)
+
+    logger.info("✓ Loaded encrypted configuration")
+
+except ImportError:
+    logger.warning("Secure loader not found, using default YAML loading")
+
+    try:
+        with open(config_file_path, "r") as f:
+            config_data = yaml.safe_load(f) or {}
+
+        def get_config(*keys, default=None):
+            val = config_data
+            for key in keys:
+                if isinstance(val, dict):
+                    val = val.get(key)
+                    if val is None:
+                        return default
+                else:
+                    return default
+            return val if val is not None else default
+
+    except Exception as e:
+        logger.error(f"Failed to load config: {e}")
+
+        def get_config(*keys, default=None):
+            return default
 
 # ──────────────────────────────────────────
 # Security Configuration
 # ──────────────────────────────────────────
-AUTH_ENABLED = config.get("authentication", {}).get("enabled", True)
-ADMIN_USERNAME = config.get("authentication", {}).get("admin_username", "admin")
-ADMIN_PASSWORD = config.get("authentication", {}).get("admin_password", "admin123")
-JWT_SECRET = config.get("authentication", {}).get("jwt_secret", "change-this-secret")
-SESSION_TIMEOUT = config.get("authentication", {}).get("session_timeout", 7200)
+AUTH_ENABLED = get_config("authentication", "enabled", default=True)
+ADMIN_USERNAME = get_config("authentication", "admin_username", default="admin")
+ADMIN_PASSWORD = get_config("authentication", "admin_password", default="admin123")
+JWT_SECRET = get_config("authentication", "jwt_secret", default="change-this-secret")
+SESSION_TIMEOUT = get_config("authentication", "session_timeout", default=7200)
 
 # Rate limiting settings
-RATE_LIMIT_ENABLED = config.get("advanced", {}).get("security", {}).get("rate_limit_enabled", True)
-MAX_REQUESTS_PER_MINUTE = config.get("advanced", {}).get("security", {}).get("max_requests_per_minute", 60)
+RATE_LIMIT_ENABLED = get_config("advanced", "security", "rate_limit_enabled", default=True)
+MAX_REQUESTS_PER_MINUTE = get_config("advanced", "security", "max_requests_per_minute", default=60)
 
 # Brute force protection
 MAX_LOGIN_ATTEMPTS = 5
@@ -93,17 +122,17 @@ websocket_connections = defaultdict(int)
 # Flask App
 # ──────────────────────────────────────────
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=TEMPLATE_DIR)
-app.config['SECRET_KEY'] = config.get("server", {}).get("secret_key", "change-this-secret-key")
+app.config['SECRET_KEY'] = get_config("server", "secret_key", default="change-this-secret-key")
 
-CORS(app, origins=config.get("advanced", {}).get("security", {}).get("cors_origins", "*"))
+CORS(app, origins=get_config("advanced", "security", "cors_origins", default="*"))
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ──────────────────────────────────────────
 # Server Settings
 # ──────────────────────────────────────────
-ADMIN_PORT = config.get("admin_server", {}).get("port", 5001)
-ADMIN_HOST = config.get("admin_server", {}).get("host", "0.0.0.0")
-MAIN_SERVER_PORT = config.get("server", {}).get("port", 1915)
+ADMIN_PORT = get_config("admin_server", "port", default=5001)
+ADMIN_HOST = get_config("admin_server", "host", default="0.0.0.0")
+MAIN_SERVER_PORT = get_config("server", "port", default=1915)
 
 # ──────────────────────────────────────────
 # Security Helper Functions
@@ -330,7 +359,7 @@ def logout():
 
 @app.route("/api/config")
 @rate_limit_check
-def get_config():
+def get_admin_config():
     """API endpoint to get server configuration"""
     return jsonify({
         "mainServerPort": MAIN_SERVER_PORT,
