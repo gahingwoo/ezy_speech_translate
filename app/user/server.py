@@ -523,7 +523,8 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'clients': len(connected_clients)
+        'clients': len(connected_clients),
+        'translations': len(translations_history)
     })
 
 @app.route('/api/export/<export_format>', methods=['GET'])

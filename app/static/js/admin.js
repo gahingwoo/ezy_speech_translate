@@ -859,7 +859,7 @@ async function updateSystemInfo() {
             `${'─'.repeat(30)}\n` +
             `Status: ${data.status}\n` +
             `Clients: ${data.clients}\n` +
-            `Translations: ${data.translations}\n` +
+            `Transcriptions: ${data.translations}\n` +
             `Recording: ${isRecording ? '🟢 Active' : '⚪ Stopped'}\n` +
             `Language: ${recognitionLanguage}`;
     } catch (error) {

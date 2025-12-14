@@ -1,50 +1,14 @@
-<div align="center">
-
-# 🌍 [EzySpeechTranslate](https://github.com/gahingwoo/ezy_speech_translate)
+# 🌍 EzySpeechTranslate
 
 **Production-Ready Real-Time Speech Translation System**
 
-With Secure Authentication, Modern Admin Interface, and Web Client
-
-[Quick Start](#-quick-start) • [Features](#-features) • [Documentation](#-usage-guide) • [Deployment](#-production-deployment) • [API](#-api-documentation)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![GitHub](https://img.shields.io/github/stars/gahingwoo/ezy_speech_translate?style=social)](https://github.com/gahingwoo/ezy_speech_translate)
 
-</div>
+Real-time speech recognition and translation system with secure authentication, modern admin interface, and audience display capabilities.
 
 ---
-
-## 📖 Overview
-
-EzySpeechTranslate is a complete real-time speech recognition and translation system with administrator proofreading capabilities and audience display interface. Perfect for:
-
-- ⛪️ **Church / Religious Services** - Real-time transcription and translation for sermons and worship
-- 🎓 **Education** - Real-time lecture translation for international students
-- 💼 **Business** - Multilingual meeting transcription and translation  
-- 🎥 **Content Creation** - Live streaming with real-time subtitles
-- 🏥 **Healthcare** - Doctor-patient communication assistance
-- 🎤 **Conferences** - Live interpretation for international events
-
-## ✨ Features
-
-### Core Features
-
-- **Real-Time Speech Recognition** - Browser-based speech recognition using Web Speech API
-- **Multi-Language Translation** - Support for 20+ languages
-- **Modern Admin Interface** - Responsive web-based GUI
-- **Live Client Display** - Real-time subtitle display with auto-updates
-- **Secure Authentication** - JWT token-based security
-- **Multiple Export Formats** - TXT, JSON, and SRT formats
-- **Theme Switching** - Dark/Light theme support
-- **Text-to-Speech** - Adjustable speed and volume TTS
-
-### Technical Features
-
-- **YAML Configuration** - Easy-to-use configuration files
-- **Cross-Platform** - Windows, macOS, Linux support
-- **Real-Time Sync** - WebSocket real-time communication
-- **Structured API** - RESTful + WebSocket dual protocol
 
 ## System Architecture
 
@@ -69,532 +33,259 @@ EzySpeechTranslate is a complete real-time speech recognition and translation sy
 └─────────────────────────┘
 ```
 
-## Quick Start
+---
 
-### System Requirements
+## 🎯 Choose Your Guide
 
-- **Python**: 3.8+
-- **Hardware**: Microphone or audio input device
-- **Browser**: Chrome/Edge (recommended for speech recognition)
-- **Memory**: 2GB+ RAM
+Select the guide that matches your role:
 
-### One-Click Installation (Recommended)
+### 👨‍💼 [Administrator Guide](docs/README_ADMIN.md)
+
+**For event hosts, speakers, and moderators**
+
+Learn how to:
+
+- Set up and start recording sessions
+- Monitor and correct transcriptions in real-time
+- Manage translations for your audience
+- Export session transcripts
+
+**→ [Read Administrator Guide](docs/README_ADMIN.md)**
+
+---
+
+### 👥 [Viewer Guide](docs/README_CLIENT.md)
+
+**For audience members and participants**
+
+Learn how to:
+
+- View real-time translations in your language
+- Use text-to-speech features
+- Download transcripts after events
+- Customize your viewing experience
+
+**→ [Read Viewer Guide](docs/README_CLIENT.md)**
+
+---
+
+### 👨‍💻 [Developer Guide](docs/README_DEVELOPER.md)
+
+**For developers, system administrators, and contributors**
+
+Learn about:
+
+- System architecture and technical stack
+- Installation and configuration
+- API documentation and WebSocket events
+- Production deployment and security
+- Development workflow and contributing
+
+**→ [Read Developer Guide](docs/README_DEVELOPER.md)**
+
+---
+
+## ⚡ Quick Start
+
+### For Administrators
+
+1. **Access your admin interface** (provided by IT)
+2. **Log in** with your credentials
+3. **Select language** and **start recording**
+4. **Speak clearly** - system handles the rest!
+
+[Full Admin Guide →](docs/README_ADMIN.md)
+
+### For Viewers
+
+1. **Open the URL** (shared by organizers)
+2. **Select your language** from dropdown
+3. **View translations** in real-time
+4. **Download transcript** when done
+
+[Full Viewer Guide →](docs/README_CLIENT.md)
+
+### For Developers
 
 ```bash
-# 1. Clone the repository
+# Quick installation
 git clone https://github.com/gahingwoo/ezy_speech_translate.git
 cd ezy_speech_translate
-
-# 2. Run setup script
 python setup.py
+
+# Start services
+python user_server.py      # Main server (port 1915)
+python admin_server.py     # Admin interface (port 1916)
 ```
 
-The setup script will automatically:
-- ✅ Install dependencies
-- ✅ Configure ports (default: main server 1915, admin interface 1916)
-- ✅ Set administrator credentials
+[Full Developer Guide →](docs/README_DEVELOPER.md)
 
-### Manual Installation
+---
 
-<details>
-<summary>Click to expand manual installation steps</summary>
+## 🌟 Key Features
 
-```bash
-# 1. Create virtual environment
-python -m venv venv
+### Real-Time Processing
 
-# 2. Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
+- **Instant speech recognition** using Web Speech API
+- **Live translation** to 20+ languages
+- **Auto-updates** for all connected viewers
+- **Low latency** broadcast system
 
-# 3. Install dependencies
-pip install -r requirements.txt
+### Professional Admin Tools
 
-# 4. Create necessary directories
-mkdir logs exports data templates
+- **Correction system** for accurate transcriptions
+- **Bulk editing** for multiple items
+- **Export options** (TXT, JSON, SRT formats)
+- **Session management** with history
 
-# 5. Configure config.yaml
-# Edit the file to set admin credentials and ports
+### Audience Experience
+
+- **Clean interface** with modern design
+- **Text-to-speech** with adjustable speed
+- **Language selection** from 20+ options
+- **Transcript download** for later reference
+
+### Enterprise Ready
+
+- **JWT authentication** for secure access
+- **HTTPS/SSL support** for encryption
+- **WebSocket** for real-time communication
+- **Production deployment** guides included
+
+---
+
+## 🏆 Perfect For
+
+| Use Case                  | Description                                    |
+| ------------------------- | ---------------------------------------------- |
+| ⛪️ **Religious Services** | Live sermon and worship translation            |
+| 🎓 **Education**          | Lecture translation for international students |
+| 💼 **Business**           | Multilingual meeting support                   |
+| 🎥 **Live Events**        | Conference and presentation subtitles          |
+| 🏥 **Healthcare**         | Doctor-patient communication assistance        |
+| 🎤 **Conferences**        | Real-time interpretation services              |
+
+---
+
+## 📚 Documentation Structure
+
+```
+docs/
+├── README_ADMIN.md          # For administrators
+├── README_CLIENT.md         # For viewers
+└── README_DEVELOPER.md      # For developers
+
+images/
+├── system_overview.png
+├── admin_*.png             # Admin screenshots
+└── client_*.png            # Client screenshots
 ```
 
-</details>
+---
 
-### Starting Services
+## 🛠️ Technical Stack
 
-**Method 1: Using Startup Scripts**
+| Component          | Technology                 |
+| ------------------ | -------------------------- |
+| Backend            | Python 3.8+ with Flask     |
+| Real-Time          | Flask-SocketIO + WebSocket |
+| Frontend           | Vanilla JavaScript         |
+| Authentication     | JWT (PyJWT)                |
+| Translation        | Google Translate API       |
+| Speech Recognition | Web Speech API             |
+| Protocol           | HTTPS/WSS with SSL         |
 
-```bash
-# Windows
-start_server.bat    # Start main server
-start_admin.bat     # Start admin interface
+---
 
-# macOS/Linux
-./start_server.sh   # Start main server
-./start_admin.sh    # Start admin interface
-```
+## 🌐 Supported Languages
 
-**Method 2: Manual Start**
+**20+ languages including:**
 
-```bash
-# Start main server
-venv/bin/python user_server.py
+Chinese (Simplified, Traditional, Cantonese) • English • Spanish • French • German • Italian • Japanese • Korean • Russian • Arabic • Hindi • Portuguese • Dutch • Polish • Thai • Vietnamese • Indonesian • Turkish • Hebrew • Danish
 
-# Start admin interface (new terminal)
-venv/bin/python admin_server.py
-```
+*See [Viewer Guide](docs/README_CLIENT.md) for complete list*
 
-### Access Interfaces
+---
 
-- **Main Server**: https://localhost:1915
-- **Admin Interface**: https://localhost:1916
+## 🚀 System Requirements
 
-## Usage Guide
+### Minimum
 
-### Administrator Operations
+- Python 3.8+
+- 2GB RAM
+- Stable internet connection
+- Modern web browser (Chrome/Edge recommended)
 
-#### 1. Login to System
+### Recommended
 
-1. Open browser and navigate to `https://localhost:1916`
-2. Enter username and password configured in `config.yaml`
-3. Click "Sign In" to log in
+- Python 3.10+
+- 4GB RAM
+- Dedicated microphone
+- Multiple cores for concurrent users
 
-#### 2. Start Recording
+*See [Developer Guide](docs/README_DEVELOPER.md) for detailed requirements*
 
-1. Select source language (Chinese, English, etc.)
-2. Choose audio device (usually "System Default")
-3. Click "🎙️ Start Recording"
-4. Speak into microphone - system will automatically recognize and send
+---
 
-#### 3. View and Edit Transcriptions
+## 📝 Quick Links
 
-1. Transcriptions appear in real-time
-2. Click a card to select (checkbox auto-checks)
-3. Edit text in "Corrected" field
-4. Click "💾 Save" to broadcast correction
-5. All connected users see the update instantly
+- [Administrator Guide](docs/README_ADMIN.md) - For event hosts
+- [Viewer Guide](docs/README_CLIENT.md) - For audience members  
+- [Developer Guide](docs/README_DEVELOPER.md) - For technical users
+- [GitHub Repository](https://github.com/gahingwoo/ezy_speech_translate)
+- [Report Issues](https://github.com/gahingwoo/ezy_speech_translate/issues)
+- [Discussions](https://github.com/gahingwoo/ezy_speech_translate/discussions)
 
-#### 4. Export Data
+---
 
-1. Click "📤 Export" button
-2. Choose export format:
-   - **txt** - Formatted plain text
-   - **json** - Structured JSON data
-   - **srt** - Video subtitle format
+## 🤝 Contributing
 
-### User Client Operations
+We welcome contributions! Please see the [Developer Guide](docs/README_DEVELOPER.md) for:
 
-#### 1. View Translations
+- Development setup
+- Code style guidelines
+- Testing procedures
+- Pull request process
 
-- Real-time subtitle display
-- Latest translations appear at top
-- Automatic translation to target language
+---
 
-#### 2. Switch Target Language
+## 📄 License
 
-- Choose from 20+ languages
-- Translations update automatically
-- Supports: Chinese (Cantonese/Mandarin), Japanese, Korean, Spanish, French, German, etc.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
-#### 3. Text-to-Speech (TTS)
+---
 
-- Click "Enable TTS" to auto-play translations
-- Adjust speed (0.5x - 2.0x)
-- Adjust volume (0% - 100%)
-- Click 🔊 on individual items to play them
+## 🙏 Acknowledgments
 
-#### 4. Download Subtitles
+- **Web Speech API** - Browser speech recognition
+- **Google Translate** - Translation services
+- **Flask & SocketIO** - Real-time communication framework
+- **Community Contributors** - Thank you for your support!
 
-- Click "Download Subtitles"
-- Saves formatted transcript with timestamps
-- Includes both original and translated text
+---
 
-## Configuration
+## 📞 Support
 
-### Port Configuration
+**Need help?**
 
-Customize ports in `config.yaml`:
+- 📖 Check the appropriate guide (Admin/Client/Developer)
+- 🐛 [Report bugs](https://github.com/gahingwoo/ezy_speech_translate/issues)
+- 💬 [Ask questions](https://github.com/gahingwoo/ezy_speech_translate/discussions)
+- 📧 Contact your system administrator
 
-```yaml
-# Main Server
-server:
-  host: "0.0.0.0"
-  port: 1915        # Change this
-
-# Admin Interface
-admin_server:
-  host: "0.0.0.0"
-  port: 1916        # Change this
-```
-
-> **Important**: Main server and admin interface must use different ports
-
-### Security Configuration
+---
 
-```yaml
-authentication:
-  enabled: true
-  admin_username: "admin"
-  admin_password: "your-secure-password"  # CHANGE THIS!
-  session_timeout: 7200                   # seconds
-  jwt_secret: "your-jwt-secret"           # CHANGE THIS!
-```
+## 🎯 Version Information
 
-**Production Security Recommendations:**
+**Current Version:** 3.3.0
 
-```yaml
-authentication:
-  admin_password: "Use-A-Very-Strong-Password-Here"
-  jwt_secret: "Generate-A-Random-Secret-Key"
-```
+**Recent Updates:**
 
-**Generate Secure Keys:**
-
-```python
-import secrets
-print(secrets.token_hex(32))      # For secret keys
-print(secrets.token_urlsafe(16))  # For passwords
-```
-
-## 🔧 Troubleshooting
-
-<details>
-<summary><strong>Address Already in Use Error</strong></summary>
-
-**Linux/macOS:**
-```bash
-lsof -i :1915
-kill -9 <PID>
-```
-
-**Windows:**
-```cmd
-netstat -ano | findstr :1915
-taskkill /PID <PID> /F
-```
-
-Or change the port in `config.yaml`
-</details>
-
-<details>
-<summary><strong>Admin/Client Cannot Connect</strong></summary>
-
-```bash
-# 1. Check if server is running
-curl https://localhost:1915/api/health
-
-# 2. Check firewall
-sudo ufw status
-
-# 3. Verify port configuration in config.yaml
-
-# 4. Check server logs
-tail -f logs/app.log
-```
-</details>
-
-<details>
-<summary><strong>Browser Says "Not Supported"</strong></summary>
-
-- ✅ Use Chrome or Edge (Web Speech API required)
-- ✅ Allow microphone permissions
-- ✅ Ensure running on HTTPS
-- ✅ Verify microphone works in system settings
-</details>
-
-<details>
-<summary><strong>No Microphone Found</strong></summary>
-
-**Linux:**
-```bash
-arecord -l
-sudo usermod -a -G audio $USER
-```
-
-**macOS:**
-```bash
-system_profiler SPAudioDataType
-```
-
-**Windows:** Check Sound Settings
-</details>
-
-<details>
-<summary><strong>Translation Failed</strong></summary>
-
-- ✅ Check internet connection (uses Google Translate API)
-- ✅ Clear browser cache
-- ✅ Try different target language
-- ✅ Check browser console for errors
-</details>
-
-## Production Deployment
-
-### SSL Certificate Generation
-
-```bash
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-```
-
-### Firewall Configuration
-
-```bash
-# Allow only necessary ports
-sudo ufw allow 1915/tcp  # Main server
-sudo ufw allow 1916/tcp  # Admin interface
-sudo ufw enable
-```
-
-### Environment Variables
-
-Instead of `config.yaml`, use environment variables:
-
-```bash
-export ADMIN_PASSWORD="secure-password"
-export JWT_SECRET="random-secret-key"
-export SERVER_PORT="1915"
-export ADMIN_PORT="1916"
-```
-
-### Using Gunicorn
-
-```bash
-# Install gunicorn
-pip install gunicorn eventlet
-
-# Run main server
-gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:1915 user_server:app
-
-# Run admin server
-gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:1916 admin_server:app
-```
-
-### Systemd Service Configuration
-
-<details>
-<summary>Click to view complete systemd configuration</summary>
-
-**Main Server Service** (`/etc/systemd/system/ezyspeech-main.service`):
-
-```ini
-[Unit]
-Description=EzySpeechTranslate Main Server
-After=network.target
-
-[Service]
-Type=simple
-User=your-user
-WorkingDirectory=/path/to/ezy_speech_translate
-Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python /path/to/user_server.py
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Admin Interface Service** (`/etc/systemd/system/ezyspeech-admin.service`):
-
-```ini
-[Unit]
-Description=EzySpeechTranslate Admin Interface
-After=network.target
-
-[Service]
-Type=simple
-User=your-user
-WorkingDirectory=/path/to/ezy_speech_translate
-Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python /path/to/admin_server.py
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Start Services:**
-
-```bash
-# If using SELinux
-sudo chcon -R -t bin_t /path/to/venv/bin/
-
-# Enable and start services
-sudo systemctl enable ezyspeech-main ezyspeech-admin
-sudo systemctl start ezyspeech-main ezyspeech-admin
-
-# Check status
-sudo systemctl status ezyspeech-main ezyspeech-admin
-```
-
-</details>
-
-## API Documentation
-
-### REST API
-
-#### Login Authentication
-
-```http
-POST /api/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "password"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "username": "admin"
-}
-```
-
-#### Get Configuration
-
-```http
-GET /api/config
-Authorization: Bearer <token>
-```
-
-#### Get Translation History
-
-```http
-GET /api/history
-Authorization: Bearer <token>
-```
-
-#### Clear All Translations
-
-```http
-POST /api/clear
-Authorization: Bearer <token>
-```
-
-#### Export Translations
-
-```http
-GET /api/export?format={txt|json|srt}
-```
-
-#### Health Check
-
-```http
-GET /api/health
-```
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-01-01T12:00:00",
-  "clients": 3,
-  "translations": 42
-}
-```
-
-### WebSocket API
-
-#### Admin Events
-
-**Emit:**
-- `admin_connect` - Authenticate admin session
-  ```javascript
-  socket.emit('admin_connect', { token: 'JWT_TOKEN' });
-  ```
-- `new_transcription` - Send new transcription
-  ```javascript
-  socket.emit('new_transcription', {
-    text: 'Hello world',
-    language: 'en',
-    timestamp: '2025-01-01T12:00:00'
-  });
-  ```
-- `correct_translation` - Update translation
-  ```javascript
-  socket.emit('correct_translation', {
-    id: 0,
-    corrected_text: 'Corrected text'
-  });
-  ```
-- `clear_history` - Clear all translations
-
-**Receive:**
-- `history` - Initial translation history
-- `new_translation` - New translation added
-- `translation_corrected` - Translation updated
-- `history_cleared` - History cleared
-
-## 🎨 Customization
-
-### Adding New Languages
-
-Add option in `user.html`:
-```html
-<option value="your-code">Your Language Name</option>
-```
-
-### Custom Theme Colors
-
-Modify CSS variables in `user.html` or `admin.html`:
-
-```css
-:root {
-  --primary: #0066cc;    /* Primary color */
-  --success: #3ec930;    /* Success color */
-  --danger: #ee0000;     /* Danger color */
-}
-```
-
-### Extend Export Formats
-
-Add custom export logic in `user_server.py`:
-
-```python
-@app.route('/api/export/custom')
-@require_auth
-def export_custom():
-    # Your custom export logic
-    return custom_formatted_data
-```
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details
-
-## Acknowledgments
-
-- [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API) - Browser-based speech recognition
-- [Google Translate](https://translate.google.com/) - Translation services
-- [Flask](https://flask.palletsprojects.com/) & [SocketIO](https://socket.io/) - Real-time communication
-
-## Support
-
-Have questions or issues?
-
-- **GitHub Issues**: [Create an Issue](https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose)
-- **Documentation**: Check this README and code comments
-- **Logs**: Review `logs/app.log` for troubleshooting
-- **Discussions**: Join [GitHub Discussions](https://github.com/gahingwoo/ezy_speech_translate/discussions)
-
-## Version History
-- v3.3.0 (Current)
-- Update security
-
+- Enhanced security features
+- Updated documentation structure
+- Performance optimizations
+
+**Changelog:** See [Commit History](https://github.com/gahingwoo/ezy_speech_translate/commits/main/)
 
 ---
 
@@ -602,8 +293,8 @@ Have questions or issues?
 
 **Made with ❤️ by [Ga Hing Woo](https://github.com/gahingwoo)**
 
-🌍 *Ezy-Speech - Let language no longer stand in the way of connection.*
+*Breaking down language barriers, one word at a time*
 
-[Back to Top](#-ezyspeechtranslate)
+[⬆ Back to Top](#-ezyspeech translate)
 
 </div>
