@@ -1,4 +1,4 @@
-# 🌍 EzySpeechTranslate
+# 🌍 EzySpeech
 
 **Production-Ready Real-Time Speech Translation System**
 
@@ -295,6 +295,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 *Breaking down language barriers, one word at a time*
 
-[⬆ Back to Top](#-ezyspeech translate)
+[⬆ Back to Top](#-ezyspeech)
 
 </div>

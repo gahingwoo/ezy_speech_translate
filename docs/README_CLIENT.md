@@ -1,4 +1,4 @@
-# EzySpeechTranslate - Viewer Guide
+# EzySpeech - Viewer Guide
 
 **Real-Time Translation Display for Audiences**
 
@@ -8,7 +8,7 @@ Welcome! This guide will help you view live translations during events and servi
 
 ## 📋 Table of Contents
 
-- [What is EzySpeechTranslate?](#what-is-ezyspeech translate)
+- [What is EzySpeech?](#what-is-ezyspeech)
 - [Getting Started](#getting-started)
 - [Using the Viewer Interface](#using-the-viewer-interface)
 - [Features](#features)
@@ -17,7 +17,7 @@ Welcome! This guide will help you view live translations during events and servi
 
 ---
 
-## What is EzySpeechTranslate?
+## What is EzySpeech?
 
 EzySpeechTranslate provides real-time translation of live speech in multiple languages. Perfect for:
 

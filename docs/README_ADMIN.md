@@ -1,4 +1,4 @@
-# EzySpeechTranslate - Administrator Guide
+# EzySpeech - Administrator Guide
 
 **Real-Time Speech Translation System for Administrators**
 
@@ -8,7 +8,7 @@ Welcome! This guide will help you set up and use EzySpeechTranslate to provide r
 
 ## 📋 Table of Contents
 
-- [What is EzySpeechTranslate?](#what-is-ezyspeech translate)
+- [What is EzySpeech?](#what-is-ezyspeech)
 - [Quick Start](#quick-start)
 - [Using the Admin Interface](#using-the-admin-interface)
 - [Best Practices](#best-practices)
@@ -17,9 +17,9 @@ Welcome! This guide will help you set up and use EzySpeechTranslate to provide r
 
 ---
 
-## What is EzySpeechTranslate?
+## What is EzySpeech?
 
-EzySpeechTranslate is a real-time speech recognition and translation system designed for:
+EzySpeech is a real-time speech recognition and translation system designed for:
 
 - ⛪️ **Religious Services** - Live sermon translation
 - 🎓 **Education** - Lecture translation for international students
