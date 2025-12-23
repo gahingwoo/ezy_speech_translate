@@ -29,7 +29,7 @@ Complete technical documentation for developers, system administrators, and cont
 ```
 ┌─────────────────────────┐
 │   Admin Interface       │ ← React/HTML (Port 1916)
-│   admin_server.py       │   JWT Auth + WebSocket
+│   admin/erver.py       │   JWT Auth + WebSocket
 └───────────┬─────────────┘
             │
             │ REST API + WebSocket
@@ -37,7 +37,7 @@ Complete technical documentation for developers, system administrators, and cont
             │
 ┌───────────▼─────────────┐
 │   Main Backend          │ ← Flask + SocketIO (Port 1915)
-│   user_server.py        │   Translation Engine
+│   user/server.py        │   Translation Engine
 └───────────┬─────────────┘
             │
             │ WebSocket Broadcast
@@ -51,7 +51,7 @@ Complete technical documentation for developers, system administrators, and cont
 
 ### Component Details
 
-#### Main Backend (`user_server.py`)
+#### Main Backend (`user/server.py`)
 
 - **Framework**: Flask + Flask-SocketIO
 - **Port**: 1915 (configurable)
@@ -61,7 +61,7 @@ Complete technical documentation for developers, system administrators, and cont
   - Export functionality
   - Health monitoring
 
-#### Admin Interface (`admin_server.py`)
+#### Admin Interface (`admin/server.py`)
 
 - **Framework**: Flask + Flask-SocketIO
 - **Port**: 1916 (configurable)
@@ -492,12 +492,12 @@ ezy_speech_translate/
 # Terminal 1: Main server
 export FLASK_ENV=development
 export FLASK_DEBUG=1
-python user_server.py
+python user/server.py
 
 # Terminal 2: Admin interface
 export FLASK_ENV=development
 export FLASK_DEBUG=1
-python admin_server.py
+python admin/server.py
 ```
 
 ### Testing
@@ -524,7 +524,7 @@ pytest -v
 ```python
 # tests/test_api.py
 import pytest
-from user_server import app
+from user/server import app
 
 @pytest.fixture
 def client():
@@ -738,7 +738,7 @@ Type=simple
 User=your-user
 WorkingDirectory=/path/to/ezy_speech_translate
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python /path/to/user_server.py
+ExecStart=/path/to/venv/bin/python /path/to/user/server.py
 Restart=always
 
 [Install]
@@ -757,7 +757,7 @@ Type=simple
 User=your-user
 WorkingDirectory=/path/to/ezy_speech_translate
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python /path/to/admin_server.py
+ExecStart=/path/to/venv/bin/python /path/to/admin/server.py
 Restart=always
 
 [Install]
@@ -803,7 +803,7 @@ gunicorn --worker-class eventlet \
   --access-logfile logs/access.log \
   --error-logfile logs/error.log \
   --log-level info \
-  user_server:app
+  user/server:app
 ```
 
 **Gunicorn systemd service**:
@@ -816,7 +816,7 @@ ExecStart=/opt/ezy_speech_translate/venv/bin/gunicorn \
   --bind 0.0.0.0:1915 \
   --certfile=/opt/ezy_speech_translate/cert.pem \
   --keyfile=/opt/ezy_speech_translate/key.pem \
-  user_server:app
+  user/server:app
 ```
 
 ### Docker Deployment
@@ -848,7 +848,7 @@ RUN mkdir -p logs exports data
 EXPOSE 1915 1916
 
 # Run application
-CMD ["python", "user_server.py"]
+CMD ["python", "user/server.py"]
 ```
 
 **docker-compose.yml**:
@@ -1082,7 +1082,7 @@ MemoryLimit=512M
 gunicorn --max-requests 1000 \
   --max-requests-jitter 50 \
   --worker-class eventlet \
-  user_server:app
+  user/server:app
 ```
 
 ### Log Analysis
@@ -1279,7 +1279,7 @@ Any other context or screenshots.
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see [LICENSE](../LICENSE) file for details.
 
 ```
 MIT License
