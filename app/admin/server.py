@@ -448,7 +448,7 @@ if __name__ == "__main__":
     logger.info(f"Security logging: logs/security.log")
     logger.info(f"Login Page: https://{ADMIN_HOST}:{ADMIN_PORT}/login")
     logger.info(f"Admin Interface: https://{ADMIN_HOST}:{ADMIN_PORT}/admin")
-    logger.info(f"User Client expected at: http://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
+    logger.info(f"User Client expected at: https://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 
     cert_file = os.path.join(SSL_DIR, "cert.pem")
     key_file = os.path.join(SSL_DIR, "key.pem")

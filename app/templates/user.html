@@ -7,10 +7,22 @@
     <meta content="Real-time speech translation with TTS support for 20+ languages" name="description">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <link href="/static/css/user.css" rel="stylesheet">
+    <!-- Google Translate -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'en,zh-CN,zh-TW',
+                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head>
 <body data-theme="light">
 <!-- Sync Notification Indicator -->
-<div aria-live="polite" class="sync-indicator" id="syncIndicator">
+<div aria-live="polite" class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated">
     🔄 Translations Updated
 </div>
 
@@ -27,11 +39,11 @@
         </button>
         <div class="brand">
             <span aria-hidden="true">🎙️</span>
-            <span>EzySpeech User</span>
+            <span data-i18n="brand">EzySpeech User</span>
         </div>
         <div aria-live="polite" class="connection-badge waiting" id="statusBadge" role="status">
             <span aria-hidden="true" class="status-dot"></span>
-            <span>Waiting</span>
+            <span data-i18n="waiting">Waiting</span>
         </div>
     </div>
 
@@ -42,6 +54,7 @@
                 class="search-input-header"
                 id="searchInput"
                 oninput="handleSearch()"
+                data-i18n-placeholder="search"
                 placeholder="🔍 Search..."
                 type="search"
         >
@@ -65,6 +78,7 @@
                 class="search-input-mobile"
                 id="searchInputMobile"
                 oninput="handleSearch()"
+                data-i18n-placeholder="searchTranslations"
                 placeholder="Search translations..."
                 type="search"
         >
@@ -83,18 +97,46 @@
 
         <!-- Translation Settings Section -->
         <section class="sidebar-section">
-            <h3 class="sidebar-title">Display Settings</h3>
+            <h3 class="sidebar-title" data-i18n="displaySettings">Display Settings</h3>
 
             <div class="control-group">
-                <label class="control-label" for="displayMode">Display Mode</label>
+                <label class="control-label" for="displayLanguage" data-i18n="displayLanguage">Display Language</label>
+                <select aria-label="Select display language" id="displayLanguage" onchange="changeDisplayLanguage()">
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                    <option value="zh-tw">繁體中文</option>
+                    <option value="yue">粵語</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="ru">Русский</option>
+                    <option value="ar">العربية</option>
+                    <option value="pt">Português</option>
+                    <option value="it">Italiano</option>
+                    <option value="nl">Nederlands</option>
+                    <option value="pl">Polski</option>
+                    <option value="tr">Türkçe</option>
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="th">ไทย</option>
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="ms">Bahasa Malaysia</option>
+                    <option value="hi">हिन्दी</option>
+                    <option value="ta">தமிழ்</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label" for="displayMode" data-i18n="displayMode">Display Mode</label>
                 <select aria-label="Select display mode" id="displayMode" onchange="changeDisplayMode()">
-                    <option value="translation">Translation</option>
-                    <option value="transcription">Transcription Only</option>
+                    <option value="translation" data-i18n="translation">Translation</option>
+                    <option value="transcription" data-i18n="transcriptionOnly">Transcription Only</option>
                 </select>
             </div>
 
             <div class="control-group" id="languageSelectGroup">
-                <label class="control-label" for="targetLang">Target Language</label>
+                <label class="control-label" for="targetLang" data-i18n="targetLanguage">Target Language</label>
                 <select aria-label="Select target language" id="targetLang" onchange="changeLanguage()">
                     <option value="yue">Cantonese (粵語)</option>
                     <option value="zh-cn">Chinese Simplified (简体中文)</option>
@@ -123,7 +165,7 @@
 
         <!-- Text-to-Speech Section -->
         <section class="sidebar-section">
-            <h3 class="sidebar-title">Text-to-Speech</h3>
+            <h3 class="sidebar-title" data-i18n="textToSpeech">Text-to-Speech</h3>
 
             <div class="control-group">
                 <button
@@ -132,19 +174,19 @@
                         id="toggleTTS"
                         onclick="toggleTTS()">
                     <span aria-hidden="true">🔊</span>
-                    <span>Enable TTS</span>
+                    <span data-i18n="enableTTS">Enable TTS</span>
                 </button>
             </div>
 
             <div class="control-group">
-                <label class="control-label" for="voiceSelect">Voice</label>
+                <label class="control-label" for="voiceSelect" data-i18n="voice">Voice</label>
                 <select aria-label="Select voice" id="voiceSelect" onchange="changeVoice()">
                     <option value="">Loading voices...</option>
                 </select>
             </div>
 
             <div class="control-group">
-                <label class="control-label" for="rateSlider">Speed</label>
+                <label class="control-label" for="rateSlider" data-i18n="speed">Speed</label>
                 <div class="slider-wrapper">
                     <input
                             aria-label="Speech rate"
@@ -161,7 +203,7 @@
             </div>
 
             <div class="control-group">
-                <label class="control-label" for="volumeSlider">Volume</label>
+                <label class="control-label" for="volumeSlider" data-i18n="volume">Volume</label>
                 <div class="slider-wrapper">
                     <input
                             aria-label="Speech volume"
@@ -180,10 +222,10 @@
 
         <!-- Export Section -->
         <section class="sidebar-section">
-            <h3 class="sidebar-title">Export</h3>
+            <h3 class="sidebar-title" data-i18n="export">Export</h3>
 
             <div class="control-group">
-                <label class="control-label" for="exportFormat">Format</label>
+                <label class="control-label" for="exportFormat" data-i18n="format">Format</label>
                 <select aria-label="Select export format" id="exportFormat">
                     <option value="txt">📄 Text (TXT)</option>
                     <option value="json">📋 JSON</option>
@@ -198,7 +240,7 @@
                         class="pf-c-button pf-c-button--success"
                         onclick="exportData()">
                     <span aria-hidden="true">💾</span>
-                    <span>Download</span>
+                    <span data-i18n="download">Download</span>
                 </button>
             </div>
 
@@ -208,17 +250,17 @@
                         class="pf-c-button pf-c-button--secondary"
                         onclick="clearLocal()">
                     <span aria-hidden="true">🗑️</span>
-                    <span>Clear Display</span>
+                    <span data-i18n="clearDisplay">Clear Display</span>
                 </button>
             </div>
         </section>
 
         <!-- Settings Section -->
         <section class="sidebar-section">
-            <h3 class="sidebar-title">Settings</h3>
+            <h3 class="sidebar-title" data-i18n="settings">Settings</h3>
 
             <div class="control-group">
-                <label class="control-label" for="fontSizeSlider">Font Size</label>
+                <label class="control-label" for="fontSizeSlider" data-i18n="fontSize">Font Size</label>
                 <div class="slider-wrapper">
                     <input
                             aria-label="Translation font size"
@@ -240,7 +282,7 @@
                         class="sidebar-menu-item"
                         onclick="toggleTheme()">
                     <span aria-hidden="true" id="themeIcon">🌙</span>
-                    <span id="themeText">Dark Mode</span>
+                    <span id="themeText" data-i18n="darkMode">Dark Mode</span>
                 </button>
             </div>
 
@@ -250,7 +292,7 @@
                         class="sidebar-menu-item"
                         onclick="resetSettings()">
                     <span aria-hidden="true">🔄</span>
-                    <span>Reset Settings</span>
+                    <span data-i18n="resetSettings">Reset Settings</span>
                 </button>
             </div>
 
@@ -260,7 +302,7 @@
                         class="sidebar-menu-item"
                         onclick="showAbout()">
                     <span aria-hidden="true">ℹ️</span>
-                    <span>About</span>
+                    <span data-i18n="about">About</span>
                 </button>
             </div>
         </section>
@@ -270,7 +312,7 @@
     <section aria-label="Translation list" class="pf-c-page__main-section" role="main">
         <div class="content-header">
             <h2 class="content-title" id="mainTitle">
-                <span id="mainTitleText">Live Translations</span>
+                <span id="mainTitleText" data-i18n="liveTranslations">Live Translations</span>
                 <span aria-label="Translation count" class="count-badge" id="itemCount">0</span>
             </h2>
         </div>
@@ -278,8 +320,8 @@
         <div class="translation-list" id="translationsList" role="list">
             <div class="empty-state" role="status">
                 <div aria-hidden="true" class="empty-icon">💬</div>
-                <div id="emptyStateText">Waiting for translations...</div>
-                <small id="emptyStateDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                <div id="emptyStateText" data-i18n="waitingTranslations">Waiting for translations...</div>
+                <small id="emptyStateDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;" data-i18n="waitingDesc">
                     Translations will appear here in real-time
                 </small>
             </div>
@@ -294,7 +336,7 @@
         <div class="about-header">
             <div class="about-title" id="aboutTitle">
                 <span aria-hidden="true">🎙️</span>
-                <span>EzySpeech</span>
+                <span data-i18n="aboutTitle">EzySpeech</span>
             </div>
             <button
                     aria-label="Close about dialog"
@@ -304,19 +346,10 @@
             </button>
         </div>
         <div class="about-body">
-            <p><strong>Real-time Speech Transcription and Translation System</strong></p>
             <p>🌍 Let language no longer stand in the way of connection</p>
 
-            <h3>Features</h3>
-            <p>• 20+ languages supported<br>
-                • Transcription and Translation<br>
-                • Text-to-Speech with voice selection<br>
-                • Multiple export formats (TXT, JSON, CSV, SRT)<br>
-                • Real-time search<br>
-                • Customizable font size<br>
-
-            <h3>Made with ❤️ by</h3>
-            <p>Ga Hing Woo</p>
+            <h3 data-i18n="madeBy">Made with ❤️ by</h3>
+            <p data-i18n="author">Ga Hing Woo</p>
 
             <div class="about-links">
                 <a class="about-link"
@@ -331,7 +364,7 @@
                    rel="noopener noreferrer"
                    target="_blank">
                     <span>💬</span>
-                    <span>Feedback</span>
+                    <span data-i18n="feedback">Feedback</span>
                 </a>
             </div>
 
@@ -350,6 +383,9 @@
         onclick="scrollToTop()">
     ↑
 </button>
+
+<!-- Google Translate Element -->
+<div id="google_translate_element" style="display: none;"></div>
 
 <script src="/static/js/user.js"></script>
 </body>

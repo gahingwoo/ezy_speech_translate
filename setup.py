@@ -28,6 +28,7 @@ import platform
 import secrets
 import hashlib
 import base64
+from cryptography.fernet import Fernet
 import json
 import socket
 import getpass
@@ -251,14 +252,15 @@ def configure_secrets():
     print_step(6, "Configuring secure secrets...")
     
     config_path = Path("config/config.yaml")
-    secrets_path = Path("config/secrets.enc")
-    
+    # Use `config/secrets.key` (JSON) as the canonical secrets store
+    secrets_key_path = config_path.parent / 'secrets.key'
+
     if not config_path.exists():
         print("❌ config/config.yaml not found")
         return False
-    
+
     # Check if secrets are already configured
-    if secrets_path.exists():
+    if secrets_key_path.exists():
         response = input("\n⚠️  Secrets already configured. Regenerate? (y/N): ").strip().lower()
         if response != 'y':
             print("✓ Using existing secrets")
@@ -270,23 +272,29 @@ def configure_secrets():
     admin_password, is_manual_password = prompt_admin_password()
     jwt_secret = generate_secret_key(32)
     server_secret_key = generate_secret_key(32)
-    
-    # Encrypt and store
-    encrypted_secrets = {
-        'admin_password': MachineBoundEncryption.encrypt_xor(admin_password),
-        'jwt_secret': MachineBoundEncryption.encrypt_xor(jwt_secret),
-        'server_secret_key': MachineBoundEncryption.encrypt_xor(server_secret_key)
-    }
-    
-    # Save encrypted secrets to file
-    with open(secrets_path, 'w') as f:
-        json.dump(encrypted_secrets, f, indent=2)
-    
-    # Set permissions on non-Windows systems
-    if platform.system() != "Windows":
-        os.chmod(secrets_path, 0o600)
-    
-    print("\n✅ Secrets generated and encrypted!")
+
+    # Use Fernet symmetric encryption and persist tokens + key into config/secrets.key (JSON)
+    try:
+        key = Fernet.generate_key()
+        f = Fernet(key)
+
+        new_data = {
+            'fernet_key': key.decode(),
+            'admin_password': f.encrypt(admin_password.encode()).decode(),
+            'jwt_secret': f.encrypt(jwt_secret.encode()).decode(),
+            'server_secret_key': f.encrypt(server_secret_key.encode()).decode()
+        }
+
+        secrets_key_path.write_text(json.dumps(new_data, indent=2))
+        try:
+            os.chmod(secrets_key_path, 0o600)
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"Warning: Failed to generate/write secrets.key: {e}")
+        return False
+
+    print("\n✅ Secrets generated and stored in config/secrets.key (Fernet)")
     print("=" * 60)
     print("🔑 YOUR ADMIN CREDENTIALS (SAVE THESE!):")
     print("=" * 60)
@@ -297,7 +305,7 @@ def configure_secrets():
         print(f"Password: {admin_password}")
     print("=" * 60)
     print("\n⚠️  IMPORTANT: Save this password now!")
-    print("    It's encrypted and stored in config/secrets.enc")
+    print("    It's encrypted and stored in config/secrets.key")
     print("    The config.yaml will reference it automatically.\n")
     
     # Wait for user confirmation
@@ -395,7 +403,7 @@ def print_success_message():
     print_header("🎉 Setup Complete!")
 
     print("🔐 Security Features Enabled:")
-    print("  ✓ Passwords encrypted and stored in config/secrets.enc")
+    print("  ✓ Passwords encrypted and stored in config/secrets.key")
     print("  ✓ Automatic decryption on server start")
     print("  ✓ No plaintext passwords in config.yaml")
     
@@ -412,17 +420,17 @@ def print_success_message():
     print("  Admin: https://localhost:1916")
     
     print("\n📂 Important Files:")
-    print("  config/secrets.enc        - Encrypted secrets (Machine-bound!)")
+    print("  config/secrets.key        - Encrypted secrets (Fernet key + tokens)")
     print("  config/config.yaml        - Main configuration")
     print("  config/secure_loader.py   - Auto-decryption loader")
     print("  config/ssl/cert.pem       - SSL certificate")
     print("  config/ssl/key.pem        - SSL private key")
 
     print("\n⚠️  Security Notes:")
-    print("  • config/secrets.enc is machine-specific (will not work on other machines)")
-    print("  • Do not copy secrets.enc to other machines or commit it to Git")
-    print("  • Run setup.py again on new deployment machines")
-    print("  • Ensure config/secrets.enc is added to .gitignore")
+    print("  • config/secrets.key contains the Fernet key and encrypted tokens — protect it and do not commit")
+    print("  • Do not copy secrets.key to other machines")
+    print("  • Run setup.py again on new deployment machines to provision new secrets.key")
+    print("  • Ensure config/secrets.key is added to .gitignore")
     
     print("\n🎯 Next Steps:")
     print("  1. Save your admin password somewhere safe")

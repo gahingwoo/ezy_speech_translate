@@ -475,7 +475,7 @@ ezy_speech_translate/
 │       └── user.html
 ├── config/
 │   ├── config.yaml
-│   ├── secrets.enc
+│   ├── secrets.key
 │   └── ssl/
 ├── scripts
 │   └── tests/
