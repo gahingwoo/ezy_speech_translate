@@ -325,10 +325,8 @@ function setupRecognitionHandlers() {
     recognition.onend = () => {
         console.log('🛑 Speech recognition ended');
 
-        if (finalTranscript.trim()) {
-            sendTranscription(finalTranscript.trim(), undefined);
-            finalTranscript = '';
-        }
+        // Do not auto-send here — final results are sent from onresult.
+        // Keep finalTranscript for any pending processing by onresult.
 
         if (isRecording && autoRestartEnabled) {
             console.log('🔄 Auto-restarting in 300ms...');
@@ -469,12 +467,19 @@ function updateRecordButton() {
     const btn = document.getElementById('recordBtn');
     const langSelect = document.getElementById('sourceLangSelect');
 
+    const shared = window.sharedI18n || {};
+    const lang = window._displayLanguage || localStorage.getItem('displayLanguage') || (navigator.language || 'en').split('-')[0];
+
+    const span = btn.querySelector('[data-i18n]') || btn;
+
     if (isRecording) {
-        btn.textContent = '⏹️ Stop Recording';
+        const text = (shared[lang] && shared[lang]['stopRecording']) || '⏹️ Stop Recording';
+        span.textContent = text;
         btn.className = 'pf-c-button pf-c-button--danger recording';
         langSelect.disabled = true;
     } else {
-        btn.textContent = '🎙️ Start Recording';
+        const text = (shared[lang] && shared[lang]['startRecording']) || '🎙️ Start Recording';
+        span.textContent = text;
         btn.className = 'pf-c-button pf-c-button--success';
         langSelect.disabled = false;
     }
@@ -554,12 +559,16 @@ function renderTranscriptions() {
     document.getElementById('itemCount').textContent = translations.length;
 
     if (translations.length === 0) {
+        const shared = window.sharedI18n || {};
+        const lang = window._displayLanguage || localStorage.getItem('displayLanguage') || (navigator.language || 'en').split('-')[0];
+        const noTrans = (shared[lang] && shared[lang]['noTranscriptionsYet']) || 'No transcriptions yet';
+        const startHelp = (shared[lang] && shared[lang]['startRecordingHelp']) || 'Start recording to see transcriptions';
         list.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">💬</div>
-                <div>No transcriptions yet</div>
+                <div>${noTrans}</div>
                 <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
-                    Start recording to see transcriptions
+                    ${startHelp}
                 </small>
             </div>
         `;
@@ -592,7 +601,7 @@ function renderTranscriptions() {
                 ${item.confidence ? `<span class="card-confidence">confidence: ${Math.round(item.confidence * 100)}%</span>` : ''}
                 <div class="card-header">
                     <span class="card-time">${item.timestamp}</span>
-                    ${item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : ''}
+                    ${item.is_corrected ? `<span class="card-badge">${(shared && shared[lang] && shared[lang]['corrected']) || '✓ Corrected'}</span>` : ''}
                 </div>
                 <div class="card-text">${escapeHtml(item.corrected)}</div>
             </div>

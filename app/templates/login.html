@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>Login - EzySpeech - AdminLogin</title>
+    <title data-i18n="metaTitle_admin">Login - EzySpeech - AdminLogin</title>
+    <meta data-i18n-meta="metaDescription" content="Admin login for EzySpeech" name="description">
     <link href="/static/css/admin.css" rel="stylesheet">
     <link href="/static/css/login.css" rel="stylesheet">
 </head>
@@ -12,34 +13,37 @@
     <div class="login-box">
         <div class="login-logo">
             <div class="login-logo-icon">🎙️</div>
-            <h1>Admin Login</h1>
-            <p>Sign in to access the admin panel</p>
+            <div data-i18n="brand_admin" style="display:none"></div>
+            <h1 data-i18n="adminLogin">Admin Login</h1>
+            <p data-i18n="signIn">Sign in to access the admin panel</p>
         </div>
 
         <form class="login-form" id="loginForm" onsubmit="return false;">
             <div class="control-group">
-                <label class="control-label" for="username">Username</label>
+                <label class="control-label" for="username" data-i18n="username">Username</label>
                 <input
-                        autocomplete="username"
-                        id="username"
-                        placeholder="Enter your username"
-                        required
-                        type="text">
+                    autocomplete="username"
+                    id="username"
+                    placeholder="Enter your username"
+                    data-i18n-placeholder="username"
+                    required
+                    type="text">
             </div>
 
             <div class="control-group">
-                <label class="control-label" for="password">Password</label>
+                <label class="control-label" for="password" data-i18n="password">Password</label>
                 <input
-                        autocomplete="current-password"
-                        id="password"
-                        placeholder="Enter your password"
-                        required
-                        type="password">
+                    autocomplete="current-password"
+                    id="password"
+                    placeholder="Enter your password"
+                    data-i18n-placeholder="password"
+                    required
+                    type="password">
             </div>
 
             <div class="login-error" id="loginError"></div>
 
-            <button class="login-submit" id="loginButton" type="submit">
+            <button class="login-submit" id="loginButton" type="submit" data-i18n="signIn">
                 Sign In
             </button>
         </form>
@@ -47,12 +51,13 @@
         <div class="login-footer">
             <button class="theme-btn" onclick="toggleLoginTheme()">
                 <span id="loginThemeIcon">🌙</span>
-                <span id="loginThemeText">Dark Mode</span>
+                <span id="loginThemeText" data-i18n="darkMode">Dark Mode</span>
             </button>
         </div>
     </div>
 </div>
 
+<script src="/static/js/i18n.js"></script>
 <script src="/static/js/login.js"></script>
 </body>
 </html>

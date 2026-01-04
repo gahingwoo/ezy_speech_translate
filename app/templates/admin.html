@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EzySpeech - Admin Panel</title>
+    <title data-i18n="metaTitle">EzySpeech - Admin Panel</title>
+    <meta data-i18n-meta="metaDescription" content="Admin panel for managing EzySpeech server and live translations" name="description">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <link rel="stylesheet" href="/static/css/admin.css">
 </head>
@@ -16,17 +17,17 @@
             </button>
             <div class="brand">
                 <span>🎙️</span>
-                <span>EzySpeech Admin</span>
+                <span data-i18n="brand_admin">EzySpeech Admin</span>
             </div>
             <div id="statusBadge" class="connection-badge offline">
                 <span class="status-dot"></span>
-                <span>Disconnected</span>
+                <span data-i18n="offline">Disconnected</span>
             </div>
         </div>
         <div class="header-right">
             <button class="logout-btn" onclick="logout()">
                 <span>🚪</span>
-                <span>Logout</span>
+                <span data-i18n="logout">Logout</span>
             </button>
         </div>
     </header>
@@ -39,14 +40,14 @@
         <!-- Sidebar -->
         <aside class="pf-c-page__sidebar" id="sidebar">
             <div class="sidebar-section">
-                <h3 class="sidebar-title">Audio Controls</h3>
+                <h3 class="sidebar-title" data-i18n="audioControls">Audio Controls</h3>
 
                 <div class="control-group">
-                    <label class="control-label">Source Language</label>
+                    <label class="control-label" data-i18n="sourceLanguage">Source Language</label>
                     <select id="sourceLangSelect" onchange="changeSourceLanguage()">
-                        <option value="en-US">English (US)</option>
-                        <option value="en-GB">English (UK)</option>
-                        <option value="zh-CN">中文 (普通话)</option>
+                        <option value="en-US" data-i18n="englishUS">English (US)</option>
+                        <option value="en-GB" data-i18n="englishUK">English (UK)</option>
+                        <option value="zh-CN" data-i18n="chineseMandarin">中文 (普通话)</option>
                         <option value="yue-Hant-HK">粵語</option>
                         <option value="ja-JP">日本語</option>
                         <option value="ko-KR">한국어</option>
@@ -57,53 +58,81 @@
                 </div>
 
                 <div class="control-group">
-                    <label class="control-label">Audio Device</label>
+                    <label class="control-label" data-i18n="audioDevice">Audio Device</label>
                     <select id="deviceSelect">
-                        <option>Loading...</option>
+                        <option data-i18n="loading">Loading...</option>
                     </select>
                 </div>
 
                 <div class="control-group">
                     <button id="recordBtn" class="pf-c-button pf-c-button--success" onclick="toggleRecording()">
-                        🎙️ Start Recording
+                        <span data-i18n="startRecording">🎙️ Start Recording</span>
                     </button>
                     <div class="auto-restart-badge" style="display: none;" id="autoRestartBadge">
                         <span>🔄</span>
-                        <span>Auto-restart enabled</span>
+                        <span data-i18n="autoRestartEnabled">Auto-restart enabled</span>
                     </div>
                 </div>
 
                 <div class="control-group">
-                    <label class="control-label">Recognizing...</label>
+                    <label class="control-label" data-i18n="recognizing">Recognizing...</label>
                     <div id="interimDisplay" class="interim-display inactive">
-                        <span id="interimText">Waiting for speech...</span>
+                        <span id="interimText" data-i18n="waitingForSpeech">Waiting for speech...</span>
                     </div>
                 </div>
             </div>
 
             <div class="sidebar-section">
-                <h3 class="sidebar-title">Actions</h3>
+                <h3 class="sidebar-title" data-i18n="actions">Actions</h3>
                 <div class="button-group">
-                    <button class="pf-c-button pf-c-button--primary" onclick="addNewItem()">➕ Add</button>
-                    <button class="pf-c-button pf-c-button--primary" onclick="editSelected()">✏️ Edit</button>
-                    <button class="pf-c-button pf-c-button--danger" onclick="deleteSelected()">🗑️ Delete</button>
-                    <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()">Clear All</button>
+                    <button class="pf-c-button pf-c-button--primary" onclick="addNewItem()"><span>➕</span> <span data-i18n="add">Add</span></button>
+                    <button class="pf-c-button pf-c-button--primary" onclick="editSelected()"><span>✏️</span> <span data-i18n="edit">Edit</span></button>
+                    <button class="pf-c-button pf-c-button--danger" onclick="deleteSelected()"><span>🗑️</span> <span data-i18n="delete">Delete</span></button>
+                    <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()"><span data-i18n="clearAll">Clear All</span></button>
                 </div>
-                <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;" onclick="exportData()">📤 Export</button>
+                <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;" onclick="exportData()"><span>📤</span> <span data-i18n="export">Export</span></button>
             </div>
 
             <div class="sidebar-section">
-                <h3 class="sidebar-title">Settings</h3>
+                <h3 class="sidebar-title" data-i18n="settings">Settings</h3>
+                <div class="control-group">
+                    <label class="control-label" data-i18n="displayLanguage">Interface Language</label>
+                    <select id="displayLanguage" onchange="(function(el){ const v = el.value; if(!v){ localStorage.removeItem('displayLanguage'); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } else { if(window.changeDisplayLanguage) window.changeDisplayLanguage(v); else { localStorage.setItem('displayLanguage', v); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } } })(this)">
+                        <option value="">Auto</option>
+                        <option value="en">English</option>
+                        <option value="zh">中文</option>
+                        <option value="yue">粵語</option>
+                        <option value="zh-tw">繁體中文</option>
+                        <option value="ja">日本語</option>
+                        <option value="ko">한국어</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                        <option value="ru">Русский</option>
+                        <option value="ar">العربية</option>
+                        <option value="pt">Português</option>
+                        <option value="it">Italiano</option>
+                        <option value="nl">Nederlands</option>
+                        <option value="pl">Polski</option>
+                        <option value="tr">Türkçe</option>
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="th">ไทย</option>
+                        <option value="id">Bahasa Indonesia</option>
+                        <option value="ms">Bahasa Melayu</option>
+                        <option value="hi">हिन्दी</option>
+                        <option value="ta">தமிழ்</option>
+                    </select>
+                </div>
                 <div class="control-group">
                     <button class="sidebar-menu-item" onclick="toggleTheme(); closeMobileMenu();">
                         <span id="themeIcon">🌙</span>
-                        <span id="themeText">Dark Mode</span>
+                        <span id="themeText" data-i18n="darkMode">Dark Mode</span>
                     </button>
                 </div>
                 <div class="control-group">
                     <button class="sidebar-menu-item" onclick="showAbout(); closeMobileMenu();">
                         <span>ℹ️</span>
-                        <span>About</span>
+                        <span data-i18n="about">About</span>
                     </button>
                 </div>
             </div>
@@ -113,20 +142,20 @@
         <section class="pf-c-page__main-section">
             <div class="content-header">
                 <h2 class="content-title">
-                    Transcriptions
+                    <span data-i18n="liveTranscriptions">Transcriptions</span>
                     <span class="count-badge" id="itemCount">0</span>
                 </h2>
                 <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
                     <span>⋮⋮</span>
-                    <span>Drag to reorder</span>
+                    <span data-i18n="dragToReorder">Drag to reorder</span>
                 </div>
             </div>
 
             <div id="transcriptionsList" class="transcription-list">
                 <div class="empty-state">
                     <div class="empty-icon">💬</div>
-                    <div>No transcriptions yet</div>
-                    <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                    <div data-i18n="noTranscriptionsYet">No transcriptions yet</div>
+                    <small data-i18n="waitingDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;">
                         Start recording to see transcriptions
                     </small>
                 </div>
@@ -136,27 +165,27 @@
         <!-- Edit Panel -->
         <aside class="edit-panel">
             <div class="panel-section">
-                <h3 class="panel-title">Edit & Correct</h3>
+                <h3 class="panel-title" data-i18n="editAndCorrect">Edit & Correct</h3>
 
                 <div class="control-group">
-                    <label class="control-label">Original</label>
+                    <label class="control-label" data-i18n="original">Original</label>
                     <textarea id="originalText" disabled></textarea>
                 </div>
 
                 <div class="control-group">
-                    <label class="control-label">Corrected (Edit Here)</label>
-                    <textarea id="correctedText" placeholder="Select an item to edit..."></textarea>
+                    <label class="control-label" data-i18n="correctedLabel">Corrected (Edit Here)</label>
+                    <textarea id="correctedText" data-i18n-placeholder="selectItemToEdit" placeholder="Select an item to edit..."></textarea>
                 </div>
 
                 <div class="button-group">
-                    <button class="pf-c-button pf-c-button--success" onclick="saveCorrection()">💾 Save</button>
-                    <button class="pf-c-button pf-c-button--secondary" onclick="cancelCorrection()">✖️ Cancel</button>
+                    <button class="pf-c-button pf-c-button--success" onclick="saveCorrection()">💾 <span data-i18n="save">Save</span></button>
+                    <button class="pf-c-button pf-c-button--secondary" onclick="cancelCorrection()">✖️ <span data-i18n="cancel">Cancel</span></button>
                 </div>
             </div>
 
             <div class="panel-section">
-                <h3 class="panel-title">System Info</h3>
-                <div id="systemInfo" class="system-info">Loading...</div>
+                <h3 class="panel-title" data-i18n="systemInfo">System Info</h3>
+                <div id="systemInfo" class="system-info" data-i18n="loading">Loading...</div>
             </div>
         </aside>
     </div>
@@ -174,13 +203,6 @@
             <div class="about-body">
                 <p><strong>Real-time Speech Transcription</strong></p>
                 <p>🌍 Let language no longer stand in the way of connection</p>
-
-                <h3>Features</h3>
-                <p>• 20+ languages supported<br>
-                    • Real-time transcription<br>
-                    • Auto-correction<br>
-                    • Export functionality</p>
-
                 <h3>Made with ❤️ by</h3>
                 <p>Ga Hing Woo</p>
 
@@ -208,6 +230,7 @@
         </div>
     </div>
 
+    <script src="/static/js/i18n.js"></script>
     <script src="/static/js/admin.js"></script>
 </body>
 </html>

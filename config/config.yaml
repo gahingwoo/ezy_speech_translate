@@ -90,7 +90,19 @@ advanced:
     #   - "https://admin.yourdomain.com"
 
     rate_limit_enabled: true         # Enable in production
-    max_requests_per_minute: 60      # Requests per IP per minute
+    max_requests_per_minute: 500      # Requests per IP per minute
+    # Number of failed login attempts before temporary ban
+    max_login_attempts: 10
+    # Failed login window (minutes) before counts reset
+    login_attempt_window_minutes: 15
+    # Max login attempts per minute (rate for login requests)
+    login_rate_limit: 20
+    # Max simultaneous WebSocket connections allowed per IP
+    max_ws_connections: 20
+    # How many suspicious/rate violations before blocking IP
+    max_rate_violations: 100
+    # Block duration in minutes for blocked IPs
+    block_duration_minutes: 60
 
 # ============================================
 # Feature Flags

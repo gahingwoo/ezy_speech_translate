@@ -3,22 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>EzySpeech - User Client</title>
-    <meta content="Real-time speech translation with TTS support for 20+ languages" name="description">
+    <title data-i18n="metaTitle">EzySpeech - User Client</title>
+    <meta data-i18n-meta="metaDescription" content="Real-time speech translation with TTS support for 20+ languages" name="description">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
     <link href="/static/css/user.css" rel="stylesheet">
-    <!-- Google Translate -->
-    <script type="text/javascript">
-        function googleTranslateElementInit() {
-            new google.translate.TranslateElement({
-                pageLanguage: 'en',
-                includedLanguages: 'en,zh-CN,zh-TW',
-                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-                autoDisplay: false
-            }, 'google_translate_element');
-        }
-    </script>
-    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <!-- Google Translate removed to comply with CSP; using local i18n instead -->
 </head>
 <body data-theme="light">
 <!-- Sync Notification Indicator -->
@@ -101,7 +90,7 @@
 
             <div class="control-group">
                 <label class="control-label" for="displayLanguage" data-i18n="displayLanguage">Display Language</label>
-                <select aria-label="Select display language" id="displayLanguage" onchange="changeDisplayLanguage()">
+                    <select aria-label="Select display language" id="displayLanguage" onchange="changeDisplayLanguageLocal()">
                     <option value="en">English</option>
                     <option value="zh">中文</option>
                     <option value="zh-tw">繁體中文</option>
@@ -318,13 +307,13 @@
         </div>
 
         <div class="translation-list" id="translationsList" role="list">
-            <div class="empty-state" role="status">
-                <div aria-hidden="true" class="empty-icon">💬</div>
-                <div id="emptyStateText" data-i18n="waitingTranslations">Waiting for translations...</div>
-                <small id="emptyStateDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;" data-i18n="waitingDesc">
-                    Translations will appear here in real-time
-                </small>
-            </div>
+                <div class="empty-state" role="status">
+                    <div aria-hidden="true" class="empty-icon">💬</div>
+                    <div data-i18n="waitingTranslations">Waiting for translations...</div>
+                    <small data-i18n="waitingDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                        Translations will appear here in real-time
+                    </small>
+                </div>
         </div>
     </section>
 </div>
@@ -346,7 +335,7 @@
             </button>
         </div>
         <div class="about-body">
-            <p>🌍 Let language no longer stand in the way of connection</p>
+            <p data-i18n="tagline">🌍 Let language no longer stand in the way of connection</p>
 
             <h3 data-i18n="madeBy">Made with ❤️ by</h3>
             <p data-i18n="author">Ga Hing Woo</p>
@@ -387,6 +376,7 @@
 <!-- Google Translate Element -->
 <div id="google_translate_element" style="display: none;"></div>
 
+<script src="/static/js/i18n.js"></script>
 <script src="/static/js/user.js"></script>
 </body>
 </html>

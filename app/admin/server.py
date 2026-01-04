@@ -106,9 +106,11 @@ RATE_LIMIT_ENABLED = get_config("advanced", "security", "rate_limit_enabled", de
 MAX_REQUESTS_PER_MINUTE = get_config("advanced", "security", "max_requests_per_minute", default=60)
 
 # Brute force protection
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_DURATION = 1800  # 30 minutes in seconds
-LOGIN_RATE_LIMIT = 5  # Max 5 login attempts per minute
+MAX_LOGIN_ATTEMPTS = get_config('advanced', 'security', 'max_login_attempts', default=10)
+lock_minutes = get_config('advanced', 'security', 'block_duration_minutes', default=30)
+LOCKOUT_DURATION = int(lock_minutes) * 60
+LOGIN_RATE_LIMIT = get_config('advanced', 'security', 'login_rate_limit', default=5)  
+MAX_WS_CONNECTIONS = get_config('advanced', 'security', 'max_ws_connections', default=5)
 
 # ──────────────────────────────────────────
 # Security Storage (In-Memory)
@@ -405,8 +407,8 @@ def handle_connect():
         security_logger.warning(f"Blocked IP attempted WebSocket connection: {ip}")
         return False
 
-    # Check WebSocket connection limit (max 5 per IP)
-    if websocket_connections[ip] >= 5:
+    # Check WebSocket connection limit
+    if websocket_connections[ip] >= MAX_WS_CONNECTIONS:
         security_logger.warning(f"Too many WebSocket connections from {ip}")
         return False
 

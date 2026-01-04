@@ -182,6 +182,9 @@ Talisman(
 rate_limit_enabled = get_config('advanced', 'security', 'rate_limit_enabled', default=True)
 max_requests = get_config('advanced', 'security', 'max_requests_per_minute', default=60)
 
+# Max simultaneous WebSocket connections allowed per IP
+max_ws_connections = get_config('advanced', 'security', 'max_ws_connections', default=5)
+
 if rate_limit_enabled:
     limiter = Limiter(
         app=app,
@@ -206,10 +209,12 @@ failed_login_attempts = defaultdict(list)  # IP: [timestamps]
 rate_limit_violations = defaultdict(int)  # IP: count
 suspicious_patterns = defaultdict(int)  # IP: count
 
-MAX_LOGIN_ATTEMPTS = 5
-LOGIN_ATTEMPT_WINDOW = timedelta(minutes=15)
-MAX_RATE_VIOLATIONS = 10
-BLOCK_DURATION = timedelta(hours=1)
+MAX_LOGIN_ATTEMPTS = get_config('advanced', 'security', 'max_login_attempts', default=10)
+login_window_min = get_config('advanced', 'security', 'login_attempt_window_minutes', default=15)
+LOGIN_ATTEMPT_WINDOW = timedelta(minutes=login_window_min)
+MAX_RATE_VIOLATIONS = get_config('advanced', 'security', 'max_rate_violations', default=10)
+block_minutes = get_config('advanced', 'security', 'block_duration_minutes', default=60)
+BLOCK_DURATION = timedelta(minutes=block_minutes)
 
 def is_ip_blocked(ip):
     """Check if IP is blocked"""
@@ -601,7 +606,7 @@ def handle_connect():
 
     # Limit connections per IP
     client_connections = sum(1 for c in connected_clients if c.startswith(client_ip))
-    if client_connections >= 5:
+    if client_connections >= max_ws_connections:
         security_logger.warning(f"Too many connections from {client_ip}")
         return False
 
@@ -620,12 +625,13 @@ def handle_connect():
     return True
 
 @socketio.on('disconnect')
-def handle_disconnect():
-    """Handle client disconnection"""
+def handle_disconnect(sid=None):
+    """Handle client disconnection; accept optional sid to avoid TypeError from some SocketIO versions"""
     client_ip = request.remote_addr
-    client_id = f"{client_ip}:{request.sid}"
+    sid_used = sid if sid is not None else request.sid
+    client_id = f"{client_ip}:{sid_used}"
     connected_clients.discard(client_id)
-    admin_sessions.pop(request.sid, None)
+    admin_sessions.pop(sid_used, None)
     logger.info(f"Client disconnected: {client_ip} (Total: {len(connected_clients)})")
 
 @socketio.on('admin_connect')
