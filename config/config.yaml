@@ -24,9 +24,7 @@ admin_server:
 authentication:
   enabled: true                      # Keep enabled for security
   admin_username: "admin"  # Change from default "admin"
-  admin_password: "admin123"  # MUST CHANGE - Use strong password!
   session_timeout: 7200              # 2 hours (7200 seconds)
-  jwt_secret: "{{ GENERATE_RANDOM_JWT_SECRET }}"  # MUST CHANGE!
 
 # ============================================
 # Logging Configuration

@@ -55,7 +55,7 @@ function validateText(text, maxLength = 5000) {
         }
     }
 
-    return { valid: true, text: sanitizeInput(trimmed) };
+    return { valid: true, text: trimmed };
 }
 
 function toggleMobileMenu() {
@@ -741,8 +741,8 @@ function selectItem(id) {
 
     selectedItem = item;
 
-    document.getElementById('originalText').value = sanitizeInput(item.original);
-    document.getElementById('correctedText').value = sanitizeInput(item.corrected);
+    document.getElementById('originalText').value = item.original;
+    document.getElementById('correctedText').value = item.corrected;
 
     renderTranscriptions();
 }
