@@ -112,6 +112,9 @@ LOCKOUT_DURATION = int(lock_minutes) * 60
 LOGIN_RATE_LIMIT = get_config('advanced', 'security', 'login_rate_limit', default=5)  
 MAX_WS_CONNECTIONS = get_config('advanced', 'security', 'max_ws_connections', default=5)
 
+# Protocol configuration (HTTP/HTTPS)
+USE_HTTPS = get_config("admin_server", "use_https", default=True)
+
 # ──────────────────────────────────────────
 # Security Storage (In-Memory)
 # ──────────────────────────────────────────
@@ -447,30 +450,37 @@ def log_request():
 # ──────────────────────────────────────────
 if __name__ == "__main__":
     logger.info("Starting EzySpeechTranslate Admin Server...")
+    logger.info(f"Protocol: {'HTTPS' if USE_HTTPS else 'HTTP'}")
     logger.info(f"Security logging: logs/security.log")
-    logger.info(f"Login Page: https://{ADMIN_HOST}:{ADMIN_PORT}/login")
-    logger.info(f"Admin Interface: https://{ADMIN_HOST}:{ADMIN_PORT}/admin")
-    logger.info(f"User Client expected at: https://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
-
-    cert_file = os.path.join(SSL_DIR, "cert.pem")
-    key_file = os.path.join(SSL_DIR, "key.pem")
-
-    if not (os.path.exists(cert_file) and os.path.exists(key_file)):
-        logger.error(f"SSL certificate or key missing in {SSL_DIR}")
-        print("\nGenerate with:\n")
-        print(f"cd {SSL_DIR}")
-        print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
-        exit(1)
+    
+    protocol = "https" if USE_HTTPS else "http"
+    logger.info(f"Login Page: {protocol}://{ADMIN_HOST}:{ADMIN_PORT}/login")
+    logger.info(f"Admin Interface: {protocol}://{ADMIN_HOST}:{ADMIN_PORT}/admin")
+    logger.info(f"User Client expected at: {protocol}://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 
     try:
         listener = eventlet.listen((ADMIN_HOST, ADMIN_PORT))
-        ssl_listener = eventlet.wrap_ssl(
-            listener,
-            certfile=cert_file,
-            keyfile=key_file,
-            server_side=True
-        )
-        eventlet.wsgi.server(ssl_listener, app)
+
+        if USE_HTTPS:
+            cert_file = os.path.join(SSL_DIR, "cert.pem")
+            key_file = os.path.join(SSL_DIR, "key.pem")
+
+            if not (os.path.exists(cert_file) and os.path.exists(key_file)):
+                logger.error(f"SSL certificate or key missing in {SSL_DIR}")
+                print("\nGenerate with:\n")
+                print(f"cd {SSL_DIR}")
+                print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
+                exit(1)
+
+            ssl_listener = eventlet.wrap_ssl(
+                listener,
+                certfile=cert_file,
+                keyfile=key_file,
+                server_side=True
+            )
+            eventlet.wsgi.server(ssl_listener, app)
+        else:
+            eventlet.wsgi.server(listener, app)
 
     except PermissionError:
         logger.error(f"Permission denied on port {ADMIN_PORT}. Use port >1024 or run with sudo.")

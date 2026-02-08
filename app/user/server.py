@@ -156,27 +156,54 @@ socketio = SocketIO(
     max_http_buffer_size=get_config('advanced', 'websocket', 'max_message_size', default=1048576)
 )
 
-# Security Headers
-csp = {
-    'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-    'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", "data:", "https:"],
-    'connect-src': ["'self'", "wss:", "https:"]
-}
+# ──────────────────────────────────────────
+# Protocol Configuration (HTTP/HTTPS)
+# ──────────────────────────────────────────
+USE_HTTPS = get_config('server', 'use_https', default=True)
 
-Talisman(
-    app,
-    force_https=True,
-    strict_transport_security=True,
-    strict_transport_security_max_age=31536000,
-    content_security_policy=csp,
-    feature_policy={
-        'geolocation': "'none'",
-        'camera': "'none'",
-        'microphone': "'none'"
+# Security Headers - only apply for HTTPS
+if USE_HTTPS:
+    csp = {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", "data:", "https:"],
+        'connect-src': ["'self'", "wss:", "https:"]
     }
-)
+
+    Talisman(
+        app,
+        force_https=True,
+        strict_transport_security=True,
+        strict_transport_security_max_age=31536000,
+        content_security_policy=csp,
+        feature_policy={
+            'geolocation': "'none'",
+            'camera': "'none'",
+            'microphone': "'none'"
+        }
+    )
+else:
+    # For HTTP mode, use minimal security headers
+    csp = {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", "data:"],
+        'connect-src': ["'self'", "ws:"]
+    }
+
+    Talisman(
+        app,
+        force_https=False,
+        strict_transport_security=False,
+        content_security_policy=csp,
+        feature_policy={
+            'geolocation': "'none'",
+            'camera': "'none'",
+            'microphone': "'none'"
+        }
+    )
 
 # Rate Limiting - check if enabled in config
 rate_limit_enabled = get_config('advanced', 'security', 'rate_limit_enabled', default=True)
@@ -764,7 +791,7 @@ def internal_error(error):
     return jsonify({'error': 'Internal error'}), 500
 
 # ──────────────────────────────────────────
-# HTTPS Server Start
+# Server Start (HTTP or HTTPS)
 # ──────────────────────────────────────────
 if __name__ == '__main__':
     logger.info("Starting EzySpeechTranslate Backend Server...")
@@ -774,34 +801,41 @@ if __name__ == '__main__':
 
     host = get_config('server', 'host', default='0.0.0.0')
     port = get_config('server', 'port', default=1915)
+    use_https = get_config('server', 'use_https', default=True)
 
+    logger.info(f"Protocol: {'HTTPS' if use_https else 'HTTP'}")
     logger.info(f"Security logging: logs/security.log")
 
     for directory in ['logs']:
         os.makedirs(directory, exist_ok=True)
 
-    cert_file = os.path.join(SSL_DIR, 'cert.pem')
-    key_file = os.path.join(SSL_DIR, 'key.pem')
-
-    if not (os.path.exists(cert_file) and os.path.exists(key_file)):
-        logger.error("SSL certificate or key not found!")
-        print(f"\nGenerate SSL certificates with:\n")
-        print(f"  cd {SSL_DIR}")
-        print("  openssl req -x509 -newkey rsa:2048 -nodes \\")
-        print("    -out cert.pem -keyout key.pem -days 365 \\")
-        print('    -subj "/CN=localhost"\n')
-        exit(1)
-
     try:
         listener = eventlet.listen((host, port))
-        ssl_listener = eventlet.wrap_ssl(
-            listener,
-            certfile=cert_file,
-            keyfile=key_file,
-            server_side=True
-        )
-        logger.info(f"Server running at https://{host}:{port}")
-        eventlet.wsgi.server(ssl_listener, app)
+
+        if use_https:
+            cert_file = os.path.join(SSL_DIR, 'cert.pem')
+            key_file = os.path.join(SSL_DIR, 'key.pem')
+
+            if not (os.path.exists(cert_file) and os.path.exists(key_file)):
+                logger.error("SSL certificate or key not found!")
+                print(f"\nGenerate SSL certificates with:\n")
+                print(f"  cd {SSL_DIR}")
+                print("  openssl req -x509 -newkey rsa:2048 -nodes \\")
+                print("    -out cert.pem -keyout key.pem -days 365 \\")
+                print('    -subj "/CN=localhost"\n')
+                exit(1)
+
+            ssl_listener = eventlet.wrap_ssl(
+                listener,
+                certfile=cert_file,
+                keyfile=key_file,
+                server_side=True
+            )
+            logger.info(f"Server running at https://{host}:{port}")
+            eventlet.wsgi.server(ssl_listener, app)
+        else:
+            logger.info(f"Server running at http://{host}:{port}")
+            eventlet.wsgi.server(listener, app)
 
     except PermissionError:
         logger.error(f"Permission denied on port {port}. Use port > 1024 or run with sudo.")
