@@ -142,7 +142,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const response = await fetch('/api/config');
         const config = await response.json();
-        SERVER_URL = `${window.location.protocol}//${window.location.hostname}:${config.mainServerPort}`;
+        
+        // Prefer external URL if configured (for CF Tunnel or reverse proxy)
+        if (config.mainServerUrl) {
+            SERVER_URL = config.mainServerUrl;
+        } else {
+            // Fallback to building URL from protocol and port
+            const protocol = config.mainServerProtocol || window.location.protocol.replace(':', '');
+            SERVER_URL = `${protocol}://${window.location.hostname}:${config.mainServerPort}`;
+        }
+        
         console.log('Main server URL:', SERVER_URL);
     } catch (error) {
         console.error('Failed to load config:', error);

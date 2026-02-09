@@ -138,6 +138,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 ADMIN_PORT = get_config("admin_server", "port", default=5001)
 ADMIN_HOST = get_config("admin_server", "host", default="0.0.0.0")
 MAIN_SERVER_PORT = get_config("server", "port", default=1915)
+MAIN_SERVER_HOST = get_config("server", "host", default="0.0.0.0")
 
 # ──────────────────────────────────────────
 # Security Helper Functions
@@ -366,8 +367,27 @@ def logout():
 @rate_limit_check
 def get_admin_config():
     """API endpoint to get server configuration"""
+    # Check if external URL is configured (e.g., CF Tunnel)
+    external_url = get_config("server", "external_url", default=None)
+    
+    if external_url:
+        # Use external URL as-is (already includes protocol and domain)
+        server_url = external_url
+        # Extract protocol from external_url (assumes format: https://domain.com or http://domain.com)
+        main_server_protocol = "https" if external_url.startswith("https") else "http"
+    else:
+        # Build URL from protocol and port
+        main_server_use_https = get_config("server", "use_https", default=True)
+        main_server_protocol = "https" if main_server_use_https else "http"
+        
+        # Use localhost/127.0.0.1 instead of 0.0.0.0 for client connections
+        host = MAIN_SERVER_HOST if MAIN_SERVER_HOST not in ["0.0.0.0", "::"] else "localhost"
+        server_url = f"{main_server_protocol}://{host}:{MAIN_SERVER_PORT}"
+    
     return jsonify({
-        "mainServerPort": MAIN_SERVER_PORT,
+        "mainServerUrl": server_url,  # Full URL (new, preferred)
+        "mainServerPort": MAIN_SERVER_PORT,  # Legacy support
+        "mainServerProtocol": main_server_protocol,  # Legacy support
         "adminPort": ADMIN_PORT
     })
 
@@ -456,7 +476,14 @@ if __name__ == "__main__":
     protocol = "https" if USE_HTTPS else "http"
     logger.info(f"Login Page: {protocol}://{ADMIN_HOST}:{ADMIN_PORT}/login")
     logger.info(f"Admin Interface: {protocol}://{ADMIN_HOST}:{ADMIN_PORT}/admin")
-    logger.info(f"User Client expected at: {protocol}://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
+    
+    # Check for external URL configuration
+    external_url = get_config("server", "external_url", default=None)
+    if external_url:
+        logger.info(f"User Server (external): {external_url}")
+        logger.info("ℹ️  Using CF Tunnel or reverse proxy configuration")
+    else:
+        logger.info(f"User Client expected at: {protocol}://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 
     try:
         listener = eventlet.listen((ADMIN_HOST, ADMIN_PORT))

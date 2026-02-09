@@ -184,13 +184,13 @@ if USE_HTTPS:
         }
     )
 else:
-    # For HTTP mode, use minimal security headers
+    # For HTTP mode, allow HTTPS resources (CDN scripts) and ws connections
     csp = {
         'default-src': ["'self'"],
-        'script-src': ["'self'", "'unsafe-inline'"],
+        'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https:"],
         'style-src': ["'self'", "'unsafe-inline'"],
-        'img-src': ["'self'", "data:"],
-        'connect-src': ["'self'", "ws:"]
+        'img-src': ["'self'", "data:", "https:"],
+        'connect-src': ["'self'", "ws:", "wss:", "https:"]
     }
 
     Talisman(

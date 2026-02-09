@@ -2,6 +2,28 @@
 # Version 3
 
 # ============================================
+# DEPLOYMENT GUIDE
+# ============================================
+# This configuration supports multiple deployment scenarios:
+#
+# Scenario 1: Local Development (HTTP)
+#   server.use_https: false
+#   admin_server.use_https: false
+#
+# Scenario 2: Production with HTTPS
+#   server.use_https: true
+#   admin_server.use_https: true
+#
+# Scenario 3: Admin HTTPS + User Server via CF Tunnel (RECOMMENDED)
+#   server.use_https: false
+#   server.external_url: "https://your-tunnel.example.com"
+#   admin_server.use_https: true
+#
+#   The admin panel (HTTPS) will connect to your CF Tunnel (also HTTPS),
+#   which then proxies to the internal user server (HTTP).
+#   This avoids Mixed Content errors and security issues.
+#
+# ============================================
 # Main Server Configuration
 # ============================================
 server:
@@ -10,6 +32,9 @@ server:
   debug: false                       # NEVER enable in production
   secret_key: "{{ GENERATE_RANDOM_SECRET_64_CHARS }}"  # MUST CHANGE!  
   use_https: false                    # Use HTTPS (true) or HTTP (false)
+  external_url: null                 # External URL via tunnel (e.g., "https://your-tunnel.example.com")
+                                     # Use this when accessing via CF Tunnel or reverse proxy
+                                     # If set, admin will use this URL instead of direct access
 # ============================================
 # Admin Frontend Server Configuration
 # ============================================
@@ -17,7 +42,7 @@ admin_server:
   host: "0.0.0.0"                    # Admin interface
   port: 1916                         # Admin port (separate from main)
   debug: false                       # NEVER enable in production  
-  use_https: false                    # Use HTTPS (true) or HTTP (false), must enable in production for web-speech-api
+  use_https: true                    # Use HTTPS (true) or HTTP (false), must enable in production for web-speech-api
 # ============================================
 # Authentication Settings
 # ============================================
