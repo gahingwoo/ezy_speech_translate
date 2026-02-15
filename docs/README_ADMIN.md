@@ -174,16 +174,20 @@ As you speak, transcriptions appear as cards:
 
 1. Click **"📤 Export"** button
 2. Choose format:
-   - **TXT** - Simple text file
-   - **JSON** - Structured data (for technical use)
-   - **SRT** - Video subtitle format
+   - **TXT** - Simple text file (plain text with timestamps)
+   - **JSON** - Structured data (for technical use and data processing)
+   - **CSV** - Spreadsheet format (compatible with Excel, Google Sheets)
+   - **SRT** - Video subtitle format (for video editing tools like DaVinci, Premiere)
 3. File downloads automatically
 
 **Best Practices:**
 
 - Export after each session
 - Keep backups for your records
-- Use SRT for video editing projects
+- Use **SRT** for video editing projects
+- Use **CSV** for analysis in spreadsheet applications
+- Use **JSON** for integration with other systems
+- Use **TXT** for simple reference documents
 
 ---
 

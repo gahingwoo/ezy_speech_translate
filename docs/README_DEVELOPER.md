@@ -188,86 +188,150 @@ pip install pytest pytest-cov black flake8 mypy gunicorn
 
 ### Configuration File (`config.yaml`)
 
+The configuration file controls all application behavior and security settings:
+
 ```yaml
+# ============================================
 # Server Configuration
+# ============================================
 server:
-  host: "0.0.0.0"              # Bind to all interfaces
-  port: 1915                    # Main server port
-  debug: false                  # Enable debug mode (dev only)
-  ssl_cert: "cert.pem"         # SSL certificate path
-  ssl_key: "key.pem"           # SSL private key path
+  host: "0.0.0.0"                    # Listen on all interfaces
+  port: 1915                         # Main server port
+  debug: false                       # Debug mode (NEVER in production)
+  secret_key: "GENERATE_RANDOM"      # Session secret key
+  use_https: false                   # Use HTTPS (true) or HTTP (false)
+  external_url: null                 # External URL via tunnel/proxy
+                                     # e.g., "https://your-tunnel.example.com"
 
+# ============================================
+# Admin Server Configuration
+# ============================================
 admin_server:
-  host: "0.0.0.0"
-  port: 1916                    # Admin interface port
-  debug: false
+  host: "0.0.0.0"                    # Admin interface address
+  port: 1916                         # Admin interface port
+  debug: false                       # Debug mode
+  use_https: true                    # Use HTTPS (required for Web Speech API)
 
+# ============================================
 # Authentication
+# ============================================
 authentication:
-  enabled: true
-  admin_username: "admin"
-  admin_password: "CHANGE_ME"   # CHANGE THIS
-  session_timeout: 7200         # JWT expiration (seconds)
-  jwt_secret: "CHANGE_ME"       # CHANGE THIS
-  jwt_algorithm: "HS256"
+  enabled: true                      # Enable authentication
+  admin_username: "admin"            # Change from default
+  admin_password: "CHANGE_ME"        # CHANGE THIS - generate secure password
+  session_timeout: 7200              # Session timeout (seconds)
+  jwt_secret: "CHANGE_ME"            # CHANGE THIS - generate random secret
 
-# Translation
-translation:
-  default_source: "en"          # Default source language
-  default_target: "zh-CN"       # Default target language
-  cache_size: 1000              # Translation cache size
-  timeout: 30                   # Translation request timeout
-
+# ============================================
 # Logging
+# ============================================
 logging:
-  level: "INFO"                 # DEBUG, INFO, WARNING, ERROR
-  file: "logs/app.log"
-  max_bytes: 10485760           # 10MB
-  backup_count: 5
+  level: "INFO"                      # DEBUG, INFO, WARNING, ERROR
+  file: "logs/app.log"               # Log file path
+  max_bytes: 10485760                # 10MB per log file
+  backup_count: 5                    # Number of backup files
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# Export
+# ============================================
+# Export Configuration
+# ============================================
 export:
-  directory: "exports"
-  max_file_size: 52428800       # 50MB
-  allowed_formats: ["txt", "json", "srt"]
+  default_format: "srt"              # Default: srt, txt, json, csv
+  output_directory: "exports"        # Export directory
+  include_timestamps: true           # Include timestamps in exports
+  include_corrections: true          # Include corrected text
 
-# WebSocket
-websocket:
-  ping_interval: 25
-  ping_timeout: 60
-  cors_allowed_origins: "*"     # Restrict in production
+# ============================================
+# Advanced Settings
+# ============================================
+advanced:
+  websocket:
+    ping_timeout: 60                 # Connection timeout (seconds)
+    ping_interval: 25                # Keep-alive interval (seconds)
+    max_message_size: 1048576        # Max 1MB messages
 
-# Security
-security:
-  max_connections: 100
-  rate_limit: "100/hour"
-  allowed_origins: ["*"]        # Restrict in production
-  require_https: true
+  performance:
+    max_concurrent_translations: 10  # Concurrent limit
+    translation_timeout: 30          # Request timeout (seconds)
+    cache_size: 1000                 # Max translations to cache
+
+  security:
+    cors_origins: "*"                # Restrict in production!
+    rate_limit_enabled: true         # Enable rate limiting
+    max_requests_per_minute: 500     # Requests per IP per minute
+    max_login_attempts: 10           # Failed login attempts before block
+    login_attempt_window_minutes: 15 # Window for counting attempts
+    max_ws_connections: 20           # Max WebSocket connections per IP
+    block_duration_minutes: 60       # IP block duration
+
+# ============================================
+# Features
+# ============================================
+features:
+  text_to_speech: true               # Enable TTS
+  real_time_sync: true               # Enable real-time sync
+  export_enabled: true               # Allow exports
+  dark_mode: true                    # Dark mode toggle
 ```
 
-### Environment Variables
+### Configuration Key Explanations
 
-Override config.yaml with environment variables:
+#### `server.use_https` vs `admin_server.use_https`
+
+- **Main Server** (`use_https: false`): Can be plain HTTP if behind trusted proxy/tunnel
+- **Admin Server** (`use_https: true`): Must be HTTPS for Web Speech API security
+
+#### `server.external_url`
+
+Used when accessing via reverse proxy or tunnel (e.g., Cloudflare Tunnel):
+
+```yaml
+server:
+  use_https: false                    # Internal server is HTTP
+  external_url: "https://tunnel-domain.example.com"  # Public URL
+```
+
+Admin panel will use the external URL to connect to main server, avoiding mixed-content errors.
+
+#### `advanced.security.cors_origins`
+
+**Development:**
+```yaml
+cors_origins: "*"  # Allow all origins
+```
+
+**Production:**
+```yaml
+cors_origins:       # Restrict to specific domains
+  - "https://yourdomain.com"
+  - "https://admin.yourdomain.com"
+```
+
+### Environment Variables Override
+
+Set these to override `config.yaml` values:
 
 ```bash
 # Server
 export SERVER_HOST="0.0.0.0"
 export SERVER_PORT="1915"
 export ADMIN_PORT="1916"
+export SERVER_USE_HTTPS="false"
+export SERVER_EXTERNAL_URL="https://your-domain.com"
 
 # Authentication
 export ADMIN_USERNAME="admin"
-export ADMIN_PASSWORD="secure-password-here"
-export JWT_SECRET="random-secret-key-here"
-
-# SSL
-export SSL_CERT_PATH="/path/to/cert.pem"
-export SSL_KEY_PATH="/path/to/key.pem"
+export ADMIN_PASSWORD="your-secure-password"
+export JWT_SECRET="your-secure-secret"
 
 # Logging
 export LOG_LEVEL="INFO"
 export LOG_FILE="logs/app.log"
+
+# Features
+export FEATURES_TTS="true"
+export FEATURES_EXPORT="true"
+```
 
 # Development
 export FLASK_ENV="development"  # or "production"
@@ -354,26 +418,77 @@ GET /api/config
 Authorization: Bearer <token>
 ```
 
+**Response:**
+
+```json
+{
+  "audio": {
+    "sample_rate": 44100,
+    "channels": 1
+  },
+  "mainServerUrl": "https://localhost:1915",
+  "mainServerPort": 1915
+}
+```
+
 #### Get Translation History
 
 ```http
-GET /api/history
+GET /api/translations
 
 Authorization: Bearer <token>
+```
+
+**Response:**
+
+```json
+{
+  "translations": [
+    {
+      "id": 0,
+      "original": "Hello world",
+      "corrected": "Hello world",
+      "timestamp": "2025-01-01T12:00:00",
+      "language": "en"
+    }
+  ]
+}
 ```
 
 #### Clear All Translations
 
 ```http
-POST /api/clear
+POST /api/translations/clear
 
 Authorization: Bearer <token>
+```
+
+**Response:**
+
+```json
+{
+  "success": true
+}
 ```
 
 #### Export Translations
 
 ```http
-GET /api/export?format={txt|json|srt}
+GET /api/export/<format>
+
+Authorization: Bearer <token>
+```
+
+**Supported Formats:**
+- `json` - JSON structured data
+- `txt` - Plain text format
+- `csv` - CSV spreadsheet format  
+- `srt` - Video subtitle format
+
+**Example:**
+```http
+GET /api/export/srt
+Authorization: Bearer <token>
 ```
 
 #### Health Check
@@ -400,53 +515,177 @@ GET /api/health
 
 ### WebSocket API
 
-#### Admin Events
-
-**Emit:**
-
-- `admin_connect` - Authenticate admin session
+#### WebSocket Connection
 
 ```javascript
-socket.emit('admin_connect', { token: 'JWT_TOKEN' });
+const socket = io('https://localhost:1915', {
+  transports: ['websocket', 'polling']
+});
 ```
 
-- `new_transcription` - Send new transcription
+#### Client Events (Emit)
+
+**`admin_connect`** - Authenticate as admin
+
+Admin must send JWT token to authenticate and gain write permissions.
+
+```javascript
+socket.emit('admin_connect', { 
+  token: 'JWT_TOKEN_HERE' 
+});
+```
+
+**Response:**
+```javascript
+socket.on('admin_connected', (response) => {
+  if (response.success) {
+    console.log('Admin authenticated');
+  } else {
+    console.error('Auth failed:', response.error);
+  }
+});
+```
+
+---
+
+**`new_transcription`** - Submit new transcription (Admin Only)
 
 ```javascript
 socket.emit('new_transcription', {
-
-text: 'Hello world',
-
-language: 'en',
-
-timestamp: '2025-01-01T12:00:00'
-
+  text: 'Hello world',
+  language: 'en',
+  confidence: 0.95
 });
 ```
 
-- `correct_translation` - Update translation
+**Response:**
+```javascript
+socket.on('new_translation', (item) => {
+  // {
+  //   id: 0,
+  //   timestamp: '12:00:30',
+  //   original: 'Hello world',
+  //   corrected: 'Hello world',
+  //   source_language: 'en',
+  //   is_corrected: false
+  // }
+});
+```
+
+---
+
+**`correct_translation`** - Correct a transcription (Admin Only)
 
 ```javascript
 socket.emit('correct_translation', {
-
-id: 0,
-
-corrected_text: 'Corrected text'
-
+  id: 0,
+  corrected_text: 'Corrected text here'
 });
 ```
 
-- `clear_history` - Clear all translations
+**Response:**
+```javascript
+socket.on('translation_corrected', (item) => {
+  // Updated translation item with corrected text
+});
 
-**Receive:**
+socket.on('correction_success', (data) => {
+  console.log('Correction saved for ID:', data.id);
+});
+```
 
-- `history` - Initial translation history
+---
 
-- `new_translation` - New translation added
+**`clear_history`** - Clear all translations (Admin Only)
 
-- `translation_corrected` - Translation updated
+```javascript
+socket.emit('clear_history');
+```
 
-- `history_cleared` - History cleared 
+**Response:**
+```javascript
+socket.on('history_cleared', () => {
+  console.log('All translations cleared');
+});
+```
+
+---
+
+#### Server Events (Broadcast)
+
+**`history`** - Initial translation history on connect
+
+```javascript
+socket.on('history', (items) => {
+  // items = [
+  //   {
+  //     id: 0,
+  //     timestamp: '12:00:30',
+  //     original: 'Hello world',
+  //     corrected: 'Hello world',
+  //     source_language: 'en',
+  //     is_corrected: false
+  //   },
+  //   ...
+  // ]
+});
+```
+
+---
+
+**`new_translation`** - Broadcast when new translation added
+
+Sent to all connected clients when admin sends `new_transcription`.
+
+```javascript
+socket.on('new_translation', (item) => {
+  // Same structure as above
+  // Update client UI to display new translation
+});
+```
+
+---
+
+**`translation_corrected`** - Broadcast when translation corrected
+
+Sent to all connected clients when admin corrects a translation.
+
+```javascript
+socket.on('translation_corrected', (item) => {
+  // Updated item with corrected text
+  // Update client UI with corrected version
+});
+```
+
+---
+
+**`history_cleared`** - Broadcast when history cleared
+
+```javascript
+socket.on('history_cleared', () => {
+  // Clear all translations from client UI
+});
+```
+
+---
+
+**`error`** - Error message
+
+```javascript
+socket.on('error', (data) => {
+  console.error('Error:', data.message);
+  // Handle: 'Unauthorized', 'Invalid data', etc.
+});
+```
+
+---
+
+#### Security
+
+- Client connections are rate-limited (5 per IP by default)
+- Admin connections require valid JWT token
+- All text inputs are sanitized before processing
+- IP-based blocking for suspicious activity 
   
   ---
 
