@@ -380,9 +380,10 @@ def get_admin_config():
         main_server_use_https = get_config("server", "use_https", default=True)
         main_server_protocol = "https" if main_server_use_https else "http"
         
-        # Use localhost/127.0.0.1 instead of 0.0.0.0 for client connections
-        host = MAIN_SERVER_HOST if MAIN_SERVER_HOST not in ["0.0.0.0", "::"] else "localhost"
-        server_url = f"{main_server_protocol}://{host}:{MAIN_SERVER_PORT}"
+        # Use the client's request host (works for localhost, IP addresses, and domain names)
+        # This allows access from different devices without hardcoding localhost
+        request_host = request.host.split(':')[0]  # Extract hostname from host:port
+        server_url = f"{main_server_protocol}://{request_host}:{MAIN_SERVER_PORT}"
     
     return jsonify({
         "mainServerUrl": server_url,  # Full URL (new, preferred)

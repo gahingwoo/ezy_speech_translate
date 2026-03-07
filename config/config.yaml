@@ -42,7 +42,7 @@ admin_server:
   host: "0.0.0.0"                    # Admin interface
   port: 1916                         # Admin port (separate from main)
   debug: false                       # NEVER enable in production  
-  use_https: true                    # Use HTTPS (true) or HTTP (false), must enable in production for web-speech-api
+  use_https: false                   # Use HTTPS (true) or HTTP (false), must enable in production for web-speech-api
 # ============================================
 # Authentication Settings
 # ============================================
