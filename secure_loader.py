@@ -94,7 +94,7 @@ class SecureConfig:
         old_secrets_path = self.config_path.parent / 'secrets.enc'
         if old_secrets_path.exists() and not key_path.exists():
             try:
-                with open(old_secrets_path, 'r') as f:
+                with open(old_secrets_path, 'r', encoding='utf-8') as f:
                     old_enc = json.load(f)
 
                 # Try legacy XOR decryption
@@ -138,7 +138,7 @@ class SecureConfig:
         try:
             # Load secrets.key JSON format: {fernet_key, admin_password, jwt_secret, server_secret_key}
             try:
-                raw = json.loads(key_path.read_text())
+                raw = json.loads(key_path.read_text(encoding='utf-8'))
             except Exception as e:
                 print(f"Warning: Failed to read secrets.key: {e}")
                 return

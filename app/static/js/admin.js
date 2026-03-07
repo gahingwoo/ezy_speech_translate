@@ -140,7 +140,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load server config
     try {
-        const response = await fetch('/api/config');
+        const response = await fetch('/api/config', {
+            credentials: 'include',
+            headers: {'Accept': 'application/json'}
+        });
         const config = await response.json();
         
         // Prefer external URL if configured (for CF Tunnel or reverse proxy)
@@ -858,7 +861,12 @@ function startSystemMonitor() {
 async function updateSystemInfo() {
     try {
         const response = await fetch(`${SERVER_URL}/api/health`, {
-            headers: {'Authorization': `Bearer ${authToken}`}
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/json'
+            }
         });
         const data = await response.json();
 

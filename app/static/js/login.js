@@ -60,7 +60,11 @@ async function login(event) {
     try {
         const response = await fetch(`${SERVER_URL}/api/login`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'include',  // Include cookies for cross-origin requests
             body: JSON.stringify({
                 username: sanitizedUsername,
                 password: password
@@ -69,7 +73,7 @@ async function login(event) {
 
         const data = await response.json();
 
-        if (data.success && data.token) {
+        if (response.ok && data.success && data.token) {
             // Store token
             localStorage.setItem('authToken', data.token);
 
