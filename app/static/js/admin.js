@@ -570,9 +570,11 @@ function renderTranscriptions() {
     const list = document.getElementById('transcriptionsList');
     document.getElementById('itemCount').textContent = translations.length;
 
+    // Define shared and lang at function scope for use throughout
+    const shared = window.sharedI18n || {};
+    const lang = window._displayLanguage || localStorage.getItem('displayLanguage') || (navigator.language || 'en').split('-')[0];
+
     if (translations.length === 0) {
-        const shared = window.sharedI18n || {};
-        const lang = window._displayLanguage || localStorage.getItem('displayLanguage') || (navigator.language || 'en').split('-')[0];
         const noTrans = (shared[lang] && shared[lang]['noTranscriptionsYet']) || 'No transcriptions yet';
         const startHelp = (shared[lang] && shared[lang]['startRecordingHelp']) || 'Start recording to see transcriptions';
         list.innerHTML = `

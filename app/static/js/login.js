@@ -58,7 +58,8 @@ async function login(event) {
     loginButton.textContent = 'Signing in...';
 
     try {
-        const response = await fetch(`${SERVER_URL}/api/login`, {
+        // Always call admin server's login endpoint (same server as login page)
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -71,26 +72,50 @@ async function login(event) {
             })
         });
 
-        const data = await response.json();
+        console.log('Login response status:', response.status);
+        console.log('Login response ok:', response.ok);
+
+        let data;
+        try {
+            data = await response.json();
+            console.log('Login response data:', data);
+        } catch (e) {
+            console.error('Failed to parse response JSON:', e);
+            errorEl.textContent = 'Invalid server response';
+            errorEl.style.display = 'block';
+            loginButton.disabled = false;
+            loginButton.textContent = 'Sign In';
+            return false;
+        }
+
+        console.log('Checking conditions:', {
+            ok: response.ok,
+            success: data.success,
+            hasToken: !!data.token
+        });
 
         if (response.ok && data.success && data.token) {
+            console.log('Login successful, storing token');
             // Store token
             localStorage.setItem('authToken', data.token);
 
             // Redirect to admin page
             window.location.href = '/admin';
         } else {
-            errorEl.textContent = 'Invalid credentials';
+            console.error('Login check failed:', data);
+            errorEl.textContent = data.error || 'Invalid credentials';
             errorEl.style.display = 'block';
             loginButton.disabled = false;
             loginButton.textContent = 'Sign In';
         }
     } catch (error) {
+        console.error('Login error caught:', error);
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
         errorEl.textContent = 'Connection failed. Is the server running?';
         errorEl.style.display = 'block';
         loginButton.disabled = false;
         loginButton.textContent = 'Sign In';
-        console.error('Login error:', error);
     }
 
     return false;

@@ -157,6 +157,7 @@ MAX_LOGIN_ATTEMPTS = get_config("advanced", "security", "max_login_attempts", de
 LOCKOUT_DURATION = get_config("advanced", "security", "block_duration_minutes", default=60) * 60  # Convert to seconds
 MAX_REQUESTS_PER_MINUTE = get_config("advanced", "security", "max_requests_per_minute", default=60)
 RATE_LIMIT_ENABLED = get_config("advanced", "security", "rate_limit_enabled", default=True)
+MAX_WS_CONNECTIONS = get_config("advanced", "security", "max_ws_connections", default=5)
 
 # ──────────────────────────────────────────
 # Security Helper Functions
@@ -366,7 +367,6 @@ def login():
     # Debug logging
     security_logger.debug(f"Login attempt - username: {username}, ADMIN_USERNAME: {ADMIN_USERNAME}")
     security_logger.debug(f"ADMIN_PASSWORD loaded: {bool(ADMIN_PASSWORD)}, length: {len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0}")
-    security_logger.debug(f"ADMIN_PASSWORD value (first 4 chars): {ADMIN_PASSWORD[:4] if ADMIN_PASSWORD else 'NONE'}")
     
     if ADMIN_PASSWORD is None or ADMIN_PASSWORD == "":
         security_logger.error(f"✗ CRITICAL: ADMIN_PASSWORD is empty or None! Cannot authenticate")
@@ -374,11 +374,6 @@ def login():
     # Verify credentials
     provided_hash = hash_password(password)
     expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else "NO_PASSWORD"
-    
-    security_logger.debug(f"Provided password: '{password}' -> hash: {provided_hash}")
-    security_logger.debug(f"Expected password (from ADMIN_PASSWORD): '{ADMIN_PASSWORD}' -> hash: {expected_hash}")
-    security_logger.debug(f"Username match: {username} == {ADMIN_USERNAME} ? {username == ADMIN_USERNAME}")
-    security_logger.debug(f"Password match: {provided_hash} == {expected_hash} ? {provided_hash == expected_hash}")
     
     if username == ADMIN_USERNAME and hash_password(password) == hash_password(ADMIN_PASSWORD):
         # Reset login attempts on successful login
@@ -424,6 +419,18 @@ def debug_config():
         "jwt_secret_length": len(JWT_SECRET) if JWT_SECRET else 0,
         "auth_enabled": AUTH_ENABLED,
         "config_source": "secure_loader"
+    })
+
+@app.route("/api/debug/login-info")
+def debug_login_info():
+    """Debug endpoint to check login configuration"""
+    return jsonify({
+        "status": "ok",
+        "admin_username": ADMIN_USERNAME,
+        "admin_password_configured": bool(ADMIN_PASSWORD),
+        "admin_password_length": len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0,
+        "auth_enabled": AUTH_ENABLED,
+        "message": f"Admin login is configured. Use username: '{ADMIN_USERNAME}' with password from config"
     })
 
 @app.route("/api/config")
@@ -482,7 +489,7 @@ def internal_error(error):
 # WebSocket Security
 # ──────────────────────────────────────────
 @socketio.on('connect')
-def handle_connect():
+def handle_connect(auth):
     """Handle WebSocket connection with rate limiting"""
     ip = get_client_ip()
 

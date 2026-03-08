@@ -31,7 +31,7 @@ server:
   port: 1915                         # User frontend port
   debug: false                       # NEVER enable in production
   secret_key: "{{ GENERATE_RANDOM_SECRET_64_CHARS }}"  # MUST CHANGE!  
-  use_https: false                    # Use HTTPS (true) or HTTP (false)
+  use_https: false                   # Use HTTPS (true) or HTTP (false)
   external_url: null                 # External URL via tunnel (e.g., "https://your-tunnel.example.com")
                                      # Use this when accessing via CF Tunnel or reverse proxy
                                      # If set, admin will use this URL instead of direct access
