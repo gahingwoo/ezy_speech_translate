@@ -31,6 +31,9 @@ LOGS_DIR = os.path.join(BASE_DIR, "logs")
 TEMPLATE_DIR = os.path.join(APP_DIR, "templates")
 STATIC_DIR = os.path.join(APP_DIR, "static")
 
+# Ensure working directory is project root
+os.chdir(BASE_DIR)
+
 # Ensure logs directory exists
 os.makedirs(LOGS_DIR, exist_ok=True)
 
@@ -38,7 +41,7 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 # Logging Setup
 # ──────────────────────────────────────────
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
@@ -55,28 +58,35 @@ security_logger.setLevel(logging.INFO)
 # ──────────────────────────────────────────
 # Secure Configuration Loader
 # ──────────────────────────────────────────
-sys.path.insert(0, os.path.join(BASE_DIR, 'config'))
+# Secure Configuration Loader
+# ──────────────────────────────────────────
+sys.path.insert(0, BASE_DIR)  # Add project root to path for secure_loader import
 
 config_file_path = os.path.join(CONFIG_DIR, "config.yaml")
 
 try:
     from secure_loader import SecureConfig
-    config_loader = SecureConfig(os.path.join(CONFIG_DIR, 'config.yaml'))
+    config_loader = SecureConfig(config_file_path)
 
     def get_config(*keys, default=None):
         return config_loader.get(*keys, default=default)
 
-    logger.info("✓ Loaded encrypted configuration")
+    logger.info("✓ Loaded encrypted configuration via secure_loader")
 
-except ImportError:
-    logger.warning("Secure loader not found, using default YAML loading")
+except ImportError as e:
+    logger.warning(f"Secure loader not found ({e}), falling back to YAML config")
 
-    try:
-        with open(config_file_path, "r") as f:
-            config_data = yaml.safe_load(f) or {}
+    class ConfigFallback:
+        def __init__(self, config_path='config/config.yaml'):
+            try:
+                with open(config_path, 'r') as f:
+                    self.data = yaml.safe_load(f) or {}
+            except FileNotFoundError:
+                print(f"Error: Configuration file not found at {config_path}")
+                self.data = {}
 
-        def get_config(*keys, default=None):
-            val = config_data
+        def get(self, *keys, default=None):
+            val = self.data
             for key in keys:
                 if isinstance(val, dict):
                     val = val.get(key)
@@ -86,11 +96,10 @@ except ImportError:
                     return default
             return val if val is not None else default
 
-    except Exception as e:
-        logger.error(f"Failed to load config: {e}")
+    config_loader = ConfigFallback(config_file_path)
 
-        def get_config(*keys, default=None):
-            return default
+    def get_config(*keys, default=None):
+        return config_loader.get(*keys, default=default)
 
 # ──────────────────────────────────────────
 # Security Configuration
@@ -101,16 +110,17 @@ ADMIN_PASSWORD = get_config("authentication", "admin_password", default="admin12
 JWT_SECRET = get_config("authentication", "jwt_secret", default="change-this-secret")
 SESSION_TIMEOUT = get_config("authentication", "session_timeout", default=7200)
 
-# Rate limiting settings
-RATE_LIMIT_ENABLED = get_config("advanced", "security", "rate_limit_enabled", default=True)
-MAX_REQUESTS_PER_MINUTE = get_config("advanced", "security", "max_requests_per_minute", default=60)
+# Debug: Log password loading status
+logger.info(f"='='='= INITIALIZATION START ='='='=")
+logger.info(f"✓ AUTH_ENABLED: {AUTH_ENABLED}")
+logger.info(f"✓ ADMIN_USERNAME: {ADMIN_USERNAME}")
+logger.info(f"✓ ADMIN_PASSWORD type: {type(ADMIN_PASSWORD)}, loaded: {bool(ADMIN_PASSWORD)}, length: {len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0}")
+logger.info(f"✓ JWT_SECRET type: {type(JWT_SECRET)}, loaded: {bool(JWT_SECRET)}, length: {len(JWT_SECRET) if JWT_SECRET else 0}")
 
-# Brute force protection
-MAX_LOGIN_ATTEMPTS = get_config('advanced', 'security', 'max_login_attempts', default=10)
-lock_minutes = get_config('advanced', 'security', 'block_duration_minutes', default=30)
-LOCKOUT_DURATION = int(lock_minutes) * 60
-LOGIN_RATE_LIMIT = get_config('advanced', 'security', 'login_rate_limit', default=5)  
-MAX_WS_CONNECTIONS = get_config('advanced', 'security', 'max_ws_connections', default=5)
+# Verify password is not None or empty string
+if not ADMIN_PASSWORD:
+    logger.critical(f"✗✗✗ CRITICAL: ADMIN_PASSWORD is empty or None! Login will fail! ✗✗✗")
+    ADMIN_PASSWORD = "admin123"  # Fallback to default
 
 # Protocol configuration (HTTP/HTTPS)
 USE_HTTPS = get_config("admin_server", "use_https", default=True)
@@ -139,6 +149,14 @@ ADMIN_PORT = get_config("admin_server", "port", default=5001)
 ADMIN_HOST = get_config("admin_server", "host", default="0.0.0.0")
 MAIN_SERVER_PORT = get_config("server", "port", default=1915)
 MAIN_SERVER_HOST = get_config("server", "host", default="0.0.0.0")
+
+# ──────────────────────────────────────────
+# Security Settings
+# ──────────────────────────────────────────
+MAX_LOGIN_ATTEMPTS = get_config("advanced", "security", "max_login_attempts", default=10)
+LOCKOUT_DURATION = get_config("advanced", "security", "block_duration_minutes", default=60) * 60  # Convert to seconds
+MAX_REQUESTS_PER_MINUTE = get_config("advanced", "security", "max_requests_per_minute", default=60)
+RATE_LIMIT_ENABLED = get_config("advanced", "security", "rate_limit_enabled", default=True)
 
 # ──────────────────────────────────────────
 # Security Helper Functions
@@ -328,33 +346,65 @@ def login():
         security_logger.warning(f"Too many login attempts from IP: {ip}")
         return jsonify({"error": "Too many login attempts. IP blocked for 30 minutes."}), 403
 
-    data = request.get_json()
+    # Get request data
+    try:
+        data = request.get_json()
+    except Exception as e:
+        security_logger.error(f"Failed to parse JSON from login request: {e}")
+        return jsonify({"error": "Invalid request format"}), 400
+    
+    if not data:
+        security_logger.error(f"No JSON data in login request from {ip}")
+        return jsonify({"error": "Missing request body"}), 400
+        
     username = sanitize_input(data.get("username", ""))
     password = data.get("password", "")
+    
+    security_logger.debug(f"Raw request data: username_key_exists={('username' in data)}, password_key_exists={('password' in data)}")
+    security_logger.debug(f"After sanitize: username='{username}' (len={len(username)}), password='{('*' * len(password) if password else 'EMPTY')}'")
 
+    # Debug logging
+    security_logger.debug(f"Login attempt - username: {username}, ADMIN_USERNAME: {ADMIN_USERNAME}")
+    security_logger.debug(f"ADMIN_PASSWORD loaded: {bool(ADMIN_PASSWORD)}, length: {len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0}")
+    security_logger.debug(f"ADMIN_PASSWORD value (first 4 chars): {ADMIN_PASSWORD[:4] if ADMIN_PASSWORD else 'NONE'}")
+    
+    if ADMIN_PASSWORD is None or ADMIN_PASSWORD == "":
+        security_logger.error(f"✗ CRITICAL: ADMIN_PASSWORD is empty or None! Cannot authenticate")
+    
     # Verify credentials
+    provided_hash = hash_password(password)
+    expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else "NO_PASSWORD"
+    
+    security_logger.debug(f"Provided password: '{password}' -> hash: {provided_hash}")
+    security_logger.debug(f"Expected password (from ADMIN_PASSWORD): '{ADMIN_PASSWORD}' -> hash: {expected_hash}")
+    security_logger.debug(f"Username match: {username} == {ADMIN_USERNAME} ? {username == ADMIN_USERNAME}")
+    security_logger.debug(f"Password match: {provided_hash} == {expected_hash} ? {provided_hash == expected_hash}")
+    
     if username == ADMIN_USERNAME and hash_password(password) == hash_password(ADMIN_PASSWORD):
         # Reset login attempts on successful login
         if ip in login_attempts:
             del login_attempts[ip]
-
-        # Generate token
-        token = generate_token(username)
-
-        # Set session
-        session['authenticated'] = True
-        session['username'] = username
-
-        security_logger.info(f"Successful login: {username} from {ip}")
-
+        
+        # Generate JWT token
+        token = jwt.encode(
+            {
+                "username": username,
+                "exp": datetime.utcnow() + timedelta(seconds=SESSION_TIMEOUT),
+                "iat": datetime.utcnow()
+            },
+            JWT_SECRET,
+            algorithm="HS256"
+        )
+        
+        security_logger.info(f"✓ Successful login: {username} from {ip}")
         return jsonify({
             "success": True,
             "token": token,
             "username": username
         })
-
+    
     # Failed login
-    security_logger.warning(f"Failed login attempt: {username} from {ip}")
+    security_logger.warning(f"✗ Failed login attempt: {username} from {ip} (username_match={username == ADMIN_USERNAME}, password_match={provided_hash == expected_hash})")
     return jsonify({"error": "Invalid credentials"}), 401
 
 @app.route("/api/logout", methods=["POST"])
@@ -363,33 +413,44 @@ def logout():
     session.clear()
     return jsonify({"success": True})
 
+@app.route("/api/debug/config", methods=["GET"])
+def debug_config():
+    """Debug endpoint to check configuration loading (REMOVE IN PRODUCTION)"""
+    return jsonify({
+        "admin_username": ADMIN_USERNAME,
+        "admin_password_loaded": bool(ADMIN_PASSWORD),
+        "admin_password_length": len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0,
+        "jwt_secret_loaded": bool(JWT_SECRET),
+        "jwt_secret_length": len(JWT_SECRET) if JWT_SECRET else 0,
+        "auth_enabled": AUTH_ENABLED,
+        "config_source": "secure_loader"
+    })
+
 @app.route("/api/config")
-@rate_limit_check
 def get_admin_config():
     """API endpoint to get server configuration"""
     # Check if external URL is configured (e.g., CF Tunnel)
     external_url = get_config("server", "external_url", default=None)
     
+    # Determine protocol for user server
+    user_server_https = get_config("server", "use_https", default=True)
+    user_server_protocol = "https" if user_server_https else "http"
+    
     if external_url:
         # Use external URL as-is (already includes protocol and domain)
-        server_url = external_url
-        # Extract protocol from external_url (assumes format: https://domain.com or http://domain.com)
-        main_server_protocol = "https" if external_url.startswith("https") else "http"
+        return jsonify({
+            "mainServerUrl": external_url,
+            "mainServerPort": MAIN_SERVER_PORT,
+            "mainServerProtocol": user_server_protocol,
+            "adminPort": ADMIN_PORT
+        })
     else:
-        # Build URL from protocol and port
-        main_server_use_https = get_config("server", "use_https", default=True)
-        main_server_protocol = "https" if main_server_use_https else "http"
-        
-        # Use localhost/127.0.0.1 instead of 0.0.0.0 for client connections
-        host = MAIN_SERVER_HOST if MAIN_SERVER_HOST not in ["0.0.0.0", "::"] else "localhost"
-        server_url = f"{main_server_protocol}://{host}:{MAIN_SERVER_PORT}"
-    
-    return jsonify({
-        "mainServerUrl": server_url,  # Full URL (new, preferred)
-        "mainServerPort": MAIN_SERVER_PORT,  # Legacy support
-        "mainServerProtocol": main_server_protocol,  # Legacy support
-        "adminPort": ADMIN_PORT
-    })
+        # Fall back to localhost/127.0.0.1
+        return jsonify({
+            "mainServerPort": MAIN_SERVER_PORT,
+            "mainServerProtocol": user_server_protocol,
+            "adminPort": ADMIN_PORT
+        })
 
 @app.route("/api/protected-endpoint")
 @require_auth

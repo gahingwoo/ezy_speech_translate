@@ -41,7 +41,7 @@ os.chdir(BASE_DIR)
 # ──────────────────────────────────────────
 # Secure Configuration Loader
 # ──────────────────────────────────────────
-sys.path.insert(0, os.path.join(BASE_DIR, 'config'))
+sys.path.insert(0, BASE_DIR)  # Add project root to path for secure_loader import
 
 try:
     from secure_loader import SecureConfig
@@ -50,10 +50,10 @@ try:
     def get_config(*keys, default=None):
         return config_loader.get(*keys, default=default)
 
-    logging.getLogger("config_loader").info("✓ Loaded encrypted configuration")
+    logging.getLogger("config_loader").info("✓ Loaded encrypted configuration via secure_loader")
 
-except ImportError:
-    logging.getLogger("config_loader").warning("Secure loader not found, falling back to YAML config")
+except ImportError as e:
+    logging.getLogger("config_loader").warning(f"Secure loader not found ({e}), falling back to YAML config")
 
     class ConfigFallback:
         def __init__(self, config_path='config/config.yaml'):
@@ -168,7 +168,7 @@ if USE_HTTPS:
         'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
         'style-src': ["'self'", "'unsafe-inline'"],
         'img-src': ["'self'", "data:", "https:"],
-        'connect-src': ["'self'", "wss:", "https:"]
+        'connect-src': ["'self'", "wss:", "https:", "https://translate.googleapis.com"]
     }
 
     Talisman(
@@ -190,7 +190,7 @@ else:
         'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https:"],
         'style-src': ["'self'", "'unsafe-inline'"],
         'img-src': ["'self'", "data:", "https:"],
-        'connect-src': ["'self'", "ws:", "wss:", "https:"]
+        'connect-src': ["'self'", "ws:", "wss:", "https:", "https://translate.googleapis.com"]
     }
 
     Talisman(

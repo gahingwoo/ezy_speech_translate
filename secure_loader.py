@@ -113,7 +113,7 @@ class SecureConfig:
                         'server_secret_key': f.encrypt(server_k.encode()).decode() if server_k else ''
                     }
                     try:
-                        key_path.write_text(json.dumps(new_data, indent=2))
+                        key_path.write_text(json.dumps(new_data, indent=2), encoding='utf-8')
                         try:
                             os.chmod(key_path, 0o600)
                         except Exception:
@@ -148,16 +148,24 @@ class SecureConfig:
                 print("Warning: secrets.key missing 'fernet_key' entry; using defaults from config.yaml")
                 return
 
-            key_bytes = fernet_key.encode()
-            f = Fernet(key_bytes)
+            try:
+                key_bytes = fernet_key.encode()
+                f = Fernet(key_bytes)
+            except Exception as e:
+                print(f"Error: Invalid Fernet key format: {e}")
+                return
 
             def safe_decrypt(field):
                 token = raw.get(field, '')
                 if not token:
+                    print(f"Info: secrets.key field '{field}' is empty")
                     return None
                 try:
-                    return f.decrypt(token.encode()).decode()
-                except Exception:
+                    result = f.decrypt(token.encode()).decode()
+                    print(f"✓ Successfully decrypted '{field}' from secrets.key")
+                    return result
+                except Exception as e:
+                    print(f"Error: Failed to decrypt '{field}' from secrets.key: {e}")
                     return None
 
             admin_password = safe_decrypt('admin_password')
@@ -165,14 +173,23 @@ class SecureConfig:
             server_secret_key = safe_decrypt('server_secret_key')
 
             # Inject into config
-            if admin_password and 'authentication' in self.data:
+            if admin_password:
+                if 'authentication' not in self.data:
+                    self.data['authentication'] = {}
                 self.data['authentication']['admin_password'] = admin_password
+                print(f"✓ Injected decrypted admin_password into config")
 
-            if jwt_secret and 'authentication' in self.data:
+            if jwt_secret:
+                if 'authentication' not in self.data:
+                    self.data['authentication'] = {}
                 self.data['authentication']['jwt_secret'] = jwt_secret
+                print(f"✓ Injected decrypted jwt_secret into config")
 
-            if server_secret_key and 'server' in self.data:
+            if server_secret_key:
+                if 'server' not in self.data:
+                    self.data['server'] = {}
                 self.data['server']['secret_key'] = server_secret_key
+                print(f"✓ Injected decrypted server_secret_key into config")
             
         except Exception as e:
             print(f"Warning: Failed to load secrets: {e}")
