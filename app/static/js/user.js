@@ -1635,6 +1635,13 @@ socket.on('history_cleared', () => {
     clearSearch();
 });
 
+socket.on('items_deleted', (data) => {
+    console.log('Items deleted:', data.ids);
+    const idsToDelete = data.ids || [];
+    translations = translations.filter(item => !idsToDelete.includes(item.id));
+    renderTranslations();
+});
+
 /* ===================================
    Initialization
    =================================== */

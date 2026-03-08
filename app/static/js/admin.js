@@ -276,6 +276,13 @@ function connectWebSocket() {
         translations = [];
         renderTranscriptions();
     });
+
+    socket.on('items_deleted', (data) => {
+        // Remove deleted items from translations array
+        const idsToDelete = data.ids || [];
+        translations = translations.filter(item => !idsToDelete.includes(item.id));
+        renderTranscriptions();
+    });
 }
 
 function updateStatus(connected) {
@@ -794,7 +801,15 @@ function deleteSelected() {
 
     if (!confirm(`Delete ${checkboxes.length} item(s)?`)) return;
 
-    alert('Delete functionality requires server-side implementation');
+    // Get all checked item IDs
+    const itemsToDelete = Array.from(checkboxes).map(checkbox => {
+        return parseInt(checkbox.getAttribute('data-id'));
+    });
+
+    // Emit delete event to server
+    socket.emit('delete_items', {
+        ids: itemsToDelete
+    });
 }
 
 function saveCorrection() {

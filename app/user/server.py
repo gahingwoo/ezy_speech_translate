@@ -765,6 +765,39 @@ def handle_clear_history():
     socketio.emit('history_cleared')
     logger.info(f"[CLEARED] History by {admin_sessions.get(request.sid)}")
 
+@socketio.on('delete_items')
+def handle_delete_items(data):
+    """Handle deletion of multiple items with authorization"""
+    if not is_admin(request.sid):
+        emit('error', {'message': 'Unauthorized'})
+        disconnect()
+        return
+
+    if not data or not isinstance(data, dict):
+        emit('error', {'message': 'Invalid data'})
+        return
+
+    item_ids = data.get('ids', [])
+    if not isinstance(item_ids, list):
+        emit('error', {'message': 'Invalid IDs format'})
+        return
+
+    if not item_ids:
+        emit('error', {'message': 'No items to delete'})
+        return
+
+    global translations_history
+    
+    # Filter out items with IDs in the deletion list
+    original_count = len(translations_history)
+    translations_history = [item for item in translations_history if item.get('id') not in item_ids]
+    deleted_count = original_count - len(translations_history)
+
+    # Broadcast deletion to all connected clients
+    socketio.emit('items_deleted', {'ids': item_ids})
+    logger.info(f"[DELETED] {deleted_count} item(s) by {admin_sessions.get(request.sid)}")
+    emit('deletion_success', {'deleted_count': deleted_count})
+
 @socketio.on_error_default
 def default_error_handler(e):
     """Handle WebSocket errors"""
