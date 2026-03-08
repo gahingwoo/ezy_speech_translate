@@ -1,4 +1,60 @@
-const socket = io();
+// Initialize Socket.IO with proper configuration and error handling
+let socket = null;
+let socketRetryCount = 0;
+let socketListenersSetup = false;
+
+function initSocket() {
+    if (socket && socket.connected) {
+        console.log('Socket already connected');
+        return;
+    }
+    
+    console.log('Initializing Socket.IO connection...');
+    
+    socket = io({
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 10,
+        transports: ['websocket', 'polling'],
+        upgrade: true,
+        rememberUpgrade: true,
+        rejectUnauthorized: false,  // For self-signed certificates
+        forceNew: false  // Reuse existing connection if possible
+    });
+    
+    socket.on('connect', () => {
+        console.log('✅ Socket.IO connected');
+        socketRetryCount = 0;  // Reset retry count on successful connection
+    });
+    
+    socket.on('connect_error', (error) => {
+        socketRetryCount++;
+        console.error(`❌ Socket.IO connection error (attempt ${socketRetryCount}):`, error);
+        
+        // Don't show error for initial connection attempts - Socket.IO handles retries
+        if (socketRetryCount > 3) {
+            console.warn('Connection failed multiple times. Check server status and network settings.');
+        }
+    });
+    
+    socket.on('error', (error) => {
+        console.error('❌ Socket.IO error:', error);
+    });
+    
+    socket.on('disconnect', (reason) => {
+        console.warn('⚠️ Socket.IO disconnected:', reason);
+    });
+    
+    return socket;
+}
+
+// Initialize socket after DOM is ready
+function ensureSocketConnected() {
+    if (!socket || !socket.connected) {
+        initSocket();
+    }
+}
 
 // TTS Settings
 let ttsEnabled = false;
@@ -161,6 +217,9 @@ function init() {
     applyDisplayLanguageLocal();
     applyDisplayMode();
     renderTranslations();
+
+    // Initialize Socket.IO connection
+    ensureSocketConnected();
 
     if ('speechSynthesis' in window) {
         loadVoices();
@@ -1576,71 +1635,87 @@ document.addEventListener('keydown', function(e) {
    Socket.IO Events
    =================================== */
 
-socket.on('connect', () => {
-    console.log('Connected to server');
-    const badge = document.getElementById('statusBadge');
-    if (badge) {
-        badge.className = 'connection-badge online';
-        const sp = badge.querySelector('span:last-child');
-        if (sp) sp.textContent = i18n[displayLanguage]?.online || sp.textContent || 'Online';
+function setupSocketEventListeners() {
+    // Prevent multiple registrations of the same listeners
+    if (socketListenersSetup) {
+        console.log('Socket listeners already setup, skipping');
+        return;
     }
-});
-
-socket.on('disconnect', () => {
-    console.log('Disconnected from server');
-    const badge = document.getElementById('statusBadge');
-    if (badge) {
-        badge.className = 'connection-badge offline';
-        const sp = badge.querySelector('span:last-child');
-        if (sp) sp.textContent = i18n[displayLanguage]?.offline || sp.textContent || 'Offline';
+    
+    if (!socket) {
+        console.warn('Socket not initialized, cannot setup listeners');
+        return;
     }
-});
 
-socket.on('history', async (history) => {
-    console.log('Received history:', history.length, 'items');
-    translations = history;
-    await renderTranslations();
-});
+    socketListenersSetup = true;
+    console.log('Setting up Socket.IO event listeners...');
 
-socket.on('new_translation', async (data) => {
-    console.log('Received new translation:', data);
-    translations.push(data);
-    await addTranslation(data);
+    socket.on('connect', () => {
+        console.log('Connected to server');
+        const badge = document.getElementById('statusBadge');
+        if (badge) {
+            badge.className = 'connection-badge online';
+            const sp = badge.querySelector('span:last-child');
+            if (sp) sp.textContent = i18n[displayLanguage]?.online || sp.textContent || 'Online';
+        }
+    });
 
-    if (ttsEnabled && data.translated) {
-        speakText(data.translated);
-    }
-});
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+        const badge = document.getElementById('statusBadge');
+        if (badge) {
+            badge.className = 'connection-badge offline';
+            const sp = badge.querySelector('span:last-child');
+            if (sp) sp.textContent = i18n[displayLanguage]?.offline || sp.textContent || 'Offline';
+        }
+    });
 
-socket.on('translation_corrected', async (data) => {
-    console.log('Translation corrected:', data.id);
-    const index = translations.findIndex(t => t.id === data.id);
-    if (index !== -1) {
-        translations[index] = data;
+    socket.on('history', async (history) => {
+        console.log('Received history:', history.length, 'items');
+        translations = history;
         await renderTranslations();
-    }
-});
+    });
 
-socket.on('order_updated', async (data) => {
-    console.log('Order updated from admin:', data.translations.length, 'items');
-    translations = data.translations;
-    await renderTranslations();
-    showSyncIndicator();
-});
+    socket.on('new_translation', async (data) => {
+        console.log('Received new translation:', data);
+        translations.push(data);
+        await addTranslation(data);
 
-socket.on('history_cleared', () => {
-    console.log('History cleared');
-    translations = [];
-    renderTranslations();
-    clearSearch();
-});
+        if (ttsEnabled && data.translated) {
+            speakText(data.translated);
+        }
+    });
 
-socket.on('items_deleted', (data) => {
-    console.log('Items deleted:', data.ids);
-    const idsToDelete = data.ids || [];
-    translations = translations.filter(item => !idsToDelete.includes(item.id));
-    renderTranslations();
-});
+    socket.on('translation_corrected', async (data) => {
+        console.log('Translation corrected:', data.id);
+        const index = translations.findIndex(t => t.id === data.id);
+        if (index !== -1) {
+            translations[index] = data;
+            await renderTranslations();
+        }
+    });
+
+    socket.on('order_updated', async (data) => {
+        console.log('Order updated from admin:', data.translations.length, 'items');
+        translations = data.translations;
+        await renderTranslations();
+        showSyncIndicator();
+    });
+
+    socket.on('history_cleared', () => {
+        console.log('History cleared');
+        translations = [];
+        renderTranslations();
+        clearSearch();
+    });
+
+    socket.on('items_deleted', (data) => {
+        console.log('Items deleted:', data.ids);
+        const idsToDelete = data.ids || [];
+        translations = translations.filter(item => !idsToDelete.includes(item.id));
+        renderTranslations();
+    });
+}
 
 /* ===================================
    Initialization
@@ -1658,5 +1733,14 @@ if ('speechSynthesis' in window) {
 } else {
     console.warn('⚠️ Speech Synthesis not supported');
 }
+
+// Setup socket event listeners when DOM is loaded (only once)
+document.addEventListener('DOMContentLoaded', function() {
+    ensureSocketConnected();
+    // Give socket a moment to initialize before setting up listeners
+    setTimeout(() => {
+        setupSocketEventListeners();
+    }, 0);
+});
 
 console.log('✅ EzySpeechTranslate Client Ready');

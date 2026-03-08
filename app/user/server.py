@@ -210,7 +210,7 @@ rate_limit_enabled = get_config('advanced', 'security', 'rate_limit_enabled', de
 max_requests = get_config('advanced', 'security', 'max_requests_per_minute', default=60)
 
 # Max simultaneous WebSocket connections allowed per IP
-max_ws_connections = get_config('advanced', 'security', 'max_ws_connections', default=5)
+max_ws_connections = get_config('advanced', 'security', 'max_ws_connections', default=20)
 
 if rate_limit_enabled:
     limiter = Limiter(
@@ -626,20 +626,24 @@ def export_translations(export_format):
 def handle_connect():
     """Handle client connection with validation"""
     client_ip = request.remote_addr
+    
+    logger.info(f"Socket.IO connect attempt from {client_ip} (SID: {request.sid})")
 
     if is_ip_blocked(client_ip):
         security_logger.warning(f"Blocked IP attempted WebSocket: {client_ip}")
+        logger.error(f"Connection rejected: IP {client_ip} is blocked")
         return False
 
     # Limit connections per IP
     client_connections = sum(1 for c in connected_clients if c.startswith(client_ip))
     if client_connections >= max_ws_connections:
-        security_logger.warning(f"Too many connections from {client_ip}")
+        security_logger.warning(f"Too many connections from {client_ip}: {client_connections} >= {max_ws_connections}")
+        logger.error(f"Connection rejected: Too many connections from {client_ip} ({client_connections}/{max_ws_connections})")
         return False
 
     client_id = f"{client_ip}:{request.sid}"
     connected_clients.add(client_id)
-    logger.info(f"Client connected: {client_ip} (Total: {len(connected_clients)})")
+    logger.info(f"Client connected: {client_ip} (SID: {request.sid}, Total: {len(connected_clients)})")
 
     # Send sanitized history
     safe_history = [
