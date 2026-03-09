@@ -113,11 +113,11 @@ advanced:
     #   - "https://admin.yourdomain.com"
 
     rate_limit_enabled: true         # Enable in production
-    max_requests_per_minute: 500      # Requests per IP per minute
+    max_requests_per_minute: 1000      # Requests per IP per minute
     # Number of failed login attempts before temporary ban
     max_login_attempts: 10
     # Failed login window (minutes) before counts reset
-    login_attempt_window_minutes: 15
+    login_attempt_window_minutes: 5
     # Max login attempts per minute (rate for login requests)
     login_rate_limit: 20
     # Max simultaneous WebSocket connections allowed per IP

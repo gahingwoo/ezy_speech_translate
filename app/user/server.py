@@ -14,6 +14,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
 import jwt
 from functools import wraps
 import hashlib
@@ -147,6 +148,25 @@ else:
     allowed_origins = [cors_origins] if isinstance(cors_origins, str) else cors_origins
 CORS(app, origins=allowed_origins, supports_credentials=True)
 
+# Trust Cloudflare Tunnel / reverse proxy headers
+# CF Tunnel acts as a proxy, so we need to unwrap the forwarded IP
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+def get_real_ip():
+    """Get real client IP, respecting CF-Connecting-IP and X-Forwarded-For headers.
+    CF Tunnel sets CF-Connecting-IP to the actual visitor's IP.
+    """
+    # Cloudflare always sets this header with the true client IP
+    cf_ip = request.headers.get('CF-Connecting-IP')
+    if cf_ip:
+        return cf_ip.strip()
+    # Generic reverse proxy forwarded header (set by ProxyFix above)
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.remote_addr
+
 socketio = SocketIO(
     app,
     cors_allowed_origins=allowed_origins,
@@ -166,7 +186,8 @@ if USE_HTTPS:
     csp = {
         'default-src': ["'self'"],
         'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-        'style-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        'font-src': ["'self'", "https://fonts.gstatic.com"],
         'img-src': ["'self'", "data:", "https:"],
         'connect-src': ["'self'", "wss:", "https:", "https://translate.googleapis.com"]
     }
@@ -188,7 +209,8 @@ else:
     csp = {
         'default-src': ["'self'"],
         'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https:"],
-        'style-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        'font-src': ["'self'", "https://fonts.gstatic.com"],
         'img-src': ["'self'", "data:", "https:"],
         'connect-src': ["'self'", "ws:", "wss:", "https:", "https://translate.googleapis.com"]
     }
@@ -215,7 +237,7 @@ max_ws_connections = get_config('advanced', 'security', 'max_ws_connections', de
 if rate_limit_enabled:
     limiter = Limiter(
         app=app,
-        key_func=get_remote_address,
+        key_func=get_real_ip,
         default_limits=[f"{max_requests} per minute", "1000 per day"],
         storage_uri="memory://"
     )
@@ -290,7 +312,7 @@ def check_ip_access(f):
     """Decorator to check IP access"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        client_ip = request.remote_addr
+        client_ip = get_real_ip()
         if is_ip_blocked(client_ip):
             security_logger.warning(f"Blocked IP attempted access: {client_ip}")
             return jsonify({'error': 'Access denied'}), 403
@@ -324,7 +346,7 @@ def sanitize_text(text, max_length=5000):
 
     for pattern in dangerous:
         if re.search(pattern, text, re.IGNORECASE):
-            security_logger.warning(f"Dangerous pattern detected from {request.remote_addr}")
+            security_logger.warning(f"Dangerous pattern detected from {get_real_ip()}")
             text = re.sub(pattern, '', text, flags=re.IGNORECASE)
 
     return text.strip()
@@ -346,7 +368,7 @@ def validate_jwt_token(token):
         security_logger.info("Expired token used")
         return None
     except jwt.InvalidTokenError:
-        security_logger.warning(f"Invalid token from {request.remote_addr}")
+        security_logger.warning(f"Invalid token from {get_real_ip()}")
         return None
 
 # ──────────────────────────────────────────
@@ -354,7 +376,8 @@ def validate_jwt_token(token):
 # ──────────────────────────────────────────
 MAX_HISTORY_SIZE = get_config('advanced', 'performance', 'cache_size', default=1000)
 translations_history = []
-connected_clients = set()
+connected_clients = set()          # all socket SIDs
+listener_clients = defaultdict(set) # ip -> {sids}  (non-admin only)
 admin_sessions = {}
 
 def add_translation(data):
@@ -373,7 +396,7 @@ def add_translation(data):
 @app.before_request
 def before_request():
     """Security checks before each request"""
-    client_ip = request.remote_addr
+    client_ip = get_real_ip()
 
     # Check IP blocking
     if is_ip_blocked(client_ip):
@@ -457,7 +480,7 @@ def admin_route():
 @check_ip_access
 def login():
     """Admin login with brute force protection"""
-    client_ip = request.remote_addr
+    client_ip = get_real_ip()
 
     try:
         data = request.json or {}
@@ -555,7 +578,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'clients': len(connected_clients),
+        'clients': len(listener_clients),
         'translations': len(translations_history)
     })
 
@@ -625,7 +648,7 @@ def export_translations(export_format):
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection with validation"""
-    client_ip = request.remote_addr
+    client_ip = get_real_ip()
     
     logger.info(f"Socket.IO connect attempt from {client_ip} (SID: {request.sid})")
 
@@ -643,6 +666,7 @@ def handle_connect():
 
     client_id = f"{client_ip}:{request.sid}"
     connected_clients.add(client_id)
+    listener_clients[client_ip].add(request.sid)  # assumed listener until admin_connect
     logger.info(f"Client connected: {client_ip} (SID: {request.sid}, Total: {len(connected_clients)})")
 
     # Send sanitized history
@@ -658,10 +682,14 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect(sid=None):
     """Handle client disconnection; accept optional sid to avoid TypeError from some SocketIO versions"""
-    client_ip = request.remote_addr
+    client_ip = get_real_ip()
     sid_used = sid if sid is not None else request.sid
     client_id = f"{client_ip}:{sid_used}"
     connected_clients.discard(client_id)
+    # Remove this SID from listener tracking; clean up empty IP entries
+    listener_clients[client_ip].discard(sid_used)
+    if not listener_clients[client_ip]:
+        del listener_clients[client_ip]
     admin_sessions.pop(sid_used, None)
     logger.info(f"Client disconnected: {client_ip} (Total: {len(connected_clients)})")
 
@@ -686,8 +714,13 @@ def handle_admin_connect(data):
     decoded = validate_jwt_token(token)
     if decoded:
         admin_sessions[request.sid] = decoded['username']
+        # Remove this SID from listener tracking so admin tabs are not counted
+        client_ip = get_real_ip()
+        listener_clients[client_ip].discard(request.sid)
+        if not listener_clients[client_ip]:
+            del listener_clients[client_ip]
         emit('admin_connected', {'success': True})
-        logger.info(f"Admin connected: {decoded['username']} from {request.remote_addr}")
+        logger.info(f"Admin connected: {decoded['username']} from {get_real_ip()}")
     else:
         emit('admin_connected', {'success': False, 'error': 'Invalid token'})
 
@@ -720,7 +753,7 @@ def handle_new_transcription(data):
 
     add_translation(translation_data)
     socketio.emit('new_translation', translation_data)
-    logger.info(f"[NEW] {len(raw_text)} chars from {request.remote_addr}")
+    logger.info(f"[NEW] {len(raw_text)} chars from {get_real_ip()}")
 
 @socketio.on('correct_translation')
 def handle_correct_translation(data):
@@ -805,7 +838,7 @@ def handle_delete_items(data):
 @socketio.on_error_default
 def default_error_handler(e):
     """Handle WebSocket errors"""
-    security_logger.error(f"WebSocket error from {request.remote_addr}: {str(e)[:200]}")
+    security_logger.error(f"WebSocket error from {get_real_ip()}: {str(e)[:200]}")
     disconnect()
 
 # ──────────────────────────────────────────
@@ -817,7 +850,7 @@ def not_found(error):
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    client_ip = request.remote_addr
+    client_ip = get_real_ip()
     security_logger.warning(f"Rate limit exceeded: {client_ip}")
     record_rate_violation(client_ip)
     return jsonify({'error': 'Too many requests'}), 429

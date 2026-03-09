@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="metaTitle">EzySpeech - Admin Panel</title>
-    <meta data-i18n-meta="metaDescription" content="Admin panel for managing EzySpeech server and live translations" name="description">
+    <meta data-i18n-meta="metaDescription" content="Admin panel for managing EzySpeech server and live translations"
+        name="description">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Red+Hat+Mono:wght@400;500&family=Red+Hat+Text:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="/static/css/admin.css">
 </head>
+
 <body data-theme="light">
     <!-- Header -->
     <header class="pf-c-page__header">
@@ -85,22 +92,28 @@
             <div class="sidebar-section">
                 <h3 class="sidebar-title" data-i18n="actions">Actions</h3>
                 <div class="button-group">
-                    <button class="pf-c-button pf-c-button--primary" onclick="addNewItem()"><span>➕</span> <span data-i18n="add">Add</span></button>
-                    <button class="pf-c-button pf-c-button--primary" onclick="editSelected()"><span>✏️</span> <span data-i18n="edit">Edit</span></button>
-                    <button class="pf-c-button pf-c-button--danger" onclick="deleteSelected()"><span>🗑️</span> <span data-i18n="delete">Delete</span></button>
-                    <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()"><span data-i18n="clearAll">Clear All</span></button>
+                    <button class="pf-c-button pf-c-button--primary" onclick="addNewItem()"><span>➕</span> <span
+                            data-i18n="add">Add</span></button>
+                    <button class="pf-c-button pf-c-button--primary" onclick="editSelected()"><span>✏️</span> <span
+                            data-i18n="edit">Edit</span></button>
+                    <button class="pf-c-button pf-c-button--danger" onclick="deleteSelected()"><span>🗑️</span> <span
+                            data-i18n="delete">Delete</span></button>
+                    <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()"><span
+                            data-i18n="clearAll">Clear All</span></button>
                 </div>
-                <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;" onclick="exportData()"><span>📤</span> <span data-i18n="export">Export</span></button>
+                <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;"
+                    onclick="exportData()"><span>📤</span> <span data-i18n="export">Export</span></button>
             </div>
 
             <div class="sidebar-section">
                 <h3 class="sidebar-title" data-i18n="settings">Settings</h3>
                 <div class="control-group">
                     <label class="control-label" data-i18n="displayLanguage">Interface Language</label>
-                    <select id="displayLanguage" onchange="(function(el){ const v = el.value; if(!v){ localStorage.removeItem('displayLanguage'); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } else { if(window.changeDisplayLanguage) window.changeDisplayLanguage(v); else { localStorage.setItem('displayLanguage', v); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } } })(this)">
+                    <select id="displayLanguage"
+                        onchange="(function(el){ const v = el.value; if(!v){ localStorage.removeItem('displayLanguage'); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } else { if(window.changeDisplayLanguage) window.changeDisplayLanguage(v); else { localStorage.setItem('displayLanguage', v); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } } })(this)">
                         <option value="">Auto</option>
                         <option value="en">English</option>
-                        <option value="zh">中文</option>
+                        <option value="zh">简体中文</option>
                         <option value="yue">粵語</option>
                         <option value="zh-tw">繁體中文</option>
                         <option value="ja">日本語</option>
@@ -145,7 +158,8 @@
                     <span data-i18n="liveTranscriptions">Transcriptions</span>
                     <span class="count-badge" id="itemCount">0</span>
                 </h2>
-                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                <div
+                    style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
                     <span>⋮⋮</span>
                     <span data-i18n="dragToReorder">Drag to reorder</span>
                 </div>
@@ -174,19 +188,85 @@
 
                 <div class="control-group">
                     <label class="control-label" data-i18n="correctedLabel">Corrected (Edit Here)</label>
-                    <textarea id="correctedText" data-i18n-placeholder="selectItemToEdit" placeholder="Select an item to edit..."></textarea>
+                    <textarea id="correctedText" data-i18n-placeholder="selectItemToEdit"
+                        placeholder="Select an item to edit..."></textarea>
                 </div>
 
                 <div class="button-group">
-                    <button class="pf-c-button pf-c-button--success" onclick="saveCorrection()">💾 <span data-i18n="save">Save</span></button>
-                    <button class="pf-c-button pf-c-button--secondary" onclick="cancelCorrection()">✖️ <span data-i18n="cancel">Cancel</span></button>
+                    <button class="pf-c-button pf-c-button--success" onclick="saveCorrection()">💾 <span
+                            data-i18n="save">Save</span></button>
+                    <button class="pf-c-button pf-c-button--secondary" onclick="cancelCorrection()">✖️ <span
+                            data-i18n="cancel">Cancel</span></button>
                 </div>
             </div>
 
             <div class="panel-section">
                 <h3 class="panel-title" data-i18n="systemInfo">System Info</h3>
-                <div id="systemInfo" class="system-info" data-i18n="loading">Loading...</div>
+
+                <div id="systemInfo" class="pf-v5-c-card" aria-label="System Info">
+                    <!-- Description list: metrics + details -->
+                    <div class="pf-v5-c-card__body">
+                        <dl class="pf-v5-c-description-list pf-m-horizontal">
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text" data-i18n="clients">Clients</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="sys-clients" class="pf-v5-u-primary-color-100">0</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text"
+                                        data-i18n="transcriptions">Transcripts</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="sys-transcriptions" class="pf-v5-u-primary-color-100">0</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text" data-i18n="recording">Recording</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <span id="sys-recording" class="pf-v5-c-label pf-m-grey">
+                                            <span class="pf-v5-c-label__content">
+                                                <span class="pf-v5-c-label__icon">○</span>
+                                                <span class="pf-v5-c-label__text" data-i18n="stopped">Stopped</span>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text" data-i18n="language">Language</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <span id="sys-language" class="pf-v5-c-label pf-m-blue">
+                                            <span class="pf-v5-c-label__content">
+                                                <span class="pf-v5-c-label__text pf-mono">en-US</span>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </dd>
+                            </div>
+
+                        </dl>
+                    </div>
+                </div>
             </div>
+
         </aside>
     </div>
 
@@ -207,24 +287,20 @@
                 <p>Ga Hing Woo</p>
 
                 <div class="about-links">
-                    <a class="about-link"
-                       href="https://github.com/gahingwoo/ezy_speech_translate"
-                       rel="noopener noreferrer"
-                       target="_blank">
+                    <a class="about-link" href="https://github.com/gahingwoo/ezy_speech_translate"
+                        rel="noopener noreferrer" target="_blank">
                         <span>⭐</span>
                         <span>GitHub</span>
                     </a>
-                    <a class="about-link"
-                       href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-                       rel="noopener noreferrer"
-                       target="_blank">
+                    <a class="about-link" href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                        rel="noopener noreferrer" target="_blank">
                         <span>💬</span>
                         <span>Feedback</span>
                     </a>
                 </div>
 
                 <div class="about-version">
-                    v3.3.0 • Open Source • MIT License
+                    v3.4.0 • Open Source • MIT License
                 </div>
             </div>
         </div>
@@ -233,4 +309,5 @@
     <script src="/static/js/i18n.js"></script>
     <script src="/static/js/admin.js"></script>
 </body>
+
 </html>

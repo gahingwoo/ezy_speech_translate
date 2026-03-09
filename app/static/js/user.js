@@ -8,9 +8,9 @@ function initSocket() {
         console.log('Socket already connected');
         return;
     }
-    
+
     console.log('Initializing Socket.IO connection...');
-    
+
     socket = io({
         reconnection: true,
         reconnectionDelay: 1000,
@@ -22,30 +22,30 @@ function initSocket() {
         rejectUnauthorized: false,  // For self-signed certificates
         forceNew: false  // Reuse existing connection if possible
     });
-    
+
     socket.on('connect', () => {
         console.log('✅ Socket.IO connected');
         socketRetryCount = 0;  // Reset retry count on successful connection
     });
-    
+
     socket.on('connect_error', (error) => {
         socketRetryCount++;
         console.error(`❌ Socket.IO connection error (attempt ${socketRetryCount}):`, error);
-        
+
         // Don't show error for initial connection attempts - Socket.IO handles retries
         if (socketRetryCount > 3) {
             console.warn('Connection failed multiple times. Check server status and network settings.');
         }
     });
-    
+
     socket.on('error', (error) => {
         console.error('❌ Socket.IO error:', error);
     });
-    
+
     socket.on('disconnect', (reason) => {
         console.warn('⚠️ Socket.IO disconnected:', reason);
     });
-    
+
     return socket;
 }
 
@@ -91,19 +91,32 @@ function loadSettings() {
     const modeSelect = document.getElementById('displayMode');
     if (modeSelect) {
         modeSelect.value = displayMode;
-        modeSelect.addEventListener('change', () => { displayMode = modeSelect.value; localStorage.setItem('displayMode', displayMode); applyDisplayMode(); });
+        modeSelect.addEventListener('change', () => {
+            displayMode = modeSelect.value;
+            localStorage.setItem('displayMode', displayMode);
+            applyDisplayMode();
+        });
     }
 
     const targetSelect = document.getElementById('targetLang');
     if (targetSelect) {
         targetSelect.value = targetLang;
-        targetSelect.addEventListener('change', () => { targetLang = targetSelect.value; localStorage.setItem('targetLang', targetLang); loadVoices(); renderTranslations(); });
+        targetSelect.addEventListener('change', () => {
+            targetLang = targetSelect.value;
+            localStorage.setItem('targetLang', targetLang);
+            loadVoices();
+            renderTranslations();
+        });
     }
 
     const fontSlider = document.getElementById('fontSizeSlider');
     if (fontSlider) {
         fontSlider.value = fontSize;
-        fontSlider.addEventListener('input', () => { fontSize = parseInt(fontSlider.value,10); localStorage.setItem('fontSize', fontSize); applyFontSize(); });
+        fontSlider.addEventListener('input', () => {
+            fontSize = parseInt(fontSlider.value, 10);
+            localStorage.setItem('fontSize', fontSize);
+            applyFontSize();
+        });
     }
 
     applyFontSize();
@@ -111,7 +124,11 @@ function loadSettings() {
 
 function applyFontSize() {
     let style = document.getElementById('dynamicFontStyle');
-    if (!style) { style = document.createElement('style'); style.id = 'dynamicFontStyle'; document.head.appendChild(style); }
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'dynamicFontStyle';
+        document.head.appendChild(style);
+    }
     style.textContent = `.text-target { font-size: ${fontSize}px !important; }`;
 }
 
@@ -136,11 +153,21 @@ function loadVoices() {
     const sel = document.getElementById('voiceSelect');
     if (!sel) return;
     sel.innerHTML = '';
-    const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Auto'; sel.appendChild(auto);
+    const auto = document.createElement('option');
+    auto.value = '';
+    auto.textContent = 'Auto';
+    sel.appendChild(auto);
     availableVoices.forEach(v => {
-        const opt = document.createElement('option'); opt.value = v.name; opt.textContent = v.name; sel.appendChild(opt);
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = v.name;
+        sel.appendChild(opt);
     });
-    sel.addEventListener('change', () => { const nm = sel.value; selectedVoice = availableVoices.find(v=>v.name===nm)||null; localStorage.setItem('selectedVoice', nm); });
+    sel.addEventListener('change', () => {
+        const nm = sel.value;
+        selectedVoice = availableVoices.find(v => v.name === nm) || null;
+        localStorage.setItem('selectedVoice', nm);
+    });
 }
 
 /* =========================
@@ -168,9 +195,10 @@ function speakText(text) {
     speechSynthesis.cancel();
     if (!text) return;
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = ttsRate; u.volume = ttsVolume;
+    u.rate = ttsRate;
+    u.volume = ttsVolume;
     if (selectedVoice) {
-        const v = availableVoices.find(x=>x.name===selectedVoice.name);
+        const v = availableVoices.find(x => x.name === selectedVoice.name);
         if (v) u.voice = v;
     }
     speechSynthesis.speak(u);
@@ -207,7 +235,10 @@ function renderTranslations() {
     list.innerHTML = html;
 }
 
-function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 /* =========================
    Init
@@ -253,17 +284,17 @@ function sanitizeInput(input) {
 
 function validateText(text, maxLength = 10000) {
     if (!text || typeof text !== 'string') {
-        return { valid: false, error: 'Invalid input' };
+        return {valid: false, error: 'Invalid input'};
     }
 
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
-        return { valid: false, error: 'Text cannot be empty' };
+        return {valid: false, error: 'Text cannot be empty'};
     }
 
     if (trimmed.length > maxLength) {
-        return { valid: false, error: `Text too long (max ${maxLength} characters)` };
+        return {valid: false, error: `Text too long (max ${maxLength} characters)`};
     }
 
     // Check for suspicious patterns
@@ -278,11 +309,11 @@ function validateText(text, maxLength = 10000) {
 
     for (let pattern of dangerousPatterns) {
         if (pattern.test(trimmed)) {
-            return { valid: false, error: 'Invalid characters detected' };
+            return {valid: false, error: 'Invalid characters detected'};
         }
     }
 
-    return { valid: true, text: sanitizeInput(trimmed) };
+    return {valid: true, text: sanitizeInput(trimmed)};
 }
 
 // TTS Language Mapping
@@ -455,7 +486,12 @@ function detectDisplayLanguageLocal() {
 // Use shared i18n runtime helpers when available to avoid duplication and errors.
 function applyDisplayLanguageLocal() {
     if (window.applyDisplayLanguage && !window._applyingDisplayLanguage) {
-        try { window.applyDisplayLanguage(); return; } catch (e) { console.warn('shared applyDisplayLanguage failed', e); }
+        try {
+            window.applyDisplayLanguage();
+            return;
+        } catch (e) {
+            console.warn('shared applyDisplayLanguage failed', e);
+        }
     }
 
     // Fallback: minimal safe application
@@ -484,11 +520,19 @@ function changeDisplayLanguageLocal() {
     const newLang = select.value;
     // Always persist the chosen language locally so other scripts can read it
     displayLanguage = newLang;
-    try { localStorage.setItem('displayLanguage', displayLanguage); } catch (e) {}
+    try {
+        localStorage.setItem('displayLanguage', displayLanguage);
+    } catch (e) {
+    }
 
     if (window.changeDisplayLanguage) {
         // Delegate rendering to the shared runtime (it will update the DOM)
-        try { window.changeDisplayLanguage(newLang); } catch (e) { console.warn('shared changeDisplayLanguage failed', e); applyDisplayLanguageLocal(); }
+        try {
+            window.changeDisplayLanguage(newLang);
+        } catch (e) {
+            console.warn('shared changeDisplayLanguage failed', e);
+            applyDisplayLanguageLocal();
+        }
         return;
     }
 
@@ -596,7 +640,7 @@ function loadVoices() {
     const ttsLang = TTS_LANG_MAP[targetLang] || targetLang;
 
     // Filter voices based on target language
-    const matchingVoices = availableVoices.filter(function(voice) {
+    const matchingVoices = availableVoices.filter(function (voice) {
         const voiceLang = voice.lang.toLowerCase();
         const targetLangLower = ttsLang.toLowerCase();
 
@@ -644,15 +688,15 @@ function loadVoices() {
 
     // Group voices by language
     const grouped = {};
-    voicesToShow.forEach(function(voice) {
+    voicesToShow.forEach(function (voice) {
         const lang = voice.lang;
         if (!grouped[lang]) grouped[lang] = [];
         grouped[lang].push(voice);
     });
 
     // Add voice options
-    Object.keys(grouped).sort().forEach(function(lang) {
-        grouped[lang].forEach(function(voice) {
+    Object.keys(grouped).sort().forEach(function (lang) {
+        grouped[lang].forEach(function (voice) {
             const option = document.createElement('option');
             option.value = voice.name;
 
@@ -693,7 +737,7 @@ function loadVoices() {
 
     // Restore saved voice
     if (savedVoice) {
-        const voiceExists = voicesToShow.find(function(v) {
+        const voiceExists = voicesToShow.find(function (v) {
             return v.name === savedVoice;
         });
         if (voiceExists) {
@@ -712,7 +756,7 @@ function changeVoice() {
     const voiceName = voiceSelect.value;
 
     if (voiceName) {
-        selectedVoice = availableVoices.find(function(v) {
+        selectedVoice = availableVoices.find(function (v) {
             return v.name === voiceName;
         });
         localStorage.setItem('selectedVoice', voiceName);
@@ -732,7 +776,7 @@ function changeLanguage() {
     loadVoices();
 
     // Clear cached translations
-    translations.forEach(function(item) {
+    translations.forEach(function (item) {
         item.translated = null;
         item.currentLang = null;
     });
@@ -888,7 +932,7 @@ function resetSettings() {
 function showSyncIndicator() {
     const indicator = document.getElementById('syncIndicator');
     indicator.classList.add('show');
-    setTimeout(function() {
+    setTimeout(function () {
         indicator.classList.remove('show');
     }, 3000);
 }
@@ -969,7 +1013,7 @@ function performSearch() {
     visibleTranslationIds.clear();
     let matchCount = 0;
 
-    translations.forEach(function(item) {
+    translations.forEach(function (item) {
         const searchableText = (item.corrected + ' ' + (item.translated || '')).toLowerCase();
         const matches = !searchQuery || searchableText.includes(searchQuery);
 
@@ -995,7 +1039,7 @@ function highlightSearchText(card, query) {
         const sourceDiv = card.querySelector('.text-source');
         const targetDiv = card.querySelector('.text-target');
 
-        [sourceDiv, targetDiv].forEach(function(div) {
+        [sourceDiv, targetDiv].forEach(function (div) {
             if (!div) return;
             const originalText = div.getAttribute('data-original-text');
             if (originalText) {
@@ -1009,7 +1053,7 @@ function highlightSearchText(card, query) {
     const sourceDiv = card.querySelector('.text-source');
     const targetDiv = card.querySelector('.text-target');
 
-    [sourceDiv, targetDiv].forEach(function(div) {
+    [sourceDiv, targetDiv].forEach(function (div) {
         if (!div) return;
 
         const originalText = div.getAttribute('data-original-text') || div.textContent;
@@ -1104,12 +1148,12 @@ function speakText(text) {
         console.log('Using selected voice: ' + selectedVoice.name);
     } else {
         const voices = speechSynthesis.getVoices();
-        let autoVoice = voices.find(function(v) {
+        let autoVoice = voices.find(function (v) {
             return v.lang === ttsLang;
         });
         if (!autoVoice) {
             const baseLang = ttsLang.split('-')[0];
-            autoVoice = voices.find(function(v) {
+            autoVoice = voices.find(function (v) {
                 return v.lang.startsWith(baseLang + '-');
             });
         }
@@ -1119,7 +1163,7 @@ function speakText(text) {
         }
     }
 
-    utterance.onerror = function(e) {
+    utterance.onerror = function (e) {
         console.error('TTS error:', e);
     };
 
@@ -1162,7 +1206,7 @@ function updateVolume() {
 
 function copyTranslation(id) {
     const idStr = String(id);
-    const item = translations.find(function(t) {
+    const item = translations.find(function (t) {
         return String(t.id) === idStr;
     });
 
@@ -1176,10 +1220,10 @@ function copyTranslation(id) {
     console.log('Attempting to copy:', textToCopy);
 
     if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(textToCopy).then(function() {
+        navigator.clipboard.writeText(textToCopy).then(function () {
             console.log('Copied successfully with clipboard API');
             showCopyFeedback(id);
-        }).catch(function(err) {
+        }).catch(function (err) {
             console.log('Clipboard API failed, trying fallback:', err);
             copyWithFallback(id, textToCopy);
         });
@@ -1232,7 +1276,7 @@ function showCopyFeedback(id) {
         span.textContent = '✓';
         btn.classList.add('copied');
 
-        setTimeout(function() {
+        setTimeout(function () {
             span.textContent = originalText;
             btn.classList.remove('copied');
         }, 2000);
@@ -1442,7 +1486,7 @@ function exportData() {
 
     let content, mimeType, extension;
 
-    switch(format) {
+    switch (format) {
         case 'json':
             content = exportAsJSON();
             mimeType = 'application/json';
@@ -1464,7 +1508,7 @@ function exportData() {
             extension = 'txt';
     }
 
-    const blob = new Blob([content], { type: mimeType + ';charset=utf-8' });
+    const blob = new Blob([content], {type: mimeType + ';charset=utf-8'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1602,7 +1646,7 @@ const scrollToTopBtn = document.getElementById('scrollToTopBtn');
 const mainSection = document.querySelector('.pf-c-page__main-section');
 
 if (mainSection) {
-    mainSection.addEventListener('scroll', function() {
+    mainSection.addEventListener('scroll', function () {
         if (mainSection.scrollTop > 300) {
             scrollToTopBtn.classList.add('show');
         } else {
@@ -1624,7 +1668,7 @@ function scrollToTop() {
    Event Listeners
    =================================== */
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         hideAbout();
         closeMobileMenu();
@@ -1641,7 +1685,7 @@ function setupSocketEventListeners() {
         console.log('Socket listeners already setup, skipping');
         return;
     }
-    
+
     if (!socket) {
         console.warn('Socket not initialized, cannot setup listeners');
         return;
@@ -1735,7 +1779,7 @@ if ('speechSynthesis' in window) {
 }
 
 // Setup socket event listeners when DOM is loaded (only once)
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     ensureSocketConnected();
     // Give socket a moment to initialize before setting up listeners
     setTimeout(() => {

@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: {'Accept': 'application/json'}
         });
         const config = await response.json();
-        
+
         // Prefer external URL if configured (for CF Tunnel or reverse proxy)
         if (config.mainServerUrl) {
             SERVER_URL = config.mainServerUrl;
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const protocol = config.mainServerProtocol || window.location.protocol.replace(':', '');
             SERVER_URL = `${protocol}://${window.location.hostname}:${config.mainServerPort}`;
         }
-        
+
         console.log('Main server URL:', SERVER_URL);
     } catch (error) {
         console.error('Failed to load config:', error);
@@ -897,14 +897,33 @@ async function updateSystemInfo() {
             hour12: false
         });
 
-        document.getElementById('systemInfo').textContent =
-            `⏰ ${timestamp}\n` +
-            `${'─'.repeat(30)}\n` +
-            `Status: ${data.status}\n` +
-            `Clients: ${data.clients}\n` +
-            `Transcriptions: ${data.translations}\n` +
-            `Recording: ${isRecording ? '🟢 Active' : '⚪ Stopped'}\n` +
-            `Language: ${recognitionLanguage}`;
+        // Counters
+        const sysClients = document.getElementById('sys-clients');
+        const sysTranscriptions = document.getElementById('sys-transcriptions');
+        if (sysClients) sysClients.textContent = data.clients ?? 0;
+        if (sysTranscriptions) sysTranscriptions.textContent = data.translations ?? 0;
+
+        // Recording label
+        const sysRecording = document.getElementById('sys-recording');
+        if (sysRecording) {
+            const shared = window.sharedI18n || {};
+            const lang = window._displayLanguage || localStorage.getItem('displayLanguage') || (navigator.language || 'en').split('-')[0];
+            const activeText = (shared[lang] && shared[lang]['active']) || 'Active';
+            const stoppedText = (shared[lang] && shared[lang]['stopped']) || 'Stopped';
+            if (isRecording) {
+                sysRecording.className = 'pf-v5-c-label pf-m-green';
+                sysRecording.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__icon">●</span><span class="pf-v5-c-label__text">${activeText}</span></span>`;
+            } else {
+                sysRecording.className = 'pf-v5-c-label pf-m-grey';
+                sysRecording.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__icon">○</span><span class="pf-v5-c-label__text">${stoppedText}</span></span>`;
+            }
+        }
+
+        // Language label
+        const sysLanguage = document.getElementById('sys-language');
+        if (sysLanguage) {
+            sysLanguage.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__text pf-mono">${recognitionLanguage || 'en-US'}</span></span>`;
+        }
     } catch (error) {
         console.error('Failed to fetch system info:', error);
     }

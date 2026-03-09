@@ -1536,7 +1536,7 @@ window.sharedI18n = {
         "systemInfo": "सिस्टम जानकारी",
         "loadingShort": "लोड हो रहा है"
     },
-       // Arabic
+    // Arabic
     ar: {
         "brand": "EzySpeech Listener",
         "brand_admin": "لوحة تحكم مسؤول EzySpeech",
@@ -1624,7 +1624,7 @@ window.sharedI18n = {
         "systemInfo": "معلومات النظام",
         "loadingShort": "تحميل"
     },
-    
+
     // Portuguese
     pt: {
         "brand": "EzySpeech Listener",
@@ -1713,7 +1713,7 @@ window.sharedI18n = {
         "systemInfo": "Informações do Sistema",
         "loadingShort": "Carregando"
     },
-    
+
     // Italian
     it: {
         "brand": "EzySpeech Listener",
@@ -1802,7 +1802,7 @@ window.sharedI18n = {
         "systemInfo": "Informazioni Sistema",
         "loadingShort": "Caricamento"
     },
-    
+
     // Dutch
     nl: {
         "brand": "EzySpeech Listener",
