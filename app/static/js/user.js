@@ -207,33 +207,7 @@ function speakText(text) {
 /* =========================
    Rendering (minimal)
    ========================= */
-function renderTranslations() {
-    const list = document.getElementById('translationsList');
-    if (!list) return;
-    if (translations.length === 0) {
-        // Choose keys depending on current display mode
-        const titleKey = (displayMode === 'transcription') ? 'waitingTranscriptions' : 'waitingTranslations';
-        const descKey = 'waitingDesc';
 
-        // Build empty state markup with data-i18n so the shared runtime can localize it
-        const titleText = (i18n[displayLanguage] && i18n[displayLanguage][titleKey]) || (i18n['en'] && i18n['en'][titleKey]) || (displayMode === 'transcription' ? 'Waiting for transcriptions...' : 'Waiting for translations...');
-        const descText = (i18n[displayLanguage] && i18n[displayLanguage][descKey]) || (i18n['en'] && i18n['en'][descKey]) || 'Translations will appear here in real-time';
-
-        list.innerHTML = `
-            <div class="empty-state" role="status">
-                <div class="empty-icon">💬</div>
-                <div data-i18n="${titleKey}">${titleText}</div>
-                <small data-i18n="${descKey}" style="display: block; margin-top: 0.5rem; opacity: 0.7;">${descText}</small>
-            </div>
-        `;
-        return;
-    }
-    const html = translations.slice().reverse().map(item => {
-        const translated = item.translated || item.corrected;
-        return `<div class="translation-card"><div class="text-source">${escapeHtml(item.corrected)}</div><div class="text-target">${escapeHtml(translated)}</div></div>`;
-    }).join('');
-    list.innerHTML = html;
-}
 
 function escapeHtml(s) {
     if (!s) return '';
@@ -284,17 +258,17 @@ function sanitizeInput(input) {
 
 function validateText(text, maxLength = 10000) {
     if (!text || typeof text !== 'string') {
-        return {valid: false, error: 'Invalid input'};
+        return { valid: false, error: 'Invalid input' };
     }
 
     const trimmed = text.trim();
 
     if (trimmed.length === 0) {
-        return {valid: false, error: 'Text cannot be empty'};
+        return { valid: false, error: 'Text cannot be empty' };
     }
 
     if (trimmed.length > maxLength) {
-        return {valid: false, error: `Text too long (max ${maxLength} characters)`};
+        return { valid: false, error: `Text too long (max ${maxLength} characters)` };
     }
 
     // Check for suspicious patterns
@@ -309,11 +283,11 @@ function validateText(text, maxLength = 10000) {
 
     for (let pattern of dangerousPatterns) {
         if (pattern.test(trimmed)) {
-            return {valid: false, error: 'Invalid characters detected'};
+            return { valid: false, error: 'Invalid characters detected' };
         }
     }
 
-    return {valid: true, text: sanitizeInput(trimmed)};
+    return { valid: true, text: sanitizeInput(trimmed) };
 }
 
 // TTS Language Mapping
@@ -514,7 +488,7 @@ function applyDisplayLanguageLocal() {
     updateThemeUI(document.documentElement.getAttribute('data-theme'));
 }
 
-function changeDisplayLanguageLocal() {
+async function changeDisplayLanguageLocal() {
     const select = document.getElementById('displayLanguage');
     if (!select) return;
     const newLang = select.value;
@@ -533,11 +507,15 @@ function changeDisplayLanguageLocal() {
             console.warn('shared changeDisplayLanguage failed', e);
             applyDisplayLanguageLocal();
         }
-        return;
+    } else {
+        // Fallback: apply locally
+        applyDisplayLanguageLocal();
     }
-
-    // Fallback: apply locally
-    applyDisplayLanguageLocal();
+    
+    // Re-render translations to update empty state with new language
+    await renderTranslations();
+    // Re-apply display mode to update mode-specific text
+    updateDisplayMode();
 }
 
 /* ===================================
@@ -1293,10 +1271,11 @@ async function renderTranslations() {
     if (itemCount) itemCount.textContent = translations.length;
 
     if (translations.length === 0) {
-        const emptyText = displayMode === 'transcription' ? 'Waiting for transcriptions...' : 'Waiting for translations...';
-        const emptyDesc = displayMode === 'transcription' ?
-            'Transcriptions will appear here in real-time' :
-            'Translations will appear here in real-time';
+        // Use i18n for translated empty state text
+        const titleKey = (displayMode === 'transcription') ? 'waitingTranscriptions' : 'waitingTranslations';
+        const descKey = 'waitingDesc';
+        const emptyText = (i18n[displayLanguage] && i18n[displayLanguage][titleKey]) || (i18n['en'] && i18n['en'][titleKey]) || (displayMode === 'transcription' ? 'Waiting for transcriptions...' : 'Waiting for translations...');
+        const emptyDesc = (i18n[displayLanguage] && i18n[displayLanguage][descKey]) || (i18n['en'] && i18n['en'][descKey]) || 'Translations will appear here in real-time';
 
         list.innerHTML = '\
             <div class="empty-state">\
@@ -1508,7 +1487,7 @@ function exportData() {
             extension = 'txt';
     }
 
-    const blob = new Blob([content], {type: mimeType + ';charset=utf-8'});
+    const blob = new Blob([content], { type: mimeType + ';charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

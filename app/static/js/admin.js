@@ -168,6 +168,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // Listen for display language changes
+    const displayLangSelect = document.getElementById('displayLanguage');
+    if (displayLangSelect) {
+        displayLangSelect.addEventListener('change', () => {
+            renderTranscriptions();
+            updateRecordButton();
+            updateSystemInfo();
+        });
+    }
+
     // Initialize app
     loadAudioDevices();
     startSystemMonitor();
