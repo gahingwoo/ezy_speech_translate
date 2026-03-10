@@ -977,7 +977,7 @@ Type=simple
 User=your-user
 WorkingDirectory=/path/to/ezy_speech_translate
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python /path/to/user/server.py
+ExecStart=/path/to/venv/bin/python /path/to/app/user/server.py
 Restart=always
 
 [Install]
@@ -996,7 +996,7 @@ Type=simple
 User=your-user
 WorkingDirectory=/path/to/ezy_speech_translate
 Environment="PATH=/path/to/venv/bin"
-ExecStart=/path/to/venv/bin/python /path/to/admin/server.py
+ExecStart=/path/to/venv/bin/python /path/to/app/admin/server.py
 Restart=always
 
 [Install]
@@ -1565,4 +1565,4 @@ SOFTWARE.
 
 **Made with ❤️ by [Ga Hing Woo](https://github.com/gahingwoo)**
 
-*Last Updated: December 2025 | Version 3.3.0*
+*Last Updated: March 2026 | Version 3.3.0*
