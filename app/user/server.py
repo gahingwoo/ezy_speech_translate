@@ -167,6 +167,27 @@ def get_real_ip():
         return forwarded_for.split(',')[0].strip()
     return request.remote_addr
 
+
+def get_rate_limit_key():
+    """Get unique identifier for rate limiting - always uses browser-specific client ID.
+    
+    Each browser gets a persistent unique ID in a cookie (_client_id).
+    Chrome and Firefox on same WiFi will have DIFFERENT IDs and won't block each other.
+    This never falls back to IP.
+    """
+    # Always check cookies first - works for both HTTP and Socket.IO
+    client_id = request.cookies.get('_client_id')
+    if client_id:
+        return f"client:{client_id}"
+    
+    # If no cookie yet, check if request.client_id was set by before_request
+    if hasattr(request, 'client_id'):
+        return f"client:{request.client_id}"
+    
+    # For Socket.IO or other cases without cookies, generate temporary ID
+    # This will be written to cookie in after_request
+    return f"client:{secrets.token_hex(16)}"
+
 socketio = SocketIO(
     app,
     cors_allowed_origins=allowed_origins,
@@ -237,7 +258,7 @@ max_ws_connections = get_config('advanced', 'security', 'max_ws_connections', de
 if rate_limit_enabled:
     limiter = Limiter(
         app=app,
-        key_func=get_real_ip,
+        key_func=get_rate_limit_key,
         default_limits=[f"{max_requests} per minute", "1000 per day"],
         storage_uri="memory://"
     )
@@ -253,10 +274,11 @@ else:
 # ──────────────────────────────────────────
 # Security: Attack Prevention
 # ──────────────────────────────────────────
-blocked_ips = set()
-failed_login_attempts = defaultdict(list)  # IP: [timestamps]
-rate_limit_violations = defaultdict(int)  # IP: count
-suspicious_patterns = defaultdict(int)  # IP: count
+blocked_clients = set()  # Store blocked session keys, not IPs
+failed_login_attempts = defaultdict(list)  # Session key: [timestamps]
+rate_limit_violations = defaultdict(int)  # Session key: count
+suspicious_patterns = defaultdict(int)  # Session key: count
+blocked_since = {}  # Session key: timestamp when blocked
 
 MAX_LOGIN_ATTEMPTS = get_config('advanced', 'security', 'max_login_attempts', default=10)
 login_window_min = get_config('advanced', 'security', 'login_attempt_window_minutes', default=15)
@@ -265,57 +287,88 @@ MAX_RATE_VIOLATIONS = get_config('advanced', 'security', 'max_rate_violations', 
 block_minutes = get_config('advanced', 'security', 'block_duration_minutes', default=60)
 BLOCK_DURATION = timedelta(minutes=block_minutes)
 
-def is_ip_blocked(ip):
-    """Check if IP is blocked"""
-    return ip in blocked_ips
+def get_client_key():
+    """Get unique client identifier for blocking (session-based, not IP-based).
+    This prevents users on the same WiFi from blocking each other.
+    """
+    return get_rate_limit_key()
 
-def record_failed_login(ip):
-    """Record failed login attempt"""
+def is_client_blocked(client_key=None):
+    """Check if client/session is blocked"""
+    if client_key is None:
+        client_key = get_client_key()
+    
+    if client_key not in blocked_clients:
+        return False
+    
+    # Check if block has expired
+    if client_key in blocked_since:
+        if datetime.now() - blocked_since[client_key] > BLOCK_DURATION:
+            blocked_clients.discard(client_key)
+            blocked_since.pop(client_key, None)
+            return False
+    
+    return True
+
+def record_failed_login(client_key=None):
+    """Record failed login attempt for a client/session"""
+    if client_key is None:
+        client_key = get_client_key()
+    
     now = datetime.now()
-    attempts = failed_login_attempts[ip]
+    attempts = failed_login_attempts[client_key]
 
     # Clean old attempts
     attempts[:] = [t for t in attempts if now - t < LOGIN_ATTEMPT_WINDOW]
     attempts.append(now)
 
     if len(attempts) >= MAX_LOGIN_ATTEMPTS:
-        blocked_ips.add(ip)
-        security_logger.critical(f"IP BLOCKED due to failed login attempts: {ip}")
+        blocked_clients.add(client_key)
+        blocked_since[client_key] = now
+        security_logger.critical(f"CLIENT BLOCKED due to failed login attempts: {client_key}")
         return True
 
     return False
 
-def record_rate_violation(ip):
-    """Record rate limit violation"""
-    rate_limit_violations[ip] += 1
+def record_rate_violation(client_key=None):
+    """Record rate limit violation for a client/session"""
+    if client_key is None:
+        client_key = get_client_key()
+    
+    rate_limit_violations[client_key] += 1
 
-    if rate_limit_violations[ip] >= MAX_RATE_VIOLATIONS:
-        blocked_ips.add(ip)
-        security_logger.critical(f"IP BLOCKED due to rate limit violations: {ip}")
+    if rate_limit_violations[client_key] >= MAX_RATE_VIOLATIONS:
+        blocked_clients.add(client_key)
+        blocked_since[client_key] = datetime.now()
+        security_logger.critical(f"CLIENT BLOCKED due to rate limit violations: {client_key}")
         return True
 
     return False
 
-def record_suspicious_activity(ip, reason):
-    """Record suspicious activity"""
-    suspicious_patterns[ip] += 1
-    security_logger.warning(f"Suspicious activity from {ip}: {reason}")
+def record_suspicious_activity(reason, client_key=None):
+    """Record suspicious activity for a client/session"""
+    if client_key is None:
+        client_key = get_client_key()
+    
+    suspicious_patterns[client_key] += 1
+    security_logger.warning(f"Suspicious activity from {client_key}: {reason}")
 
-    if suspicious_patterns[ip] >= 5:
-        blocked_ips.add(ip)
-        security_logger.critical(f"IP BLOCKED due to suspicious patterns: {ip}")
+    if suspicious_patterns[client_key] >= 5:
+        blocked_clients.add(client_key)
+        blocked_since[client_key] = datetime.now()
+        security_logger.critical(f"CLIENT BLOCKED due to suspicious patterns: {client_key}")
         return True
 
     return False
 
-def check_ip_access(f):
-    """Decorator to check IP access"""
+def check_client_access(f):
+    """Decorator to check client/session access (not IP-based)"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        client_ip = get_real_ip()
-        if is_ip_blocked(client_ip):
-            security_logger.warning(f"Blocked IP attempted access: {client_ip}")
-            return jsonify({'error': 'Access denied'}), 403
+        client_key = get_client_key()
+        if is_client_blocked(client_key):
+            security_logger.warning(f"Blocked client attempted access: {client_key}")
+            return jsonify({'error': 'Access denied - too many failed attempts'}), 403
         return f(*args, **kwargs)
     return decorated
 
@@ -395,38 +448,56 @@ def add_translation(data):
 # ──────────────────────────────────────────
 @app.before_request
 def before_request():
-    """Security checks before each request"""
-    client_ip = get_real_ip()
+    """Security checks before each request - auto-assign client ID if needed"""
+    # Ensure every request has a unique client ID
+    client_id = request.cookies.get('_client_id')
+    if not client_id:
+        client_id = f"browser_{secrets.token_hex(16)}"
+    request.client_id = client_id
+    
+    client_key = f"client:{client_id}"
 
-    # Check IP blocking
-    if is_ip_blocked(client_ip):
-        return jsonify({'error': 'Access denied'}), 403
+    # Check client/session blocking
+    if is_client_blocked(client_key):
+        return jsonify({'error': 'Access denied - too many failed attempts'}), 403
 
     # Check request size
     if request.content_length and request.content_length > app.config['MAX_CONTENT_LENGTH']:
-        security_logger.warning(f"Large request from {client_ip}: {request.content_length}")
+        security_logger.warning(f"Large request from {client_key}: {request.content_length}")
         return jsonify({'error': 'Request too large'}), 413
 
     # Check for path traversal
     if '../' in request.path or '..\\' in request.path:
-        record_suspicious_activity(client_ip, "Path traversal attempt")
+        record_suspicious_activity("Path traversal attempt", client_key)
         return jsonify({'error': 'Invalid request'}), 400
 
     # Check for SQL injection patterns
     sql_patterns = ['union select', 'drop table', 'insert into', '--', ';--']
     query_string = request.query_string.decode('utf-8', 'ignore').lower()
     if any(pattern in query_string for pattern in sql_patterns):
-        record_suspicious_activity(client_ip, "SQL injection attempt")
+        record_suspicious_activity("SQL injection attempt", client_key)
         return jsonify({'error': 'Invalid request'}), 400
 
 @app.after_request
 def after_request(response):
-    """Add security headers"""
+    """Add security headers and set client ID cookie"""
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    
+    # Set persistent client ID cookie if we generated a new one
+    if hasattr(request, 'client_id') and not request.cookies.get('_client_id'):
+        response.set_cookie(
+            '_client_id',
+            request.client_id,
+            max_age=365*24*60*60,  # 1 year
+            secure=USE_HTTPS,
+            httponly=True,
+            samesite='Strict'
+        )
+    
     return response
 
 # ──────────────────────────────────────────
@@ -465,7 +536,7 @@ def is_admin(sid):
 # ──────────────────────────────────────────
 @app.route('/')
 @limiter.limit("60 per minute")
-@check_ip_access
+@check_client_access
 def index():
     """Main client interface"""
     return render_template('user.html')
@@ -477,15 +548,15 @@ def admin_route():
 
 @app.route('/api/login', methods=['POST'])
 @limiter.limit("5 per minute")
-@check_ip_access
+@check_client_access
 def login():
     """Admin login with brute force protection"""
-    client_ip = get_real_ip()
+    client_key = get_client_key()
 
     try:
         data = request.json or {}
     except Exception:
-        security_logger.warning(f"Malformed JSON from {client_ip}")
+        security_logger.warning(f"Malformed JSON from {client_key}")
         return jsonify({'success': False, 'error': 'Invalid request'}), 400
 
     username = sanitize_text(data.get('username', ''), max_length=100)
@@ -496,7 +567,7 @@ def login():
 
     # Rate limiting check
     if len(username) > 100 or len(password) > 100:
-        record_suspicious_activity(client_ip, "Oversized credentials")
+        record_suspicious_activity("Oversized credentials", client_key)
         return jsonify({'success': False, 'error': 'Invalid credentials'}), 400
 
     # Verify credentials
@@ -522,7 +593,7 @@ def login():
             algorithm='HS256'
         )
 
-        logger.info(f"✓ Admin login successful: {username} from {client_ip}")
+        logger.info(f"✓ Admin login successful: {username} from {client_key}")
         return jsonify({
             'success': True,
             'token': token,
@@ -530,16 +601,16 @@ def login():
         })
 
     # Failed login
-    logger.warning(f"✗ Failed login attempt: {username} from {client_ip}")
-    if record_failed_login(client_ip):
-        return jsonify({'success': False, 'error': 'Too many failed attempts. IP blocked.'}), 403
+    logger.warning(f"✗ Failed login attempt: {username} from {client_key}")
+    if record_failed_login(client_key):
+        return jsonify({'success': False, 'error': 'Too many failed attempts. Session blocked.'}), 403
 
     return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
 
 @app.route('/api/config', methods=['GET'])
 @limiter.limit("30 per minute")
 @require_auth
-@check_ip_access
+@check_client_access
 def get_runtime_config():
     """Get current configuration (filtered)"""
     # Only return non-sensitive config
@@ -554,7 +625,7 @@ def get_runtime_config():
 @app.route('/api/translations', methods=['GET'])
 @limiter.limit("60 per minute")
 @require_auth
-@check_ip_access
+@check_client_access
 def get_translations():
     """Get translation history"""
     return jsonify({'translations': translations_history})
@@ -562,7 +633,7 @@ def get_translations():
 @app.route('/api/translations/clear', methods=['POST'])
 @limiter.limit("10 per minute")
 @require_auth
-@check_ip_access
+@check_client_access
 def clear_translations():
     """Clear translation history"""
     global translations_history
@@ -585,7 +656,7 @@ def health_check():
 @app.route('/api/export/<export_format>', methods=['GET'])
 @limiter.limit("10 per minute")
 @require_auth
-@check_ip_access
+@check_client_access
 def export_translations(export_format):
     """Export translations with validation"""
     allowed_formats = ['json', 'txt', 'csv', 'srt']
@@ -648,26 +719,36 @@ def export_translations(export_format):
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection with validation"""
+    # For Socket.IO, get client_id from handshake cookies
+    client_id = None
+    if hasattr(request, 'cookies'):
+        client_id = request.cookies.get('_client_id')
+    
+    # If no client_id in cookies, generate one
+    if not client_id:
+        client_id = f"browser_{secrets.token_hex(16)}"
+    
+    client_key = f"client:{client_id}"
     client_ip = get_real_ip()
     
-    logger.info(f"Socket.IO connect attempt from {client_ip} (SID: {request.sid})")
+    logger.info(f"Socket.IO connect attempt from {client_ip} (Client: {client_id}, SID: {request.sid})")
 
-    if is_ip_blocked(client_ip):
-        security_logger.warning(f"Blocked IP attempted WebSocket: {client_ip}")
-        logger.error(f"Connection rejected: IP {client_ip} is blocked")
+    if is_client_blocked(client_key):
+        security_logger.warning(f"Blocked client attempted WebSocket: {client_key}")
+        logger.error(f"Connection rejected: Client {client_key} is blocked")
         return False
 
-    # Limit connections per IP
-    client_connections = sum(1 for c in connected_clients if c.startswith(client_ip))
+    # Limit connections per client session
+    client_connections = sum(1 for c in connected_clients if c.startswith(client_key))
     if client_connections >= max_ws_connections:
-        security_logger.warning(f"Too many connections from {client_ip}: {client_connections} >= {max_ws_connections}")
-        logger.error(f"Connection rejected: Too many connections from {client_ip} ({client_connections}/{max_ws_connections})")
+        security_logger.warning(f"Too many connections from {client_key}: {client_connections} >= {max_ws_connections}")
+        logger.error(f"Connection rejected: Too many connections from {client_key} ({client_connections}/{max_ws_connections})")
         return False
 
-    client_id = f"{client_ip}:{request.sid}"
-    connected_clients.add(client_id)
-    listener_clients[client_ip].add(request.sid)  # assumed listener until admin_connect
-    logger.info(f"Client connected: {client_ip} (SID: {request.sid}, Total: {len(connected_clients)})")
+    client_id_full = f"{client_key}:{request.sid}"
+    connected_clients.add(client_id_full)
+    listener_clients[client_key].add(request.sid)  # assumed listener until admin_connect
+    logger.info(f"Client connected: {client_ip} (Client: {client_id}, SID: {request.sid}, Total: {len(connected_clients)})")
 
     # Send sanitized history
     safe_history = [
@@ -681,17 +762,26 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect(sid=None):
-    """Handle client disconnection; accept optional sid to avoid TypeError from some SocketIO versions"""
-    client_ip = get_real_ip()
+    """Handle client disconnection - find and clean up client info"""
+    # Try to get client_id from cookies (same as in connect)
+    client_id = None
+    if hasattr(request, 'cookies'):
+        client_id = request.cookies.get('_client_id')
+    
+    if not client_id:
+        client_id = 'unknown'
+    
+    client_key = f"client:{client_id}"
     sid_used = sid if sid is not None else request.sid
-    client_id = f"{client_ip}:{sid_used}"
-    connected_clients.discard(client_id)
-    # Remove this SID from listener tracking; clean up empty IP entries
-    listener_clients[client_ip].discard(sid_used)
-    if not listener_clients[client_ip]:
-        del listener_clients[client_ip]
+    client_id_full = f"{client_key}:{sid_used}"
+    connected_clients.discard(client_id_full)
+    
+    # Remove this SID from listener tracking; clean up empty entries
+    listener_clients[client_key].discard(sid_used)
+    if not listener_clients[client_key]:
+        del listener_clients[client_key]
     admin_sessions.pop(sid_used, None)
-    logger.info(f"Client disconnected: {client_ip} (Total: {len(connected_clients)})")
+    logger.info(f"Client disconnected: {get_real_ip()} (Client: {client_id}, Total: {len(connected_clients)})")
 
 @socketio.on('admin_connect')
 def handle_admin_connect(data):
@@ -715,10 +805,11 @@ def handle_admin_connect(data):
     if decoded:
         admin_sessions[request.sid] = decoded['username']
         # Remove this SID from listener tracking so admin tabs are not counted
-        client_ip = get_real_ip()
-        listener_clients[client_ip].discard(request.sid)
-        if not listener_clients[client_ip]:
-            del listener_clients[client_ip]
+        client_id = request.cookies.get('_client_id', 'unknown')
+        client_key = f"client:{client_id}"
+        listener_clients[client_key].discard(request.sid)
+        if not listener_clients[client_key]:
+            del listener_clients[client_key]
         emit('admin_connected', {'success': True})
         logger.info(f"Admin connected: {decoded['username']} from {get_real_ip()}")
     else:
