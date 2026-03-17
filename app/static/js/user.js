@@ -293,7 +293,7 @@ function validateText(text, maxLength = 10000) {
 // TTS Language Mapping
 const TTS_LANG_MAP = {
     'yue': 'zh-HK',
-    'zh-cn': 'zh-CN',
+    'zh': 'zh-CN',
     'zh-tw': 'zh-TW',
     'ja': 'ja-JP',
     'ko': 'ko-KR',
@@ -320,9 +320,9 @@ const BROWSER_LANG_MAP = {
     'zh-HK': 'yue',
     'zh-MO': 'yue',
     'yue': 'yue',
-    'zh-CN': 'zh-cn',
-    'zh-SG': 'zh-cn',
-    'zh': 'zh-cn',
+    'zh-CN': 'zh',
+    'zh-SG': 'zh',
+    'zh': 'zh',
     'zh-TW': 'zh-tw',
     'ja': 'ja',
     'ja-JP': 'ja',
@@ -445,11 +445,13 @@ function detectDisplayLanguageLocal() {
 
     // Special handling for Chinese variants
     if (langPrefix === 'zh') {
-        if (browserLang.includes('tw') || browserLang.includes('hk') || browserLang.includes('hant')) {
+        // For display language, map Traditional Chinese and Cantonese appropriately
+        if (browserLang.includes('TW') || browserLang.includes('tw') || browserLang.includes('hk') || browserLang.includes('HK') || browserLang.includes('hant') || browserLang.includes('Hant')) {
             return 'zh-tw';
-        } else if (browserLang.includes('yue') || browserLang.includes('cantonese')) {
+        } else if (browserLang.includes('yue') || browserLang.includes('cantonese') || browserLang.includes('Cantonese')) {
             return 'yue';
         } else {
+            // Default to Simplified Chinese for display language
             return 'zh';
         }
     }
@@ -627,8 +629,8 @@ function loadVoices() {
             return voiceLang === 'zh-hk' ||
                 voiceLang.includes('yue') ||
                 (voice.name.includes('粵語') || voice.name.includes('粤语'));
-        } else if (targetLang === 'zh-cn') {
-            return voiceLang === 'zh-cn' ||
+        } else if (targetLang === 'zh') {
+            return voiceLang === 'zh' ||
                 (voiceLang.startsWith('zh') &&
                     (voice.name.includes('普通话') ||
                         voice.name.includes('China mainland') ||
@@ -1059,7 +1061,33 @@ async function translateText(text, targetLang) {
     if (cached) return cached;
 
     try {
-        let translationLang = targetLang;
+        // Map internal language codes to Google Translate API codes
+        const GOOGLE_TRANSLATE_LANG_MAP = {
+            'zh': 'zh-CN',      // Simplified Chinese
+            'zh-tw': 'zh-TW',   // Traditional Chinese
+            'yue': 'yue',       // Cantonese
+            'ja': 'ja',
+            'ko': 'ko',
+            'es': 'es',
+            'fr': 'fr',
+            'de': 'de',
+            'ru': 'ru',
+            'ar': 'ar',
+            'pt': 'pt',
+            'it': 'it',
+            'nl': 'nl',
+            'pl': 'pl',
+            'tr': 'tr',
+            'vi': 'vi',
+            'th': 'th',
+            'id': 'id',
+            'ms': 'ms',
+            'hi': 'hi',
+            'ta': 'ta',
+            'en': 'en'
+        };
+        
+        let translationLang = GOOGLE_TRANSLATE_LANG_MAP[targetLang] || targetLang;
         let translated = text;
 
         if (targetLang === 'yue') {
@@ -1349,7 +1377,7 @@ async function createTranslationHTML(item) {
     // Map source language codes
     const langMap = {
         'en': 'en',
-        'zh': 'zh-cn',
+        'zh': 'zh',
         'yue': 'yue',
         'ja': 'ja',
         'ko': 'ko',
@@ -1507,7 +1535,8 @@ function exportAsTXT() {
     if (displayMode === 'transcription') {
         content += 'Mode: Transcription Only\n';
     } else {
-        const langName = document.getElementById('targetLang').selectedOptions[0].text;
+        const langSelect = document.getElementById('targetLang');
+        const langName = langSelect && langSelect.selectedOptions[0] ? langSelect.selectedOptions[0].text : targetLang;
         content += 'Mode: Translation\n';
         content += 'Target Language: ' + langName + '\n';
     }
