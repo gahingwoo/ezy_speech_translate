@@ -10,31 +10,6 @@ Real-time speech recognition and translation system with secure authentication, 
 
 ---
 
-## System Architecture
-
-```
-┌─────────────────────────┐
-│   Admin Interface       │ ← Web Interface (Port 1916)
-│   admin_server.py       │   
-└───────────┬─────────────┘
-            │
-            │ WebSocket + REST API
-            │
-┌───────────▼─────────────┐
-│   Main Backend          │ ← Server (Port 1915)
-│   user_server.py        │   Flask + SocketIO
-└───────────┬─────────────┘
-            │
-            │ WebSocket Real-Time Communication
-            │
-┌───────────▼─────────────┐
-│   User Client           │ ← Browser Interface
-│   user.html             │   Real-Time Translation Display
-└─────────────────────────┘
-```
-
----
-
 ## 🎯 Choose Your Guide
 
 Select the guide that matches your role:
