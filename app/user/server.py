@@ -1,5 +1,5 @@
 """
-EzySpeechTranslate User Server - Secured HTTPS Version
+EzySpeechTranslate User Server
 Real-time speech recognition and translation system with security hardening
 """
 
@@ -170,7 +170,7 @@ def get_real_ip():
 
 def get_rate_limit_key():
     """Get unique identifier for rate limiting - always uses browser-specific client ID.
-    
+
     Each browser gets a persistent unique ID in a cookie (_client_id).
     Chrome and Firefox on same WiFi will have DIFFERENT IDs and won't block each other.
     This never falls back to IP.
@@ -179,11 +179,11 @@ def get_rate_limit_key():
     client_id = request.cookies.get('_client_id')
     if client_id:
         return f"client:{client_id}"
-    
+
     # If no cookie yet, check if request.client_id was set by before_request
     if hasattr(request, 'client_id'):
         return f"client:{request.client_id}"
-    
+
     # For Socket.IO or other cases without cookies, generate temporary ID
     # This will be written to cookie in after_request
     return f"client:{secrets.token_hex(16)}"
@@ -297,24 +297,24 @@ def is_client_blocked(client_key=None):
     """Check if client/session is blocked"""
     if client_key is None:
         client_key = get_client_key()
-    
+
     if client_key not in blocked_clients:
         return False
-    
+
     # Check if block has expired
     if client_key in blocked_since:
         if datetime.now() - blocked_since[client_key] > BLOCK_DURATION:
             blocked_clients.discard(client_key)
             blocked_since.pop(client_key, None)
             return False
-    
+
     return True
 
 def record_failed_login(client_key=None):
     """Record failed login attempt for a client/session"""
     if client_key is None:
         client_key = get_client_key()
-    
+
     now = datetime.now()
     attempts = failed_login_attempts[client_key]
 
@@ -334,7 +334,7 @@ def record_rate_violation(client_key=None):
     """Record rate limit violation for a client/session"""
     if client_key is None:
         client_key = get_client_key()
-    
+
     rate_limit_violations[client_key] += 1
 
     if rate_limit_violations[client_key] >= MAX_RATE_VIOLATIONS:
@@ -349,7 +349,7 @@ def record_suspicious_activity(reason, client_key=None):
     """Record suspicious activity for a client/session"""
     if client_key is None:
         client_key = get_client_key()
-    
+
     suspicious_patterns[client_key] += 1
     security_logger.warning(f"Suspicious activity from {client_key}: {reason}")
 
@@ -429,19 +429,26 @@ def validate_jwt_token(token):
 # ──────────────────────────────────────────
 MAX_HISTORY_SIZE = get_config('advanced', 'performance', 'cache_size', default=1000)
 translations_history = []
+next_translation_id = 0  # Global ID counter (never resets, always increments)
 connected_clients = set()          # all socket SIDs
 listener_clients = defaultdict(set) # ip -> {sids}  (non-admin only)
 admin_sessions = {}
 
 def add_translation(data):
     """Add translation with size limit"""
-    global translations_history
+    global translations_history, next_translation_id
+
+    # Assign stable ID (independent of history size)
+    if 'id' not in data or data['id'] is None:
+        data['id'] = next_translation_id
+        next_translation_id += 1
+
     translations_history.append(data)
 
-    # Limit history size
+    # Limit history size - keep only the most recent entries
     if len(translations_history) > MAX_HISTORY_SIZE:
         translations_history = translations_history[-MAX_HISTORY_SIZE:]
-        logger.info(f"History trimmed to {MAX_HISTORY_SIZE} items")
+        logger.info(f"History trimmed to {MAX_HISTORY_SIZE} items. Total IDs generated: {next_translation_id}")
 
 # ──────────────────────────────────────────
 # Middleware
@@ -454,7 +461,7 @@ def before_request():
     if not client_id:
         client_id = f"browser_{secrets.token_hex(16)}"
     request.client_id = client_id
-    
+
     client_key = f"client:{client_id}"
 
     # Check client/session blocking
@@ -486,7 +493,7 @@ def after_request(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-    
+
     # Set persistent client ID cookie if we generated a new one
     if hasattr(request, 'client_id') and not request.cookies.get('_client_id'):
         response.set_cookie(
@@ -497,7 +504,7 @@ def after_request(response):
             httponly=True,
             samesite='Strict'
         )
-    
+
     return response
 
 # ──────────────────────────────────────────
@@ -636,8 +643,9 @@ def get_translations():
 @check_client_access
 def clear_translations():
     """Clear translation history"""
-    global translations_history
+    global translations_history, next_translation_id
     translations_history = []
+    next_translation_id = 0  # Reset ID counter when clearing history
     socketio.emit('history_cleared')
     logger.info(f"Translation history cleared by {request.user.get('username')}")
     return jsonify({'success': True})
@@ -681,6 +689,8 @@ def export_translations(export_format):
             output += f"Corrected: {sanitize_text(item['corrected'], 500)}\n"
             output += "-" * 60 + "\n\n"
 
+        # Add UTF-8 BOM to ensure Windows/Excel correctly identifies encoding
+        output = '\ufeff' + output
         return output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
     elif export_format == 'csv':
@@ -696,6 +706,8 @@ def export_translations(export_format):
             ]
             output += ','.join(row) + '\n'
 
+        # Add UTF-8 BOM to ensure Windows/Excel correctly identifies encoding
+        output = '\ufeff' + output
         return output, 200, {'Content-Type': 'text/csv; charset=utf-8'}
 
     elif export_format == 'srt':
@@ -711,6 +723,8 @@ def export_translations(export_format):
             output += f"{start_time} --> {end_time}\n"
             output += f"{sanitize_text(item['corrected'], 500)}\n\n"
 
+        # Add UTF-8 BOM to ensure Windows/Excel correctly identifies encoding
+        output = '\ufeff' + output
         return output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 # ──────────────────────────────────────────
@@ -723,14 +737,14 @@ def handle_connect():
     client_id = None
     if hasattr(request, 'cookies'):
         client_id = request.cookies.get('_client_id')
-    
+
     # If no client_id in cookies, generate one
     if not client_id:
         client_id = f"browser_{secrets.token_hex(16)}"
-    
+
     client_key = f"client:{client_id}"
     client_ip = get_real_ip()
-    
+
     logger.info(f"Socket.IO connect attempt from {client_ip} (Client: {client_id}, SID: {request.sid})")
 
     if is_client_blocked(client_key):
@@ -767,15 +781,15 @@ def handle_disconnect(sid=None):
     client_id = None
     if hasattr(request, 'cookies'):
         client_id = request.cookies.get('_client_id')
-    
+
     if not client_id:
         client_id = 'unknown'
-    
+
     client_key = f"client:{client_id}"
     sid_used = sid if sid is not None else request.sid
     client_id_full = f"{client_key}:{sid_used}"
     connected_clients.discard(client_id_full)
-    
+
     # Remove this SID from listener tracking; clean up empty entries
     listener_clients[client_key].discard(sid_used)
     if not listener_clients[client_key]:
@@ -832,7 +846,7 @@ def handle_new_transcription(data):
         return
 
     translation_data = {
-        'id': len(translations_history),
+        'id': None,  # Will be assigned by add_translation()
         'timestamp': datetime.now().strftime('%H:%M:%S'),
         'original': raw_text,
         'corrected': raw_text,
@@ -865,18 +879,25 @@ def handle_correct_translation(data):
         emit('error', {'message': 'Invalid ID'})
         return
 
-    if translation_id >= len(translations_history):
-        emit('error', {'message': 'ID out of range'})
-        return
-
     if not corrected_text:
         emit('error', {'message': 'Empty correction'})
         return
 
-    translations_history[translation_id]['corrected'] = corrected_text
-    translations_history[translation_id]['is_corrected'] = True
+    # Find translation by ID (not by index)
+    target_item = None
+    for item in translations_history:
+        if item['id'] == translation_id:
+            target_item = item
+            break
 
-    socketio.emit('translation_corrected', translations_history[translation_id])
+    if target_item is None:
+        emit('error', {'message': 'Translation not found (may have been removed from history)'})
+        return
+
+    target_item['corrected'] = corrected_text
+    target_item['is_corrected'] = True
+
+    socketio.emit('translation_corrected', target_item)
     logger.info(f"✏️ [CORRECTED] ID {translation_id}")
     emit('correction_success', {'id': translation_id})
 
@@ -888,8 +909,9 @@ def handle_clear_history():
         disconnect()
         return
 
-    global translations_history
+    global translations_history, next_translation_id
     translations_history = []
+    next_translation_id = 0  # Reset ID counter when clearing history
     socketio.emit('history_cleared')
     logger.info(f"[CLEARED] History by {admin_sessions.get(request.sid)}")
 
@@ -915,8 +937,8 @@ def handle_delete_items(data):
         return
 
     global translations_history
-    
-    # Filter out items with IDs in the deletion list
+
+    # Filter out items with IDs in the deletion list (ID-based deletion, not index-based)
     original_count = len(translations_history)
     translations_history = [item for item in translations_history if item.get('id') not in item_ids]
     deleted_count = original_count - len(translations_history)

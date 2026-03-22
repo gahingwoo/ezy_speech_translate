@@ -9,6 +9,10 @@ let recognitionLanguage = 'en-US';
 let autoRestartEnabled = true;
 let restartTimeout = null;
 let finalTranscript = '';
+let sentenceBuffer = '';  // Buffer for sentence-level batching
+let pendingSentences = 0;  // Track complete sentences in buffer
+const SENTENCE_SEND_THRESHOLD = 2;  // Send after 2 complete sentences
+const SENTENCE_END_PATTERN = /[.!?。！？]+$/;  // Detect end of sentences
 let recognitionAttempts = 0;
 const MAX_SILENT_TIME = 15000;
 let lastSpeechTimestamp = Date.now();
@@ -354,8 +358,13 @@ function setupRecognitionHandlers() {
     recognition.onend = () => {
         console.log('🛑 Speech recognition ended');
 
-        // Do not auto-send here — final results are sent from onresult.
-        // Keep finalTranscript for any pending processing by onresult.
+        // Send any remaining buffered sentences when recognition ends
+        if (sentenceBuffer.trim().length > 0) {
+            console.log(`📤 Sending remaining buffer at recognition end: "${sentenceBuffer.trim()}"`);
+            sendTranscription(sentenceBuffer.trim(), 0.95);  // High confidence for buffered content
+            sentenceBuffer = '';
+            pendingSentences = 0;
+        }
 
         if (isRecording && autoRestartEnabled) {
             console.log('🔄 Auto-restarting in 300ms...');
@@ -434,18 +443,36 @@ function setupRecognitionHandlers() {
             const confidence = event.results[i][0].confidence;
 
             if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' ';
-                console.log('✅ Final:', transcript, 'Confidence:', confidence);
-
-                sendTranscription(finalTranscript.trim(), confidence);
-                finalTranscript = '';
-
-                updateInterimDisplay('✓ Sent', true);
-                setTimeout(() => {
-                    if (isRecording) {
-                        updateInterimDisplay('🎤 Listening...', true);
+                // Add to sentence buffer
+                sentenceBuffer += transcript + ' ';
+                
+                // Check if this completes a sentence
+                const trimmedBuffer = sentenceBuffer.trim();
+                if (SENTENCE_END_PATTERN.test(trimmedBuffer)) {
+                    pendingSentences++;
+                    console.log(`✅ Sentence ${pendingSentences} complete: "${trimmedBuffer}"`);
+                    
+                    // Auto-send if buffer reaches threshold (2-3 sentences)
+                    if (pendingSentences >= SENTENCE_SEND_THRESHOLD) {
+                        console.log(`📤 Auto-sending ${pendingSentences} sentences...`);
+                        sendTranscription(sentenceBuffer.trim(), confidence);
+                        sentenceBuffer = '';
+                        pendingSentences = 0;
+                        
+                        updateInterimDisplay('✓ Sent', true);
+                        setTimeout(() => {
+                            if (isRecording) {
+                                updateInterimDisplay('🎤 Listening...', true);
+                            }
+                        }, 500);
+                    } else {
+                        // Show buffer is accumulating
+                        updateInterimDisplay(`📝 Buffering (${pendingSentences}/${SENTENCE_SEND_THRESHOLD} sentences)...`, true);
                     }
-                }, 500);
+                } else {
+                    // No sentence end detected yet
+                    updateInterimDisplay(`💭 Waiting for sentence end... "${trimmedBuffer}"`, true);
+                }
             } else {
                 interimTranscript += transcript;
             }
@@ -546,6 +573,14 @@ function stopRecording() {
     console.log('⏹️ Stopping recording');
     isRecording = false;
     autoRestartEnabled = false;
+
+    // Clear any pending sentence buffer when stopping
+    if (sentenceBuffer.trim().length > 0) {
+        console.log(`📤 Flushing buffer on stop: "${sentenceBuffer.trim()}"`);
+        sendTranscription(sentenceBuffer.trim(), 0.95);
+        sentenceBuffer = '';
+        pendingSentences = 0;
+    }
 
     if (restartTimeout) {
         clearTimeout(restartTimeout);

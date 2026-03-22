@@ -260,18 +260,19 @@ body {
     height: 8px;
     border-radius: 50%;
     background: currentColor;
-    animation: pulse 2s infinite;
+    /* Reduced motion: slower pulse animation (4s instead of 2s) to be photosensitivity-friendly */
+    animation: pulse 4s ease-in-out infinite;
 }
 
 @keyframes pulse {
 
     0%,
     100% {
-        opacity: 1;
+        opacity: 0.8;
     }
 
     50% {
-        opacity: 0.5;
+        opacity: 0.6;
     }
 }
 
@@ -464,7 +465,8 @@ select:focus {
 }
 
 .pf-c-button.active {
-    animation: button-pulse 2s infinite;
+    /* Reduced motion: slower pulse animation (4s instead of 2s) to be photosensitivity-friendly */
+    animation: button-pulse 4s ease-in-out infinite;
 }
 
 @keyframes button-pulse {
@@ -475,7 +477,7 @@ select:focus {
     }
 
     50% {
-        opacity: 0.8;
+        opacity: 0.9;
     }
 }
 
@@ -580,24 +582,14 @@ select:focus {
     border-radius: 3px;
     padding: 1.25rem;
     transition: all 0.2s;
-    animation: slideIn 0.4s ease;
+    /* Removed slideIn animation to prevent flashing (accessibility for photosensitivity) */
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .translation-card:hover {
     border-color: var(--primary);
     box-shadow: 0 2px 8px var(--shadow);
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 .translation-card.corrected {
@@ -706,19 +698,16 @@ select:focus {
 .loading {
     color: var(--text-secondary);
     font-style: italic;
-    animation: fadeInOut 1.5s ease-in-out infinite;
+    /* Removed fadeInOut animation to prevent flashing (accessibility issue)
+       Using solid opacity instead of flickering animation */
+    opacity: 0.7;
+    position: relative;
 }
 
-@keyframes fadeInOut {
-
-    0%,
-    100% {
-        opacity: 0.5;
-    }
-
-    50% {
-        opacity: 1;
-    }
+/* Subtle loading indicator - no flickering */
+.loading::after {
+    content: '';
+    animation: none;
 }
 
 /* ===================================
@@ -919,6 +908,16 @@ select:focus {
 @media (max-width: 992px) {
     .pf-c-page__sidebar {
         width: 280px;
+    }
+}
+
+/* ===================================
+   Accessibility: Reduced Motion
+   =================================== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
     }
 }
 

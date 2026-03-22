@@ -1088,36 +1088,251 @@ async function translateText(text, targetLang) {
         };
         
         let translationLang = GOOGLE_TRANSLATE_LANG_MAP[targetLang] || targetLang;
+        
+        // Split long text into sentences to avoid truncation
+        // Google Translate API can truncate responses for very long texts
+        const splitThreshold = 1500; // Character threshold for splitting
+        let translated = null;
+        
+        if (text.length > splitThreshold) {
+            console.log('📝 Text length:', text.length, '- splitting for better translation...');
+            translated = await translateLongText(text, targetLang, translationLang);
+        } else {
+            translated = await performSingleTranslation(text, targetLang, translationLang);
+        }
+
+        if (translated && translated !== text && !translated.includes('(translation failed)')) {
+            sessionStorage.setItem(cacheKey, translated);
+            return translated;
+        }
+        
+        return translated || text;
+    } catch (error) {
+        console.error('Translation error:', error);
+        return text;
+    }
+}
+
+async function performSingleTranslation(text, targetLang, translationLang) {
+    try {
         let translated = text;
 
+        // Try Cantonese first if target is Cantonese
         if (targetLang === 'yue') {
             try {
-                const yueUrl = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=yue&dt=t&q=' + encodeURIComponent(text);
-                const yueResponse = await fetch(yueUrl);
-                const yueData = await yueResponse.json();
-                if (yueData && yueData[0] && yueData[0][0] && yueData[0][0][0]) {
-                    translated = yueData[0][0][0];
+                const result = await translateViaApi(text, 'yue');
+                if (result && result.length > 0) {
+                    translated = result;
+                    console.log('✅ Cantonese translation successful (' + result.length + ' chars):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
+                    return translated;
                 }
+                console.warn('⚠️ Cantonese translation response empty or malformed');
             } catch (err) {
-                console.log('Cantonese translation fallback to zh-TW');
+                console.warn('❌ Cantonese translation failed, falling back to zh-TW:', err.message);
                 translationLang = 'zh-TW';
             }
         }
 
-        if (translated === text) {
-            const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + translationLang + '&dt=t&q=' + encodeURIComponent(text);
-            const response = await fetch(url);
+        // Standard translation
+        console.log('📡 Translating to (' + translationLang + ') - text length:', text.length, 'chars');
+        
+        const result = await translateViaApi(text, translationLang);
+        
+        if (result && result.length > 0) {
+            console.log('✅ Translation successful (' + result.length + ' chars):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
+            return result;
+        }
+        
+        console.warn('⚠️ Translation response empty or malformed');
+        return text;
+        
+    } catch (error) {
+        console.error('❌ Translation error:', error.message);
+        return text;
+    }
+}
+
+async function translateViaApi(text, targetLang) {
+    try {
+        // Use POST request to avoid URL length limitations (GET has ~2048 char limit)
+        const url = 'https://translate.googleapis.com/translate_a/element.js?client=gtx';
+        
+        // Build form data for POST request
+        const formData = new FormData();
+        formData.append('sl', 'auto');
+        formData.append('tl', targetLang);
+        formData.append('text', text);
+        
+        const response = await fetch('https://translate.googleapis.com/translate_a/single', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'client=gtx&sl=auto&tl=' + encodeURIComponent(targetLang) + '&dt=t&q=' + encodeURIComponent(text),
+            timeout: 10000
+        });
+        
+        if (!response.ok) {
+            throw new Error('API returned status ' + response.status);
+        }
+        
+        const data = await response.json();
+        
+        // Extract ALL translation segments from the API response
+        const result = extractAllTranslations(data);
+        return result;
+        
+    } catch (error) {
+        console.error('❌ API call failed:', error.message);
+        // Fallback to GET request
+        console.log('🔄 Falling back to GET request...');
+        try {
+            const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(targetLang) + '&dt=t&q=' + encodeURIComponent(text);
+            const response = await fetch(url, { timeout: 10000 });
+            
+            if (!response.ok) {
+                throw new Error('Fallback GET also failed');
+            }
+            
             const data = await response.json();
-            if (data && data[0] && data[0][0] && data[0][0][0]) {
-                translated = data[0][0][0];
+            const result = extractAllTranslations(data);
+            return result;
+        } catch (fallbackError) {
+            console.error('❌ Fallback GET request also failed:', fallbackError.message);
+            return '';
+        }
+    }
+}
+
+function extractAllTranslations(data) {
+    // Google Translate API returns different structures for different languages
+    // Simplified Chinese: splits into multiple segments in data[0]
+    // Traditional Chinese: returns as single complete segment in data[0][0][0]
+    
+    if (!data || !Array.isArray(data) || data.length === 0) {
+        console.warn('⚠️ extractAllTranslations: data is empty or not array');
+        return '';
+    }
+    
+    console.log('📊 API Response - data[0] length:', data[0] ? data[0].length : 'undefined');
+    
+    // Method 1: Iterate through all items in data[0] and collect all translations
+    // This handles BOTH single-segment (zh-tw) and multi-segment (zh) responses
+    if (data[0] && Array.isArray(data[0])) {
+        let result = '';
+        let foundCount = 0;
+        
+        for (let i = 0; i < data[0].length; i++) {
+            const item = data[0][i];
+            
+            // Check if item is [translation, original, ...]
+            if (Array.isArray(item) && item.length > 0) {
+                const segment = item[0];
+                if (typeof segment === 'string' && segment.trim().length > 0) {
+                    result += segment;
+                    foundCount++;
+                }
             }
         }
+        
+        if (foundCount > 0) {
+            console.log('✅ Merged', foundCount, 'segment(s):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
+            return result;
+        }
+    }
+    
+    // Method 2: Deep search for any string values in the response (fallback)
+    console.log('🔍 Trying deep search...');
+    const allText = searchForTranslations(data);
+    if (allText && allText.length > 0) {
+        console.log('✅ Deep search found:', allText.length, 'chars');
+        return allText;
+    }
+    
+    console.warn('⚠️ Could not extract translation from any method');
+    return '';
+}
 
-        sessionStorage.setItem(cacheKey, translated);
-        return translated;
+function searchForTranslations(obj, visited = new Set(), maxDepth = 10) {
+    // Recursively search for text that looks like translations
+    if (maxDepth <= 0 || visited.has(obj)) return '';
+    
+    if (typeof obj === 'string') {
+        // Return strings that look like they could be translations (not URLs, metadata, etc)
+        if (obj.length > 2 && obj.length < 5000 && !obj.includes('://')) {
+            return obj;
+        }
+        return '';
+    }
+    
+    if (!obj || typeof obj !== 'object') return '';
+    
+    visited.add(obj);
+    let result = '';
+    
+    if (Array.isArray(obj)) {
+        for (let i = 0; i < Math.min(obj.length, 20); i++) {
+            const nested = searchForTranslations(obj[i], visited, maxDepth - 1);
+            if (nested && nested.length > 0) {
+                result = nested; // Return the first non-empty string found
+                break;
+            }
+        }
+    } else {
+        const keys = Object.keys(obj);
+        for (let key of keys) {
+            const nested = searchForTranslations(obj[key], visited, maxDepth - 1);
+            if (nested && nested.length > 0) {
+                result = nested;
+                break;
+            }
+        }
+    }
+    
+    return result;
+}
+
+async function translateLongText(text, targetLang, translationLang) {
+    try {
+        // Split by sentences: periods, question marks, exclamation marks, or newlines
+        const sentenceRegex = /[。！？!?.；;\n]+/;
+        let sentences = text.split(sentenceRegex).filter(s => s.trim().length > 0);
+        
+        // If still too few sentences, split by commas for longer segments
+        if (sentences.length < 3) {
+            sentences = text.split(/[，,、；;\n]+/).filter(s => s.trim().length > 0);
+        }
+        
+        console.log('📚 Splitting long text into', sentences.length, 'segments');
+        
+        // Translate each sentence
+        const translatedSentences = [];
+        for (let i = 0; i < sentences.length; i++) {
+            const segment = sentences[i].trim();
+            if (segment.length === 0) continue;
+            
+            try {
+                const result = await performSingleTranslation(segment, targetLang, translationLang);
+                translatedSentences.push(result);
+                
+                // Add small delay to avoid rate limiting
+                if (i < sentences.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            } catch (err) {
+                console.warn('Failed to translate segment', i, ':', err.message);
+                translatedSentences.push(segment); // Fallback to original
+            }
+        }
+        
+        // Rejoin with original delimiters preserved
+        let result = translatedSentences.join('');
+        console.log('✅ Long text translation complete:', result.substring(0, 50) + '...');
+        return result;
+        
     } catch (error) {
-        console.error('Translation error:', error);
-        return text + ' (translation failed)';
+        console.error('❌ Long text translation error:', error.message);
+        return text;
     }
 }
 
@@ -1515,11 +1730,21 @@ function exportData() {
             extension = 'txt';
     }
 
+    // Add UTF-8 BOM for text files to ensure proper encoding on Windows and other devices
+    // BOM (Byte Order Mark) \uFEFF helps Windows and Excel correctly identify UTF-8 encoding
+    if (format !== 'json') {
+        content = '\uFEFF' + content;
+    }
+
     const blob = new Blob([content], { type: mimeType + ';charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'EzySpeech_' + targetLang + '_' + timestamp + '.' + extension;
+    
+    // Generate filename based on mode
+    const modeLabel = displayMode === 'transcription' ? 'Transcription' : targetLang.toUpperCase();
+    a.download = 'EzySpeech_' + modeLabel + '_' + timestamp + '.' + extension;
+    
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1796,3 +2021,155 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 console.log('✅ EzySpeechTranslate Client Ready');
+
+/* ===================================
+   Debug Function (call from console)
+   =================================== */
+
+window.debugTranslate = async function(text, targetLang = 'zh') {
+    console.clear();
+    console.log('🔍 DEBUG TRANSLATION');
+    console.log('='.repeat(60));
+    console.log('Text length:', text.length, 'characters');
+    console.log('Target language:', targetLang);
+    console.log('='.repeat(60));
+    
+    try {
+        const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(targetLang) + '&dt=t&q=' + encodeURIComponent(text);
+        
+        console.log('\n📡 Fetching from Google Translate API...');
+        console.log('URL length:', url.length);
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('\n📊 RAW API RESPONSE:');
+        console.log(JSON.stringify(data, null, 2));
+        
+        console.log('\n🔎 ANALYZING RESPONSE STRUCTURE:');
+        console.log('data is array:', Array.isArray(data));
+        console.log('data length:', data ? data.length : 'undefined');
+        console.log('data[0] is array:', data && data[0] ? Array.isArray(data[0]) : 'undefined');
+        console.log('data[0] length:', data && data[0] ? data[0].length : 'undefined');
+        
+        if (data && data[0]) {
+            console.log('\n📋 DATA[0] CONTENTS (first 10 items):');
+            for (let i = 0; i < Math.min(10, data[0].length); i++) {
+                const item = data[0][i];
+                if (Array.isArray(item) && item.length > 0) {
+                    console.log(`  [${i}]:`, {
+                        isArray: Array.isArray(item),
+                        length: item.length,
+                        firstElement: typeof item[0],
+                        firstElementContent: item[0],
+                        secondElement: typeof item[1],
+                        secondElementContent: item[1]
+                    });
+                } else {
+                    console.log(`  [${i}]:`, item);
+                }
+            }
+        }
+        
+        console.log('\n✅ EXTRACTION METHODS:');
+        
+        // Test Method 1
+        if (data && data[0] && data[0][0] && Array.isArray(data[0][0])) {
+            console.log('Method 1 (data[0][0][0]):', data[0][0][0]);
+        } else {
+            console.log('Method 1: NOT APPLICABLE');
+        }
+        
+        // Test Method 2
+        let method2Result = '';
+        if (data && data[0] && Array.isArray(data[0])) {
+            for (let i = 0; i < data[0].length; i++) {
+                const item = data[0][i];
+                if (Array.isArray(item) && item.length > 0 && typeof item[0] === 'string') {
+                    method2Result += item[0];
+                }
+            }
+        }
+        console.log('Method 2 (collect all):', method2Result.substring(0, 100) + (method2Result.length > 100 ? '...' : ''));
+        console.log('  Length:', method2Result.length, 'chars');
+        
+    } catch (error) {
+        console.error('❌ Error:', error.message);
+    }
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('🎯 To test, call: debugTranslate("your text here", "zh")');
+};
+
+console.log('\n💡 DEBUG TIPS:');
+console.log('debugTranslate("And acting on the Sermon on the Mount arises in our hearts...", "zh")');
+console.log('debugTranslateMultipleLangs("And acting on the Sermon on the Mount arises in our hearts...")');
+
+window.debugTranslateMultipleLangs = async function(text) {
+    console.clear();
+    console.log('🔍 MULTI-LANGUAGE DEBUG');
+    console.log('='.repeat(60));
+    
+    const languages = ['zh', 'zh-tw', 'yue', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar'];
+    const results = {};
+    
+    for (const lang of languages) {
+        console.log(`\n📡 Testing ${lang}...`);
+        
+        try {
+            const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(lang) + '&dt=t&q=' + encodeURIComponent(text);
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            // Analyze structure
+            const data0Length = data && data[0] ? data[0].length : 0;
+            
+            let extractedText = '';
+            if (data && data[0] && Array.isArray(data[0])) {
+                for (let i = 0; i < data[0].length; i++) {
+                    const item = data[0][i];
+                    if (Array.isArray(item) && item.length > 0 && typeof item[0] === 'string') {
+                        extractedText += item[0];
+                    }
+                }
+            }
+            
+            results[lang] = {
+                segments: data0Length,
+                extractedLength: extractedText.length,
+                extractedSample: extractedText.substring(0, 60) + (extractedText.length > 60 ? '...' : ''),
+                status: '✅'
+            };
+            
+            console.log(`  ✅ Segments: ${data0Length}, Total: ${extractedText.length} chars`);
+            
+        } catch (error) {
+            results[lang] = {
+                status: '❌',
+                error: error.message
+            };
+            console.log(`  ❌ Error: ${error.message}`);
+        }
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 SUMMARY:');
+    console.log('='.repeat(60));
+    
+    for (const [lang, result] of Object.entries(results)) {
+        if (result.status === '✅') {
+            console.log(`${lang.padEnd(6)} | Segments: ${String(result.segments).padEnd(2)} | Length: ${String(result.extractedLength).padEnd(3)} | ${result.extractedSample}`);
+        } else {
+            console.log(`${lang.padEnd(6)} | ❌ ${result.error}`);
+        }
+    }
+    
+    console.log('='.repeat(60));
+    console.log('\n💡 Potential issues to watch for:');
+    console.log('- Languages with multiple segments (like zh) need merging');
+    console.log('- Different languages may have different response formats');
+    console.log('- Some languages might return incomplete translations');
+};
