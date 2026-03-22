@@ -134,12 +134,12 @@ function applyFontSize() {
 
 function applyDisplayMode() {
     const languageGroup = document.getElementById('languageSelectGroup');
-    const ttsSection = document.querySelector('.sidebar-section');
+    const ttsSection = document.querySelector('.sidebar-section:has(#toggleTTS)');
+    // Keep language selector visible in all modes (no changes needed)
+    // Only hide TTS section in transcription mode
     if (displayMode === 'transcription') {
-        if (languageGroup) languageGroup.style.display = 'none';
         if (ttsSection) ttsSection.style.display = 'none';
     } else {
-        if (languageGroup) languageGroup.style.display = 'block';
         if (ttsSection) ttsSection.style.display = 'block';
     }
 }
@@ -774,15 +774,13 @@ function changeDisplayMode() {
 }
 
 function updateDisplayMode() {
-    const languageGroup = document.getElementById('languageSelectGroup');
     const ttsSection = document.querySelector('.sidebar-section:has(#toggleTTS)');
     const mainTitleText = document.getElementById('mainTitleText');
     const emptyStateText = document.getElementById('emptyStateText');
     const emptyStateDesc = document.getElementById('emptyStateDesc');
 
     if (displayMode === 'transcription') {
-        // Hide language selector and TTS in transcription mode
-        if (languageGroup) languageGroup.style.display = 'none';
+        // Hide TTS section in transcription mode (language selector stays visible)
         if (ttsSection) ttsSection.style.display = 'none';
 
         // Update title (use localized string when available)
@@ -794,8 +792,7 @@ function updateDisplayMode() {
 
         console.log('📝 Transcription mode enabled');
     } else {
-        // Show language selector and TTS in translation mode
-        if (languageGroup) languageGroup.style.display = 'block';
+        // Show TTS in translation mode
         if (ttsSection) ttsSection.style.display = 'block';
 
         // Update title (use localized string when available)
