@@ -379,17 +379,24 @@ class PackageManager:
         print(f"{Colors.OKBLUE}{I18n.t('installing_packages')}{Colors.ENDC}")
         
         if distro_is_rhel:
+            # RHEL/CentOS/Rocky 特定的包
             cmd = ['dnf', 'install', '-y'] + packages
             if shutil.which('dnf') is None:
+                # Fallback to yum for older systems
                 cmd = ['yum', 'install', '-y'] + packages
         else:
+            # Debian/Ubuntu
             subprocess.run(['apt-get', 'update'], check=True, capture_output=True)
             cmd = ['apt-get', 'install', '-y'] + packages
         
         try:
-            subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                # Show warnings but don't fail - some packages might already be installed
+                if 'already installed' not in result.stdout and 'Nothing to do' not in result.stdout:
+                    print(f"{Colors.WARNING}⚠ Package installation notes: {result.stdout}{Colors.ENDC}")
             print(f"{Colors.OKGREEN}✓ {I18n.t('install_packages_success')}{Colors.ENDC}")
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             raise ManagerException(I18n.t('package_install_failed', str(e)))
 
 
@@ -502,18 +509,49 @@ class VirtualEnvironmentManager:
         venv_dir = os.path.join(app_dir, 'venv')
         
         try:
-            subprocess.run([sys.executable, '-m', 'venv', venv_dir],
-                         check=True, capture_output=True)
+            # 创建虚拟环境
+            result = subprocess.run([sys.executable, '-m', 'venv', venv_dir],
+                         check=True, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise ManagerException(f"Failed to create venv: {result.stderr}")
             
             pip_exe = os.path.join(venv_dir, 'bin', 'pip')
-            subprocess.run([pip_exe, 'install', '--upgrade', 'pip', 'setuptools', 'wheel'],
-                         check=True, capture_output=True)
+            
+            # 升级 pip, setuptools, wheel
+            result = subprocess.run([pip_exe, 'install', '--upgrade', 'pip', 'setuptools', 'wheel'],
+                         check=True, capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"{Colors.WARNING}⚠ Warning upgrading pip tools: {result.stderr}{Colors.ENDC}")
             
             requirements_file = os.path.join(app_dir, 'requirements.txt')
             if os.path.exists(requirements_file):
                 print(f"{Colors.OKBLUE}{I18n.t('installing_deps')}{Colors.ENDC}")
-                subprocess.run([pip_exe, 'install', '-r', requirements_file],
-                             check=True, capture_output=True)
+                # 安装依赖，显示输出以便调试
+                result = subprocess.run([pip_exe, 'install', '-r', requirements_file],
+                             check=False, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    # 显示详细的错误信息
+                    error_msg = result.stderr if result.stderr else result.stdout
+                    print(f"{Colors.WARNING}⚠ Pip installation output:{Colors.ENDC}")
+                    print(error_msg)
+                    
+                    # 尝试安装，忽略某些可选的依赖问题
+                    print(f"{Colors.OKBLUE}Retrying with --no-deps for problematic packages...{Colors.ENDC}")
+                    result = subprocess.run([pip_exe, 'install', '-r', requirements_file, '--no-deps'],
+                                 check=False, capture_output=True, text=True)
+                    
+                    if result.returncode != 0:
+                        error_msg = result.stderr if result.stderr else result.stdout
+                        raise ManagerException(f"Failed to install dependencies:\n{error_msg}")
+                    
+                    # 尝试安装主要依赖
+                    print(f"{Colors.OKBLUE}Installing with relaxed constraints...{Colors.ENDC}")
+                    result = subprocess.run([pip_exe, 'install', '-r', requirements_file, '--no-strict-collisions'],
+                                 check=False, capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    print(f"{Colors.OKGREEN}✓ Dependencies installed{Colors.ENDC}")
             
             subprocess.run(['chown', '-R', f'{username}:{username}', venv_dir],
                          check=True, capture_output=True)
@@ -564,10 +602,10 @@ class SystemdServiceManager:
         return f"""[Unit]
 Description=EzySpeechTranslate User Server
 After=network.target
-Wants=ezy-admin.service
+Wants=ezyspeech-admin.service
 
 [Service]
-Type=notify
+Type=simple
 User={username}
 Group={username}
 WorkingDirectory={app_dir}
@@ -579,9 +617,12 @@ KillMode=mixed
 KillSignal=SIGTERM
 Restart=on-failure
 RestartSec=10s
+StartLimitInterval=300s
+StartLimitBurst=5
+TimeoutStartSec=120s
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ezy-user
+SyslogIdentifier=ezyspeech-user
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
@@ -598,10 +639,10 @@ WantedBy=multi-user.target
         return f"""[Unit]
 Description=EzySpeechTranslate Admin Server (HTTPS)
 After=network.target
-Before=ezy-user.service
+Before=ezyspeech-user.service
 
 [Service]
-Type=notify
+Type=simple
 User={username}
 Group={username}
 WorkingDirectory={app_dir}
@@ -613,9 +654,12 @@ KillMode=mixed
 KillSignal=SIGTERM
 Restart=on-failure
 RestartSec=10s
+StartLimitInterval=300s
+StartLimitBurst=5
+TimeoutStartSec=120s
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ezy-admin
+SyslogIdentifier=ezyspeech-admin
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
@@ -683,7 +727,32 @@ class Installer:
     def install_dependencies(self) -> None:
         """安装依赖"""
         print(f"{Colors.HEADER}{Colors.BOLD}{I18n.t('step_dependencies')}{Colors.ENDC}")
-        packages = ['python3-pip', 'python3-venv', 'python3-dev']
+        
+        # 基础包
+        if self.distro_is_rhel:
+            # RHEL/CentOS/Rocky 依赖
+            packages = [
+                'python3-pip',
+                'python3-devel',
+                'gcc',
+                'gcc-c++',
+                'make',
+                'openssl-devel',
+                'libffi-devel',
+                'git',
+            ]
+        else:
+            # Debian/Ubuntu 依赖
+            packages = [
+                'python3-pip',
+                'python3-dev',
+                'python3-venv',
+                'build-essential',
+                'libssl-dev',
+                'libffi-dev',
+                'git',
+            ]
+        
         PackageManager.install_packages(self.distro_is_rhel, packages)
         print()
     

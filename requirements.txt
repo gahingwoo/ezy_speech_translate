@@ -32,7 +32,7 @@ eventlet==0.40.3
 # Authentication & Security
 # ============================================
 PyJWT==2.8.0
-cryptography==44.0.1
+cryptography>=41.0.0,<45.0.0
 flask-limiter==3.5.0
 flask-talisman==1.1.0
 python-dotenv==1.0.0
