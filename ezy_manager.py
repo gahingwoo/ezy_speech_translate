@@ -576,9 +576,9 @@ class SELinuxManager:
         print(f"{Colors.OKBLUE}{I18n.t('configuring_selinux')}{Colors.ENDC}")
         
         selinux_contexts = [
-            (app_dir, 'admin_home_t'),
-            (os.path.join(app_dir, 'logs'), 'admin_home_t'),
-            (os.path.join(app_dir, 'config'), 'admin_home_t'),
+            (app_dir, 'admin_var_lib_t'),
+            (os.path.join(app_dir, 'logs'), 'admin_var_lib_t'),
+            (os.path.join(app_dir, 'config'), 'admin_var_lib_t'),
         ]
         
         try:
@@ -602,7 +602,6 @@ class SystemdServiceManager:
         return f"""[Unit]
 Description=EzySpeechTranslate User Server
 After=network.target
-Wants=ezyspeech-admin.service
 
 [Service]
 Type=simple
@@ -611,23 +610,12 @@ Group={username}
 WorkingDirectory={app_dir}
 Environment="PATH={os.path.join(venv_dir, 'bin')}:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
-ExecStart={os.path.join(venv_dir, 'bin', 'python')} -c "from app.user.server import app, socketio; socketio.run(app)"
-ExecReload=/bin/kill -HUP $MAINPID
-KillMode=mixed
-KillSignal=SIGTERM
-Restart=on-failure
-RestartSec=10s
-StartLimitInterval=300s
-StartLimitBurst=5
-TimeoutStartSec=120s
+ExecStart={os.path.join(venv_dir, 'bin', 'python')} {os.path.join(app_dir, 'app', 'user', 'server.py')}
+Restart=always
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ezyspeech-user
 NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths={app_dir}
 
 [Install]
 WantedBy=multi-user.target
@@ -637,9 +625,8 @@ WantedBy=multi-user.target
     def create_admin_service(app_dir: str, venv_dir: str, username: str) -> str:
         """生成管理服务内容"""
         return f"""[Unit]
-Description=EzySpeechTranslate Admin Server (HTTPS)
+Description=EzySpeechTranslate Admin Server
 After=network.target
-Before=ezyspeech-user.service
 
 [Service]
 Type=simple
@@ -648,23 +635,12 @@ Group={username}
 WorkingDirectory={app_dir}
 Environment="PATH={os.path.join(venv_dir, 'bin')}:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
-ExecStart={os.path.join(venv_dir, 'bin', 'python')} -c "from app.admin.server import app, socketio; socketio.run(app)"
-ExecReload=/bin/kill -HUP $MAINPID
-KillMode=mixed
-KillSignal=SIGTERM
-Restart=on-failure
-RestartSec=10s
-StartLimitInterval=300s
-StartLimitBurst=5
-TimeoutStartSec=120s
+ExecStart={os.path.join(venv_dir, 'bin', 'python')} {os.path.join(app_dir, 'app', 'admin', 'server.py')}
+Restart=always
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ezyspeech-admin
 NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths={app_dir}
 
 [Install]
 WantedBy=multi-user.target
