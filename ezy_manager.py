@@ -1005,33 +1005,178 @@ class ConfigurationManager:
         print(f"{Colors.OKBLUE}{I18n.t('generating_config')}{Colors.ENDC}")
         
         # 生成默认配置
-        default_config = """# EzySpeechTranslate 默认配置
+        default_config = """
+# # EzySpeechTranslate Production Configuration
+# Version 3
 
 # ============================================
-# 用户服务器配置
+# DEPLOYMENT GUIDE
+# ============================================
+# This configuration supports multiple deployment scenarios:
+#
+# Scenario 1: Local Development (HTTP)
+#   server.use_https: false
+#   admin_server.use_https: false
+#
+# Scenario 2: Production with HTTPS
+#   server.use_https: true
+#   admin_server.use_https: true
+#
+# Scenario 3: Admin HTTPS + User Server via CF Tunnel (RECOMMENDED)
+#   server.use_https: false
+#   server.external_url: "https://your-tunnel.example.com"
+#   admin_server.use_https: true
+#
+#   The admin panel (HTTPS) will connect to your CF Tunnel (also HTTPS),
+#   which then proxies to the internal user server (HTTP).
+#   This avoids Mixed Content errors and security issues.
+#
+# ============================================
+# Main Server Configuration
 # ============================================
 server:
-  host: "0.0.0.0"           # 监听地址
-  port: 5000                # 监听端口
-  use_https: false          # 是否使用HTTPS
-  max_connections: 100
-
+  host: "0.0.0.0"                    # Listen on all interfaces
+  port: 1915                         # User frontend port
+  debug: false                       # NEVER enable in production
+  secret_key: "{{ GENERATE_RANDOM_SECRET_64_CHARS }}"  # MUST CHANGE!  
+  use_https: false                   # Use HTTPS (true) or HTTP (false)
+  external_url: null                 # External URL via tunnel (e.g., "https://your-tunnel.example.com")
+                                     # Use this when accessing via CF Tunnel or reverse proxy
+                                     # If set, admin will use this URL instead of direct access
 # ============================================
-# 管理服务器配置
+# Admin Frontend Server Configuration
 # ============================================
 admin_server:
-  host: "0.0.0.0"           # 监听地址
-  port: 5001                # 监听端口
-  use_https: true           # 建议使用HTTPS
-  ssl_cert: "/opt/ezy_speech_translate/config/ssl/cert.pem"
-  ssl_key: "/opt/ezy_speech_translate/config/ssl/key.pem"
+  host: "0.0.0.0"                    # Admin interface
+  port: 1916                         # Admin port (separate from main)
+  debug: false                       # NEVER enable in production  
+  use_https: false                   # Use HTTPS (true) or HTTP (false), must enable in production for web-speech-api
+# ============================================
+# Authentication Settings
+# ============================================
+authentication:
+  enabled: true                      # Keep enabled for security
+  admin_username: "admin"  # Change from default "admin"
+  session_timeout: 7200              # 2 hours (7200 seconds)
 
 # ============================================
-# 日志配置
+# Logging Configuration
 # ============================================
 logging:
-  level: "INFO"             # 日志级别
+  level: "INFO"                      # Use INFO or WARNING in production
+  file: "logs/app.log"               # Main application log
+  max_bytes: 10485760                # 10MB per log file
+  backup_count: 5                    # Keep 5 backup files
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# ============================================
+# Database Configuration (Optional)
+# ============================================
+database:
+  enabled: false                     # Enable if you need persistent storage
+  type: "sqlite"                     # Options: sqlite, postgresql, mysql
+  path: "data/translations.db"       # SQLite path
+
+  # For PostgreSQL/MySQL:
+  # host: "localhost"
+  # port: 5432
+  # username: "{{ DB_USERNAME }}"
+  # password: "{{ DB_PASSWORD }}"
+  # database: "ezyspeech"
+
+# ============================================
+# Export Configuration
+# ============================================
+export:
+  default_format: "srt"              # Default: srt, txt, json, csv
+  output_directory: "exports"        # Export directory
+  include_timestamps: true
+  include_corrections: true
+
+# ============================================
+# Advanced Settings - Security Hardened
+# ============================================
+advanced:
+  # WebSocket settings
+  websocket:
+    ping_timeout: 60                 # Connection timeout (seconds)
+    ping_interval: 25                # Keep-alive interval (seconds)
+    max_message_size: 1048576        # 1MB max message size
+
+  # Performance settings
+  performance:
+    max_concurrent_translations: 10  # Concurrent translation limit
+    translation_timeout: 30          # Request timeout (seconds)
+    cache_size: 1000                 # Max translations to cache
+
+  # Security settings
+  security:
+    # IMPORTANT: Change CORS in production!
+    # Development: Use "*"
+    # Production: Specify your domain(s)
+    cors_origins: "*"
+    # Or multiple origins:
+    # cors_origins:
+    #   - "https://yourdomain.com"
+    #   - "https://admin.yourdomain.com"
+
+    rate_limit_enabled: true         # Enable in production
+    max_requests_per_minute: 1000      # Requests per IP per minute
+    # Number of failed login attempts before temporary ban
+    max_login_attempts: 10
+    # Failed login window (minutes) before counts reset
+    login_attempt_window_minutes: 5
+    # Max login attempts per minute (rate for login requests)
+    login_rate_limit: 20
+    # Max simultaneous WebSocket connections allowed per IP
+    max_ws_connections: 20
+    # How many suspicious/rate violations before blocking IP
+    max_rate_violations: 100
+    # Block duration in minutes for blocked IPs
+    block_duration_minutes: 60
+
+# ============================================
+# Feature Flags
+# ============================================
+features:
+  text_to_speech: true               # Enable TTS
+  real_time_sync: true               # Enable real-time sync
+  export_enabled: true               # Allow exports
+  dark_mode: true                    # Dark mode toggle
+
+# ============================================
+# PRODUCTION DEPLOYMENT CHECKLIST
+# ============================================
+# Before deploying to production:
+#
+# 1. Change server.secret_key to random 64+ character string
+# 2. Change authentication.admin_password to strong password
+# 3. Change authentication.jwt_secret to random string
+# 4. Change authentication.admin_username from "admin"
+# 5. Set advanced.security.cors_origins to your domain(s)
+# 6. Enable advanced.security.rate_limit_enabled = true
+# 7. Set server.debug = false
+# 8. Set admin_server.debug = false
+# 9. Set logging.level to "INFO" or "WARNING"
+# 10. Generate proper SSL certificates (not self-signed)
+# 11. Set up firewall rules
+# 12. Configure reverse proxy (Nginx/Apache)
+# 13. Set up log rotation
+# 14. Configure backup strategy
+# 15. Test all security features
+#
+# ============================================
+# GENERATE SECURE SECRETS
+# ============================================
+# Run this Python command to generate secrets:
+#
+#   python3 -c "import secrets; print('SECRET_KEY:', secrets.token_hex(32)); print('JWT_SECRET:', secrets.token_hex(32))"
+#
+# Or use this bash command:
+#
+#   openssl rand -hex 32
+#
+# ============================================
 """
         
         try:
