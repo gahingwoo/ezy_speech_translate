@@ -7,8 +7,13 @@ import os
 import sys
 import subprocess
 import shutil
+import time
+import socket
 from pathlib import Path
 from datetime import datetime
+
+
+REMOTE_URL = "https://github.com/gahingwoo/ezy_speech_translate.git"
 
 
 class UpdateManager:
@@ -50,7 +55,7 @@ class UpdateManager:
     
     def print_info(self, text):
         """Prints info message"""
-        print(f"ℹ {text}")
+        print(f"{text}")
     
     def backup_config(self):
         """Backup config directory"""
@@ -68,53 +73,121 @@ class UpdateManager:
         shutil.copytree(self.config_dir, self.backup_dir)
         self.print_success(f"Config backed up to {self.backup_dir}")
     
+    def _check_network(self):
+        """Check basic network connectivity"""
+        try:
+            socket.create_connection(("github.com", 443), timeout=5)
+            return True
+        except Exception:
+            return False
+    
+    def _init_git_repo(self):
+        """Initialize git repo and set remote origin"""
+        git_dir = self.project_root / ".git"
+        if git_dir.exists():
+            self.print_info("Removing existing .git directory for re-initialization...")
+            shutil.rmtree(git_dir)
+
+        self.print_info("Initializing git repository...")
+        subprocess.run(["git", "init"], cwd=self.project_root, check=True,
+                       capture_output=True, text=True)
+        subprocess.run(["git", "remote", "add", "origin", REMOTE_URL],
+                       cwd=self.project_root, check=True, capture_output=True, text=True)
+        self.print_success(f"Git repository initialized with remote: {REMOTE_URL}")
+
     def git_pull(self):
-        """Pull latest changes from git"""
+        """Pull latest changes from git with retry logic"""
         self.print_step(2, "Updating from git...")
-        
-        # Check if git repo exists
+
+        # Check network connectivity
+        if not self._check_network():
+            self.print_error("Network error: Cannot reach github.com. Check your internet connection.")
+
+        # Initialize repo if .git is missing
         git_dir = self.project_root / ".git"
         if not git_dir.exists():
-            self.print_info("Not a git repository, skipping git pull")
-            return
-        
-        try:
-            # Fetch all changes
-            result = subprocess.run(
-                ["git", "fetch", "--all"],
-                cwd=self.project_root,
-                capture_output=True,
-                text=True
-            )
-            
-            if result.returncode != 0:
-                self.print_error(f"Git fetch failed: {result.stderr}")
-            
-            # Pull changes
-            result = subprocess.run(
-                ["git", "pull", "origin", "main"],
-                cwd=self.project_root,
-                capture_output=True,
-                text=True
-            )
-            
-            # Git pull can return non-zero if already up-to-date
-            # Check for actual errors
-            if "fatal" in result.stderr.lower() and "does not exist" in result.stderr.lower():
-                # Try master branch instead
+            self.print_info(".git directory not found, initializing repository...")
+            self._init_git_repo()
+
+        max_retries = 3
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                # Fetch all changes
+                self.print_info(f"Fetching from git (attempt {retry_count + 1}/{max_retries})...")
                 result = subprocess.run(
-                    ["git", "pull", "origin", "master"],
+                    ["git", "fetch", "--all"],
                     cwd=self.project_root,
                     capture_output=True,
-                    text=True
+                    text=True,
+                    timeout=60
                 )
-            
-            if result.stdout:
-                print(result.stdout)
-            
-            self.print_success("Git repository updated")
-        except Exception as e:
-            self.print_error(f"Git update failed: {str(e)}")
+
+                if result.returncode != 0:
+                    if "TLS" in result.stderr or "SSL" in result.stderr or "handshake" in result.stderr.lower():
+                        # TLS/SSL issue — retry with backoff
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            wait_time = 2 ** retry_count
+                            self.print_info(f"TLS connection issue, retrying in {wait_time}s...")
+                            time.sleep(wait_time)
+                            continue
+                        else:
+                            self.print_error(f"Git fetch failed after {max_retries} attempts: {result.stderr}")
+                    else:
+                        # Other fetch error — re-initialize .git and retry
+                        self.print_info(f"Git fetch failed: {result.stderr.strip()}")
+                        self.print_info("Re-initializing git repository and retrying...")
+                        self._init_git_repo()
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            time.sleep(2)
+                            continue
+                        else:
+                            self.print_error(f"Git fetch failed after re-initialization: {result.stderr}")
+
+                # Pull changes — try main branch first, then master
+                pull_success = False
+                for branch in ["main", "master"]:
+                    result = subprocess.run(
+                        ["git", "pull", "origin", branch],
+                        cwd=self.project_root,
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+
+                    if result.returncode == 0:
+                        if result.stdout:
+                            print(result.stdout)
+                        self.print_success(f"Git repository updated from {branch} branch")
+                        pull_success = True
+                        break
+                    elif "does not exist" not in result.stderr.lower():
+                        # Real error, not just missing branch
+                        break
+
+                if pull_success:
+                    break
+                else:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        wait_time = 2 ** retry_count
+                        self.print_info(f"Retrying git pull in {wait_time}s...")
+                        time.sleep(wait_time)
+                    else:
+                        self.print_error(f"Git pull failed after {max_retries} attempts")
+
+            except subprocess.TimeoutExpired:
+                retry_count += 1
+                if retry_count < max_retries:
+                    self.print_info(f"Git operation timeout, retrying in {2 ** retry_count}s...")
+                    time.sleep(2 ** retry_count)
+                else:
+                    self.print_error(f"Git operations timed out after {max_retries} attempts")
+            except Exception as e:
+                self.print_error(f"Git update failed: {str(e)}")
     
     def restore_config(self):
         """Restore config files from backup"""
