@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import argparse
 
+REMOTE_URL = "https://github.com/gahingwoo/ezy_speech_translate.git"
 
 class Colors:
     """ANSI color codes"""
@@ -739,9 +740,26 @@ class Installer:
         print()
     
     def deploy_application(self) -> None:
-        """部署应用"""
+        """部署应用 — 直接 git clone 到目标目录"""
         print(f"{Colors.HEADER}{Colors.BOLD}{I18n.t('step_deploy')}{Colors.ENDC}")
-        FileManager.copy_application(self.src_dir, self.app_dir, self.service_user)
+
+        dest = Path(self.app_dir)
+
+        if dest.exists() and any(dest.iterdir()):
+            # 目录已存在且非空，跳过 clone，update.py 负责更新
+            print(f"{Colors.WARNING}⚠ {self.app_dir} already exists, skipping clone{Colors.ENDC}")
+        else:
+            dest.mkdir(parents=True, exist_ok=True)
+            print(f"{Colors.OKBLUE}Cloning from {REMOTE_URL} ...{Colors.ENDC}")
+            result = subprocess.run(
+                ["git", "clone", REMOTE_URL, str(dest)],
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                raise ManagerException(f"git clone failed: {result.stderr.strip()}")
+            print(f"{Colors.OKGREEN}✓ Repository cloned to {self.app_dir}{Colors.ENDC}")
+
+        FileManager.set_permissions(self.app_dir, self.service_user)
         FileManager.create_logs_dir(self.app_dir, self.service_user)
         print()
     

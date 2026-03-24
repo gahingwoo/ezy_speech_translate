@@ -10,7 +10,6 @@ import shutil
 import time
 import socket
 from pathlib import Path
-from datetime import datetime
 
 
 REMOTE_URL = "https://github.com/gahingwoo/ezy_speech_translate.git"
@@ -20,265 +19,238 @@ class UpdateManager:
     def __init__(self):
         self.project_root = Path(__file__).parent
         self.config_dir = self.project_root / "config"
-        self.backup_dir = self.project_root / ".config_backup"
+        self.backup_dir = Path("/tmp") / f"ezyspeech_config_backup_{os.getuid()}"
         self.venv_dir = self.project_root / "venv"
         self.python_exe = self._get_python_executable()
-        
+
     def _get_python_executable(self):
-        """Get the correct Python executable path"""
         if self.venv_dir.exists():
-            # If virtual environment exists, use it
             if sys.platform == "win32":
                 return str(self.venv_dir / "Scripts" / "python.exe")
             else:
                 return str(self.venv_dir / "bin" / "python")
         return sys.executable
-    
+
     def print_header(self, text):
-        """Prints a header"""
         print("\n" + "=" * 60)
         print(f"  {text}")
         print("=" * 60 + "\n")
-    
+
     def print_step(self, step_num, text):
-        """Prints a step"""
         print(f"[{step_num}] {text}")
-    
+
     def print_success(self, text):
-        """Prints success message"""
         print(f"✓ {text}")
-    
+
     def print_error(self, text):
-        """Prints error message"""
         print(f"✗ {text}")
         sys.exit(1)
-    
+
     def print_info(self, text):
-        """Prints info message"""
         print(f"{text}")
-    
+
     def backup_config(self):
-        """Backup config directory"""
         self.print_step(1, "Backing up configuration files...")
-        
         if not self.config_dir.exists():
             self.print_info("Config directory does not exist")
             return
-        
-        # Remove old backup
         if self.backup_dir.exists():
             shutil.rmtree(self.backup_dir)
-        
-        # Create backup
         shutil.copytree(self.config_dir, self.backup_dir)
         self.print_success(f"Config backed up to {self.backup_dir}")
-    
+
     def _check_network(self):
-        """Check basic network connectivity"""
         try:
             socket.create_connection(("github.com", 443), timeout=5)
             return True
         except Exception:
             return False
-    
-    def _init_git_repo(self):
-        """Initialize git repo and set remote origin"""
-        git_dir = self.project_root / ".git"
-        if git_dir.exists():
-            self.print_info("Removing existing .git directory for re-initialization...")
-            shutil.rmtree(git_dir)
-
-        self.print_info("Initializing git repository...")
-        subprocess.run(["git", "init"], cwd=self.project_root, check=True,
-                       capture_output=True, text=True)
-        subprocess.run(["git", "remote", "add", "origin", REMOTE_URL],
-                       cwd=self.project_root, check=True, capture_output=True, text=True)
-        self.print_success(f"Git repository initialized with remote: {REMOTE_URL}")
 
     def git_pull(self):
-        """Pull latest changes from git with retry logic"""
+        """Pull latest changes via fetch + reset --hard (works regardless of local state)"""
         self.print_step(2, "Updating from git...")
 
-        # Check network connectivity
         if not self._check_network():
             self.print_error("Network error: Cannot reach github.com. Check your internet connection.")
 
-        # Initialize repo if .git is missing
         git_dir = self.project_root / ".git"
+
+        # If no .git at all, just clone fresh into a temp dir then move files over
         if not git_dir.exists():
-            self.print_info(".git directory not found, initializing repository...")
-            self._init_git_repo()
+            self.print_info("No git repository found — cloning fresh...")
+            self._clone_fresh()
+            return
+
+        # Ensure remote origin is set
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=self.project_root, capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            self.print_info("Remote 'origin' missing — setting it now...")
+            subprocess.run(
+                ["git", "remote", "add", "origin", REMOTE_URL],
+                cwd=self.project_root, check=True, capture_output=True
+            )
+
+        # Fix dubious ownership (project dir owned by service user, run as root)
+        subprocess.run(
+            ["git", "config", "--global", "--add", "safe.directory", str(self.project_root)],
+            capture_output=True
+        )
 
         max_retries = 3
-        retry_count = 0
-
-        while retry_count < max_retries:
+        for attempt in range(1, max_retries + 1):
+            self.print_info(f"Fetching from git (attempt {attempt}/{max_retries})...")
             try:
-                # Fetch all changes
-                self.print_info(f"Fetching from git (attempt {retry_count + 1}/{max_retries})...")
                 result = subprocess.run(
-                    ["git", "fetch", "--all"],
-                    cwd=self.project_root,
-                    capture_output=True,
-                    text=True,
-                    timeout=60
+                    ["git", "fetch", "origin"],
+                    cwd=self.project_root, capture_output=True, text=True, timeout=60
                 )
-
                 if result.returncode != 0:
-                    if "TLS" in result.stderr or "SSL" in result.stderr or "handshake" in result.stderr.lower():
-                        # TLS/SSL issue — retry with backoff
-                        retry_count += 1
-                        if retry_count < max_retries:
-                            wait_time = 2 ** retry_count
-                            self.print_info(f"TLS connection issue, retrying in {wait_time}s...")
-                            time.sleep(wait_time)
-                            continue
-                        else:
-                            self.print_error(f"Git fetch failed after {max_retries} attempts: {result.stderr}")
-                    else:
-                        # Other fetch error — re-initialize .git and retry
-                        self.print_info(f"Git fetch failed: {result.stderr.strip()}")
-                        self.print_info("Re-initializing git repository and retrying...")
-                        self._init_git_repo()
-                        retry_count += 1
-                        if retry_count < max_retries:
-                            time.sleep(2)
-                            continue
-                        else:
-                            self.print_error(f"Git fetch failed after re-initialization: {result.stderr}")
+                    raise RuntimeError(f"fetch failed: {result.stderr.strip()}")
 
-                # Pull changes — try main branch first, then master
-                pull_success = False
+                # Detect default branch
+                target_branch = None
                 for branch in ["main", "master"]:
-                    result = subprocess.run(
-                        ["git", "pull", "origin", branch],
-                        cwd=self.project_root,
-                        capture_output=True,
-                        text=True,
-                        timeout=60
+                    check = subprocess.run(
+                        ["git", "ls-remote", "--heads", "origin", branch],
+                        cwd=self.project_root, capture_output=True, text=True, timeout=30
                     )
-
-                    if result.returncode == 0:
-                        if result.stdout:
-                            print(result.stdout)
-                        self.print_success(f"Git repository updated from {branch} branch")
-                        pull_success = True
+                    if check.stdout.strip():
+                        target_branch = branch
                         break
-                    elif "does not exist" not in result.stderr.lower():
-                        # Real error, not just missing branch
-                        break
+                if not target_branch:
+                    self.print_error("Could not find 'main' or 'master' branch on remote.")
 
-                if pull_success:
-                    break
-                else:
-                    retry_count += 1
-                    if retry_count < max_retries:
-                        wait_time = 2 ** retry_count
-                        self.print_info(f"Retrying git pull in {wait_time}s...")
-                        time.sleep(wait_time)
-                    else:
-                        self.print_error(f"Git pull failed after {max_retries} attempts")
+                self.print_info(f"Resetting to origin/{target_branch}...")
+                subprocess.run(
+                    ["git", "checkout", "-B", target_branch, f"origin/{target_branch}"],
+                    cwd=self.project_root, capture_output=True, text=True, timeout=60
+                )
+                result = subprocess.run(
+                    ["git", "reset", "--hard", f"origin/{target_branch}"],
+                    cwd=self.project_root, capture_output=True, text=True, timeout=60
+                )
+                if result.returncode != 0:
+                    raise RuntimeError(f"reset failed: {result.stderr.strip()}")
+
+                self.print_success(f"Updated from {target_branch} branch")
+                return
 
             except subprocess.TimeoutExpired:
-                retry_count += 1
-                if retry_count < max_retries:
-                    self.print_info(f"Git operation timeout, retrying in {2 ** retry_count}s...")
-                    time.sleep(2 ** retry_count)
+                err = "operation timed out"
+            except RuntimeError as e:
+                err = str(e)
+
+            if attempt < max_retries:
+                wait = 2 ** attempt
+                self.print_info(f"Error: {err} — retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                self.print_error(f"Git update failed after {max_retries} attempts.\nLast error: {err}")
+
+    def _clone_fresh(self):
+        """Clone into a temp dir, move files over (preserves project_root path)"""
+        tmp_dir = Path("/tmp") / "ezyspeech_clone_tmp"
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir)
+
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            self.print_info(f"Cloning repository (attempt {attempt}/{max_retries})...")
+            try:
+                result = subprocess.run(
+                    ["git", "clone", REMOTE_URL, str(tmp_dir)],
+                    capture_output=True, text=True, timeout=120
+                )
+                if result.returncode == 0:
+                    break
+                err = result.stderr.strip()
+            except subprocess.TimeoutExpired:
+                err = "clone timed out"
+
+            if attempt < max_retries:
+                wait = 2 ** attempt
+                self.print_info(f"Clone failed: {err} — retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                self.print_error(f"Git clone failed after {max_retries} attempts.\nLast error: {err}")
+
+        # Move .git and all non-config files into project_root
+        for item in tmp_dir.iterdir():
+            dest = self.project_root / item.name
+            if item.name == "config":
+                continue  # config is restored separately from backup
+            if dest.exists():
+                if dest.is_dir():
+                    shutil.rmtree(dest)
                 else:
-                    self.print_error(f"Git operations timed out after {max_retries} attempts")
-            except Exception as e:
-                self.print_error(f"Git update failed: {str(e)}")
-    
+                    dest.unlink()
+            shutil.move(str(item), str(dest))
+
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        self.print_success("Repository cloned successfully")
+
     def restore_config(self):
-        """Restore config files from backup"""
         self.print_step(3, "Restoring configuration files...")
-        
         if not self.backup_dir.exists():
             self.print_info("No config backup found, skipping restore")
             return
-        
-        # Remove config directory if it exists
         if self.config_dir.exists():
             shutil.rmtree(self.config_dir)
-        
-        # Restore from backup
         shutil.copytree(self.backup_dir, self.config_dir)
         self.print_success("Config files restored")
-    
+
     def update_dependencies(self):
-        """Update dependencies from requirements.txt"""
         self.print_step(4, "Updating Python dependencies...")
-        
         requirements_file = self.project_root / "requirements.txt"
-        
         if not requirements_file.exists():
             self.print_error("requirements.txt not found")
-        
         try:
-            # Use the appropriate Python executable
             if self.venv_dir.exists():
-                # If using venv, use pip from venv
-                if sys.platform == "win32":
-                    pip_exe = str(self.venv_dir / "Scripts" / "pip.exe")
-                else:
-                    pip_exe = str(self.venv_dir / "bin" / "pip")
+                pip_exe = str(self.venv_dir / ("Scripts/pip.exe" if sys.platform == "win32" else "bin/pip"))
             else:
                 pip_exe = self.python_exe.replace("python", "pip")
-            
             result = subprocess.run(
                 [pip_exe, "install", "-q", "-r", str(requirements_file)],
-                cwd=self.project_root,
-                capture_output=True,
-                text=True
+                cwd=self.project_root, capture_output=True, text=True
             )
-            
             if result.returncode != 0:
                 self.print_error(f"Dependency update failed: {result.stderr}")
-            
             self.print_success("Dependencies updated")
         except Exception as e:
             self.print_error(f"Failed to update dependencies: {str(e)}")
-    
+
     def clean_pycache(self):
-        """Clean Python cache files"""
         self.print_step(5, "Cleaning Python cache files...")
-        
         removed_count = 0
-        
-        # Find and remove __pycache__ directories
         for pycache_dir in self.project_root.glob("**/__pycache__"):
             try:
                 shutil.rmtree(pycache_dir)
                 removed_count += 1
             except Exception as e:
-                self.print_info(f"Could not remove {pycache_dir}: {str(e)}")
-        
-        # Find and remove .pyc files
+                self.print_info(f"Could not remove {pycache_dir}: {e}")
         for pyc_file in self.project_root.glob("**/*.pyc"):
             try:
                 pyc_file.unlink()
                 removed_count += 1
             except Exception as e:
-                self.print_info(f"Could not remove {pyc_file}: {str(e)}")
-        
+                self.print_info(f"Could not remove {pyc_file}: {e}")
         self.print_success(f"Cleaned {removed_count} cache items")
-    
+
     def cleanup_backup(self):
-        """Clean up backup directory"""
         if self.backup_dir.exists():
             try:
                 shutil.rmtree(self.backup_dir)
                 self.print_info("Temporary backup directory removed")
             except Exception as e:
-                self.print_info(f"Could not remove backup directory: {str(e)}")
-    
+                self.print_info(f"Could not remove backup directory: {e}")
+
     def run(self):
-        """Execute the full update"""
         self.print_header("EzySpeechTranslate Update")
-        
         print(f"Project root: {self.project_root}")
         print(f"Python executable: {self.python_exe}\n")
-        
         try:
             self.backup_config()
             self.git_pull()
@@ -286,7 +258,6 @@ class UpdateManager:
             self.update_dependencies()
             self.clean_pycache()
             self.cleanup_backup()
-            
             self.print_header("Update Complete! ✓")
             print("Your project has been updated successfully.")
             print("Config files were preserved during the update.\n")
@@ -299,7 +270,6 @@ class UpdateManager:
 
 
 def main():
-    """Main entry point"""
     manager = UpdateManager()
     manager.run()
 
