@@ -128,6 +128,29 @@ advanced:
     block_duration_minutes: 60
 
 # ============================================
+# OEM Configuration (Customization)
+# ============================================
+oem:
+  # Enable/Disable OEM (branding) customization features
+  # Set to true to use custom branding, false to disable
+  enabled: true
+  
+  branding:
+    user_title: "EzySpeech User"      # Custom title for user interface
+    admin_title: "EzySpeech Admin"    # Custom title for admin panel
+    login_title: "EzySpeech Admin"    # Custom title for login page
+    app_name: "EzySpeech"             # Custom application name
+  
+  assets:
+    brand_icon: "🎙️"                  # Brand icon (emoji or image path like "images/oem/logo.png")
+    favicon: ""                        # Favicon path (e.g., "images/oem/favicon.ico")
+    login_icon: "🎙️"                  # Login page icon (emoji or image path)
+  
+  advanced:
+    mobile_show_title: true            # Show full title on mobile devices
+    icon_scale: 1.0                    # Icon scale multiplier (1.0 = normal size)
+
+# ============================================
 # Feature Flags
 # ============================================
 features:

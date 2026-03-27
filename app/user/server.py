@@ -26,6 +26,9 @@ import sys
 from collections import defaultdict
 import time
 
+# OEM Configuration - imported from app module
+from app.oem_manager import init_oem_config
+
 # ──────────────────────────────────────────
 # Path Setup
 # ──────────────────────────────────────────
@@ -147,6 +150,13 @@ if cors_origins is None or cors_origins == '*':
 else:
     allowed_origins = [cors_origins] if isinstance(cors_origins, str) else cors_origins
 CORS(app, origins=allowed_origins, supports_credentials=True)
+
+# Initialize OEM Configuration
+try:
+    init_oem_config(app, get_config)
+    logger.info("✓ OEM configuration initialized successfully")
+except Exception as e:
+    logger.warning(f"⚠ OEM configuration initialization failed: {e}")
 
 # Trust Cloudflare Tunnel / reverse proxy headers
 # CF Tunnel acts as a proxy, so we need to unwrap the forwarded IP
@@ -628,6 +638,13 @@ def get_runtime_config():
         },
         'mainServerPort': get_config('server', 'port', default=1915)
     })
+
+@app.route('/api/oem-config', methods=['GET'])
+@limiter.limit("60 per minute")
+@check_client_access
+def get_oem_config():
+    """Get OEM configuration for frontend"""
+    return jsonify(app.config.get('OEM', {}))
 
 @app.route('/api/translations', methods=['GET'])
 @limiter.limit("60 per minute")

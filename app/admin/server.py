@@ -19,6 +19,9 @@ from datetime import datetime, timedelta
 from functools import wraps
 from collections import defaultdict
 
+# OEM Configuration - imported from app module
+from app.oem_manager import init_oem_config
+
 # ──────────────────────────────────────────
 # Path Setup
 # ──────────────────────────────────────────
@@ -140,6 +143,14 @@ app = Flask(__name__, static_folder=STATIC_DIR, template_folder=TEMPLATE_DIR)
 app.config['SECRET_KEY'] = get_config("server", "secret_key", default="change-this-secret-key")
 
 CORS(app, origins=get_config("advanced", "security", "cors_origins", default="*"))
+
+# Initialize OEM Configuration
+try:
+    init_oem_config(app, get_config)
+    logger.info("✓ OEM configuration initialized successfully")
+except Exception as e:
+    logger.warning(f"⚠ OEM configuration initialization failed: {e}")
+
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ──────────────────────────────────────────
@@ -458,6 +469,11 @@ def get_admin_config():
             "mainServerProtocol": user_server_protocol,
             "adminPort": ADMIN_PORT
         })
+
+@app.route("/api/oem-config")
+def get_oem_config_admin():
+    """Get OEM configuration for frontend"""
+    return jsonify(app.config.get('OEM', {}))
 
 @app.route("/api/protected-endpoint")
 @require_auth
