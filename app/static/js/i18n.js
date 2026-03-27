@@ -1,8 +1,6 @@
 window.sharedI18n = {
     en: {
         // Header
-        "brand": "EzySpeech Listener",
-        "brand_admin": "EzySpeech Admin Controls",
         "waiting": "Waiting",
         "online": "Online",
         "offline": "Offline",
@@ -41,9 +39,6 @@ window.sharedI18n = {
 
         // About modal + meta
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - User Client",
-        "metaTitle_admin": "EzySpeech - Admin Panel",
-        "metaDescription": "Real-time speech translation with TTS support for 20+ languages",
         "tagline": "Let language no longer stand in the way of connection",
         "madeBy": "Made with ❤️ by",
         "author": "Ga Hing Woo",
@@ -57,13 +52,6 @@ window.sharedI18n = {
         "corrected": "Corrected",
         "close": "Close",
         "logout": "Logout",
-        "startRecording": "🎙️ Start Recording",
-        "stopRecording": "⏹️ Stop Recording",
-        "autoRestartEnabled": "Auto-restart enabled",
-        "waitingForSpeech": "Waiting for speech...",
-        "noTranscriptionsYet": "No transcriptions yet",
-        "signIn": "Sign In",
-        "adminLogin": "Admin Login",
         "username": "Username",
         "password": "Password",
 
@@ -108,8 +96,6 @@ window.sharedI18n = {
     // NOTE: All other languages copied from previous inline i18n
     zh: {
         // Header
-        "brand": "EzySpeech 听众",
-        "brand_admin": "EzySpeech 管理控制台",
         "waiting": "等待中",
         "online": "在线",
         "offline": "离线",
@@ -148,9 +134,6 @@ window.sharedI18n = {
 
         // About modal
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - 用户端",
-        "metaTitle_admin": "EzySpeech - 管理控制台",
-        "metaDescription": "实时语音翻译，支持 20+ 语言及 TTS",
         "tagline": "让语言不再成为沟通障碍",
         "madeBy": "用 ❤️ 制作，由",
         "author": "Ga Hing Woo",
@@ -170,7 +153,6 @@ window.sharedI18n = {
         "waitingForSpeech": "等待语音...",
         "noTranscriptionsYet": "尚无转录内容",
         "signIn": "登录",
-        "adminLogin": "管理员登录",
         "username": "用户名",
         "password": "密码",
 
@@ -215,8 +197,6 @@ window.sharedI18n = {
     },
 // Cantonese (粵語・香港)
     yue: {
-        "brand": "EzySpeech 聽眾",
-        "brand_admin": "EzySpeech 管理控制台",
         "waiting": "等緊",
         "online": "在線",
         "offline": "離線",
@@ -252,9 +232,6 @@ window.sharedI18n = {
         "waitingDesc": "翻譯內容會即時顯示喺呢度",
 
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - 用戶端",
-        "metaTitle_admin": "EzySpeech - 管理控制台",
-        "metaDescription": "即時語音翻譯，支援 20+ 種語言同 TTS",
         "tagline": "令語言唔再成為溝通障礙",
         "madeBy": "用 ❤️ 製作，作者：",
         "author": "Ga Hing Woo",
@@ -273,7 +250,6 @@ window.sharedI18n = {
         "waitingForSpeech": "等緊語音…",
         "noTranscriptionsYet": "暫時未有轉錄內容",
         "signIn": "登入",
-        "adminLogin": "管理員登入",
         "username": "用戶名稱",
         "password": "密碼",
 
@@ -312,8 +288,6 @@ window.sharedI18n = {
 
 // Traditional Chinese (Taiwan)
     "zh-tw": {
-        "brand": "EzySpeech 聽眾",
-        "brand_admin": "EzySpeech 管理控制台",
         "waiting": "等待中",
         "online": "線上",
         "offline": "離線",
@@ -349,9 +323,6 @@ window.sharedI18n = {
         "waitingDesc": "翻譯內容會即時顯示於此",
 
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - 使用者端",
-        "metaTitle_admin": "EzySpeech - 管理控制台",
-        "metaDescription": "即時語音翻譯，支援 20+ 種語言與 TTS",
         "tagline": "讓語言不再成為溝通的阻礙",
         "madeBy": "用 ❤️ 製作，作者：",
         "author": "Ga Hing Woo",
@@ -370,7 +341,6 @@ window.sharedI18n = {
         "waitingForSpeech": "等待語音中…",
         "noTranscriptionsYet": "尚無逐字稿內容",
         "signIn": "登入",
-        "adminLogin": "管理員登入",
         "username": "使用者名稱",
         "password": "密碼",
 
@@ -407,8 +377,6 @@ window.sharedI18n = {
         "loadingShort": "載入中"
     },
     es: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Controles de administración de EzySpeech",
         "waiting": "Esperando",
         "online": "En línea",
         "offline": "Desconectado",
@@ -441,8 +409,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Esperando transcripciones...",
         "waitingDesc": "Las traducciones aparecerán aquí en tiempo real",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Cliente",
-        "metaDescription": "Traducción de voz en tiempo real con soporte TTS para 20+ idiomas",
         "tagline": "Que el idioma ya no sea una barrera para la conexión",
         "madeBy": "Hecho con ❤️ por",
         "author": "Ga Hing Woo",
@@ -460,7 +426,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Esperando voz...",
         "noTranscriptionsYet": "Aún no hay transcripciones",
         "signIn": "Iniciar sesión",
-        "adminLogin": "Inicio de administrador",
         "username": "Usuario",
         "password": "Contraseña",
         "confirmReset": "¿Restablecer todos los ajustes a los valores por defecto?\n\nEsto:\n• Restablecerá el modo de visualización a Traducción\n• Restablecerá el idioma a detección automática\n• Restablecerá el tema a Claro\n• Restablecerá el tamaño de fuente a 18px\n• Restablecerá los ajustes de TTS\n• Mantendrá tus traducciones",
@@ -494,8 +459,6 @@ window.sharedI18n = {
     },
     // French
     fr: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Contrôles d'administration EzySpeech",
         "waiting": "En attente",
         "online": "En ligne",
         "offline": "Hors ligne",
@@ -528,8 +491,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "En attente de transcriptions...",
         "waitingDesc": "Les traductions apparaîtront ici en temps réel",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Client",
-        "metaDescription": "Traduction vocale en temps réel avec TTS pour 20+ langues",
         "tagline": "Que la langue ne soit plus un obstacle à la connexion",
         "madeBy": "Fait avec ❤️ par",
         "author": "Ga Hing Woo",
@@ -547,7 +508,6 @@ window.sharedI18n = {
         "waitingForSpeech": "En attente de la parole...",
         "noTranscriptionsYet": "Pas encore de transcriptions",
         "signIn": "Se connecter",
-        "adminLogin": "Connexion administrateur",
         "username": "Nom d'utilisateur",
         "password": "Mot de passe",
         "confirmReset": "Réinitialiser tous les paramètres par défaut ?\n\nCeci :\n• Réinitialisera le mode d'affichage sur Traduction\n• Réinitialisera la langue sur détection automatique\n• Réinitialisera le thème sur Clair\n• Réinitialisera la taille de police à 18px\n• Réinitialisera les paramètres TTS\n• Conservera vos traductions",
@@ -581,8 +541,6 @@ window.sharedI18n = {
     },
     // German
     de: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "EzySpeech Admin-Steuerung",
         "waiting": "Warten",
         "online": "Online",
         "offline": "Offline",
@@ -615,8 +573,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Warten auf Transkripte...",
         "waitingDesc": "Übersetzungen erscheinen hier in Echtzeit",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Client",
-        "metaDescription": "Echtzeit-Sprachübersetzung mit TTS-Unterstützung für 20+ Sprachen",
         "tagline": "Lass Sprache kein Hindernis für Verbindung sein",
         "madeBy": "Gemacht mit ❤️ von",
         "author": "Ga Hing Woo",
@@ -634,7 +590,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Warten auf Sprache...",
         "noTranscriptionsYet": "Noch keine Transkripte",
         "signIn": "Anmelden",
-        "adminLogin": "Admin-Anmeldung",
         "username": "Benutzername",
         "password": "Passwort",
         "confirmReset": "Alle Einstellungen auf Standard zurücksetzen?\n\nDies wird:\n• Den Anzeigemodus auf Übersetzung zurücksetzen\n• Die Sprache auf automatische Erkennung zurücksetzen\n• Das Thema auf Hell zurücksetzen\n• Die Schriftgröße auf 18px zurücksetzen\n• Die TTS-Einstellungen zurücksetzen\n• Ihre Übersetzungen behalten",
@@ -668,8 +623,6 @@ window.sharedI18n = {
     },
     // Russian
     ru: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Панель администратора EzySpeech",
         "waiting": "Ожидание",
         "online": "В сети",
         "offline": "Отключен",
@@ -702,8 +655,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Ожидание транскриптов...",
         "waitingDesc": "Переводы появятся здесь в реальном времени",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Клиент",
-        "metaDescription": "Реальное время: голосовой перевод с поддержкой TTS для 20+ языков",
         "tagline": "Пусть язык больше не мешает общению",
         "madeBy": "Сделано с ❤️",
         "author": "Ga Hing Woo",
@@ -721,7 +672,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Ожидание речи...",
         "noTranscriptionsYet": "Транскриптов пока нет",
         "signIn": "Войти",
-        "adminLogin": "Вход администратора",
         "username": "Имя пользователя",
         "password": "Пароль",
         "confirmReset": "Сбросить все настройки по умолчанию?\n\nЭто:\n• Сбросит режим отображения на Перевод\n• Сбросит язык на автодетекцию\n• Сбросит тему на Светлую\n• Сбросит размер шрифта на 18px\n• Сбросит настройки TTS\n• Сохранит ваши переводы",
@@ -755,8 +705,6 @@ window.sharedI18n = {
     },
     // Polish
     pl: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Panel administracyjny EzySpeech",
         "waiting": "Oczekiwanie",
         "online": "Online",
         "offline": "Offline",
@@ -789,8 +737,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Oczekiwanie na transkrypcje...",
         "waitingDesc": "Tłumaczenia pojawią się tutaj w czasie rzeczywistym",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Klient",
-        "metaDescription": "Tłumaczenie mowy w czasie rzeczywistym z obsługą TTS dla 20+ języków",
         "tagline": "Nie pozwól, by język przeszkadzał w komunikacji",
         "madeBy": "Stworzone z ❤️ przez",
         "author": "Ga Hing Woo",
@@ -808,7 +754,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Oczekiwanie na mowę...",
         "noTranscriptionsYet": "Brak transkrypcji",
         "signIn": "Zaloguj się",
-        "adminLogin": "Logowanie administratora",
         "username": "Nazwa użytkownika",
         "password": "Hasło",
         "confirmReset": "Zresetować wszystkie ustawienia do wartości domyślnych?\n\nTo:\n• Zresetuje tryb wyświetlania do Tłumaczenia\n• Zresetuje język do automatycznego wykrywania\n• Zresetuje motyw do Jasnego\n• Zresetuje rozmiar czcionki do 18px\n• Zresetuje ustawienia TTS\n• Zachowa Twoje tłumaczenia",
@@ -842,8 +787,6 @@ window.sharedI18n = {
     },
     // Turkish
     tr: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "EzySpeech Yönetici Kontrolleri",
         "waiting": "Bekleniyor",
         "online": "Çevrimiçi",
         "offline": "Çevrimdışı",
@@ -876,8 +819,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Transkriptler bekleniyor...",
         "waitingDesc": "Çeviriler burada gerçek zamanlı olarak görünecek",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - İstemci",
-        "metaDescription": "20+ dil için TTS desteğiyle gerçek zamanlı konuşma çevirisi",
         "tagline": "Dil, bağlantının önünde engel olmasın",
         "madeBy": "❤️ ile yapıldı",
         "author": "Ga Hing Woo",
@@ -895,7 +836,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Konuşma bekleniyor...",
         "noTranscriptionsYet": "Henüz transkript yok",
         "signIn": "Giriş yap",
-        "adminLogin": "Yönetici girişi",
         "username": "Kullanıcı adı",
         "password": "Parola",
         "confirmReset": "Tüm ayarlar varsayılanlara sıfırlansın mı?\n\nBu:\n• Görüntü modunu Çeviri olarak sıfırlar\n• Dili otomatik algılamaya sıfırlar\n• Temayı Açık olarak sıfırlar\n• Yazı boyutunu 18px olarak sıfırlar\n• TTS ayarlarını sıfırlar\n• Çevirilerinizi saklar",
@@ -929,8 +869,6 @@ window.sharedI18n = {
     },
     // Japanese (localized)
     ja: {
-        "brand": "EzySpeech リスナー",
-        "brand_admin": "EzySpeech 管理コントロール",
         "waiting": "待機中",
         "online": "オンライン",
         "offline": "オフライン",
@@ -963,8 +901,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "文字起こしを待っています...",
         "waitingDesc": "翻訳はここにリアルタイムで表示されます",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - ユーザークライアント",
-        "metaDescription": "20以上の言語に対応したリアルタイム音声翻訳（TTS対応）",
         "tagline": "言語がつながりの障害とならないように",
         "madeBy": "作成者",
         "author": "Ga Hing Woo",
@@ -982,7 +918,6 @@ window.sharedI18n = {
         "waitingForSpeech": "音声を待っています...",
         "noTranscriptionsYet": "まだ文字起こしはありません",
         "signIn": "サインイン",
-        "adminLogin": "管理者ログイン",
         "username": "ユーザー名",
         "password": "パスワード",
         "confirmReset": "すべての設定をデフォルトにリセットしますか？\n\nこれにより：\n• 表示モードが翻訳にリセットされます\n• 言語が自動検出にリセットされます\n• テーマがライトにリセットされます\n• フォントサイズが18pxにリセットされます\n• TTS設定がリセットされます\n• 翻訳は保持されます",
@@ -1016,8 +951,6 @@ window.sharedI18n = {
     },
     // Korean (localized)
     ko: {
-        "brand": "EzySpeech 리스너",
-        "brand_admin": "EzySpeech 관리자 컨트롤",
         "waiting": "대기 중",
         "online": "온라인",
         "offline": "오프라인",
@@ -1050,8 +983,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "전사 대기 중...",
         "waitingDesc": "번역은 여기 실시간으로 표시됩니다",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - 사용자 클라이언트",
-        "metaDescription": "20개 이상의 언어에 대해 TTS를 지원하는 실시간 음성 번역",
         "tagline": "언어가 소통의 방해가 되지 않도록",
         "madeBy": "제작",
         "author": "Ga Hing Woo",
@@ -1069,7 +1000,6 @@ window.sharedI18n = {
         "waitingForSpeech": "음성 대기 중...",
         "noTranscriptionsYet": "아직 전사가 없습니다",
         "signIn": "로그인",
-        "adminLogin": "관리자 로그인",
         "username": "사용자 이름",
         "password": "비밀번호",
         "confirmReset": "모든 설정을 기본값으로 재설정하시겠습니까?\n\n이렇게 합니다:\n• 표시 모드를 번역으로 재설정\n• 언어를 자동 감지로 재설정\n• 테마를 밝음으로 재설정\n• 글꼴 크기를 18px로 재설정\n• TTS 설정을 재설정\n• 번역은 유지됩니다",
@@ -1103,8 +1033,6 @@ window.sharedI18n = {
     },
     // Vietnamese
     vi: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Bảng điều khiển quản trị EzySpeech",
         "waiting": "Đang chờ",
         "online": "Trực tuyến",
         "offline": "Ngoại tuyến",
@@ -1137,8 +1065,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Đang chờ phiên âm...",
         "waitingDesc": "Bản dịch sẽ xuất hiện ở đây theo thời gian thực",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Khách hàng",
-        "metaDescription": "Dịch giọng nói thời gian thực với hỗ trợ TTS cho hơn 20 ngôn ngữ",
         "tagline": "Đừng để ngôn ngữ cản trở kết nối",
         "madeBy": "Được tạo bởi",
         "author": "Ga Hing Woo",
@@ -1156,7 +1082,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Đang chờ âm thanh...",
         "noTranscriptionsYet": "Chưa có phiên âm",
         "signIn": "Đăng nhập",
-        "adminLogin": "Đăng nhập quản trị",
         "username": "Tên đăng nhập",
         "password": "Mật khẩu",
         "confirmReset": "Đặt lại tất cả cài đặt về mặc định?\n\nĐiều này sẽ:\n• Đặt chế độ hiển thị lại thành Dịch\n• Đặt ngôn ngữ về tự động phát hiện\n• Đặt giao diện về Sáng\n• Đặt kích thước phông chữ về 18px\n• Đặt lại cài đặt TTS\n• Giữ lại bản dịch của bạn",
@@ -1190,8 +1115,6 @@ window.sharedI18n = {
     },
     // Thai
     th: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "แผงควบคุมผู้ดูแลระบบ EzySpeech",
         "waiting": "กำลังรอ",
         "online": "ออนไลน์",
         "offline": "ออฟไลน์",
@@ -1224,8 +1147,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "รอการถอดเสียง...",
         "waitingDesc": "การแปลจะปรากฏที่นี่แบบเรียลไทม์",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - ลูกค้า",
-        "metaDescription": "การแปลเสียงแบบเรียลไทม์พร้อมรองรับ TTS สำหรับกว่า 20 ภาษา",
         "tagline": "อย่าให้ภาษามาขัดขวางการสื่อสาร",
         "madeBy": "สร้างด้วย ❤️ โดย",
         "author": "Ga Hing Woo",
@@ -1243,7 +1164,6 @@ window.sharedI18n = {
         "waitingForSpeech": "รอคำพูด...",
         "noTranscriptionsYet": "ยังไม่มีคำถอดเสียง",
         "signIn": "ลงชื่อเข้าใช้",
-        "adminLogin": "เข้าสู่ระบบผู้ดูแล",
         "username": "ชื่อผู้ใช้",
         "password": "รหัสผ่าน",
         "confirmReset": "รีเซ็ตการตั้งค่าทั้งหมดเป็นค่าเริ่มต้น?\n\nซึ่งจะ:\n• รีเซ็ตโหมดการแสดงผลเป็น การแปล\n• รีเซ็ตภาษากลับเป็นการตรวจจับโดยอัตโนมัติ\n• รีเซ็ตธีมเป็นสว่าง\n• รีเซ็ตขนาดตัวอักษรเป็น 18px\n• รีเซ็ตการตั้งค่า TTS\n• เก็บการแปลของคุณไว้",
@@ -1277,8 +1197,6 @@ window.sharedI18n = {
     },
     // Indonesian
     id: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Kontrol Admin EzySpeech",
         "waiting": "Menunggu",
         "online": "Online",
         "offline": "Offline",
@@ -1311,8 +1229,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Menunggu transkripsi...",
         "waitingDesc": "Terjemahan akan muncul di sini secara real-time",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Klien",
-        "metaDescription": "Penerjemahan suara waktu nyata dengan dukungan TTS untuk 20+ bahasa",
         "tagline": "Jangan biarkan bahasa menghalangi koneksi",
         "madeBy": "Dibuat dengan ❤️ oleh",
         "author": "Ga Hing Woo",
@@ -1330,7 +1246,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Menunggu suara...",
         "noTranscriptionsYet": "Belum ada transkripsi",
         "signIn": "Masuk",
-        "adminLogin": "Login admin",
         "username": "Nama pengguna",
         "password": "Kata sandi",
         "confirmReset": "Setel ulang semua pengaturan ke default?\n\nIni akan:\n• Mengatur ulang mode tampilan ke Terjemahan\n• Mengatur ulang bahasa ke deteksi otomatis\n• Mengatur ulang tema ke Terang\n• Mengatur ulang ukuran font ke 18px\n• Mengatur ulang pengaturan TTS\n• Menyimpan terjemahan Anda",
@@ -1364,8 +1279,6 @@ window.sharedI18n = {
     },
     // Malay
     ms: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Kawalan Pentadbir EzySpeech",
         "waiting": "Menunggu",
         "online": "Dalam talian",
         "offline": "Luar talian",
@@ -1398,8 +1311,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Menunggu transkripsi...",
         "waitingDesc": "Terjemahan akan muncul di sini secara masa nyata",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Pelanggan",
-        "metaDescription": "Terjemahan pertuturan masa nyata dengan sokongan TTS untuk 20+ bahasa",
         "tagline": "Jangan biarkan bahasa menghalang sambungan",
         "madeBy": "Dibuat dengan ❤️ oleh",
         "author": "Ga Hing Woo",
@@ -1417,7 +1328,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Menunggu pertuturan...",
         "noTranscriptionsYet": "Tiada transkripsi lagi",
         "signIn": "Log masuk",
-        "adminLogin": "Log masuk pentadbir",
         "username": "Nama pengguna",
         "password": "Kata laluan",
         "confirmReset": "Tetapkan semula semua tetapan kepada lalai?\n\nIni akan:\n• Tetapkan semula mod paparan ke Terjemahan\n• Tetapkan semula bahasa ke pengesanan automatik\n• Tetapkan semula tema ke Terang\n• Tetapkan semula saiz fon ke 18px\n• Tetapkan semula tetapan TTS\n• Menyimpan terjemahan anda",
@@ -1451,8 +1361,6 @@ window.sharedI18n = {
     },
     // Hindi
     hi: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "EzySpeech व्यवस्थापक नियंत्रण",
         "waiting": "प्रतीक्षा कर रहा है",
         "online": "ऑनलाइन",
         "offline": "ऑफ़लाइन",
@@ -1485,8 +1393,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "ट्रांसक्रिप्शन की प्रतीक्षा...",
         "waitingDesc": "अनुवाद यहाँ रियल-टाइम में दिखाई देंगे",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - उपयोगकर्ता क्लाइंट",
-        "metaDescription": "20+ भाषाओं के लिए TTS समर्थन के साथ रीयल-टाइम स्पीच अनुवाद",
         "tagline": "भाषा अब कनेक्शन में बाधा न बने",
         "madeBy": "के द्वारा बनाया गया",
         "author": "Ga Hing Woo",
@@ -1504,7 +1410,6 @@ window.sharedI18n = {
         "waitingForSpeech": "बोली की प्रतीक्षा...",
         "noTranscriptionsYet": "अभी तक कोई ट्रांसक्रिप्शन नहीं",
         "signIn": "साइन इन",
-        "adminLogin": "एडमिन लॉगिन",
         "username": "यूज़रनेम",
         "password": "पासवर्ड",
         "confirmReset": "सभी सेटिंग्स को डिफ़ॉल्ट पर रीसेट करें?\n\nयह:\n• डिस्प्ले मोड को अनुवाद पर रीसेट करेगा\n• भाषा को ऑटो-डिटेक्ट पर रीसेट करेगा\n• थीम को लाइट पर रीसेट करेगा\n• फ़ॉन्ट आकार को 18px पर रीसेट करेगा\n• TTS सेटिंग्स को रीसेट करेगा\n• आपके अनुवाद बनाए रखे जाएंगे",
@@ -1538,8 +1443,6 @@ window.sharedI18n = {
     },
     // Arabic
     ar: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "لوحة تحكم مسؤول EzySpeech",
         "waiting": "في الانتظار",
         "online": "متصل",
         "offline": "غير متصل",
@@ -1572,9 +1475,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "في انتظار النسخ...",
         "waitingDesc": "ستظهر الترجمات هنا في الوقت الفعلي",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - عميل المستخدم",
-        "metaTitle_admin": "EzySpeech - لوحة الإدارة",
-        "metaDescription": "ترجمة الكلام في الوقت الفعلي مع دعم TTS لأكثر من 20 لغة",
         "tagline": "دع اللغة لا تقف عائقاً أمام التواصل",
         "madeBy": "صنع بـ ❤️ بواسطة",
         "author": "Ga Hing Woo",
@@ -1592,7 +1492,6 @@ window.sharedI18n = {
         "waitingForSpeech": "في انتظار الكلام...",
         "noTranscriptionsYet": "لا توجد نسخ حتى الآن",
         "signIn": "تسجيل الدخول",
-        "adminLogin": "دخول المسؤول",
         "username": "اسم المستخدم",
         "password": "كلمة المرور",
         "confirmReset": "إعادة تعيين جميع الإعدادات إلى الافتراضية؟\n\nسيؤدي هذا إلى:\n• إعادة تعيين وضع العرض إلى الترجمة\n• إعادة تعيين اللغة إلى الكشف التلقائي\n• إعادة تعيين المظهر إلى الفاتح\n• إعادة تعيين حجم الخط إلى 18 بكسل\n• إعادة تعيين إعدادات TTS\n• الاحتفاظ بترجماتك",
@@ -1627,8 +1526,6 @@ window.sharedI18n = {
 
     // Portuguese
     pt: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Controles de Administração EzySpeech",
         "waiting": "Aguardando",
         "online": "Online",
         "offline": "Offline",
@@ -1661,9 +1558,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Aguardando transcrições...",
         "waitingDesc": "As traduções aparecerão aqui em tempo real",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Cliente",
-        "metaTitle_admin": "EzySpeech - Painel de Administração",
-        "metaDescription": "Tradução de fala em tempo real com suporte TTS para 20+ idiomas",
         "tagline": "Não deixe o idioma ser uma barreira para a conexão",
         "madeBy": "Feito com ❤️ por",
         "author": "Ga Hing Woo",
@@ -1681,7 +1575,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Aguardando fala...",
         "noTranscriptionsYet": "Ainda não há transcrições",
         "signIn": "Entrar",
-        "adminLogin": "Login de Administrador",
         "username": "Nome de usuário",
         "password": "Senha",
         "confirmReset": "Redefinir todas as configurações para o padrão?\n\nIsso irá:\n• Redefinir o modo de exibição para Tradução\n• Redefinir o idioma para detecção automática\n• Redefinir o tema para Claro\n• Redefinir o tamanho da fonte para 18px\n• Redefinir as configurações de TTS\n• Manter suas traduções",
@@ -1716,8 +1609,6 @@ window.sharedI18n = {
 
     // Italian
     it: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "Controlli Amministratore EzySpeech",
         "waiting": "In attesa",
         "online": "Online",
         "offline": "Offline",
@@ -1750,9 +1641,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "In attesa di trascrizioni...",
         "waitingDesc": "Le traduzioni appariranno qui in tempo reale",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Client",
-        "metaTitle_admin": "EzySpeech - Pannello Amministrazione",
-        "metaDescription": "Traduzione vocale in tempo reale con supporto TTS per 20+ lingue",
         "tagline": "Non lasciare che la lingua ostacoli la connessione",
         "madeBy": "Realizzato con ❤️ da",
         "author": "Ga Hing Woo",
@@ -1770,7 +1658,6 @@ window.sharedI18n = {
         "waitingForSpeech": "In attesa di parlato...",
         "noTranscriptionsYet": "Nessuna trascrizione ancora",
         "signIn": "Accedi",
-        "adminLogin": "Login Amministratore",
         "username": "Nome utente",
         "password": "Password",
         "confirmReset": "Ripristinare tutte le impostazioni ai valori predefiniti?\n\nQuesto:\n• Ripristinerà la modalità display a Traduzione\n• Ripristinerà la lingua al rilevamento automatico\n• Ripristinerà il tema a Chiaro\n• Ripristinerà la dimensione del font a 18px\n• Ripristinerà le impostazioni TTS\n• Manterrà le tue traduzioni",
@@ -1805,8 +1692,6 @@ window.sharedI18n = {
 
     // Dutch
     nl: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "EzySpeech Beheercontroles",
         "waiting": "Wachten",
         "online": "Online",
         "offline": "Offline",
@@ -1839,9 +1724,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "Wachten op transcripties...",
         "waitingDesc": "Vertalingen verschijnen hier in realtime",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - Client",
-        "metaTitle_admin": "EzySpeech - Beheerpaneel",
-        "metaDescription": "Realtime spraakvertaling met TTS-ondersteuning voor 20+ talen",
         "tagline": "Laat taal geen belemmering zijn voor verbinding",
         "madeBy": "Gemaakt met ❤️ door",
         "author": "Ga Hing Woo",
@@ -1859,7 +1741,6 @@ window.sharedI18n = {
         "waitingForSpeech": "Wachten op spraak...",
         "noTranscriptionsYet": "Nog geen transcripties",
         "signIn": "Inloggen",
-        "adminLogin": "Beheerder Login",
         "username": "Gebruikersnaam",
         "password": "Wachtwoord",
         "confirmReset": "Alle instellingen resetten naar standaard?\n\nDit zal:\n• De weergavemodus resetten naar Vertaling\n• De taal resetten naar automatische detectie\n• Het thema resetten naar Licht\n• De lettergrootte resetten naar 18px\n• TTS-instellingen resetten\n• Uw vertalingen behouden",
@@ -1893,8 +1774,6 @@ window.sharedI18n = {
     },
     // Tamil
     ta: {
-        "brand": "EzySpeech Listener",
-        "brand_admin": "EzySpeech நிர்வாக கட்டுப்பாடுகள்",
         "waiting": "காத்திருக்கிறது",
         "online": "ஆன்லைன்",
         "offline": "ஆஃப்லைன்",
@@ -1927,8 +1806,6 @@ window.sharedI18n = {
         "waitingTranscriptions": "மொழிபெயர்ப்புகளை காத்திருக்கிறது...",
         "waitingDesc": "மொழிபெயர்ப்புகள் இங்கே நேரத்தில் தோன்றும்",
         "aboutTitle": "EzySpeech",
-        "metaTitle": "EzySpeech - பயனர் கிளையண்ட்",
-        "metaDescription": "20+ மொழிகளுக்கான TTS ஆதரவு உடன் நேரடிக் குரல் மொழிபெயர்ப்பு",
         "tagline": "மொழி தொடர்பில் தடையாக இருக்க வேண்டாம்",
         "madeBy": "உருவாக்கப்பட்டது",
         "author": "Ga Hing Woo",
@@ -1946,7 +1823,6 @@ window.sharedI18n = {
         "waitingForSpeech": "பேச்சை காத்திருக்கிறது...",
         "noTranscriptionsYet": "இன்னும் எந்த நிரல்பதிவுகளும் இல்லை",
         "signIn": "உள் நுழை",
-        "adminLogin": "நிர்வாகி உள்நுழைவு",
         "username": "பயனர் பெயர்",
         "password": "கடவுச்சொல்",
         "confirmReset": "எல்லா அமைப்புகளையும் இயல்பாக சுற்றுச்சூழல் முறை?\n\nஇது:\n• காட்சி முறை திருத்தத்தை மொழிபெயர்ப்புக்கு மீட்டமைக்கும்\n• மொழியை தானாக கண்டறிதலுக்கு மீட்டமைக்கும்\n• தீமை ஒளிர் ஆக மீட்டமைக்கும்\n• எழுத்து அளவை 18px ஆக மீட்டமைக்கும்\n• TTS அமைப்புகளை மீட்டமைக்கும்\n• உங்கள் மொழிபெயர்ப்புகளை வைத்திருக்கும்",

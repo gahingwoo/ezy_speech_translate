@@ -4,10 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title data-i18n="metaTitle_admin">Login - EzySpeech - AdminLogin</title>
+    <title>Admin Login</title>
     <meta data-i18n-meta="metaDescription" content="Admin login for EzySpeech" name="description">
-    <!-- Favicon (可通过OEM配置修改) -->
-    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <!-- Favicon will be set by OEM loader -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
@@ -22,10 +21,11 @@
     <div class="login-wrapper">
         <div class="login-box">
             <div class="login-logo">
+                <div class="login-logo-content">
+                    <h1>Admin Login</h1>
+                    <p data-i18n="signIn">Sign in to access the admin panel</p>
+                </div>
                 <div class="login-logo-icon">🎙️</div>
-                <div data-i18n="brand_admin" style="display:none"></div>
-                <h1 data-i18n="adminLogin">Admin Login</h1>
-                <p data-i18n="signIn">Sign in to access the admin panel</p>
             </div>
 
             <form class="login-form" id="loginForm" onsubmit="return false;">

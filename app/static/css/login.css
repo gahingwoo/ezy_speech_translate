@@ -13,30 +13,44 @@
     border-radius: 8px;
     box-shadow: 0 10px 40px var(--shadow);
     width: 100%;
-    max-width: 420px;
+    max-width: 520px;
     border: 1px solid var(--border);
 }
 
 .login-logo {
-    text-align: center;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     margin-bottom: 2rem;
+    gap: 2rem;
+}
+
+.login-logo-content {
+    flex: 1;
+    text-align: left;
 }
 
 .login-logo-icon {
     font-size: 3.5rem;
-    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    min-width: 100px;
+    flex-shrink: 0;
 }
 
 .login-logo h1 {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--text);
-    margin-bottom: 0.25rem;
+    margin: 0 0 0.25rem 0;
 }
 
 .login-logo p {
     color: var(--text-secondary);
     font-size: 0.875rem;
+    margin: 0;
 }
 
 .login-form .control-group {
@@ -140,6 +154,18 @@
 @media (max-width: 480px) {
     .login-box {
         padding: 2rem 1.5rem;
+        max-width: 100%;
+    }
+
+    .login-logo {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .login-logo-content {
+        text-align: center;
+        width: 100%;
     }
 
     .login-logo h1 {
@@ -148,5 +174,6 @@
 
     .login-logo-icon {
         font-size: 3rem;
+        min-width: 80px;
     }
 }

@@ -136,19 +136,26 @@ oem:
   enabled: true
   
   branding:
-    user_title: "EzySpeech User"      # Custom title for user interface
+    user_title: "EzySpeech"      # Custom title for user interface
     admin_title: "EzySpeech Admin"    # Custom title for admin panel
     login_title: "EzySpeech Admin"    # Custom title for login page
     app_name: "EzySpeech"             # Custom application name
   
   assets:
-    brand_icon: "🎙️"                  # Brand icon (emoji or image path like "images/oem/logo.png")
-    favicon: ""                        # Favicon path (e.g., "images/oem/favicon.ico")
-    login_icon: "🎙️"                  # Login page icon (emoji or image path)
+    # Path format: relative paths like "oem/images/logo.png" are automatically prefixed with /static/
+    # Store images in: /app/static/oem/images/
+    # Examples:
+    #   - Emoji: "🎙️"
+    #   - Image file: "oem/images/logo.png" -> served as /static/oem/images/logo.png
+    #   - Absolute path: "/static/oem/images/logo.png"
+    
+    brand_icon: "oem/images/logo.png"                  # Brand icon (emoji or image path) - used in header/tabs
+    favicon: "oem/images/favicon.ico"                  # Favicon path - used in browser tab
+    login_icon: "oem/images/logo.png"                  # Login page icon (emoji or image path)
   
   advanced:
     mobile_show_title: true            # Show full title on mobile devices
-    icon_scale: 1.0                    # Icon scale multiplier (1.0 = normal size)
+    icon_scale: 1.4                    # Icon scale multiplier (1.0 = normal size)
 
 # ============================================
 # Feature Flags
