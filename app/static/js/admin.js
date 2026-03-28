@@ -16,6 +16,7 @@ const SENTENCE_END_PATTERN = /[.!?。！？]+$/;  // Detect end of sentences
 let recognitionAttempts = 0;
 const MAX_SILENT_TIME = 15000;
 let lastSpeechTimestamp = Date.now();
+let autoSentenceSplit = true;  // Toggle for auto-split sentences feature
 
 // XSS Protection
 function sanitizeInput(input) {
@@ -443,35 +444,48 @@ function setupRecognitionHandlers() {
             const confidence = event.results[i][0].confidence;
 
             if (event.results[i].isFinal) {
-                // Add to sentence buffer
-                sentenceBuffer += transcript + ' ';
-                
-                // Check if this completes a sentence
-                const trimmedBuffer = sentenceBuffer.trim();
-                if (SENTENCE_END_PATTERN.test(trimmedBuffer)) {
-                    pendingSentences++;
-                    console.log(`✅ Sentence ${pendingSentences} complete: "${trimmedBuffer}"`);
-                    
-                    // Auto-send if buffer reaches threshold (2-3 sentences)
-                    if (pendingSentences >= SENTENCE_SEND_THRESHOLD) {
-                        console.log(`📤 Auto-sending ${pendingSentences} sentences...`);
-                        sendTranscription(sentenceBuffer.trim(), confidence);
-                        sentenceBuffer = '';
-                        pendingSentences = 0;
-                        
-                        updateInterimDisplay('✓ Sent', true);
-                        setTimeout(() => {
-                            if (isRecording) {
-                                updateInterimDisplay('🎤 Listening...', true);
-                            }
-                        }, 500);
-                    } else {
-                        // Show buffer is accumulating
-                        updateInterimDisplay(`📝 Buffering (${pendingSentences}/${SENTENCE_SEND_THRESHOLD} sentences)...`, true);
-                    }
+                // If auto-split is disabled, send immediately
+                if (!autoSentenceSplit) {
+                    console.log(`📤 SENDING TO SERVER (auto-split disabled): "${transcript}"`);
+                    sendTranscription(transcript, confidence);
+                    updateInterimDisplay('✓ Sent: ' + transcript.substring(0, 50) + '...', true);
+                    setTimeout(() => {
+                        if (isRecording) {
+                            updateInterimDisplay('🎤 Listening...', true);
+                        }
+                    }, 500);
                 } else {
-                    // No sentence end detected yet
-                    updateInterimDisplay(`💭 Waiting for sentence end... "${trimmedBuffer}"`, true);
+                    // Auto-split enabled: buffer sentences
+                    // Add to sentence buffer
+                    sentenceBuffer += transcript + ' ';
+                    
+                    // Check if this completes a sentence
+                    const trimmedBuffer = sentenceBuffer.trim();
+                    if (SENTENCE_END_PATTERN.test(trimmedBuffer)) {
+                        pendingSentences++;
+                        console.log(`✅ Sentence ${pendingSentences} complete: "${trimmedBuffer}"`);
+                        
+                        // Auto-send if buffer reaches threshold (2-3 sentences)
+                        if (pendingSentences >= SENTENCE_SEND_THRESHOLD) {
+                            console.log(`📤 Auto-sending ${pendingSentences} sentences...`);
+                            sendTranscription(sentenceBuffer.trim(), confidence);
+                            sentenceBuffer = '';
+                            pendingSentences = 0;
+                            
+                            updateInterimDisplay('✓ Sent', true);
+                            setTimeout(() => {
+                                if (isRecording) {
+                                    updateInterimDisplay('🎤 Listening...', true);
+                                }
+                            }, 500);
+                        } else {
+                            // Show buffer is accumulating
+                            updateInterimDisplay(`📝 Buffering (${pendingSentences}/${SENTENCE_SEND_THRESHOLD} sentences)...`, true);
+                        }
+                    } else {
+                        // No sentence end detected yet
+                        updateInterimDisplay(`💭 Waiting for sentence end... "${trimmedBuffer}"`, true);
+                    }
                 }
             } else {
                 interimTranscript += transcript;
@@ -611,6 +625,32 @@ function changeSourceLanguage() {
     const oldLang = recognitionLanguage;
     recognitionLanguage = select.value;
     console.log(`🌍 Language: ${oldLang} → ${recognitionLanguage}`);
+}
+
+function toggleAutoSentenceSplit() {
+    const btn = document.getElementById('autoSentenceSplitBtn');
+    const badge = document.getElementById('autoSplitBadge');
+    autoSentenceSplit = !autoSentenceSplit;
+    
+    // Clear any buffered sentences when toggling
+    if (sentenceBuffer.trim().length > 0) {
+        console.log(`⚠️ Clearing buffered sentences: "${sentenceBuffer.trim()}"`);
+    }
+    sentenceBuffer = '';
+    pendingSentences = 0;
+    
+    // Update button appearance and badge
+    if (autoSentenceSplit) {
+        btn.classList.remove('inactive');
+        btn.classList.add('active');
+        badge.classList.remove('disabled');
+    } else {
+        btn.classList.remove('active');
+        btn.classList.add('inactive');
+        badge.classList.add('disabled');
+    }
+    
+    console.log(`📝 Auto-split sentences: ${autoSentenceSplit ? 'enabled' : 'disabled'}`);
 }
 
 let draggedElement = null;

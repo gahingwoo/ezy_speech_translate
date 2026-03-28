@@ -85,6 +85,17 @@
                 </div>
 
                 <div class="control-group">
+                    <button id="autoSentenceSplitBtn" class="pf-c-button pf-c-button--primary active" onclick="toggleAutoSentenceSplit()">
+                        <span>✂️</span>
+                        <span data-i18n="autoSentenceSplit">Auto-split sentences</span>
+                    </button>
+                    <div class="auto-split-badge" id="autoSplitBadge">
+                        <span>✂️</span>
+                        <span data-i18n="autoSplitEnabled">Auto-split enabled</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
                     <label class="control-label" data-i18n="recognizing">Recognizing...</label>
                     <div id="interimDisplay" class="interim-display inactive">
                         <span id="interimText" data-i18n="waitingForSpeech">Waiting for speech...</span>
