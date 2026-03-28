@@ -15,7 +15,7 @@ class OEMConfig:
     # Default configuration
     DEFAULT_CONFIG = {
         'branding': {
-            'user_title': 'EzySpeech User',
+            'user_title': 'EzySpeech Listener',
             'admin_title': 'EzySpeech Admin',
             'login_title': 'EzySpeech Admin',
             'app_name': 'EzySpeech'
