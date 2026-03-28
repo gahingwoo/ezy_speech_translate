@@ -630,14 +630,16 @@ function changeSourceLanguage() {
 function toggleAutoSentenceSplit() {
     const btn = document.getElementById('autoSentenceSplitBtn');
     const badge = document.getElementById('autoSplitBadge');
-    autoSentenceSplit = !autoSentenceSplit;
     
-    // Clear any buffered sentences when toggling
+    // Before toggling, send any remaining buffered sentences to avoid losing data
     if (sentenceBuffer.trim().length > 0) {
-        console.log(`⚠️ Clearing buffered sentences: "${sentenceBuffer.trim()}"`);
+        console.log(`📤 Sending buffered content before toggle: "${sentenceBuffer.trim()}"`);
+        sendTranscription(sentenceBuffer.trim(), 0.95);
+        sentenceBuffer = '';
+        pendingSentences = 0;
     }
-    sentenceBuffer = '';
-    pendingSentences = 0;
+    
+    autoSentenceSplit = !autoSentenceSplit;
     
     // Update button appearance and badge
     if (autoSentenceSplit) {
