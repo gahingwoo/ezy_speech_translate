@@ -133,7 +133,7 @@ advanced:
 oem:
   # Enable/Disable OEM (branding) customization features
   # Set to true to use custom branding, false to disable
-  enabled: true
+  enabled: false
   
   branding:
     user_title: "EzySpeech"      # Custom title for user interface

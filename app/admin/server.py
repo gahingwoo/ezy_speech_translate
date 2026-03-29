@@ -19,8 +19,8 @@ from datetime import datetime, timedelta
 from functools import wraps
 from collections import defaultdict
 
-# OEM Configuration - imported from app module
-from app.oem_manager import init_oem_config
+# OEM Configuration - imported using relative import for cross-platform compatibility
+from .oem_manager import init_oem_config
 
 # ──────────────────────────────────────────
 # Path Setup

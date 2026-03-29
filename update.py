@@ -103,8 +103,9 @@ class UpdateManager:
         for attempt in range(1, max_retries + 1):
             self.print_info(f"Fetching from git (attempt {attempt}/{max_retries})...")
             try:
+                # Fetch all updates, prune deleted remote branches, and sync tags
                 result = subprocess.run(
-                    ["git", "fetch", "origin"],
+                    ["git", "fetch", "origin", "--all", "--prune", "--tags"],
                     cwd=self.project_root, capture_output=True, text=True, timeout=60
                 )
                 if result.returncode != 0:
@@ -135,7 +136,16 @@ class UpdateManager:
                 if result.returncode != 0:
                     raise RuntimeError(f"reset failed: {result.stderr.strip()}")
 
-                self.print_success(f"Updated from {target_branch} branch")
+                # Clean up untracked files to ensure complete sync
+                # -f: force, -d: remove directories, -e: exclude pattern
+                result = subprocess.run(
+                    ["git", "clean", "-fd"],
+                    cwd=self.project_root, capture_output=True, text=True, timeout=60
+                )
+                if result.returncode != 0:
+                    self.print_info(f"Warning: git clean had issues: {result.stderr.strip()}")
+
+                self.print_success(f"Updated from {target_branch} branch (all new files synced)")
                 return
 
             except subprocess.TimeoutExpired:

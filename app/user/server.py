@@ -26,8 +26,8 @@ import sys
 from collections import defaultdict
 import time
 
-# OEM Configuration - imported from app module
-from app.oem_manager import init_oem_config
+# OEM Configuration - imported using relative import for cross-platform compatibility
+from .oem_manager import init_oem_config
 
 # ──────────────────────────────────────────
 # Path Setup
@@ -443,6 +443,7 @@ next_translation_id = 0  # Global ID counter (never resets, always increments)
 connected_clients = set()          # all socket SIDs
 listener_clients = defaultdict(set) # ip -> {sids}  (non-admin only)
 admin_sessions = {}
+api_session_tokens = {}  # Maps token -> {sid, created_at, expires_at}
 
 def add_translation(data):
     """Add translation with size limit"""
@@ -520,6 +521,56 @@ def after_request(response):
 # ──────────────────────────────────────────
 # Authentication with Security
 # ──────────────────────────────────────────
+
+def generate_api_session_token():
+    """Generate a temporary API session token"""
+    return secrets.token_urlsafe(32)
+
+def create_api_token(sid):
+    """Create a new API token for this WebSocket session"""
+    token = generate_api_session_token()
+    api_session_tokens[token] = {
+        'sid': sid,
+        'created_at': datetime.now(),
+        'expires_at': datetime.now() + timedelta(hours=24)  # Valid for 24 hours
+    }
+    return token
+
+def validate_api_token(token):
+    """Validate and return session info if token is valid"""
+    if token not in api_session_tokens:
+        return None
+    
+    session_info = api_session_tokens[token]
+    
+    # Check if expired
+    if datetime.now() > session_info['expires_at']:
+        del api_session_tokens[token]
+        return None
+    
+    return session_info
+
+def require_api_token(f):
+    """Decorator to validate API session token"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Get token from header or query parameter
+        token = request.headers.get('X-API-Session-Token', '')
+        if not token:
+            token = request.args.get('api_token', '')
+        
+        if not token:
+            return jsonify({'error': 'No API token provided'}), 401
+        
+        session_info = validate_api_token(token)
+        if not session_info:
+            return jsonify({'error': 'Invalid or expired API token'}), 401
+        
+        request.api_session = session_info
+        return f(*args, **kwargs)
+    
+    return decorated
+
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -648,11 +699,53 @@ def get_oem_config():
 
 @app.route('/api/translations', methods=['GET'])
 @limiter.limit("60 per minute")
-@require_auth
-@check_client_access
+@require_api_token
 def get_translations():
-    """Get translation history"""
-    return jsonify({'translations': translations_history})
+    """
+    Get translation history with pagination support
+    
+    Query parameters:
+        offset (int): Starting index (default 0)
+        limit (int): Number of items to return (default 100, max 1000)
+    
+    Response:
+        {
+            'translations': [...],
+            'offset': 0,
+            'limit': 100,
+            'total': 1234,
+            'has_more': true
+        }
+    """
+    try:
+        offset = int(request.args.get('offset', 0))
+        limit = int(request.args.get('limit', 100))
+    except (ValueError, TypeError):
+        offset = 0
+        limit = 100
+    
+    # Validate parameters
+    offset = max(0, min(offset, len(translations_history)))
+    limit = max(1, min(limit, 1000))  # Max 1000 items per request
+    
+    # Get total count
+    total = len(translations_history)
+    
+    # Get slice of translations (newest first)
+    start = max(0, total - offset - limit)
+    end = max(0, total - offset)
+    translations_slice = translations_history[start:end]
+    translations_slice.reverse()  # Most recent first
+    
+    has_more = (offset + limit) < total
+    
+    return jsonify({
+        'translations': translations_slice,
+        'offset': offset,
+        'limit': limit,
+        'total': total,
+        'has_more': has_more
+    })
 
 @app.route('/api/translations/clear', methods=['POST'])
 @limiter.limit("10 per minute")
@@ -745,6 +838,183 @@ def export_translations(export_format):
         return output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 # ──────────────────────────────────────────
+# Translation API with Rate Limiting and Caching
+# ──────────────────────────────────────────
+from .translation_service import get_translation_service
+
+@app.route('/api/translate', methods=['POST'])
+@limiter.limit("120 per minute")  # 2 requests per second per client
+@check_client_access
+def translate_text():
+    """
+    Translate text from server-side
+    
+    Request:
+        {
+            "text": "text to translate",
+            "target_lang": "zh",  # target language code
+        }
+    
+    Response:
+        {
+            "success": true/false,
+            "translated": "translated text",
+            "original": "original text",
+            "target_lang": "zh",
+            "source_lang": "auto",
+            "cached": true/false,  # true if from cache
+            "error": "error message (if failed)"
+        }
+    """
+    try:
+        data = request.json or {}
+    except Exception:
+        security_logger.warning(f"Malformed JSON from {get_client_key()}")
+        return jsonify({'success': False, 'error': 'Invalid request'}), 400
+    
+    text = sanitize_text(data.get('text', ''), max_length=5000)
+    target_lang = sanitize_text(data.get('target_lang', 'en'), max_length=20)
+    
+    if not text or not target_lang:
+        return jsonify({
+            'success': False,
+            'error': 'Missing required fields: text, target_lang'
+        }), 400
+    
+    if len(text) > 5000:
+        return jsonify({
+            'success': False,
+            'error': 'Text too long (max 5000 characters)'
+        }), 413
+    
+    try:
+        # Get translation service instance
+        translation_service = get_translation_service()
+        
+        # Perform translation - now returns (success, translated, from_cache)
+        success, translated, from_cache = translation_service.translate(text, target_lang)
+        
+        return jsonify({
+            'success': success,
+            'translated': translated,
+            'original': text,
+            'target_lang': target_lang,
+            'source_lang': 'auto',
+            'cached': from_cache,
+            'error': None if success else 'Translation failed'
+        })
+    
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Translation service error: {str(e)}'
+        }), 500
+
+@app.route('/api/translate/batch', methods=['POST'])
+@limiter.limit("60 per minute")  # 1 request per second per client for batch
+@check_client_access
+def translate_batch():
+    """
+    Translate multiple texts in batch
+    
+    Request:
+        {
+            "texts": ["text1", "text2", ...],
+            "target_lang": "zh"
+        }
+    
+    Response:
+        {
+            "success": true/false,
+            "translations": [
+                {
+                    "original": "text1",
+                    "translated": "translated text1",
+                    "success": true,
+                    "cached": false
+                },
+                ...
+            ],
+            "error": "error message (if failed)"
+        }
+    """
+    try:
+        data = request.json or {}
+    except Exception:
+        security_logger.warning(f"Malformed JSON from {get_client_key()}")
+        return jsonify({'success': False, 'error': 'Invalid request'}), 400
+    
+    texts = data.get('texts', [])
+    target_lang = sanitize_text(data.get('target_lang', 'en'), max_length=20)
+    
+    if not isinstance(texts, list) or not texts or not target_lang:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid request: expected texts (list) and target_lang'
+        }), 400
+    
+    # Limit batch size
+    if len(texts) > 50:
+        return jsonify({
+            'success': False,
+            'error': 'Batch too large (max 50 items)'
+        }), 413
+    
+    try:
+        translation_service = get_translation_service()
+        results = []
+        
+        for text in texts:
+            sanitized = sanitize_text(text, max_length=5000)
+            if not sanitized:
+                results.append({
+                    'original': text,
+                    'translated': text,
+                    'success': False,
+                    'cached': False,
+                    'error': 'Empty or invalid text'
+                })
+                continue
+            
+            success, translated, from_cache = translation_service.translate(sanitized, target_lang)
+            results.append({
+                'original': sanitized,
+                'translated': translated,
+                'success': success,
+                'cached': from_cache,
+                'error': None if success else 'Translation failed'
+            })
+        
+        return jsonify({
+            'success': True,
+            'translations': results,
+            'count': len(results)
+        })
+    
+    except Exception as e:
+        logger.error(f"Batch translation error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Batch translation failed: {str(e)}'
+        }), 500
+
+@app.route('/api/translate/cache', methods=['POST'])
+@limiter.limit("10 per minute")
+@require_auth
+@check_client_access
+def clear_translation_cache():
+    """Clear translation cache"""
+    try:
+        translation_service = get_translation_service()
+        translation_service.clear_cache()
+        logger.info(f"Translation cache cleared by {request.user.get('username')}")
+        return jsonify({'success': True, 'message': 'Cache cleared'})
+    except Exception as e:
+        logger.error(f"Error clearing cache: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ──────────────────────────────────────────
 # WebSocket Events with Security
 # ──────────────────────────────────────────
 @socketio.on('connect')
@@ -781,13 +1051,15 @@ def handle_connect():
     listener_clients[client_key].add(request.sid)  # assumed listener until admin_connect
     logger.info(f"Client connected: {client_ip} (Client: {client_id}, SID: {request.sid}, Total: {len(connected_clients)})")
 
-    # Send sanitized history
-    safe_history = [
-        {**item, 'original': sanitize_text(item['original'], 1000),
-         'corrected': sanitize_text(item['corrected'], 1000)}
-        for item in translations_history[-100:]
-    ]
-    emit('history', safe_history)
+    # Notify client that history is available via HTTP API (pagination)
+    # Don't send all history via WebSocket - use HTTP API for better performance
+    # Generate and send short-lived API session token for pagination
+    api_token = create_api_token(request.sid)
+    emit('ready', {
+        'status': 'connected',
+        'message': 'Use /api/translations to fetch paginated history',
+        'api_token': api_token
+    })
 
     return True
 
@@ -812,6 +1084,12 @@ def handle_disconnect(sid=None):
     if not listener_clients[client_key]:
         del listener_clients[client_key]
     admin_sessions.pop(sid_used, None)
+    
+    # Clean up API tokens associated with this SID
+    tokens_to_remove = [t for t, info in api_session_tokens.items() if info['sid'] == sid_used]
+    for token in tokens_to_remove:
+        del api_session_tokens[token]
+    
     logger.info(f"Client disconnected: {get_real_ip()} (Client: {client_id}, Total: {len(connected_clients)})")
 
 @socketio.on('admin_connect')

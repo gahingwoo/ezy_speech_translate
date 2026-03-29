@@ -73,6 +73,14 @@ let translations = [];
 let searchQuery = '';
 const visibleTranslationIds = new Set();
 
+// Virtual Scrolling / Pagination
+let translationsOffset = 0;          // Current offset in pagination
+let translationsLimit = 13;          // Items per load (10 visible + 3 preload)
+let translationsTotal = 0;           // Total items on server
+let isLoadingMore = false;           // Prevent duplicate requests
+let hasMoreTranslations = false;     // More items available on server
+let apiSessionToken = null;          // API token from WebSocket connection
+
 /* =========================
    i18n helpers
    ========================= */
@@ -221,7 +229,8 @@ function init() {
     loadSettings();
     applyDisplayLanguageLocal();
     applyDisplayMode();
-    renderTranslations();
+    // Don't load translations here - wait for WebSocket connection
+    // so authToken is available
 
     // Initialize Socket.IO connection
     ensureSocketConnected();
@@ -755,11 +764,13 @@ function changeLanguage() {
 
     loadVoices();
 
-    // Clear cached translations
+    // Clear cached translations (not the data, just the cached translations)
     translations.forEach(function (item) {
         item.translated = null;
         item.currentLang = null;
     });
+    
+    // Re-render with new language (will trigger translation)
     renderTranslations();
 }
 
@@ -1151,53 +1162,40 @@ async function performSingleTranslation(text, targetLang, translationLang) {
 
 async function translateViaApi(text, targetLang) {
     try {
-        // Use POST request to avoid URL length limitations (GET has ~2048 char limit)
-        const url = 'https://translate.googleapis.com/translate_a/element.js?client=gtx';
-        
-        // Build form data for POST request
-        const formData = new FormData();
-        formData.append('sl', 'auto');
-        formData.append('tl', targetLang);
-        formData.append('text', text);
-        
-        const response = await fetch('https://translate.googleapis.com/translate_a/single', {
+        // Call backend translation API instead of Google Translate directly
+        // This avoids CORS issues and implements rate limiting on the server
+        const response = await fetch('/api/translate', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json'
             },
-            body: 'client=gtx&sl=auto&tl=' + encodeURIComponent(targetLang) + '&dt=t&q=' + encodeURIComponent(text),
-            timeout: 10000
+            body: JSON.stringify({
+                text: text,
+                target_lang: targetLang
+            })
         });
         
         if (!response.ok) {
-            throw new Error('API returned status ' + response.status);
+            throw new Error(`Backend returned status ${response.status}`);
         }
         
         const data = await response.json();
         
-        // Extract ALL translation segments from the API response
-        const result = extractAllTranslations(data);
-        return result;
-        
-    } catch (error) {
-        console.error('❌ API call failed:', error.message);
-        // Fallback to GET request
-        console.log('🔄 Falling back to GET request...');
-        try {
-            const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(targetLang) + '&dt=t&q=' + encodeURIComponent(text);
-            const response = await fetch(url, { timeout: 10000 });
-            
-            if (!response.ok) {
-                throw new Error('Fallback GET also failed');
+        if (data.success && data.translated) {
+            console.log('✅ Backend translation successful:', data.translated.substring(0, 80) + (data.translated.length > 80 ? '...' : ''));
+            if (data.cached) {
+                console.log('📦 (from cache)');
             }
-            
-            const data = await response.json();
-            const result = extractAllTranslations(data);
-            return result;
-        } catch (fallbackError) {
-            console.error('❌ Fallback GET request also failed:', fallbackError.message);
+            return data.translated;
+        } else {
+            console.warn('⚠️ Backend translation failed:', data.error);
             return '';
         }
+        
+    } catch (error) {
+        console.error('❌ Backend translation API failed:', error.message);
+        console.log('ℹ️ Translation will fall back to original text');
+        return '';
     }
 }
 
@@ -1508,7 +1506,9 @@ function showCopyFeedback(id) {
 async function renderTranslations() {
     const list = document.getElementById('translationsList');
     const itemCount = document.getElementById('itemCount');
-    if (itemCount) itemCount.textContent = translations.length;
+    
+    // Show total from server
+    if (itemCount) itemCount.textContent = translationsTotal;
 
     if (translations.length === 0) {
         // Use i18n for translated empty state text
@@ -1529,15 +1529,118 @@ async function renderTranslations() {
         return;
     }
 
-    const reversed = [...translations].reverse();
+    // Only render loaded translations (virtual scrolling)
     const items = await Promise.all(
-        reversed.map(item => createTranslationHTML(item))
+        translations.map(item => createTranslationHTML(item))
     );
 
     list.innerHTML = items.join('');
 
     if (searchQuery) {
         performSearch();
+    }
+    
+    // Add scroll listener to load more when reaching bottom
+    setupScrollListener();
+}
+
+/* Virtual Scrolling Functions */
+
+function setupScrollListener() {
+    const list = document.getElementById('translationsList');
+    if (!list) return;
+    
+    // Remove old listener if exists
+    list.removeEventListener('scroll', onTranslationsScroll);
+    
+    // Add new listener
+    list.addEventListener('scroll', onTranslationsScroll);
+}
+
+function onTranslationsScroll(event) {
+    const list = event.target;
+    const scrollTop = list.scrollTop;
+    const clientHeight = list.clientHeight;
+    const scrollHeight = list.scrollHeight;
+    
+    // If scrolled within 500px of bottom and more items available
+    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+    
+    if (distanceFromBottom < 500 && hasMoreTranslations && !isLoadingMore) {
+        console.log('📜 Near bottom, loading more translations...');
+        loadMoreTranslations();
+    }
+}
+
+async function loadInitialTranslations() {
+    // Load first batch of translations from server
+    if (!apiSessionToken) {
+        console.warn('⚠️ No API token yet, skipping translation load');
+        return;
+    }
+    
+    try {
+        translationsOffset = 0;
+        const response = await fetch(
+            '/api/translations?offset=0&limit=' + translationsLimit + '&api_token=' + encodeURIComponent(apiSessionToken)
+        );
+        
+        if (response.ok) {
+            const data = await response.json();
+            translations = data.translations || [];
+            translationsTotal = data.total || 0;
+            hasMoreTranslations = data.has_more || false;
+            translationsOffset = 0;
+            
+            console.log(`📥 Loaded ${translations.length} translations (${translationsTotal} total)`);
+            await renderTranslations();
+        } else {
+            console.warn('⚠️ Failed to load translations: ' + response.status);
+        }
+    } catch (error) {
+        console.error('❌ Error loading translations:', error);
+    }
+}
+
+async function loadMoreTranslations() {
+    // Load next batch of translations
+    if (isLoadingMore || !hasMoreTranslations) {
+        return;
+    }
+    
+    isLoadingMore = true;
+    translationsOffset += translationsLimit;
+    
+    try {
+        const response = await fetch(
+            '/api/translations?offset=' + translationsOffset + '&limit=' + translationsLimit + '&api_token=' + encodeURIComponent(apiSessionToken)
+        );
+        
+        if (response.ok) {
+            const data = await response.json();
+            const newTranslations = data.translations || [];
+            
+            // Append to existing translations (newest at bottom)
+            translations.push(...newTranslations);
+            hasMoreTranslations = data.has_more || false;
+            translationsTotal = data.total || 0;
+            
+            console.log(`📥 Loaded ${newTranslations.length} more translations (${translations.length} visible, ${translationsTotal} total)`);
+            
+            // Only re-render the new items (append to DOM)
+            if (newTranslations.length > 0) {
+                const list = document.getElementById('translationsList');
+                const newHtml = await Promise.all(
+                    newTranslations.map(item => createTranslationHTML(item))
+                );
+                list.innerHTML += newHtml.join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading more translations:', error);
+        translationsOffset -= translationsLimit;  // Rollback offset
+    } finally {
+        isLoadingMore = false;
     }
 }
 
@@ -1549,9 +1652,16 @@ async function addTranslation(data) {
         list.innerHTML = '';
     }
 
+    // Add to translations array (at beginning since it's newest)
+    translations.unshift(data);
+    translationsTotal++;
+    
     const html = await createTranslationHTML(data);
     list.innerHTML = html + list.innerHTML;
-    document.getElementById('itemCount').textContent = translations.length;
+    
+    // Update count to show server total
+    const itemCount = document.getElementById('itemCount');
+    if (itemCount) itemCount.textContent = translationsTotal;
 
     if (searchQuery) {
         performSearch();
@@ -1924,13 +2034,25 @@ function setupSocketEventListeners() {
     socketListenersSetup = true;
     console.log('Setting up Socket.IO event listeners...');
 
-    socket.on('connect', () => {
+    socket.on('connect', async () => {
         console.log('Connected to server');
         const badge = document.getElementById('statusBadge');
         if (badge) {
             badge.className = 'connection-badge online';
             const sp = badge.querySelector('span:last-child');
             if (sp) sp.textContent = i18n[displayLanguage]?.online || sp.textContent || 'Online';
+        }
+        // Load translations now that we're connected and have token
+        await loadInitialTranslations();
+    });
+
+    socket.on('ready', async (data) => {
+        // Server sent API token for session
+        if (data && data.api_token) {
+            apiSessionToken = data.api_token;
+            console.log('🔐 API session token received');
+            // Load translations with the new token
+            await loadInitialTranslations();
         }
     });
 
@@ -1945,14 +2067,15 @@ function setupSocketEventListeners() {
     });
 
     socket.on('history', async (history) => {
-        console.log('Received history:', history.length, 'items');
-        translations = history;
-        await renderTranslations();
+        // Legacy: server still sends history, but we ignore it
+        // Instead, we load via HTTP pagination
+        console.log('📜 History message received (ignored, using HTTP API)');
     });
 
     socket.on('new_translation', async (data) => {
-        console.log('Received new translation:', data);
-        translations.push(data);
+        console.log('✨ Received new translation:', data);
+        // WebSocket sends new translation in real-time
+        // It goes to the top of the list (is the newest)
         await addTranslation(data);
 
         if (ttsEnabled && data.translated) {
