@@ -1653,14 +1653,19 @@ async function renderTranslations() {
 /* Virtual Scrolling Functions */
 
 function setupScrollListener() {
-    const list = document.getElementById('translationsList');
-    if (!list) return;
+    // The main section is the scrollable container, not the list itself
+    const mainSection = document.querySelector('.pf-c-page__main-section');
+    if (!mainSection) {
+        console.warn('⚠️ Main section not found for scroll listener');
+        return;
+    }
     
     // Remove old listener if exists
-    list.removeEventListener('scroll', onTranslationsScroll);
+    mainSection.removeEventListener('scroll', onTranslationsScroll);
     
-    // Add new listener
-    list.addEventListener('scroll', onTranslationsScroll);
+    // Add new listener to the actual scrollable container
+    mainSection.addEventListener('scroll', onTranslationsScroll);
+    console.log('✅ Scroll listener attached to .pf-c-page__main-section');
 }
 
 function onTranslationsScroll(event) {
@@ -1676,6 +1681,9 @@ function onTranslationsScroll(event) {
     
     // If scrolled within 500px of bottom and more items available
     const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+    
+    // Debug logging
+    console.log(`📊 Scroll: top=${scrollTop}, client=${clientHeight}, total=${scrollHeight}, distance=${distanceFromBottom}, hasMore=${hasMoreTranslations}, loading=${isLoadingMore}`);
     
     if (distanceFromBottom < 500 && hasMoreTranslations && !isLoadingMore) {
         console.log('📜 Near bottom, loading more translations...');
@@ -1703,7 +1711,8 @@ async function loadInitialTranslations() {
             hasMoreTranslations = data.has_more || false;
             translationsOffset = 0;
             
-            console.log(`📥 Loaded ${translations.length} translations (${translationsTotal} total)`);
+            console.log(`📥 Loaded ${translations.length} translations (total: ${translationsTotal}, has_more: ${hasMoreTranslations})`);
+            console.log(`🔍 API Response: offset=${data.offset}, limit=${data.limit}, total=${data.total}, has_more=${data.has_more}`);
             await renderTranslations();
         } else {
             console.warn('⚠️ Failed to load translations: ' + response.status);
@@ -1716,11 +1725,14 @@ async function loadInitialTranslations() {
 async function loadMoreTranslations() {
     // Load next batch of translations
     if (isLoadingMore || !hasMoreTranslations) {
+        console.log(`⚠️ Cannot load more: isLoadingMore=${isLoadingMore}, hasMore=${hasMoreTranslations}`);
         return;
     }
     
     isLoadingMore = true;
     translationsOffset += translationsLimit;
+    
+    console.log(`📥 Loading more at offset ${translationsOffset}, limit ${translationsLimit}...`);
     
     try {
         const response = await fetch(
@@ -1731,12 +1743,14 @@ async function loadMoreTranslations() {
             const data = await response.json();
             const newTranslations = data.translations || [];
             
+            console.log(`✅ Got ${newTranslations.length} more items (has_more=${data.has_more})`);
+            
             // Append to existing translations (newest at bottom)
             translations.push(...newTranslations);
             hasMoreTranslations = data.has_more || false;
             translationsTotal = data.total || 0;
             
-            console.log(`📥 Loaded ${newTranslations.length} more translations (${translations.length} visible, ${translationsTotal} total)`);
+            console.log(`📥 Loaded ${newTranslations.length} more translations (${translations.length} visible, ${translationsTotal} total, has_more=${hasMoreTranslations})`);
             
             // Only re-render the new items (append to DOM)
             if (newTranslations.length > 0) {
@@ -1746,6 +1760,8 @@ async function loadMoreTranslations() {
                 );
                 list.innerHTML += newHtml.join('');
             }
+        } else {
+            console.error(`❌ Failed to load more: ${response.status}`);
         }
     } catch (error) {
         console.error('Error loading more translations:', error);
