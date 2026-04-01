@@ -4,17 +4,11 @@ Real-time speech recognition and translation system with security hardening
 """
 
 import os
+import sys
 import yaml
 import logging
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
-from flask import Flask, render_template, request, jsonify, session
-from flask_socketio import SocketIO, emit, disconnect
-from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_talisman import Talisman
-from werkzeug.middleware.proxy_fix import ProxyFix
 import jwt
 from functools import wraps
 import hashlib
@@ -22,18 +16,35 @@ import eventlet
 import eventlet.wsgi
 import secrets
 import re
-import sys
 from collections import defaultdict
 import time
 
-# OEM Configuration - imported using relative import for cross-platform compatibility
-from .oem_manager import init_oem_config
-
 # ──────────────────────────────────────────
-# Path Setup
+# Path Setup (BEFORE any app imports)
 # ──────────────────────────────────────────
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Add base directory to sys.path for module imports
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# OEM Configuration - with fallback for direct script execution
+try:
+    # Try relative import (works when imported as module)
+    from .oem_manager import init_oem_config
+except ImportError:
+    # Fallback for direct script execution
+    from app.oem_manager import init_oem_config
+
+# Now import Flask and other app modules
+from flask import Flask, render_template, request, jsonify, session
+from flask_socketio import SocketIO, emit, disconnect
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
 SSL_DIR = os.path.join(CONFIG_DIR, "ssl")
 
@@ -771,6 +782,17 @@ def health_check():
         'translations': len(translations_history)
     })
 
+@app.route('/api/history', methods=['GET'])
+@limiter.limit("60 per minute")
+@require_auth
+def get_history():
+    """Get all transcription history"""
+    return jsonify({
+        'success': True,
+        'translations': translations_history,
+        'count': len(translations_history)
+    })
+
 @app.route('/api/export/<export_format>', methods=['GET'])
 @limiter.limit("10 per minute")
 @require_auth
@@ -787,7 +809,12 @@ def export_translations(export_format):
     export_data = translations_history[-max_export:]
 
     if export_format == 'json':
-        return jsonify({'translations': export_data})
+        import json as json_module
+        output = json_module.dumps({'translations': export_data}, indent=2, ensure_ascii=False)
+        return output, 200, {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="transcriptions.json"'
+        }
 
     elif export_format == 'txt':
         output = f"EzySpeechTranslate Export\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
@@ -801,7 +828,10 @@ def export_translations(export_format):
 
         # Add UTF-8 BOM to ensure Windows/Excel correctly identifies encoding
         output = '\ufeff' + output
-        return output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        return output, 200, {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="transcriptions.txt"'
+        }
 
     elif export_format == 'csv':
         output = "ID,Timestamp,Original,Corrected,Is_Corrected\n"
@@ -818,7 +848,10 @@ def export_translations(export_format):
 
         # Add UTF-8 BOM to ensure Windows/Excel correctly identifies encoding
         output = '\ufeff' + output
-        return output, 200, {'Content-Type': 'text/csv; charset=utf-8'}
+        return output, 200, {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="transcriptions.csv"'
+        }
 
     elif export_format == 'srt':
         output = ""
@@ -835,12 +868,18 @@ def export_translations(export_format):
 
         # Add UTF-8 BOM to ensure Windows/Excel correctly identifies encoding
         output = '\ufeff' + output
-        return output, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        return output, 200, {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="transcriptions.srt"'
+        }
 
 # ──────────────────────────────────────────
 # Translation API with Rate Limiting and Caching
 # ──────────────────────────────────────────
-from .translation_service import get_translation_service
+try:
+    from .translation_service import get_translation_service
+except ImportError:
+    from app.translation_service import get_translation_service
 
 @app.route('/api/translate', methods=['POST'])
 @limiter.limit("120 per minute")  # 2 requests per second per client
@@ -1103,6 +1142,8 @@ def handle_admin_connect(data):
 
     if not get_config('authentication', 'enabled', default=True):
         admin_sessions[request.sid] = 'admin'
+        # Send translation history to admin
+        emit('history', translations_history)
         emit('admin_connected', {'success': True})
         return
 
@@ -1119,6 +1160,8 @@ def handle_admin_connect(data):
         listener_clients[client_key].discard(request.sid)
         if not listener_clients[client_key]:
             del listener_clients[client_key]
+        # Send translation history to admin
+        emit('history', translations_history)
         emit('admin_connected', {'success': True})
         logger.info(f"Admin connected: {decoded['username']} from {get_real_ip()}")
     else:
@@ -1209,6 +1252,49 @@ def handle_clear_history():
     next_translation_id = 0  # Reset ID counter when clearing history
     socketio.emit('history_cleared')
     logger.info(f"[CLEARED] History by {admin_sessions.get(request.sid)}")
+
+@socketio.on('import_transcription')
+def handle_import_transcription(data):
+    """Handle import of transcriptions from JSON file"""
+    if not is_admin(request.sid):
+        emit('error', {'message': 'Unauthorized'})
+        disconnect()
+        return
+
+    if not data or not isinstance(data, dict):
+        emit('error', {'message': 'Invalid data'})
+        return
+
+    # Validate required fields
+    required_fields = ['original', 'corrected']
+    for field in required_fields:
+        if field not in data:
+            emit('error', {'message': f'Missing required field: {field}'})
+            return
+
+    # Sanitize and prepare import data
+    translation_data = {
+        'id': data.get('id'),  # Use provided ID if available
+        'timestamp': data.get('timestamp', datetime.now().strftime('%H:%M:%S')),
+        'original': sanitize_text(data.get('original', ''), max_length=5000),
+        'corrected': sanitize_text(data.get('corrected', ''), max_length=5000),
+        'translated': data.get('translated'),
+        'is_corrected': data.get('is_corrected', False),
+        'source_language': data.get('language', 'imported')[:10],
+        'confidence': data.get('confidence', 0.95)
+    }
+
+    # Validate after sanitization
+    if not translation_data['original'] or not translation_data['corrected']:
+        emit('error', {'message': 'Original and corrected text cannot be empty'})
+        return
+
+    # Add to history
+    add_translation(translation_data)
+
+    # Broadcast to all connected clients
+    socketio.emit('new_translation', translation_data)
+    logger.info(f"[IMPORTED] ID={translation_data['id']} from {admin_sessions.get(request.sid)}")
 
 @socketio.on('delete_items')
 def handle_delete_items(data):

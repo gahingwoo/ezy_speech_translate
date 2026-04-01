@@ -9,14 +9,9 @@ let recognitionLanguage = 'en-US';
 let autoRestartEnabled = true;
 let restartTimeout = null;
 let finalTranscript = '';
-let sentenceBuffer = '';  // Buffer for sentence-level batching
-let pendingSentences = 0;  // Track complete sentences in buffer
-const SENTENCE_SEND_THRESHOLD = 2;  // Send after 2 complete sentences
-const SENTENCE_END_PATTERN = /[.!?。！？]+$/;  // Detect end of sentences
 let recognitionAttempts = 0;
 const MAX_SILENT_TIME = 15000;
 let lastSpeechTimestamp = Date.now();
-let autoSentenceSplit = true;  // Toggle for auto-split sentences feature
 
 // XSS Protection
 function sanitizeInput(input) {
@@ -240,6 +235,9 @@ function connectWebSocket() {
             alert('Session expired. Please login again.');
             localStorage.removeItem('authToken');
             window.location.href = '/login';
+        } else {
+            // Fetch history via HTTP API to ensure we get the latest data
+            fetchTranslationHistory();
         }
     });
 
@@ -311,6 +309,33 @@ function updateStatus(connected) {
     }
 }
 
+async function fetchTranslationHistory() {
+    try {
+        console.log('📥 Fetching translation history via HTTP...');
+        const response = await fetch(`${SERVER_URL}/api/history`, {
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.warn(`Failed to fetch history: ${response.status}`);
+            return;
+        }
+
+        const data = await response.json();
+        if (data.success && Array.isArray(data.translations)) {
+            translations = data.translations;
+            console.log(`✅ Loaded ${data.count} transcriptions from server`);
+            renderTranscriptions();
+        }
+    } catch (error) {
+        console.error('Failed to fetch translation history:', error);
+    }
+}
+
 async function loadAudioDevices() {
     const select = document.getElementById('deviceSelect');
 
@@ -358,14 +383,6 @@ function setupRecognitionHandlers() {
 
     recognition.onend = () => {
         console.log('🛑 Speech recognition ended');
-
-        // Send any remaining buffered sentences when recognition ends
-        if (sentenceBuffer.trim().length > 0) {
-            console.log(`📤 Sending remaining buffer at recognition end: "${sentenceBuffer.trim()}"`);
-            sendTranscription(sentenceBuffer.trim(), 0.95);  // High confidence for buffered content
-            sentenceBuffer = '';
-            pendingSentences = 0;
-        }
 
         if (isRecording && autoRestartEnabled) {
             console.log('🔄 Auto-restarting in 300ms...');
@@ -444,49 +461,14 @@ function setupRecognitionHandlers() {
             const confidence = event.results[i][0].confidence;
 
             if (event.results[i].isFinal) {
-                // If auto-split is disabled, send immediately
-                if (!autoSentenceSplit) {
-                    console.log(`📤 SENDING TO SERVER (auto-split disabled): "${transcript}"`);
-                    sendTranscription(transcript, confidence);
-                    updateInterimDisplay('✓ Sent: ' + transcript.substring(0, 50) + '...', true);
-                    setTimeout(() => {
-                        if (isRecording) {
-                            updateInterimDisplay('🎤 Listening...', true);
-                        }
-                    }, 500);
-                } else {
-                    // Auto-split enabled: buffer sentences
-                    // Add to sentence buffer
-                    sentenceBuffer += transcript + ' ';
-                    
-                    // Check if this completes a sentence
-                    const trimmedBuffer = sentenceBuffer.trim();
-                    if (SENTENCE_END_PATTERN.test(trimmedBuffer)) {
-                        pendingSentences++;
-                        console.log(`✅ Sentence ${pendingSentences} complete: "${trimmedBuffer}"`);
-                        
-                        // Auto-send if buffer reaches threshold (2-3 sentences)
-                        if (pendingSentences >= SENTENCE_SEND_THRESHOLD) {
-                            console.log(`📤 Auto-sending ${pendingSentences} sentences...`);
-                            sendTranscription(sentenceBuffer.trim(), confidence);
-                            sentenceBuffer = '';
-                            pendingSentences = 0;
-                            
-                            updateInterimDisplay('✓ Sent', true);
-                            setTimeout(() => {
-                                if (isRecording) {
-                                    updateInterimDisplay('🎤 Listening...', true);
-                                }
-                            }, 500);
-                        } else {
-                            // Show buffer is accumulating
-                            updateInterimDisplay(`📝 Buffering (${pendingSentences}/${SENTENCE_SEND_THRESHOLD} sentences)...`, true);
-                        }
-                    } else {
-                        // No sentence end detected yet
-                        updateInterimDisplay(`💭 Waiting for sentence end... "${trimmedBuffer}"`, true);
+                console.log(`📤 SENDING TO SERVER: "${transcript}"`);
+                sendTranscription(transcript, confidence);
+                updateInterimDisplay('✓ Sent: ' + transcript.substring(0, 50) + '...', true);
+                setTimeout(() => {
+                    if (isRecording) {
+                        updateInterimDisplay('🎤 Listening...', true);
                     }
-                }
+                }, 500);
             } else {
                 interimTranscript += transcript;
             }
@@ -588,14 +570,6 @@ function stopRecording() {
     isRecording = false;
     autoRestartEnabled = false;
 
-    // Clear any pending sentence buffer when stopping
-    if (sentenceBuffer.trim().length > 0) {
-        console.log(`📤 Flushing buffer on stop: "${sentenceBuffer.trim()}"`);
-        sendTranscription(sentenceBuffer.trim(), 0.95);
-        sentenceBuffer = '';
-        pendingSentences = 0;
-    }
-
     if (restartTimeout) {
         clearTimeout(restartTimeout);
         restartTimeout = null;
@@ -627,34 +601,6 @@ function changeSourceLanguage() {
     console.log(`🌍 Language: ${oldLang} → ${recognitionLanguage}`);
 }
 
-function toggleAutoSentenceSplit() {
-    const btn = document.getElementById('autoSentenceSplitBtn');
-    const badge = document.getElementById('autoSplitBadge');
-    
-    // Before toggling, send any remaining buffered sentences to avoid losing data
-    if (sentenceBuffer.trim().length > 0) {
-        console.log(`📤 Sending buffered content before toggle: "${sentenceBuffer.trim()}"`);
-        sendTranscription(sentenceBuffer.trim(), 0.95);
-        sentenceBuffer = '';
-        pendingSentences = 0;
-    }
-    
-    autoSentenceSplit = !autoSentenceSplit;
-    
-    // Update button appearance and badge
-    if (autoSentenceSplit) {
-        btn.classList.remove('inactive');
-        btn.classList.add('active');
-        badge.classList.remove('disabled');
-    } else {
-        btn.classList.remove('active');
-        btn.classList.add('inactive');
-        badge.classList.add('disabled');
-    }
-    
-    console.log(`📝 Auto-split sentences: ${autoSentenceSplit ? 'enabled' : 'disabled'}`);
-}
-
 let draggedElement = null;
 let draggedIndex = null;
 let touchStartY = 0;
@@ -683,6 +629,7 @@ function renderTranscriptions() {
         return;
     }
 
+    // Display in reverse order (newest first)
     const reversed = [...translations].reverse();
     list.innerHTML = reversed.map((item, index) => `
         <div class="transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
@@ -706,7 +653,6 @@ function renderTranscriptions() {
                    ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
                    onclick="handleCheckboxClick(event, ${item.id})">
             <div class="card-content">
-                ${item.confidence ? `<span class="card-confidence">confidence: ${Math.round(item.confidence * 100)}%</span>` : ''}
                 <div class="card-header">
                     <span class="card-time">${item.timestamp}</span>
                     ${item.is_corrected ? `<span class="card-badge">${(shared && shared[lang] && shared[lang]['corrected']) || '✓ Corrected'}</span>` : ''}
@@ -955,6 +901,99 @@ function exportData() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.json')) {
+        alert('❌ Please select a JSON file');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const content = e.target.result;
+            const data = JSON.parse(content);
+            
+            // Validate data structure
+            if (!data.translations || !Array.isArray(data.translations)) {
+                alert('❌ Invalid JSON format. Expected {translations: []}');
+                return;
+            }
+
+            // Validate each translation object has required fields
+            const requiredFields = ['id', 'original', 'corrected'];
+            for (const item of data.translations) {
+                for (const field of requiredFields) {
+                    if (!(field in item)) {
+                        alert(`❌ Missing required field: ${field}`);
+                        return;
+                    }
+                }
+            }
+
+            importTranslations(data.translations);
+        } catch (error) {
+            alert(`❌ Error parsing JSON: ${error.message}`);
+            console.error('JSON parse error:', error);
+        }
+    };
+    reader.readAsText(file);
+
+    // Reset file input
+    event.target.value = '';
+}
+
+function importTranslations(translationsToImport) {
+    if (translationsToImport.length === 0) {
+        alert('No translations to import');
+        return;
+    }
+
+    const confirmed = confirm(
+        `📥 Ready to import ${translationsToImport.length} translation(s).\n\n` +
+        `This will add them to your transcriptions.\n\n` +
+        `Continue?`
+    );
+
+    if (!confirmed) return;
+
+    console.log(`📥 Importing ${translationsToImport.length} translations...`);
+
+    // Show progress
+    let imported = 0;
+    let failed = 0;
+
+    // Send each translation via socket
+    for (const item of translationsToImport) {
+        const validation = validateText(item.corrected);
+        if (!validation.valid) {
+            console.warn(`⚠️ Skipping invalid translation: ${item.corrected}`);
+            failed++;
+            continue;
+        }
+
+        // Emit import event to server
+        socket.emit('import_transcription', {
+            id: item.id,
+            original: item.original,
+            corrected: item.corrected,
+            timestamp: item.timestamp || new Date().toISOString(),
+            is_corrected: item.is_corrected || true,
+            language: item.language || 'imported',
+            confidence: item.confidence || 0.95
+        });
+
+        imported++;
+    }
+
+    alert(`✅ Import completed!\n\n${imported} transcription(s) imported\n${failed > 0 ? `${failed} skipped (validation failed)` : 'No errors'}`);
+    
+    console.log(`✅ Import completed: ${imported}/${translationsToImport.length}`);
 }
 
 function startSystemMonitor() {

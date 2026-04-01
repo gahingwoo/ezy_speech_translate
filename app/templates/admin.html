@@ -85,17 +85,6 @@
                 </div>
 
                 <div class="control-group">
-                    <button id="autoSentenceSplitBtn" class="pf-c-button pf-c-button--primary active" onclick="toggleAutoSentenceSplit()">
-                        <span>✂️</span>
-                        <span data-i18n="autoSentenceSplit">Auto-split sentences</span>
-                    </button>
-                    <div class="auto-split-badge" id="autoSplitBadge">
-                        <span>✂️</span>
-                        <span data-i18n="autoSplitEnabled">Auto-split enabled</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
                     <label class="control-label" data-i18n="recognizing">Recognizing...</label>
                     <div id="interimDisplay" class="interim-display inactive">
                         <span id="interimText" data-i18n="waitingForSpeech">Waiting for speech...</span>
@@ -115,8 +104,13 @@
                     <button class="pf-c-button pf-c-button--secondary" onclick="clearHistory()"><span
                             data-i18n="clearAll">Clear All</span></button>
                 </div>
-                <button class="pf-c-button pf-c-button--success" style="margin-top: 0.5rem;"
-                    onclick="exportData()"><span>📤</span> <span data-i18n="export">Export</span></button>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button class="pf-c-button pf-c-button--success" style="flex: 1;"
+                        onclick="exportData()"><span>📥</span> <span data-i18n="export">Export</span></button>
+                    <button class="pf-c-button pf-c-button--info" style="flex: 1;"
+                        onclick="document.getElementById('importFileInput').click()"><span>📤</span> <span data-i18n="import">Import</span></button>
+                </div>
+                <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleImportFile(event)">
             </div>
 
             <div class="sidebar-section">

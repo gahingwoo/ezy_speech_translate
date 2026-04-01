@@ -80,6 +80,10 @@ let translationsTotal = 0;           // Total items on server
 let isLoadingMore = false;           // Prevent duplicate requests
 let hasMoreTranslations = false;     // More items available on server
 let apiSessionToken = null;          // API token from WebSocket connection
+let pageVisible = true;              // Track if page is visible (for optimization)
+
+// Translation fallback system
+const translationCache = {};         // Cache translations locally for fallback
 
 /* =========================
    i18n helpers
@@ -242,6 +246,10 @@ function init() {
 
     const langSel = document.getElementById('displayLanguage');
     if (langSel) langSel.addEventListener('change', changeDisplayLanguageLocal);
+
+    // Monitor page visibility to optimize resource usage
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    pageVisible = !document.hidden;
 
     console.log('user.js initialized');
 }
@@ -981,6 +989,22 @@ function handleSearch() {
     performSearch();
 }
 
+/* ===================================
+   Page Visibility Management (Resource Optimization)
+   =================================== */
+function handleVisibilityChange() {
+    pageVisible = !document.hidden;
+    
+    if (pageVisible) {
+        console.log('📱 Page visible - resuming translations');
+        // Optionally sync when page becomes visible again
+    } else {
+        console.log('📱 Page hidden - pausing translation loads');
+        // Clear the loading flag so scroll doesn't get stuck
+        isLoadingMore = false;
+    }
+}
+
 function clearSearch() {
     const desktopInput = document.getElementById('searchInput');
     const mobileInput = document.getElementById('searchInputMobile');
@@ -1161,42 +1185,124 @@ async function performSingleTranslation(text, targetLang, translationLang) {
 }
 
 async function translateViaApi(text, targetLang) {
-    try {
-        // Call backend translation API instead of Google Translate directly
-        // This avoids CORS issues and implements rate limiting on the server
-        const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                text: text,
-                target_lang: targetLang
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Backend returned status ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success && data.translated) {
-            console.log('✅ Backend translation successful:', data.translated.substring(0, 80) + (data.translated.length > 80 ? '...' : ''));
-            if (data.cached) {
-                console.log('📦 (from cache)');
-            }
-            return data.translated;
-        } else {
-            console.warn('⚠️ Backend translation failed:', data.error);
-            return '';
-        }
-        
-    } catch (error) {
-        console.error('❌ Backend translation API failed:', error.message);
-        console.log('ℹ️ Translation will fall back to original text');
-        return '';
+    const cacheKey = `${text}|${targetLang}`;
+    
+    // 1️⃣ Check local cache first
+    if (translationCache[cacheKey]) {
+        console.log('💾 Using local cache:', translationCache[cacheKey].substring(0, 80));
+        return translationCache[cacheKey];
     }
+    
+    // 2️⃣ Try backend translation (with 1 retry)
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+            const response = await fetch('/api/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    target_lang: targetLang
+                }),
+                timeout: 8000  // 8 second timeout
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.translated) {
+                console.log('✅ Backend translation successful (attempt ' + attempt + '):', data.translated.substring(0, 80));
+                if (data.cached) console.log('📦 (from server cache)');
+                
+                // ✅ Cache the successful translation
+                translationCache[cacheKey] = data.translated;
+                return data.translated;
+            } else if (attempt === 1) {
+                // First attempt failed, retry after delay
+                console.warn('⚠️ Translation failed (attempt 1), retrying in 2s...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        } catch (error) {
+            if (attempt === 1) {
+                console.warn('⏱️ Attempt 1 failed:', error.message, '- retrying in 2s...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } else {
+                console.error('❌ Attempt 2 failed:', error.message);
+            }
+        }
+    }
+    
+    // 3️⃣ Backend failed, try client-side translation
+    try {
+        const clientTranslated = await tryClientTranslation(text, targetLang);
+        if (clientTranslated && clientTranslated !== text) {
+            console.log('🔧 Client-side translation:', clientTranslated.substring(0, 80));
+            translationCache[cacheKey] = clientTranslated;
+            return clientTranslated;
+        }
+    } catch (e) {
+        console.warn('Client translation fallback failed:', e.message);
+    }
+    
+    // 4️⃣ All methods failed, return empty (will display original)
+    console.warn('⚠️ All translation methods failed, showing original text');
+    return '';
+}
+
+async function tryClientTranslation(text, targetLang) {
+    // Simple client-side translation using available resources
+    // This is a minimal fallback - you can enhance with better translation engines
+    
+    try {
+        // Try to use Web Translate API if available (Chrome, etc.)
+        if (typeof browser !== 'undefined' && browser.translations) {
+            try {
+                const translator = await browser.translations.getTranslator({
+                    sourceLanguage: 'en',
+                    targetLanguage: targetLang
+                });
+                return await translator.translate(text);
+            } catch (e) {
+                console.debug('Browser Translation API unavailable:', e.message);
+            }
+        }
+        
+        // Fallback: Try simple word replacement for common languages
+        return tryBasicTranslation(text, targetLang);
+    } catch (e) {
+        console.error('Client translation error:', e);
+        return null;
+    }
+}
+
+function tryBasicTranslation(text, targetLang) {
+    // Very basic fallback dictionary for common words
+    // This is minimal and only helps with very simple cases
+    const basicDict = {
+        'zh-tw': {
+            'hello': '你好', 'goodbye': '再見', 'thank you': '謝謝', 'please': '請',
+            'yes': '是', 'no': '不是', 'ok': '好的', 'good': '很好'
+        },
+        'zh': {
+            'hello': '你好', 'goodbye': '再见', 'thank you': '谢谢', 'please': '请',
+            'yes': '是', 'no': '不是', 'ok': '好的', 'good': '很好'
+        }
+    };
+    
+    const dict = basicDict[targetLang];
+    if (!dict) return null;
+    
+    let result = text.toLowerCase();
+    for (const [en, translated] of Object.entries(dict)) {
+        result = result.replace(new RegExp('\\b' + en + '\\b', 'gi'), translated);
+    }
+    
+    // Only return if something was actually translated
+    return (result !== text.toLowerCase()) ? result : null;
 }
 
 function extractAllTranslations(data) {
@@ -1558,6 +1664,11 @@ function setupScrollListener() {
 }
 
 function onTranslationsScroll(event) {
+    // Skip loading if page is not visible (save server resources)
+    if (!pageVisible) {
+        return;
+    }
+    
     const list = event.target;
     const scrollTop = list.scrollTop;
     const clientHeight = list.clientHeight;

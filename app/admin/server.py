@@ -3,15 +3,10 @@ EzySpeechTranslate Admin Server (HTTPS Version)
 Serves the admin HTML interface securely with eventlet SSL
 """
 
-from flask import Flask, render_template, jsonify, redirect, url_for, request, session
-from flask_cors import CORS
-from flask_socketio import SocketIO
-import yaml
-import logging
 import os
 import sys
-import eventlet
-import eventlet.wsgi
+import yaml
+import logging
 import hashlib
 import jwt
 import time
@@ -19,14 +14,30 @@ from datetime import datetime, timedelta
 from functools import wraps
 from collections import defaultdict
 
-# OEM Configuration - imported using relative import for cross-platform compatibility
-from .oem_manager import init_oem_config
-
 # ──────────────────────────────────────────
-# Path Setup
+# Path Setup (BEFORE any app imports)
 # ──────────────────────────────────────────
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 APP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Add base directory to sys.path for module imports
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# OEM Configuration - with fallback for direct script execution
+try:
+    # Try relative import (works when imported as module)
+    from .oem_manager import init_oem_config
+except ImportError:
+    # Fallback for direct script execution
+    from app.oem_manager import init_oem_config
+
+# Now import Flask and other app modules
+from flask import Flask, render_template, jsonify, redirect, url_for, request, session
+from flask_cors import CORS
+from flask_socketio import SocketIO
+import eventlet
+import eventlet.wsgi
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
 SSL_DIR = os.path.join(CONFIG_DIR, "ssl")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")

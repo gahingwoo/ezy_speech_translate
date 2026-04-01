@@ -658,6 +658,8 @@ select:disabled {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .card-time {
@@ -676,9 +678,6 @@ select:disabled {
 }
 
 .card-confidence {
-    position: absolute;
-    top: -0.5rem;
-    right: 0;
     background: rgba(0, 102, 204, 0.1);
     color: var(--primary);
     padding: 0.125rem 0.5rem;
