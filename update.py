@@ -104,8 +104,9 @@ class UpdateManager:
             self.print_info(f"Fetching from git (attempt {attempt}/{max_retries})...")
             try:
                 # Fetch all updates, prune deleted remote branches, and sync tags
+                # Note: --all and origin cannot be used together, use --all alone
                 result = subprocess.run(
-                    ["git", "fetch", "origin", "--all", "--prune", "--tags"],
+                    ["git", "fetch", "--all", "--prune", "--tags"],
                     cwd=self.project_root, capture_output=True, text=True, timeout=60
                 )
                 if result.returncode != 0:
