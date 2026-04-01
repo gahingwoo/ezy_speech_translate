@@ -219,12 +219,9 @@ class UpdateManager:
         if not requirements_file.exists():
             self.print_error("requirements.txt not found")
         try:
-            if self.venv_dir.exists():
-                pip_exe = str(self.venv_dir / ("Scripts/pip.exe" if sys.platform == "win32" else "bin/pip"))
-            else:
-                pip_exe = self.python_exe.replace("python", "pip")
+            # Use python -m pip instead of direct pip executable (more reliable)
             result = subprocess.run(
-                [pip_exe, "install", "-q", "-r", str(requirements_file)],
+                [self.python_exe, "-m", "pip", "install", "-q", "-r", str(requirements_file)],
                 cwd=self.project_root, capture_output=True, text=True
             )
             if result.returncode != 0:
