@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+venv_old/
+
+# OEM customizations (local only, not tracked)
+app/static/oem/
+
+# Logs
+logs/
+
+# Sensitive config / secrets
+config/secrets.key
+config/ssl/
+.secrets.baseline
+
+# Tooling reports
+pip_audit_report.json
+bandit_report.json
+
+# IDEs
+.idea/
+
+# macOS
+.DS_Store
