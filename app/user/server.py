@@ -304,7 +304,8 @@ blocked_since = {}  # Session key: timestamp when blocked
 MAX_LOGIN_ATTEMPTS = get_config('advanced', 'security', 'max_login_attempts', default=10)
 login_window_min = get_config('advanced', 'security', 'login_attempt_window_minutes', default=15)
 LOGIN_ATTEMPT_WINDOW = timedelta(minutes=login_window_min)
-MAX_RATE_VIOLATIONS = get_config('advanced', 'security', 'max_rate_violations', default=10)
+MAX_RATE_VIOLATIONS = get_config('advanced', 'security', 'max_rate_violations', default=100)  # Increased from 10
+MAX_SUSPICIOUS_PATTERNS = get_config('advanced', 'security', 'max_suspicious_patterns', default=20)  # NEW: Increased from hardcoded 5
 block_minutes = get_config('advanced', 'security', 'block_duration_minutes', default=60)
 BLOCK_DURATION = timedelta(minutes=block_minutes)
 
@@ -374,7 +375,7 @@ def record_suspicious_activity(reason, client_key=None):
     suspicious_patterns[client_key] += 1
     security_logger.warning(f"Suspicious activity from {client_key}: {reason}")
 
-    if suspicious_patterns[client_key] >= 5:
+    if suspicious_patterns[client_key] >= MAX_SUSPICIOUS_PATTERNS:
         blocked_clients.add(client_key)
         blocked_since[client_key] = datetime.now()
         security_logger.critical(f"CLIENT BLOCKED due to suspicious patterns: {client_key}")
@@ -709,7 +710,7 @@ def get_oem_config():
     return jsonify(app.config.get('OEM', {}))
 
 @app.route('/api/translations', methods=['GET'])
-@limiter.limit("60 per minute")
+@limiter.limit("120 per minute")
 @require_api_token
 def get_translations():
     """
@@ -882,7 +883,7 @@ except ImportError:
     from app.translation_service import get_translation_service
 
 @app.route('/api/translate', methods=['POST'])
-@limiter.limit("120 per minute")  # 2 requests per second per client
+@limiter.limit("300 per minute")  # 5 requests per second per client (need headroom for bulk imports)
 @check_client_access
 def translate_text():
     """
@@ -1344,9 +1345,9 @@ def not_found(error):
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    client_ip = get_real_ip()
-    security_logger.warning(f"Rate limit exceeded: {client_ip}")
-    record_rate_violation(client_ip)
+    client_key = get_client_key()  # Fixed: use client_key instead of client_ip
+    security_logger.warning(f"Rate limit exceeded: {client_key}")
+    record_rate_violation(client_key)
     return jsonify({'error': 'Too many requests'}), 429
 
 @app.errorhandler(500)

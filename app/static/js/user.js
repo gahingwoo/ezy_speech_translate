@@ -82,6 +82,23 @@ let hasMoreTranslations = false;     // More items available on server
 let apiSessionToken = null;          // API token from WebSocket connection
 let pageVisible = true;              // Track if page is visible (for optimization)
 
+// Virtual Scrolling Optimization - PERFORMANCE FIX
+let renderedCount = 0;               // How many items currently rendered in DOM
+let renderBatchSize = 30;            // Render this many items at once (was rendering all!)
+let scrollObserver = null;           // IntersectionObserver for virtual scrolling
+let isRenderingMore = false;         // Prevent duplicate render operations
+
+// Translation queue - prevents rate limit when admin bulk imports
+let translationQueue = [];           // Queue of {item, resolve} waiting to translate
+let translationQueueRunning = false; // Is the queue processor running
+let translationConcurrency = 0;      // Current concurrent translation count
+const MAX_TRANSLATION_CONCURRENCY = 3;  // Max parallel translations
+const TRANSLATION_DELAY_MS = 300;    // Delay between translations (ms)
+
+// Debounce batch new_translation events from WebSocket
+let pendingNewTranslations = [];     // Queue for incoming WebSocket translations
+let newTranslationTimer = null;      // Timer for debouncing
+
 // Translation fallback system
 const translationCache = {};         // Cache translations locally for fallback
 
@@ -1193,50 +1210,78 @@ async function translateViaApi(text, targetLang) {
         return translationCache[cacheKey];
     }
     
-    // 2️⃣ Try backend translation (with 1 retry)
-    for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-            const response = await fetch('/api/translate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    text: text,
-                    target_lang: targetLang
-                }),
-                timeout: 8000  // 8 second timeout
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Status ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success && data.translated) {
-                console.log('✅ Backend translation successful (attempt ' + attempt + '):', data.translated.substring(0, 80));
-                if (data.cached) console.log('📦 (from server cache)');
-                
-                // ✅ Cache the successful translation
-                translationCache[cacheKey] = data.translated;
-                return data.translated;
-            } else if (attempt === 1) {
-                // First attempt failed, retry after delay
-                console.warn('⚠️ Translation failed (attempt 1), retrying in 2s...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        } catch (error) {
-            if (attempt === 1) {
-                console.warn('⏱️ Attempt 1 failed:', error.message, '- retrying in 2s...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } else {
-                console.error('❌ Attempt 2 failed:', error.message);
-            }
-        }
+    // 2️⃣ Throttle: wait for a slot in the translation queue
+    await waitForTranslationSlot();
+    
+    // Re-check cache (another request may have translated while waiting)
+    if (translationCache[cacheKey]) {
+        releaseTranslationSlot();
+        return translationCache[cacheKey];
     }
     
-    // 3️⃣ Backend failed, try client-side translation
+    // 3️⃣ Try backend translation (single attempt, no aggressive retry)
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text, target_lang: targetLang }),
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (response.status === 429) {
+            // Rate limited - back off, don't retry immediately
+            console.warn('⚠️ Rate limited, backing off 5s...');
+            releaseTranslationSlot();
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            // Try client-side instead of hitting server again
+            return await translateViaClientFallback(text, targetLang, cacheKey);
+        }
+        
+        if (!response.ok) {
+            throw new Error('Status ' + response.status);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.translated) {
+            translationCache[cacheKey] = data.translated;
+            releaseTranslationSlot();
+            return data.translated;
+        }
+    } catch (error) {
+        console.warn('⏱️ Backend translation failed:', error.message);
+    }
+    
+    releaseTranslationSlot();
+    
+    // 4️⃣ Backend failed, try client-side translation
+    return await translateViaClientFallback(text, targetLang, cacheKey);
+}
+
+function waitForTranslationSlot() {
+    // Throttle concurrent translations to avoid hitting rate limits
+    return new Promise(function(resolve) {
+        function tryAcquire() {
+            if (translationConcurrency < MAX_TRANSLATION_CONCURRENCY) {
+                translationConcurrency++;
+                resolve();
+            } else {
+                setTimeout(tryAcquire, TRANSLATION_DELAY_MS);
+            }
+        }
+        tryAcquire();
+    });
+}
+
+function releaseTranslationSlot() {
+    translationConcurrency = Math.max(0, translationConcurrency - 1);
+}
+
+async function translateViaClientFallback(text, targetLang, cacheKey) {
     try {
         const clientTranslated = await tryClientTranslation(text, targetLang);
         if (clientTranslated && clientTranslated !== text) {
@@ -1247,8 +1292,6 @@ async function translateViaApi(text, targetLang) {
     } catch (e) {
         console.warn('Client translation fallback failed:', e.message);
     }
-    
-    // 4️⃣ All methods failed, return empty (will display original)
     console.warn('⚠️ All translation methods failed, showing original text');
     return '';
 }
@@ -1635,60 +1678,140 @@ async function renderTranslations() {
         return;
     }
 
-    // Only render loaded translations (virtual scrolling)
-    const items = await Promise.all(
-        translations.map(item => createTranslationHTML(item))
-    );
-
-    list.innerHTML = items.join('');
-
+    // ===== PERFORMANCE FIX: Virtual Scrolling with incremental rendering =====
+    renderedCount = 0;
+    isRenderingMore = false;
+    list.innerHTML = '';  // Clear existing content
+    
+    // Render only first batch initially (30 items instead of ALL!)
+    const initialBatch = Math.min(renderBatchSize, translations.length);
+    console.log('⚡ Initial render: ' + initialBatch + ' of ' + translations.length + ' items (virtual scrolling)');
+    await renderTranslationsBatch(0, initialBatch);
+    
+    // Setup virtual scrolling for remaining items
+    setupVirtualScrolling();
+    
     if (searchQuery) {
         performSearch();
     }
-    
-    // Add scroll listener to load more when reaching bottom
-    setupScrollListener();
 }
 
-/* Virtual Scrolling Functions */
+async function renderTranslationsBatch(startIdx, endIdx) {
+    // Render a batch of translations - cards show immediately with original text,
+    // translations fill in asynchronously in the background
+    const list = document.getElementById('translationsList');
+    
+    if (startIdx >= translations.length) return;
+    
+    endIdx = Math.min(endIdx, translations.length);
+    const batch = translations.slice(startIdx, endIdx);
+    
+    // Remove old sentinel before adding new items
+    const oldSentinel = document.getElementById('virtualScrollSentinel');
+    if (oldSentinel) oldSentinel.remove();
+    
+    // Build HTML for all items in batch synchronously
+    // (createTranslationHTML no longer awaits translation - it fires translation in background)
+    let htmlBatch = '';
+    for (const item of batch) {
+        htmlBatch += createTranslationHTML(item);
+    }
+    
+    // Insert all at once
+    if (startIdx === 0) {
+        list.innerHTML = htmlBatch;
+    } else {
+        list.insertAdjacentHTML('beforeend', htmlBatch);
+    }
+    
+    renderedCount = endIdx;
+    console.log('📊 Rendered items ' + startIdx + '-' + endIdx + '/' + translations.length);
+    
+    // Re-add sentinel at the very bottom for IntersectionObserver
+    if (renderedCount < translations.length || hasMoreTranslations) {
+        const sentinel = document.createElement('div');
+        sentinel.id = 'virtualScrollSentinel';
+        sentinel.style.height = '1px';
+        list.appendChild(sentinel);
+        if (scrollObserver) {
+            scrollObserver.observe(sentinel);
+        }
+    }
+}
 
-function setupScrollListener() {
-    // The main section is the scrollable container, not the list itself
+/* Virtual Scrolling Functions - PERFORMANCE OPTIMIZED */
+
+function setupVirtualScrolling() {
+    // Setup virtual scrolling using IntersectionObserver for efficient rendering
     const mainSection = document.querySelector('.pf-c-page__main-section');
+    
+    // If all items already rendered AND no more on server, skip
+    if (renderedCount >= translations.length && !hasMoreTranslations) {
+        console.log('✅ All items rendered, virtual scrolling not needed');
+        return;
+    }
+    
     if (!mainSection) {
         console.warn('⚠️ Main section not found for scroll listener');
         return;
     }
     
-    // Remove old listener if exists
-    mainSection.removeEventListener('scroll', onTranslationsScroll);
+    // Clean up old observer if exists
+    if (scrollObserver) {
+        scrollObserver.disconnect();
+    }
     
-    // Add new listener to the actual scrollable container
-    mainSection.addEventListener('scroll', onTranslationsScroll);
-    console.log('✅ Scroll listener attached to .pf-c-page__main-section');
+    // Use IntersectionObserver: render more when user approaches bottom
+    scrollObserver = new IntersectionObserver(
+        function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting && !isRenderingMore) {
+                    if (renderedCount < translations.length) {
+                        renderMoreVisibleItems();
+                    } else if (hasMoreTranslations && !isLoadingMore) {
+                        loadMoreTranslations();
+                    }
+                }
+            });
+        },
+        { root: mainSection, rootMargin: '500px' }  // Preload 500px before bottom
+    );
+    
+    // Sentinel is managed by renderTranslationsBatch, just observe if it exists
+    var sentinel = document.getElementById('virtualScrollSentinel');
+    if (sentinel) {
+        scrollObserver.observe(sentinel);
+    }
+    console.log('✅ Virtual scrolling setup with IntersectionObserver');
+}
+
+async function renderMoreVisibleItems() {
+    // Render next batch of items when user scrolls near bottom
+    if (isRenderingMore || renderedCount >= translations.length) return;
+    
+    isRenderingMore = true;
+    var nextBatchEnd = Math.min(renderedCount + renderBatchSize, translations.length);
+    
+    console.log('📥 Virtual scroll: rendering items ' + renderedCount + '-' + nextBatchEnd + '...');
+    await renderTranslationsBatch(renderedCount, nextBatchEnd);
+    
+    isRenderingMore = false;
+    
+    // After rendering, also check if we need to load from server
+    if (nextBatchEnd >= translations.length - 3 && hasMoreTranslations && !isLoadingMore) {
+        console.log('📡 Approaching end, loading from server...');
+        loadMoreTranslations();
+    }
+}
+
+function setupScrollListener() {
+    // Deprecated: Now using IntersectionObserver for better performance
+    console.log('ℹ️ setupScrollListener() - virtual scrolling uses IntersectionObserver');
 }
 
 function onTranslationsScroll(event) {
-    // Skip loading if page is not visible (save server resources)
-    if (!pageVisible) {
-        return;
-    }
-    
-    const list = event.target;
-    const scrollTop = list.scrollTop;
-    const clientHeight = list.clientHeight;
-    const scrollHeight = list.scrollHeight;
-    
-    // If scrolled within 500px of bottom and more items available
-    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-    
-    // Debug logging
-    console.log(`📊 Scroll: top=${scrollTop}, client=${clientHeight}, total=${scrollHeight}, distance=${distanceFromBottom}, hasMore=${hasMoreTranslations}, loading=${isLoadingMore}`);
-    
-    if (distanceFromBottom < 500 && hasMoreTranslations && !isLoadingMore) {
-        console.log('📜 Near bottom, loading more translations...');
-        loadMoreTranslations();
-    }
+    // Deprecated: Now using IntersectionObserver
+    return;
 }
 
 async function loadInitialTranslations() {
@@ -1752,13 +1875,11 @@ async function loadMoreTranslations() {
             
             console.log(`📥 Loaded ${newTranslations.length} more translations (${translations.length} visible, ${translationsTotal} total, has_more=${hasMoreTranslations})`);
             
-            // Only re-render the new items (append to DOM)
+            // Only render the new items (append to DOM)
             if (newTranslations.length > 0) {
-                const list = document.getElementById('translationsList');
-                const newHtml = await Promise.all(
-                    newTranslations.map(item => createTranslationHTML(item))
-                );
-                list.innerHTML += newHtml.join('');
+                const startIdx = renderedCount;
+                renderedCount = translations.length;
+                await renderTranslationsBatch(startIdx, translations.length);
             }
         } else {
             console.error(`❌ Failed to load more: ${response.status}`);
@@ -1775,6 +1896,7 @@ async function addTranslation(data) {
     const list = document.getElementById('translationsList');
     const emptyState = list.querySelector('.empty-state');
 
+    // Clear empty state if present
     if (emptyState) {
         list.innerHTML = '';
     }
@@ -1782,9 +1904,17 @@ async function addTranslation(data) {
     // Add to translations array (at beginning since it's newest)
     translations.unshift(data);
     translationsTotal++;
+    renderedCount++;  // Track that we rendered one more item
     
-    const html = await createTranslationHTML(data);
-    list.innerHTML = html + list.innerHTML;
+    // Create HTML for new item (synchronous - translation happens in background)
+    const html = createTranslationHTML(data);
+    
+    // Insert at beginning of list instead of re-rendering all
+    if (list.firstChild) {
+        list.insertAdjacentHTML('afterbegin', html);
+    } else {
+        list.innerHTML = html;
+    }
     
     // Update count to show server total
     const itemCount = document.getElementById('itemCount');
@@ -1795,7 +1925,34 @@ async function addTranslation(data) {
     }
 }
 
-async function createTranslationHTML(item) {
+async function processPendingTranslations() {
+    // Process queued new_translation events in batch to avoid rate limiting
+    newTranslationTimer = null;
+    
+    if (pendingNewTranslations.length === 0) return;
+    
+    // Take all pending translations
+    const batch = pendingNewTranslations.splice(0);
+    console.log('📦 Processing ' + batch.length + ' pending translations');
+    
+    // Add them one at a time with a small delay between each
+    for (let i = 0; i < batch.length; i++) {
+        const data = batch[i];
+        await addTranslation(data);
+        
+        // Only speak the latest one
+        if (ttsEnabled && i === 0 && data.translated) {
+            speakText(data.translated);
+        }
+        
+        // Small delay between items to avoid UI freeze and rate limits
+        if (i < batch.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+    }
+}
+
+function createTranslationHTML(item) {
     const itemId = 'translation-' + item.id;
 
     // Get source language from item
@@ -1856,34 +2013,17 @@ async function createTranslationHTML(item) {
 
     if (!item.translated || item.currentLang !== targetLang) {
         item.currentLang = targetLang;
+        item.translated = null;  // Mark as pending
 
-        setTimeout(async () => {
-            const elem = document.getElementById(itemId);
-            if (elem) {
-                const targetDiv = elem.querySelector('.text-target');
-                if (targetDiv) {
-                    targetDiv.innerHTML = '<span class="loading">Translating...</span>';
-                }
-            }
-        }, 0);
-
-        item.translated = await translateText(item.corrected, targetLang);
-
-        setTimeout(() => {
-            const elem = document.getElementById(itemId);
-            if (elem) {
-                const targetDiv = elem.querySelector('.text-target');
-                if (targetDiv) {
-                    targetDiv.textContent = item.translated;
-                    targetDiv.setAttribute('data-original-text', item.translated);
-                }
-            }
-        }, 0);
+        // Fire-and-forget: translate in background, update DOM when done
+        translateInBackground(item, itemId);
     }
 
     const correctedBadge = item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : '';
     const correctedClass = item.is_corrected ? 'corrected' : '';
-    const translatedText = item.translated || 'Translating...';
+    const isTranslating = !item.translated;
+    const translatedText = item.translated || '';
+    const displayText = isTranslating ? (i18n[displayLanguage]?.translating || 'Translating...') : translatedText;
 
     // Show source text only if languages don't match
     const sourceHtml = shouldHideSource ? '' :
@@ -1902,9 +2042,35 @@ async function createTranslationHTML(item) {
                 </div>\
             </div>\
             ' + sourceHtml + '\
-            <div class="text-target" data-original-text="' + escapeHtml(translatedText) + '">' + escapeHtml(translatedText) + '</div>\
+            <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(translatedText) + '">' + escapeHtml(displayText) + '</div>\
         </div>\
     ';
+}
+
+async function translateInBackground(item, itemId) {
+    // Translate asynchronously and update DOM when done
+    try {
+        const translated = await translateText(item.corrected, item.currentLang);
+        item.translated = translated || item.corrected;
+        
+        // Update DOM if element still exists
+        const elem = document.getElementById(itemId);
+        if (elem) {
+            const targetDiv = elem.querySelector('.text-target');
+            if (targetDiv) {
+                targetDiv.textContent = item.translated;
+                targetDiv.setAttribute('data-original-text', item.translated);
+                targetDiv.classList.remove('translating');
+            }
+            // Update TTS button data
+            const ttsBtn = elem.querySelector('.tts-icon');
+            if (ttsBtn) {
+                ttsBtn.setAttribute('data-text', item.translated);
+            }
+        }
+    } catch (e) {
+        console.warn('Background translation failed for item ' + itemId + ':', e.message);
+    }
 }
 
 function copyTranslationFromButton(button) {
@@ -2201,12 +2367,10 @@ function setupSocketEventListeners() {
 
     socket.on('new_translation', async (data) => {
         console.log('✨ Received new translation:', data);
-        // WebSocket sends new translation in real-time
-        // It goes to the top of the list (is the newest)
-        await addTranslation(data);
-
-        if (ttsEnabled && data.translated) {
-            speakText(data.translated);
+        // Debounce: queue new translations, process with delay to avoid flooding
+        pendingNewTranslations.push(data);
+        if (!newTranslationTimer) {
+            newTranslationTimer = setTimeout(processPendingTranslations, 200);
         }
     });
 

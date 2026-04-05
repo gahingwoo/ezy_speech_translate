@@ -1130,9 +1130,11 @@ advanced:
     login_rate_limit: 20
     # Max simultaneous WebSocket connections allowed per IP
     max_ws_connections: 20
-    # How many suspicious/rate violations before blocking IP
+    # How many rate limit violations before blocking client (set high to avoid false positives)
     max_rate_violations: 100
-    # Block duration in minutes for blocked IPs
+    # How many suspicious activities (path traversal, SQL injection, etc) before blocking
+    max_suspicious_patterns: 20
+    # Block duration in minutes for blocked clients
     block_duration_minutes: 60
 
 # ============================================
