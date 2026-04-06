@@ -1856,6 +1856,848 @@ window.sharedI18n = {
     }
 };
 
+// AI Thinking Status Library for real-time translation experience
+window.sharedAiStatusLibrary = {
+    en: {
+        listening: [
+            'Listening to the speaker’s full thought',
+            'Capturing the speaker’s full context',
+            'Following the speaker’s speech',
+            'Tracking the speaker’s sentence flow',
+            'Keeping up with the speaker',
+            'Letting the speaker finish',
+            'Building the full picture from the speaker',
+            'Gathering the speaker’s context',
+            'Constructing the speaker’s meaning',
+            'Accumulating the speaker’s context'
+        ],
+        understanding: [
+            'Understanding the speaker’s context',
+            'Interpreting the speaker’s intent',
+            'Analyzing the speaker’s structure',
+            'Parsing the speaker’s meaning',
+            'Breaking down the speaker’s sentence',
+            'Aligning the speaker’s context',
+            'Resolving the speaker’s meaning',
+            'Linking the speaker’s ideas together'
+        ],
+        preparing: [
+            'Preparing translation',
+            'Mapping meaning across languages',
+            'Converting the speaker’s context',
+            'Reframing in the target language'
+        ],
+        translating: [
+            'Generating translation',
+            'Drafting translation',
+            'Refining output',
+            'Polishing phrasing',
+            'Finalizing translation'
+        ],
+        translated: [
+            'About to show translation',
+            'Preparing to display results',
+            'Ready to present translation'
+        ]
+    },
+    zh: {
+        listening: [
+            '正在聆听说话者的完整语境',
+            '正在捕捉说话者的完整意思',
+            '正在聆听说话者发言',
+            '跟随说话者的思路',
+            '等待说话者表达完毕',
+            '正在整理说话者的思路'
+        ],
+        understanding: [
+            '正在分析说话者的句子结构',
+            '正在理解说话者的意思',
+            '分析说话者语义中',
+            '理解说话者上下文中',
+            '连接说话者观点中'
+        ],
+        preparing: [
+            '正在转换语言表达',
+            '准备生成翻译',
+            '跨语言映射中'
+        ],
+        translating: [
+            '正在生成翻译',
+            '优化表达中',
+            '完善措辞中',
+            '最终化翻译中'
+        ],
+        translated: [
+            '即將呈現翻譯',
+            '準備顯示結果',
+            '準備呈現翻譯'
+        ]
+    },
+    yue: {
+        listening: [
+            '正在聆聽講者內容',
+            '捕捉講者意思',
+            '持續聆聽講者',
+            '跟隨講者思路',
+            '等待講者講完',
+            '整理講者內容'
+        ],
+        understanding: [
+            '分析講者句子結構',
+            '理解講者意思',
+            '分析語意中',
+            '理解講者上下文',
+            '連接講者重點'
+        ],
+        preparing: [
+            '轉換語言表達',
+            '準備生成翻譯',
+            '對應兩種語言'
+        ],
+        translating: [
+            '生成翻譯中',
+            '優化講者內容',
+            '完善措辭中',
+            '最終化翻譯中'
+        ],
+        translated: [
+            '即將呈現翻譯',
+            '準備顯示結果',
+            '準備呈現翻譯'
+        ]
+    },
+    'zh-tw': {
+        listening: [
+            '正在聆聽說話者的完整語境',
+            '正在捕捉說話者的完整意思',
+            '正在聆聽說話者發言',
+            '跟隨說話者的思路',
+            '等待說話者表達完畢',
+            '正在整理說話者的思路'
+        ],
+        understanding: [
+            '正在分析說話者的句子結構',
+            '正在理解說話者的意思',
+            '分析說話者語義中',
+            '理解說話者上下文中',
+            '連接說話者觀點中'
+        ],
+        preparing: [
+            '正在轉換語言表達',
+            '準備生成翻譯',
+            '跨語言映射中'
+        ],
+        translating: [
+            '正在生成翻譯',
+            '優化表達中',
+            '完善措辭中',
+            '最終化翻譯中'
+        ],
+        translated: [
+            '即將呈現翻譯',
+            '準備顯示結果',
+            '準備呈現翻譯'
+        ]
+    },
+    es: {
+        listening: [
+            'Escuchando el pensamiento completo del orador',
+            'Capturando el contexto completo del orador',
+            'Siguiendo el discurso del orador',
+            'Rastreando el flujo de la oración del orador',
+            'Manteniendo el ritmo del orador',
+            'Dejando que el orador termine',
+            'Construyendo la imagen completa del orador',
+            'Reuniendo el contexto del orador'
+        ],
+        understanding: [
+            'Entendiendo el contexto del orador',
+            'Interpretando la intención del orador',
+            'Analizando la estructura del orador',
+            'Analizando el significado del orador',
+            'Desglosando la oración del orador',
+            'Alineando el contexto del orador'
+        ],
+        preparing: [
+            'Preparando la traducción',
+            'Mapeando el significado entre idiomas',
+            'Convirtiendo el contexto del orador',
+            'Reformulando en el idioma destino'
+        ],
+        translating: [
+            'Generando la traducción',
+            'Redactando la traducción',
+            'Refinando la salida',
+            'Puliendo la fraseología',
+            'Finalizando la traducción'
+        ],
+        translated: [
+            'A punto de mostrar la traducción',
+            'Preparado para presentar resultados',
+            'Listo para mostrar traducción'
+        ]
+    },
+    fr: {
+        listening: [
+            'Écoute de la pensée complète de l’orateur',
+            'Capture du contexte complet de l’orateur',
+            'Suivi du discours de l’orateur',
+            'Suivi du flux de la phrase de l’orateur',
+            'Maintien du rythme de l’orateur',
+            'Laisser l’orateur terminer',
+            'Construction de l’image complète de l’orateur',
+            'Rassemblement du contexte de l’orateur'
+        ],
+        understanding: [
+            'Compréhension du contexte de l’orateur',
+            'Interprétation de l’intention de l’orateur',
+            'Analyse de la structure de l’orateur',
+            'Analyse du sens de l’orateur',
+            'Décomposition de la phrase de l’orateur',
+            'Alignement du contexte de l’orateur'
+        ],
+        preparing: [
+            'Préparation de la traduction',
+            'Cartographie du sens entre les langues',
+            'Conversion du contexte de l’orateur',
+            'Reformulation dans la langue cible'
+        ],
+        translating: [
+            'Génération de la traduction',
+            'Rédaction de la traduction',
+            'Affinage de la sortie',
+            'Polissage de la phraséologie',
+            'Finalisation de la traduction'
+        ],
+        translated: [
+            'Sur le point de montrer la traduction',
+            'Préparé à présenter les résultats',
+            'Prêt à afficher la traduction'
+        ]
+    },
+    de: {
+        listening: [
+            'Dem vollständigen Gedanken des Redners zuhören',
+            'Den vollständigen Kontext des Redners erfassen',
+            'Der Rede des Redners folgen',
+            'Dem Satzfluss des Redners folgen',
+            'Mit dem Redner Schritt halten',
+            'Den Redner ausreden lassen',
+            'Das Gesamtbild des Redners zusammensetzen',
+            'Den Kontext des Redners sammeln'
+        ],
+        understanding: [
+            'Den Kontext des Redners verstehen',
+            'Die Absicht des Redners interpretieren',
+            'Die Struktur des Redners analysieren',
+            'Die Bedeutung des Redners analysieren',
+            'Den Satz des Redners aufschlüsseln',
+            'Den Kontext des Redners ausrichten'
+        ],
+        preparing: [
+            'Übersetzung vorbereiten',
+            'Bedeutung zwischen Sprachen zuordnen',
+            'Den Kontext des Redners konvertieren',
+            'In Zielsprache umformulieren'
+        ],
+        translating: [
+            'Übersetzung generieren',
+            'Übersetzung verfassen',
+            'Ausgabe verfeinern',
+            'Ausdrucksweise polieren',
+            'Übersetzung abschließen'
+        ],
+        translated: [
+            'Kurz davor, die Übersetzung zu zeigen',
+            'Bereit zur Präsentation von Ergebnissen',
+            'Übersetzung anzuzeigen'
+        ]
+    },
+    ja: {
+        listening: [
+            '発話者の完全な思考を聞いています',
+            '発話者の完全なコンテキストをキャプチャ中',
+            '発話者のスピーチを追跡中',
+            '発話者の文の流れを追跡中',
+            '発話者のペースを保つ中',
+            '発話者が話し終わるまで待っています',
+            '発話者の全体像を構築中',
+            '発話者のコンテキストを収集中'
+        ],
+        understanding: [
+            '発話者のコンテキストを理解中',
+            '発話者の意図を解釈中',
+            '発話者の構造を分析中',
+            '発話者の意味を解析中',
+            '発話者の文を分解中',
+            '発話者のコンテキストを調整中'
+        ],
+        preparing: [
+            '翻訳を準備中',
+            '言語間で意味をマップ中',
+            '発話者のコンテキストを変換中',
+            'ターゲット言語で言い換え中'
+        ],
+        translating: [
+            '翻訳を生成中',
+            '翻訳を起草中',
+            '出力を改善中',
+            '表現を磨く中',
+            '翻訳を完成させています'
+        ],
+        translated: [
+            '翻訳を表示しようとしています',
+            '結果を表示する準備ができています',
+            '翻訳を表示する準備ができています'
+        ]
+    },
+    ko: {
+        listening: [
+            '화자의 완전한 생각을 듣는 중',
+            '화자의 완전한 문맥을 캡처 중',
+            '화자의 발화를 추적 중',
+            '화자의 문장 흐름을 추적 중',
+            '화자의 속도를 맞추는 중',
+            '화자가 말하기를 기다리는 중',
+            '화자의 전체 상황을 구축 중',
+            '화자의 문맥을 수집 중'
+        ],
+        understanding: [
+            '화자의 문맥을 이해 중',
+            '화자의 의도를 해석 중',
+            '화자의 구조를 분석 중',
+            '화자의 의미를 해석 중',
+            '화자의 문장을 분석 중',
+            '화자의 문맥을 조정 중'
+        ],
+        preparing: [
+            '번역을 준비 중',
+            '언어 간 의미 매핑 중',
+            '화자의 문맥을 변환 중',
+            '대상 언어로 다시 표현 중'
+        ],
+        translating: [
+            '번역을 생성 중',
+            '번역을 작성 중',
+            '출력을 개선 중',
+            '표현을 다듬는 중',
+            '번역을 완성 중'
+        ],
+        translated: [
+            '번역을 표시할 예정입니다',
+            '결과를 표시할 준비가 되었습니다',
+            '번역을 표시할 준비가 되었습니다'
+        ]
+    },
+    ru: {
+        listening: [
+            'Прослушивание полной мысли',
+            'Захват полного контекста',
+            'Отслеживание вашей речи',
+            'Отслеживание потока предложений',
+            'Поддержание темпа',
+            'Жду, пока вы закончите',
+            'Составление полной картины',
+            'Сбор контекста'
+        ],
+        understanding: [
+            'Понимание контекста',
+            'Интерпретация намерения',
+            'Анализ структуры',
+            'Анализ значения',
+            'Разбор предложения',
+            'Выравнивание контекста'
+        ],
+        preparing: [
+            'Подготовка перевода',
+            'Сопоставление значений между языками',
+            'Преобразование контекста',
+            'Переформулировка на целевом языке'
+        ],
+        translating: [
+            'Создание перевода',
+            'Подготовка перевода',
+            'Улучшение результата',
+            'Шлифовка формулировки',
+            'Завершение перевода'
+        ],
+        translated: [
+            'Вот-вот покажется перевод',
+            'Готов представить результаты',
+            'Готов показать перевод'
+        ]
+    },
+    pl: {
+        listening: [
+            'Słuchanie kompletnej myśli',
+            'Przechwytywanie pełnego kontekstu',
+            'Śledzenie twojej mowy',
+            'Śledzenie przepływu zdania',
+            'Dotrzymywanie kroku',
+            'Czekanie aż skończysz',
+            'Budowanie pełnego obrazu',
+            'Zbieranie kontekstu'
+        ],
+        understanding: [
+            'Zrozumienie kontekstu',
+            'Interpretacja zamiaru',
+            'Analiza struktury',
+            'Analiza znaczenia',
+            'Rozkład zdania',
+            'Wyrównanie kontekstu'
+        ],
+        preparing: [
+            'Przygotowanie tłumaczenia',
+            'Mapowanie znaczenia między językami',
+            'Konwersja kontekstu',
+            'Przeformułowanie w języku docelowym'
+        ],
+        translating: [
+            'Generowanie tłumaczenia',
+            'Opracowywanie tłumaczenia',
+            'Udoskonalanie wyniku',
+            'Polerowanie sformułowań',
+            'Finalizacja tłumaczenia'
+        ],
+        translated: [
+            'Zaraz pokaże się tłumaczenie',
+            'Gotowy do przedstawienia rezultatów',
+            'Gotowy do pokazania tłumaczenia'
+        ]
+    },
+    tr: {
+        listening: [
+            'Tam düşünceyi dinleme',
+            'Tam bağlamı yakalama',
+            'Konuşmanızı takip etme',
+            'Cümle akışını takip etme',
+            'Hızınızı yakalaşı tutma',
+            'Bitirmeni bekleme',
+            'Tam resmi oluşturma',
+            'Bağlamı toplama'
+        ],
+        understanding: [
+            'Bağlamı anlama',
+            'Niyeti yorumlama',
+            'Yapıyı analiz etme',
+            'Anlamı analiz etme',
+            'Cümleyi bölme',
+            'Bağlamı hizalama'
+        ],
+        preparing: [
+            'Çeviriyi hazırlama',
+            'Diller arasında anlamı eşleme',
+            'Bağlamı dönüştürme',
+            'Hedef dilde yeniden formüle etme'
+        ],
+        translating: [
+            'Çeviriyi oluşturma',
+            'Çeviriyi taslak hazırlama',
+            'Çıktıyı geliştirme',
+            'İfadeyi cilalama',
+            'Çeviriyi sonlandırma'
+        ],
+        translated: [
+            'Çeviriyi göstermek üzere',
+            'Sonuçları sunmaya hazır',
+            'Çeviriyi göstermeye hazır'
+        ]
+    },
+    vi: {
+        listening: [
+            'Nghe ý tưởng hoàn chỉnh',
+            'Thu thập bối cảnh đầy đủ',
+            'Theo dõi bài phát biểu của bạn',
+            'Theo dõi dòng chảy câu',
+            'Theo kịp bạn',
+            'Cho phép bạn kết thúc',
+            'Xây dựng bức tranh hoàn chỉnh',
+            'Thu thập bối cảnh'
+        ],
+        understanding: [
+            'Hiểu bối cảnh',
+            'Diễn giải ý định',
+            'Phân tích cấu trúc',
+            'Phân tích ý nghĩa',
+            'Chia nhỏ câu',
+            'Căn chỉnh bối cảnh'
+        ],
+        preparing: [
+            'Chuẩn bị dịch',
+            'Ánh xạ ý nghĩa giữa các ngôn ngữ',
+            'Chuyển đổi bối cảnh',
+            'Diễn đạt lại bằng ngôn ngữ đích'
+        ],
+        translating: [
+            'Tạo bản dịch',
+            'Soạn bản dịch',
+            'Tinh chỉnh kết quả',
+            'Đánh bóng cách diễn đạt',
+            'Hoàn thiện bản dịch'
+        ],
+        translated: [
+            'Sắp hiển thị bản dịch',
+            'Sẵn sàng trình bày kết quả',
+            'Sẵn sàng hiển thị bản dịch'
+        ]
+    },
+    th: {
+        listening: [
+            'กำลังฟังความคิดที่สมบูรณ์',
+            'กำลังจับบริบทที่สมบูรณ์',
+            'กำลังติดตามสุนทรพจน์ของคุณ',
+            'กำลังติดตามการไหลของประโยค',
+            'กำลังให้ความเดินหรือตัวเดือย',
+            'กำลังให้เวลาคุณให้เสร็จสิ้น',
+            'กำลังสร้างภาพที่สมบูรณ์',
+            'กำลังรวบรวมบริบท'
+        ],
+        understanding: [
+            'กำลังเข้าใจบริบท',
+            'กำลังตีความจุดประสงค์',
+            'กำลังวิเคราะห์โครงสร้าง',
+            'กำลังวิเคราะห์ความหมาย',
+            'กำลังแยกประโยค',
+            'กำลังจัดแนวบริบท'
+        ],
+        preparing: [
+            'กำลังเตรียมการแปล',
+            'กำลังแมปความหมายระหว่างภาษา',
+            'กำลังแปลงบริบท',
+            'กำลังเปลี่ยนสูตรในภาษาเป้าหมาย'
+        ],
+        translating: [
+            'กำลังสร้างการแปล',
+            'กำลังร่างการแปล',
+            'กำลังปรับปรุงผลลัพธ์',
+            'กำลังขัดสวนการแสดงออก',
+            'กำลังสิ้นสุดการแปล'
+        ],
+        translated: [
+            'กำลังแสดงการแปล',
+            'พร้อมนำเสนอผลลัพธ์',
+            'พร้อมแสดงการแปล'
+        ]
+    },
+    id: {
+        listening: [
+            'Mendengarkan pemikiran lengkap',
+            'Menangkap konteks lengkap',
+            'Mengikuti pidato Anda',
+            'Melacak aliran kalimat',
+            'Mengikuti kecepatan Anda',
+            'Membiarkan Anda selesai',
+            'Membangun gambaran lengkap',
+            'Mengumpulkan konteks'
+        ],
+        understanding: [
+            'Memahami konteks',
+            'Menafsirkan niat',
+            'Menganalisis struktur',
+            'Menganalisis makna',
+            'Memecah kalimat',
+            'Menyelaraskan konteks'
+        ],
+        preparing: [
+            'Menyiapkan terjemahan',
+            'Memetakan makna antar bahasa',
+            'Mengonversi konteks',
+            'Merumuskan kembali dalam bahasa target'
+        ],
+        translating: [
+            'Menghasilkan terjemahan',
+            'Merancang terjemahan',
+            'Menyempurnakan hasil',
+            'Mengasah fraseologi',
+            'Menyelesaikan terjemahan'
+        ],
+        translated: [
+            'Tentang untuk menunjukkan terjemahan',
+            'Siap mempersembahkan hasil',
+            'Siap menampilkan terjemahan'
+        ]
+    },
+    ms: {
+        listening: [
+            'Mendengarkan pemikiran lengkap',
+            'Menangkap konteks lengkap',
+            'Mengikuti ucapan anda',
+            'Mengesan aliran ayat',
+            'Mengikuti langkah anda',
+            'Membiarkan anda menyelesaikan',
+            'Membina gambaran lengkap',
+            'Mengumpulkan konteks'
+        ],
+        understanding: [
+            'Memahami konteks',
+            'Mentafsir niat',
+            'Menganalisis struktur',
+            'Menganalisis makna',
+            'Memecahkan ayat',
+            'Menyelaraskan konteks'
+        ],
+        preparing: [
+            'Menyediakan terjemahan',
+            'Memetakan makna merentasi bahasa',
+            'Menukar konteks',
+            'Merumus semula dalam bahasa sasaran'
+        ],
+        translating: [
+            'Menjana terjemahan',
+            'Mensasarkan terjemahan',
+            'Memperhalus hasil',
+            'Menggilap fraseologi',
+            'Menyempurnakan terjemahan'
+        ],
+        translated: [
+            'Hampir menunjukkan terjemahan',
+            'Bersedia membentangkan hasil',
+            'Bersedia menampilkan terjemahan'
+        ]
+    },
+    hi: {
+        listening: [
+            'पूर्ण विचार सुनना जारी',
+            'पूर्ण संदर्भ को कैद करना',
+            'आपके भाषण को ट्रैक करना',
+            'वाक्य प्रवाह को ट्रैक करना',
+            'आपके साथ तालमेल रखना',
+            'आपको समाप्त करने देना',
+            'पूर्ण चित्र बनाना',
+            'संदर्भ एकत्र करना'
+        ],
+        understanding: [
+            'संदर्भ को समझना',
+            'इरादे की व्याख्या करना',
+            'संरचना का विश्लेषण करना',
+            'अर्थ का विश्लेषण करना',
+            'वाक्य को तोड़ना',
+            'संदर्भ को संरेखित करना'
+        ],
+        preparing: [
+            'अनुवाद तैयार करना',
+            'भाषाओं के बीच अर्थ मानचित्र करना',
+            'संदर्भ को परिवर्तित करना',
+            'लक्ष्य भाषा में पुनः निर्माण करना'
+        ],
+        translating: [
+            'अनुवाद उत्पन्न करना',
+            'अनुवाद की रचना करना',
+            'आउटपुट को परिष्कृत करना',
+            'पारिभाषिकता को पॉलिश करना',
+            'अनुवाद को अंतिम रूप देना'
+        ],
+        translated: [
+            'अनुवाद दिखाने वाले हैं',
+            'परिणाम प्रस्तुत करने के लिए तैयार',
+            'अनुवाद दिखाने के लिए तैयार'
+        ]
+    },
+    ar: {
+        listening: [
+            'الاستماع إلى الفكرة الكاملة',
+            'التقاط السياق الكامل',
+            'متابعة خطابك',
+            'تتبع تدفق الجملة',
+            'مواكبة السرعة',
+            'السماح لك بالانتهاء',
+            'بناء الصورة الكاملة',
+            'جمع السياق'
+        ],
+        understanding: [
+            'فهم السياق',
+            'تفسير النية',
+            'تحليل البنية',
+            'تحليل المعنى',
+            'تقسيم الجملة',
+            'محاذاة السياق'
+        ],
+        preparing: [
+            'إعداد الترجمة',
+            'ربط المعاني عبر اللغات',
+            'تحويل السياق',
+            'إعادة صياغة باللغة المستهدفة'
+        ],
+        translating: [
+            'توليد الترجمة',
+            'صياغة الترجمة',
+            'تحسين النتيجة',
+            'صقل الصياغة',
+            'إنهاء الترجمة'
+        ],
+        translated: [
+            'على وشك عرض الترجمة',
+            'جاهز لتقديم النتائج',
+            'جاهز لعرض الترجمة'
+        ]
+    },
+    pt: {
+        listening: [
+            'Ouvindo pensamento completo',
+            'Capturando contexto completo',
+            'Acompanhando seu discurso',
+            'Rastreando fluxo de sentença',
+            'Mantendo o ritmo',
+            'Deixando você terminar',
+            'Construindo a imagem completa',
+            'Reunindo contexto'
+        ],
+        understanding: [
+            'Entendendo contexto',
+            'Interpretando intenção',
+            'Analisando estrutura',
+            'Analisando significado',
+            'Descompondo sentença',
+            'Alinhando contexto'
+        ],
+        preparing: [
+            'Preparando tradução',
+            'Mapeando significado entre idiomas',
+            'Convertendo contexto',
+            'Reformulando em idioma alvo'
+        ],
+        translating: [
+            'Gerando tradução',
+            'Redigindo tradução',
+            'Refinando saída',
+            'Polindo fraseologia',
+            'Finalizando tradução'
+        ],
+        translated: [
+            'Prestes a mostrar tradução',
+            'Pronto para apresentar resultados',
+            'Pronto para exibir tradução'
+        ]
+    },
+    it: {
+        listening: [
+            'Ascolto del pensiero completo',
+            'Cattura del contesto completo',
+            'Seguire il tuo discorso',
+            'Tracciamento del flusso della frase',
+            'Seguire il passo',
+            'Lasciando che tu finisca',
+            'Costruzione dell\'immagine completa',
+            'Raccolta del contesto'
+        ],
+        understanding: [
+            'Comprensione del contesto',
+            'Interpretazione dell\'intenzione',
+            'Analisi della struttura',
+            'Analisi del significato',
+            'Scomposizione della frase',
+            'Allineamento del contesto'
+        ],
+        preparing: [
+            'Preparazione della traduzione',
+            'Mappatura del significato tra le lingue',
+            'Conversione del contesto',
+            'Riformulazione nella lingua di destinazione'
+        ],
+        translating: [
+            'Generazione della traduzione',
+            'Stesura della traduzione',
+            'Affinamento dell\'output',
+            'Perfezionamento della fraseologia',
+            'Finalizzazione della traduzione'
+        ],
+        translated: [
+            'Sul punto di mostrare la traduzione',
+            'Pronto a presentare i risultati',
+            'Pronto a visualizzare la traduzione'
+        ]
+    },
+    nl: {
+        listening: [
+            'Luisteren naar volledige gedachte',
+            'Vastleggen van volledige context',
+            'Volgen van uw toespraak',
+            'Volgen van zinsstroom',
+            'Meegaan met het tempo',
+            'Je laten afmaken',
+            'Het volledige beeld opbouwen',
+            'Context verzamelen'
+        ],
+        understanding: [
+            'Context begrijpen',
+            'Intentie interpreteren',
+            'Structuur analyseren',
+            'Betekenis analyseren',
+            'Zin opsplitsen',
+            'Context uitlijnen'
+        ],
+        preparing: [
+            'Vertaling voorbereiden',
+            'Betekenis tussen talen in kaart brengen',
+            'Context converteren',
+            'Herformuleren in doeltaal'
+        ],
+        translating: [
+            'Vertaling genereren',
+            'Vertaling opstellen',
+            'Output verfijnen',
+            'Fraseologie polijsten',
+            'Vertaling afronden'
+        ],
+        translated: [
+            'Op het punt de vertaling te tonen',
+            'Klaar om resultaten te presenteren',
+            'Klaar om vertaling weer te geven'
+        ]
+    },
+    ta: {
+        listening: [
+            'முழு சிந்தனையைக் கேட்கிறது',
+            'முழு சூழலையும் பிடிக்கிறது',
+            'உங்கள் பேச்சைக் கண்டறிகிறது',
+            'வாக்கிய சரிவுகளைக் கண்டறிகிறது',
+            'உங்களுடன் தொடர்ந்து செல்கிறது',
+            'நீங்கள் முடிக்கும் வரை காத்திருக்கிறது',
+            'முழு படத்தைக் கட்டமைக்கிறது',
+            'சூழலைச் சேகரிக்கிறது'
+        ],
+        understanding: [
+            'சூழலைப் புரிந்துகொள்கிறது',
+            'நோக்கத்தை விளக்குகிறது',
+            'கட்டமைப்பை பகுப்பாய்வு செய்கிறது',
+            'பொருளை பகுப்பாய்வு செய்கிறது',
+            'வாக்கியத்தை உடைக்கிறது',
+            'சூழலை சீரமைக்கிறது'
+        ],
+        preparing: [
+            'மொழிபெயர்ப்பைத் தயாரிக்கிறது',
+            'மொழிகளுக்கு இடையே பொருளை வரைபடமாக்குகிறது',
+            'சூழலைப் மாற்றுகிறது',
+            'இலக்கு மொழியில் மீண்டும் உருவாக்குகிறது'
+        ],
+        translating: [
+            'மொழிபெயர்ப்பை உருவாக்குகிறது',
+            'மொழிபெயர்ப்பை உருவாக்குகிறது',
+            'வெளியீடை நுண்ணிய செய்கிறது',
+            'சொல்லமைப்பை மெருகூட்டுகிறது',
+            'மொழிபெயர்ப்பை இறுதி செய்கிறது'
+        ],
+        translated: [
+            'மொழிபெயர்ப்பைக் காட்ட வேண்டும்',
+            'முடிவுகளை வழங்க தயாரான',
+            'மொழிபெயர்ப்பைக் காட்ட தயாரான'
+        ]
+    }
+};
+
+// Ensure placeholder languages inherit from English
+(function () {
+    const lib = window.sharedAiStatusLibrary || {};
+    const supported = Object.keys(lib);
+    const allLanguages = ['en', 'zh', 'zh-tw', 'yue', 'es', 'fr', 'de', 'ru', 'pl', 'tr', 'ja', 'ko', 'vi', 'th', 'id', 'ms', 'hi', 'ar', 'pt', 'it', 'nl', 'ta'];
+    const placeholders = allLanguages.filter(k => !supported.includes(k));
+    placeholders.forEach(k => {
+        if (!lib[k]) {
+            lib[k] = JSON.parse(JSON.stringify(lib.en));
+        }
+    });
+})();
+
 // Ensure placeholder languages inherit English entries to avoid empty lookups,
 // and ensure every language has a `brand_admin` entry.
 (function () {

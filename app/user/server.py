@@ -1170,7 +1170,12 @@ def handle_admin_connect(data):
 
 @socketio.on('new_transcription')
 def handle_new_transcription(data):
-    """Handle new transcription with validation"""
+    """Handle new transcription with validation
+    
+    Support two modes:
+    - is_final=False: Send interim result for real-time display (no storing)
+    - is_final=True: Send final result with translation (store in history)
+    """
     if not is_admin(request.sid):
         emit('error', {'message': 'Unauthorized'})
         disconnect()
@@ -1184,20 +1189,43 @@ def handle_new_transcription(data):
     if not raw_text:
         return
 
-    translation_data = {
-        'id': None,  # Will be assigned by add_translation()
-        'timestamp': datetime.now().strftime('%H:%M:%S'),
-        'original': raw_text,
-        'corrected': raw_text,
-        'translated': None,
-        'is_corrected': False,
-        'source_language': data.get('language', 'en')[:10],  # Limit language code
-        'confidence': data.get('confidence')
-    }
+    is_final = data.get('is_final', True)  # Default to final for backward compatibility
+    temp_id = data.get('temp_id')  # Temporary ID to link interim->final results
+    
+    if not is_final:
+        # Send interim result ONLY to listeners (non-admin users)
+        # Emit to all listener SIDs (exclude admins naturally)
+        interim_data = {
+            'temp_id': temp_id,
+            'text': raw_text,
+            'timestamp': datetime.now().strftime('%H:%M:%S'),
+            'source_language': data.get('language', 'en')[:10],
+            'confidence': data.get('confidence'),
+            'is_interim': True
+        }
+        # Broadcast to all non-admin clients
+        socketio.emit('realtime_transcription', interim_data, skip_sid=[request.sid])
+        logger.info(f"[INTERIM] {len(raw_text)} chars (temp_id: {temp_id})")
+    else:
+        # Send final result with translation
+        translation_data = {
+            'id': None,  # Will be assigned by add_translation()
+            'temp_id': temp_id,  # Link to interim result if present
+            'timestamp': datetime.now().strftime('%H:%M:%S'),
+            'original': raw_text,
+            'corrected': raw_text,
+            'translated': data.get('translated'),  # Can be pre-translated by admin
+            'is_corrected': False,
+            'source_language': data.get('language', 'en')[:10],
+            'confidence': data.get('confidence')
+        }
 
-    add_translation(translation_data)
-    socketio.emit('new_translation', translation_data)
-    logger.info(f"[NEW] {len(raw_text)} chars from {get_real_ip()}")
+        add_translation(translation_data)
+        # Emit to listeners (non-admin users)
+        socketio.emit('new_translation', translation_data, skip_sid=[request.sid])
+        # Emit to admin only (the one who sent the transcription)
+        emit('transcription_confirmed', translation_data)
+        logger.info(f"[FINAL] ID={translation_data.get('id')}")
 
 @socketio.on('correct_translation')
 def handle_correct_translation(data):

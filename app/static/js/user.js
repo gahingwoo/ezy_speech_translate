@@ -68,6 +68,7 @@ const i18n = window.sharedI18n || {};
 let displayLanguage = localStorage.getItem('displayLanguage') || detectDisplayLanguageLocal();
 let displayMode = localStorage.getItem('displayMode') || 'translation';
 let targetLang = localStorage.getItem('targetLang') || 'en';
+let showSourceText = localStorage.getItem('showSourceText') !== 'false';  // Default true, unless explicitly set to false
 let fontSize = parseInt(localStorage.getItem('fontSize') || '18', 10);
 let translations = [];
 let searchQuery = '';
@@ -97,6 +98,21 @@ const TRANSLATION_DELAY_MS = 300;    // Delay between translations (ms)
 
 // Debounce batch new_translation events from WebSocket
 let pendingNewTranslations = [];     // Queue for incoming WebSocket translations
+
+// State tracking for intelligent chunk detection
+let activeChunkTracking = {};        // Map of temp_id -> {text, startTime, hasTransitionedToUnderstanding, statusChangeInterval}
+const LISTENING_MIN_WORD_COUNT = 5;  // Min words to trigger transitions from listening
+const WORD_BOUNDARY_REGEX = /\s+/;   // Split words
+const PUNCTUATION_MARKERS = /[.!?;:]/; // Sentence boundaries
+const PSYCHOLOGICAL_STATUS_CHANGE_MS = 1000; // Change status every ~1 second (0.8-1.2 range)
+const UNDERSTANDING_AUTO_PROGRESS_MS = 4000; // Auto-progress to 'preparing' at 4s
+const PREPARING_AUTO_PROGRESS_MS = 6000;     // Auto-progress to 'translating' at 6s
+
+// Animation helpers
+const CURSOR_PULSE = ['▌', '▎', '▍', '▌']; // Typing cursor animation
+const DOT_PULSE = ['.', '..', '...', '..'];  // Dot animation
+let cursorIndex = 0;
+let dotIndex = 0;
 let newTranslationTimer = null;      // Timer for debouncing
 
 // Translation fallback system
@@ -134,7 +150,10 @@ function loadSettings() {
             targetLang = targetSelect.value;
             localStorage.setItem('targetLang', targetLang);
             loadVoices();
-            renderTranslations();
+            // Only re-render in translation mode - in transcription mode, target language doesn't affect display
+            if (displayMode !== 'transcription') {
+                renderTranslations();
+            }
         });
     }
 
@@ -145,6 +164,15 @@ function loadSettings() {
             fontSize = parseInt(fontSlider.value, 10);
             localStorage.setItem('fontSize', fontSize);
             applyFontSize();
+        });
+    }
+
+    // Setup source text toggle button
+    const sourceTextToggle = document.getElementById('sourceTextToggle');
+    if (sourceTextToggle) {
+        updateSourceTextToggleUI();
+        sourceTextToggle.addEventListener('click', () => {
+            toggleSourceText();
         });
     }
 
@@ -170,6 +198,59 @@ function applyDisplayMode() {
         if (ttsSection) ttsSection.style.display = 'none';
     } else {
         if (ttsSection) ttsSection.style.display = 'block';
+    }
+}
+
+function toggleSourceText() {
+    // Toggle showing/hiding original text
+    showSourceText = !showSourceText;
+    localStorage.setItem('showSourceText', showSourceText);
+    updateSourceTextToggleUI();
+    
+    // Update all existing interim cards (data-temp-id attribute)
+    const list = document.getElementById('translationsList');
+    if (list) {
+        const interimCards = list.querySelectorAll('[data-temp-id]');
+        console.log('🔄 Updating ' + interimCards.length + ' interim cards: showSourceText=' + showSourceText);
+        
+        interimCards.forEach(card => {
+            const existingSource = card.querySelector('.text-source');
+            const textTarget = card.querySelector('.text-target');
+            
+            if (showSourceText && !existingSource && textTarget) {
+                // Add text-source element before text-target
+                const sourceDiv = document.createElement('div');
+                sourceDiv.className = 'text-source';
+                sourceDiv.setAttribute('data-original-text', '');
+                sourceDiv.textContent = ''; // Will be populated by realtime_transcription
+                card.insertBefore(sourceDiv, textTarget);
+                console.log('✅ Added text-source to interim card');
+            } else if (!showSourceText && existingSource) {
+                // Remove text-source element
+                existingSource.remove();
+                console.log('🗑️ Removed text-source from interim card');
+            }
+        });
+    }
+    
+    // Re-render final cards
+    renderTranslations();
+}
+
+function updateSourceTextToggleUI() {
+    const btn = document.getElementById('sourceTextToggle');
+    const textSpan = document.getElementById('sourceTextText');
+    
+    console.log('🔄 Updating source text toggle UI: showSourceText=' + showSourceText);
+    
+    if (btn && textSpan) {
+        // Update text based on current state
+        // If showing source (true) → button says "Hide Source"
+        // If hiding source (false) → button says "Show Source"
+        textSpan.textContent = showSourceText ? 'Hide Source' : 'Show Source';
+        console.log('✅ Button text set to: ' + textSpan.textContent);
+    } else {
+        console.warn('⚠️ Could not find sourceTextToggle or sourceTextText elements');
     }
 }
 
@@ -267,6 +348,9 @@ function init() {
     // Monitor page visibility to optimize resource usage
     document.addEventListener('visibilitychange', handleVisibilityChange);
     pageVisible = !document.hidden;
+
+    // Ensure source text toggle button UI is updated after all DOM elements are loaded
+    updateSourceTextToggleUI();
 
     console.log('user.js initialized');
 }
@@ -805,6 +889,15 @@ function changeDisplayMode() {
     localStorage.setItem('displayMode', displayMode);
 
     console.log('🔄 Display mode changed to:', displayMode);
+    
+    // Clear any pending interim cards when switching modes
+    const list = document.getElementById('translationsList');
+    if (list) {
+        const interimCards = list.querySelectorAll('[data-temp-id]');
+        console.log('🧹 Removing ' + interimCards.length + ' interim cards');
+        interimCards.forEach(card => card.remove());
+    }
+    
     updateDisplayMode();
     renderTranslations();
 }
@@ -1920,6 +2013,12 @@ async function addTranslation(data) {
     const itemCount = document.getElementById('itemCount');
     if (itemCount) itemCount.textContent = translationsTotal;
 
+    // Trigger background translation if needed
+    const itemId = 'translation-' + data.id;
+    if (displayMode !== 'transcription' && data.id) {
+        translateInBackground(data, itemId);
+    }
+
     if (searchQuery) {
         performSearch();
     }
@@ -2008,62 +2107,458 @@ function createTranslationHTML(item) {
     const normalizedSourceLang = langMap[itemSourceLang] || itemSourceLang;
     const normalizedTargetLang = targetLang;
 
-    // If source language matches target language, don't show source text
-    const shouldHideSource = normalizedSourceLang === normalizedTargetLang;
+    // Show source text if: (1) showSourceText is enabled AND (2) source language differs from target
+    const shouldShowSource = showSourceText && normalizedSourceLang !== normalizedTargetLang;
 
-    if (!item.translated || item.currentLang !== targetLang) {
-        item.currentLang = targetLang;
-        item.translated = null;  // Mark as pending
+    if (displayMode !== 'transcription') {
+        if (!item.translated || item.currentLang !== targetLang) {
+            item.currentLang = targetLang;
+            item.translated = null;  // Mark as pending
 
-        // Fire-and-forget: translate in background, update DOM when done
-        translateInBackground(item, itemId);
+            // Fire-and-forget: translate in background, update DOM when done
+            translateInBackground(item, itemId);
+        }
     }
 
     const correctedBadge = item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : '';
     const correctedClass = item.is_corrected ? 'corrected' : '';
-    const isTranslating = !item.translated;
+    const isTranslating = displayMode !== 'transcription' && !item.translated;
     const translatedText = item.translated || '';
-    const displayText = isTranslating ? (i18n[displayLanguage]?.translating || 'Translating...') : translatedText;
+    const displayText = displayMode === 'transcription' ? (item.corrected || '') : (isTranslating ? (i18n[displayLanguage]?.translating || 'Translating...') : translatedText);
+    const transatingIndicator = (displayMode !== 'transcription' && isTranslating) ? '⏳' : '';  // Hourglass for translating status
 
-    // Show source text only if languages don't match
-    const sourceHtml = shouldHideSource ? '' :
-        '<div class="text-source" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>';
+    // Show source text only if enabled and in translation mode
+    const sourceHtml = (displayMode !== 'transcription' && shouldShowSource) ? 
+        '<div class="text-source" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>' : '';
 
     return '\
         <div class="translation-card ' + correctedClass + '" id="' + itemId + '">\
             <div class="card-header">\
                 <span class="card-time">' + item.timestamp + '</span>\
                 <div class="card-actions">\
+                    ' + transatingIndicator + '\
                     ' + correctedBadge + '\
-                    <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy translation">\
+                    <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
                         <span>📋</span>\
                     </button>\
-                    <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(translatedText) + '" title="Speak translation">🔊</button>\
+                    <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">🔊</button>\
                 </div>\
             </div>\
             ' + sourceHtml + '\
-            <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(translatedText) + '">' + escapeHtml(displayText) + '</div>\
+            <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '">' + escapeHtml(displayText) + '</div>\
         </div>\
     ';
 }
 
-async function translateInBackground(item, itemId) {
+/* ===================================
+   AI Thinking Status Machine
+   =================================== */
+
+function getRandomStatus(lang, stage) {
+    const lib = window.sharedAiStatusLibrary || {};
+    const statuses = (lib[lang] || lib['en'] || {})[stage] || [];
+    return statuses[Math.floor(Math.random() * statuses.length)] || 'Processing...';
+}
+
+// Status machine for element
+function startListeningStateMachine(element, tempId) {
+    // Enhanced state rotation with smart transition to understanding
+    if (!element || element._listeningMachine) return;
+    
+    element._listeningMachine = true;
+    const lang = displayLanguage;
+    const lib = window.sharedAiStatusLibrary || {};
+    const listeningStatuses = (lib[lang] || lib['en'] || {}).listening || [];
+    let statusIndex = 0;
+    const startTime = Date.now();
+    
+    const listeningTimer = setInterval(() => {
+        if (!element || !element.parentElement) {
+            clearInterval(listeningTimer);
+            element._listeningMachine = false;
+            // Clean up tracking
+            if (tempId && activeChunkTracking[tempId]) {
+                delete activeChunkTracking[tempId];
+            }
+            return;
+        }
+        
+        // Cycle through listening statuses every ~1 second (psychological effect)
+        const status = listeningStatuses[statusIndex % listeningStatuses.length];
+        element.textContent = status;
+        statusIndex++;
+    }, PSYCHOLOGICAL_STATUS_CHANGE_MS);
+    
+    element._listeningTimer = listeningTimer;
+    
+    // Return the timer for external control
+    return listeningTimer;
+}
+
+function stopListeningStateMachine(element) {
+    if (!element) return;
+    if (element._listeningTimer) {
+        clearInterval(element._listeningTimer);
+        element._listeningTimer = null;
+    }
+    element._listeningMachine = false;
+}
+
+function checkAndTransitionToUnderstanding(element, tempId, currentText) {
+    // Intelligent check: should we transition from listening to understanding?
+    // Criteria: word count >= threshold OR punctuation detected
+    
+    if (!element || !tempId) return false;
+    
+    const tracking = activeChunkTracking[tempId];
+    if (!tracking) return false;
+    
+    // Already transitioned
+    if (tracking.hasTransitionedToUnderstanding) return false;
+    
+    // Check word count
+    const words = currentText.trim().split(WORD_BOUNDARY_REGEX).filter(w => w.length > 0);
+    const wordCount = words.length;
+    
+    // Check for punctuation
+    const hasPunctuation = PUNCTUATION_MARKERS.test(currentText);
+    
+    // Transition if: reached min words OR detected punctuation
+    if (wordCount >= LISTENING_MIN_WORD_COUNT || hasPunctuation) {
+        console.log('🔄 Transitioning to understanding: wordCount=' + wordCount + ', hasPunctuation=' + hasPunctuation);
+        tracking.hasTransitionedToUnderstanding = true;
+        
+        // Stop listening state machine
+        stopListeningStateMachine(element);
+        element._listeningMachine = false;
+        
+        // Start understanding state machine
+        startIntermediateStateMachine(element, tempId, 'understanding');
+        return true;
+    }
+    
+    return false;
+}
+
+function startIntermediateStateMachine(element, tempId, startStage = 'understanding') {
+    // Psychological buffer stage machine for "thinking" effect with adaptive timing
+    // Implements: understanding (0-4s) → preparing (4-6s) → translating (6s+) → translated (showing results)
+    // With animation effects and adaptive speed based on text length
+    
+    if (!element || element._intermediateMachine) return;
+    
+    element._intermediateMachine = true;
+    const lang = displayLanguage;
+    const lib = window.sharedAiStatusLibrary || {};
+    const stages = ['understanding', 'preparing', 'translating', 'translated'];
+    const startIndex = stages.indexOf(startStage);
+    const stageIndex = startIndex >= 0 ? startIndex : 0;
+    
+    const startTime = Date.now();
+    let currentStageIndex = stageIndex;
+    let statusIndex = 0;
+    let animIndex = 0;
+    
+    // Calculate adaptive speed based on tracked text length
+    const tracking = tempId ? activeChunkTracking[tempId] : null;
+    const textLength = tracking ? tracking.text.length : 0;
+    const wordCount = tracking ? tracking.text.split(WORD_BOUNDARY_REGEX).length : 0;
+    
+    // Always use dot animation (...) for all stages
+    const DOT_PULSE = ['.', '..', '...', '..'];
+    
+    // Get adaptive status change duration based on stage and text length
+    const getStatusChangeDuration = (stage) => {
+        if (stage === 'understanding') {
+            return 1200; // Understanding is always slow (dot animation)
+        } else if (stage === 'preparing') {
+            return wordCount > 20 ? 1200 : 800;
+        } else {
+            return wordCount > 20 ? 1200 : 800;
+        }
+    };
+    
+    const baseStatusChangeDuration = getStatusChangeDuration(startStage);
+    
+    console.log('🔀 Intermediate machine started:', { stage: startStage, wordCount, animStyle: 'dots', duration: baseStatusChangeDuration + 'ms' });
+    
+    let lastStatusChangeTime = startTime;
+    const updateInterval = 200; // Update animation every 200ms
+    let currentStatusChangeDuration = baseStatusChangeDuration;
+    const isLongText = wordCount > 20;
+    
+    // For long text, can pick from any stage; for short text, stay in current stage
+    // 'translated' is only used in explicit API response phase, not during thinking
+    const allStages = ['listening', 'understanding', 'preparing', 'translating'];
+    
+    const intermediateTimer = setInterval(() => {
+        if (!element || !element.parentElement) {
+            clearInterval(intermediateTimer);
+            element._intermediateMachine = false;
+            return;
+        }
+        
+        const elapsedMs = Date.now() - startTime;
+        
+        // Auto-progress through stages based on time (psychological timing)
+        if (elapsedMs > PREPARING_AUTO_PROGRESS_MS && currentStageIndex < 2) {
+            currentStageIndex = 2; // Jump to translating
+            currentStatusChangeDuration = 1200; // Long sentences always slow
+        } else if (elapsedMs > UNDERSTANDING_AUTO_PROGRESS_MS && currentStageIndex < 1) {
+            currentStageIndex = 1; // Jump to preparing
+            currentStatusChangeDuration = isLongText ? 1200 : 800;
+        }
+        
+        // Change status text at currentStatusChangeDuration intervals
+        const timeSinceLastStatusChange = Date.now() - lastStatusChangeTime;
+        if (timeSinceLastStatusChange > currentStatusChangeDuration) {
+            // For long text: randomly pick from any of the 5 stages
+            // For short text: stay within current stage
+            let pickedStatus;
+            if (isLongText) {
+                const randomStage = allStages[Math.floor(Math.random() * allStages.length)];
+                const stageOptions = (lib[lang] || lib['en'] || {})[randomStage] || [];
+                if (stageOptions.length > 0) {
+                    pickedStatus = stageOptions[Math.floor(Math.random() * stageOptions.length)];
+                } else {
+                    pickedStatus = 'Processing';
+                }
+            } else {
+                // Short text: stick with current stage
+                const currentStage = stages[currentStageIndex];
+                const stageStatuses = (lib[lang] || lib['en'] || {})[currentStage] || [];
+                if (stageStatuses.length > 0) {
+                    pickedStatus = stageStatuses[statusIndex % stageStatuses.length];
+                    statusIndex++;
+                } else {
+                    pickedStatus = 'Processing';
+                }
+            }
+            
+            const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+            element.textContent = (pickedStatus || 'Processing') + ' ' + animChar;
+            animIndex++;
+            lastStatusChangeTime = Date.now();
+        } else {
+            // Between status changes, just update the animation character
+            const currentText = element.textContent || '';
+            const parts = currentText.lastIndexOf(' ');
+            if (parts > 0) {
+                const statusText = currentText.substring(0, parts);
+                const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+                element.textContent = (statusText || 'Processing') + ' ' + animChar;
+                animIndex++;
+            } else if (currentText.length > 0) {
+                // Ensure animation shows even if there's existing text
+                const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+                element.textContent = currentText + ' ' + animChar;
+                animIndex++;
+            } else {
+                // No text yet, show animation with fallback
+                const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+                element.textContent = 'Processing ' + animChar;
+                animIndex++;
+            }
+        }
+    }, updateInterval);
+    
+    element._intermediateTimer = intermediateTimer;
+    return intermediateTimer;
+}
+
+function stopIntermediateStateMachine(element) {
+    if (!element) return;
+    if (element._intermediateTimer) {
+        clearInterval(element._intermediateTimer);
+        element._intermediateTimer = null;
+    }
+    element._intermediateMachine = false;
+}
+
+function startAIThinkingMachine(element, startStage = 'understanding', maxDurationMs = 30000, sourceText = '') {
+    if (!element || element._thinkingMachine) return; // Already running
+    
+    element._thinkingMachine = true;
+    
+    const lang = displayLanguage;
+    const lib = window.sharedAiStatusLibrary || {};
+    const stages = ['understanding', 'preparing', 'translating', 'translated'];
+    // Only include 'translated' in allStages if explicitly starting with it
+    const allStages = startStage === 'translated' 
+        ? ['translated'] 
+        : ['listening', 'understanding', 'preparing', 'translating'];
+    const startIndex = stages.indexOf(startStage);
+    const stageIndex = startIndex >= 0 ? startIndex : 0;
+    
+    const startTime = Date.now();
+    let currentStageIndex = stageIndex;
+    let lastStatusChangeTime = startTime;
+    let animIndex = 0;
+    
+    // Always use dot animation (...)
+    const DOT_PULSE = ['.', '..', '...', '..'];
+    
+    // Determine text length
+    const wordCount = sourceText ? sourceText.split(WORD_BOUNDARY_REGEX).length : 0;
+    const isLongText = wordCount > 20;
+    
+    console.log('💭 AI thinking machine started:', { startStage, wordCount, isLongText, animStyle: 'dots' });
+    
+    const updateInterval = 200; // Update animation every 200ms
+    
+    const getStatusChangeDuration = (stage) => {
+        // All stages use 1200ms for long text, 800ms / 700ms for short text
+        if (isLongText) {
+            return 1200;
+        } else {
+            return stage === 'understanding' ? 1200 : 700;
+        }
+    };
+    
+    const thinkingTimer = setInterval(() => {
+        if (!element || !element.parentElement) {
+            // Element removed, stop machine
+            clearInterval(thinkingTimer);
+            element._thinkingMachine = false;
+            return;
+        }
+        
+        const elapsedMs = Date.now() - startTime;
+        
+        // Progress through stages based on time (for short text only)
+        if (!isLongText) {
+            if (elapsedMs > 6000 && currentStageIndex < 2) {
+                currentStageIndex = 2; // Jump to translating
+            } else if (elapsedMs > 4000 && currentStageIndex < 1) {
+                currentStageIndex = 1; // Jump to preparing
+            }
+        }
+        
+        // Get current stage (or random stage for long text)
+        const currentStage = isLongText ? allStages[Math.floor(Math.random() * allStages.length)] : stages[currentStageIndex];
+        const statusChangeDurationMs = getStatusChangeDuration(currentStage);
+        
+        // Change status text at statusChangeDurationMs intervals
+        const timeSinceLastChange = Date.now() - lastStatusChangeTime;
+        if (timeSinceLastChange > statusChangeDurationMs) {
+            const statusOptions = (lib[lang] || lib['en'] || {})[currentStage] || [];
+            let newStatus;
+            if (statusOptions.length > 0) {
+                newStatus = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+            } else {
+                newStatus = 'Processing';
+            }
+            const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+            element.textContent = (newStatus || 'Processing') + ' ' + animChar;
+            animIndex = 0; // Reset animation on new status
+            lastStatusChangeTime = Date.now();
+        } else {
+            // Between status changes, just update the animation character
+            const currentText = element.textContent || '';
+            const parts = currentText.lastIndexOf(' ');
+            if (parts > 0) {
+                const statusText = currentText.substring(0, parts);
+                const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+                element.textContent = (statusText || 'Processing') + ' ' + animChar;
+                animIndex++;
+            } else if (currentText.length > 0) {
+                // Ensure animation shows even if there's existing text
+                const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+                element.textContent = currentText + ' ' + animChar;
+                animIndex++;
+            } else {
+                // No text yet, show animation with fallback
+                const animChar = DOT_PULSE[animIndex % DOT_PULSE.length];
+                element.textContent = 'Processing ' + animChar;
+                animIndex++;
+            }
+        }
+        
+        // Stop if max duration exceeded
+        if (elapsedMs > maxDurationMs) {
+            clearInterval(thinkingTimer);
+            element._thinkingMachine = false;
+            console.log('ℹ️ Thinking machine stopped (max duration reached)');
+        }
+    }, updateInterval); // Update every 200ms
+    
+    element._thinkingTimer = thinkingTimer;
+}
+
+function stopAIThinkingMachine(element) {
+    if (!element) return;
+    
+    if (element._thinkingTimer) {
+        clearInterval(element._thinkingTimer);
+        element._thinkingTimer = null;
+    }
+    element._thinkingMachine = false;
+}
+
+async function translateInBackground(item, itemId, textEl) {
     // Translate asynchronously and update DOM when done
     try {
-        const translated = await translateText(item.corrected, item.currentLang);
-        item.translated = translated || item.corrected;
+        // Use item's current language if set, otherwise use global targetLang
+        const lang = item.currentLang || targetLang;
+        console.log('🔄 Starting translation for item ' + itemId + ', target lang: ' + lang + ', text length: ' + (item.corrected ? item.corrected.length : 0));
         
-        // Update DOM if element still exists
+        // Immediately show "translated" status when API request starts
         const elem = document.getElementById(itemId);
         if (elem) {
-            const targetDiv = elem.querySelector('.text-target');
-            if (targetDiv) {
-                targetDiv.textContent = item.translated;
-                targetDiv.setAttribute('data-original-text', item.translated);
-                targetDiv.classList.remove('translating');
+            if (!textEl) {
+                textEl = elem.querySelector('.text-target');
+            }
+            
+            // Transition to "translated" state (showing "即將呈現翻譯")
+            if (textEl) {
+                stopAIThinkingMachine(textEl);
+                textEl.className = 'text-target';
+                startAIThinkingMachine(textEl, 'translated', 30000, item.corrected);
+                console.log('🎯 Switched to translated state, showing "即將呈現翻譯"');
+            }
+        }
+        
+        const translated = await translateText(item.corrected, lang);
+        item.translated = translated || item.corrected;
+        item.currentLang = lang;
+        
+        console.log('✅ Translation complete (' + item.translated.length + ' chars): ' + item.translated.substring(0, 100));
+        
+        // Update DOM if element still exists
+        const elem2 = document.getElementById(itemId);
+        if (elem2) {
+            // Get text-target element if not already provided
+            if (!textEl) {
+                textEl = elem2.querySelector('.text-target');
+            }
+            
+            // Stop AI thinking machine
+            if (textEl) {
+                stopAIThinkingMachine(textEl);
+                console.log('✅ Stopped AI thinking machine, showing translation');
+            }
+            
+            // Remove hourglass (⏳) indicator from card-actions
+            const cardActions = elem2.querySelector('.card-actions');
+            if (cardActions) {
+                const hourglassSpan = Array.from(cardActions.childNodes).find(
+                    node => node.nodeType === Node.TEXT_NODE && node.textContent.includes('⏳')
+                );
+                if (hourglassSpan) {
+                    hourglassSpan.remove();
+                }
+            }
+
+            if (textEl) {
+                // Clear current thinking text, then animate the translation
+                textEl.textContent = '';
+                animateTextChange(textEl, '', item.translated, 300);
+                
+                textEl.setAttribute('data-original-text', item.translated);
+                textEl.classList.remove('translating');
             }
             // Update TTS button data
-            const ttsBtn = elem.querySelector('.tts-icon');
+            const ttsBtn = elem2.querySelector('.tts-icon');
             if (ttsBtn) {
                 ttsBtn.setAttribute('data-text', item.translated);
             }
@@ -2082,6 +2577,98 @@ function copyTranslationFromButton(button) {
 // Keep escapeHtml for backward compatibility, but use sanitizeInput for consistency
 function escapeHtml(text) {
     return sanitizeInput(text);
+}
+
+/* ===================================
+   Text Animation
+   =================================== */
+
+function animateTextChange(element, currentText, newText, durationMs = 300) {
+    if (currentText === newText) {
+        // Already showing same text
+        element.textContent = newText;
+        return;
+    }
+
+    // Clear any existing animation timer
+    if (element._typewriterTimer) {
+        clearTimeout(element._typewriterTimer);
+    }
+
+    // Get what's currently displayed in the element
+    const displayedText = element.textContent;
+    
+    // ✅ Smart height adjustment: measure new text height and only increase, never decrease
+    const currentHeight = element.offsetHeight;
+    
+    // Temporarily show full new text to measure its height
+    const oldContent = element.textContent;
+    element.textContent = newText;
+    const newHeight = element.offsetHeight;
+    element.textContent = oldContent; // Restore old content for animation
+    
+    // Set min-height if content would grow (prevent shrinking)
+    if (newHeight > currentHeight) {
+        element.style.minHeight = newHeight + 'px';
+    } else {
+        // Keep current height as minimum if new content is smaller
+        element.style.minHeight = currentHeight + 'px';
+    }
+    
+    // Smart diff: find common prefix to avoid clearing text when correcting
+    let commonPrefixLen = 0;
+    for (let i = 0; i < Math.min(displayedText.length, newText.length); i++) {
+        if (displayedText[i] === newText[i]) {
+            commonPrefixLen++;
+        } else {
+            break;
+        }
+    }
+
+    let charsToType = [];
+    
+    // ✅ If there's a common prefix, only update the differing part
+    if (commonPrefixLen > 0) {
+        // Keep the common prefix, remove suffix that changed, add new suffix
+        element.textContent = displayedText.substring(0, commonPrefixLen);
+        // Add new characters after the common prefix
+        for (let i = commonPrefixLen; i < newText.length; i++) {
+            charsToType.push(newText[i]);
+        }
+    } else if (displayedText && newText.startsWith(displayedText)) {
+        // ✅ Pure extension case - just add new characters
+        for (let i = displayedText.length; i < newText.length; i++) {
+            charsToType.push(newText[i]);
+        }
+    } else {
+        // ❌ Text completely different - clear and retype all
+        element.textContent = '';
+        for (let i = 0; i < newText.length; i++) {
+            charsToType.push(newText[i]);
+        }
+    }
+
+    // If nothing new to type, just update and return
+    if (charsToType.length === 0) {
+        element.textContent = newText;
+        return;
+    }
+
+    // Typewriter effect: type out new characters one by one
+    let charIdx = 0;
+    const charDurationMs = Math.max(10, durationMs / charsToType.length);  // Adaptive speed based on new chars count
+    
+    function typeNextChar() {
+        if (charIdx < charsToType.length) {
+            // Append new character instead of replacing entire text
+            element.textContent += charsToType[charIdx];
+            charIdx++;
+            element._typewriterTimer = setTimeout(typeNextChar, charDurationMs);
+        }
+    }
+    
+    // Start typewriter animation
+    typeNextChar();
 }
 
 /* ===================================
@@ -2365,9 +2952,210 @@ function setupSocketEventListeners() {
         console.log('📜 History message received (ignored, using HTTP API)');
     });
 
+    socket.on('realtime_transcription', async (data) => {
+        // In transcription mode, show interim transcriptions with typewriter effect
+        // In translation mode, skip interim display (only show final results)
+        
+        const tempId = data.temp_id;
+        if (!tempId) return;
+
+        const list = document.getElementById('translationsList');
+        if (!list) return;
+
+        // Remove empty state if showing
+        const emptyState = list.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        let tempCard = list.querySelector('[data-temp-id="' + tempId + '"]');
+        if (!tempCard) {
+            // Create interim card with proper structure: text-source + text-target
+            tempCard = document.createElement('div');
+            tempCard.className = 'translation-card';
+            tempCard.setAttribute('data-temp-id', tempId);
+            tempCard.innerHTML = '<div class="card-header">' +
+                '<span class="card-time">' + (data.timestamp || new Date().toLocaleTimeString()) + '</span>' +
+                '<div class="card-actions"></div>' +
+                '</div>' +
+                (displayMode === 'transcription' ? '<div class="text-target"></div>' : (showSourceText ? '<div class="text-source" data-original-text=""></div>' : '')) +
+                (displayMode !== 'transcription' ? '<div class="text-target"></div>' : '');
+            list.insertBefore(tempCard, list.firstChild);
+            
+            // Initialize chunk tracking
+            activeChunkTracking[tempId] = {
+                text: data.original || data.text || '',
+                startTime: Date.now(),
+                hasTransitionedToUnderstanding: false,
+                statusChangeInterval: null
+            };
+            
+            // Only start listening state machine in translation mode
+            if (displayMode !== 'transcription') {
+                const textEl = tempCard.querySelector('.text-target');
+                if (textEl) {
+                    startListeningStateMachine(textEl, tempId);
+                }
+            }
+        }
+
+        // Update transcription text with typewriter effect
+        if (displayMode === 'transcription') {
+            // In transcription mode, show live text in text-target
+            const textEl = tempCard.querySelector('.text-target');
+            if (textEl) {
+                const transcribedText = data.original || data.text || '';
+                const currentText = textEl.textContent;
+                
+                // Animate with typewriter effect
+                animateTextChange(textEl, currentText, transcribedText, 300);
+                console.log('📝 Updating transcription with typewriter effect:', transcribedText.substring(0, 50));
+            }
+        } else {
+            // Update text-source with interim speech (animated typewriter)
+            const sourceEl = tempCard.querySelector('.text-source');
+            if (sourceEl) {
+                const sourceText = data.original || data.text || '';
+                const currentSourceText = sourceEl.textContent;
+                sourceEl.setAttribute('data-original-text', escapeHtml(sourceText));
+                
+                // Animate text-source with typewriter effect
+                if (tempCard._sourceAnimTimer) clearTimeout(tempCard._sourceAnimTimer);
+                animateTextChange(sourceEl, currentSourceText, sourceText, 300);
+                console.log('📝 Updating text-source in interim card:', sourceText.substring(0, 50));
+            }
+
+            // Smart chunk detection: check if we should transition from listening to understanding
+            const textEl = tempCard.querySelector('.text-target');
+            if (textEl && activeChunkTracking[tempId]) {
+                const finalText = data.original || data.text || '';
+                activeChunkTracking[tempId].text = finalText;
+                
+                // Check if content is stable enough to transition
+                checkAndTransitionToUnderstanding(textEl, tempId, finalText);
+                console.log('📊 Chunk state:', { tempId, wordCount: finalText.split(WORD_BOUNDARY_REGEX).length, hasPunctuation: PUNCTUATION_MARKERS.test(finalText) });
+            }
+        }
+    });
+
     socket.on('new_translation', async (data) => {
-        console.log('✨ Received new translation:', data);
-        // Debounce: queue new translations, process with delay to avoid flooding
+        // Check if an interim card exists for this temp_id — update in-place
+        if (data.temp_id) {
+            const list = document.getElementById('translationsList');
+            if (list) {
+                const tempCard = list.querySelector('[data-temp-id="' + data.temp_id + '"]');
+                if (tempCard) {
+                    // Convert interim card to final card in-place
+                    const itemId = 'translation-' + data.id;
+                    tempCard.removeAttribute('data-temp-id');
+                    tempCard.id = itemId;
+
+                    // Get the current interim text before modifying
+                    const currentTextEl = tempCard.querySelector('.text-target');
+                    const interimText = currentTextEl ? currentTextEl.textContent : (data.corrected || data.original);
+                    
+                    // Stop listening and intermediate state machines - now transitioning to AI thinking
+                    if (currentTextEl) {
+                        stopListeningStateMachine(currentTextEl);
+                        stopIntermediateStateMachine(currentTextEl);
+                        console.log('🎧 Stopped listening/intermediate state, starting AI thinking...');
+                    }
+                    
+                    // Clean up chunk tracking for this temp_id
+                    if (data.temp_id && activeChunkTracking[data.temp_id]) {
+                        delete activeChunkTracking[data.temp_id];
+                    }
+                    
+                    console.log('📥 Upgrading interim card to final:', {
+                        tempId: data.temp_id,
+                        itemId: itemId,
+                        interim: interimText.substring(0, 50),
+                        corrected: (data.corrected || data.original).substring(0, 50)
+                    });
+                    
+                    // Determine if we should show source text (for translation mode)
+                    const itemSourceLang = data.source_language || data.language || 'en';
+                    const normalizedSourceLang = itemSourceLang;
+                    const normalizedTargetLang = targetLang;
+                    const shouldShowSource = showSourceText && normalizedSourceLang !== normalizedTargetLang && displayMode !== 'transcription';
+
+                    console.log('🎯 Source language check:', {
+                        source: normalizedSourceLang,
+                        target: normalizedTargetLang,
+                        displayMode: displayMode,
+                        showSourceText: showSourceText,
+                        shouldShowSource: shouldShowSource
+                    });
+
+                    // Handle text-source element
+                    let existingSourceDiv = tempCard.querySelector('.text-source');
+                    
+                    if (shouldShowSource) {
+                        if (!existingSourceDiv) {
+                            // Create text-source element before text-target for source language display
+                            const sourceDiv = document.createElement('div');
+                            sourceDiv.className = 'text-source';
+                            sourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
+                            sourceDiv.textContent = data.corrected || data.original;
+                            console.log('✅ Adding text-source element');
+                            // Insert source before target
+                            tempCard.insertBefore(sourceDiv, currentTextEl);
+                        } else {
+                            // Update existing source div with correct text
+                            existingSourceDiv.textContent = data.corrected || data.original;
+                            existingSourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
+                            console.log('✅ Updating existing text-source element');
+                        }
+                    } else {
+                        // Remove source div if we shouldn't show it
+                        if (existingSourceDiv) {
+                            existingSourceDiv.remove();
+                            console.log('🗑️ Removing text-source element');
+                        }
+                    }
+                    
+                    // Start AI thinking status machine (replaces old rotation)
+                    // Only in translation mode - in transcription mode, we just show the final text
+                    if (currentTextEl && displayMode !== 'transcription') {
+                        // Use same styling as final translation (no 'translating' class to hide the transition)
+                        currentTextEl.className = 'text-target';
+                        currentTextEl.setAttribute('data-original-text', '');
+                        
+                        // Start from 'understanding' stage, will auto-progress to translating
+                        // Pass source text to determine animation style based on length
+                        const sourceText = data.corrected || data.original || '';
+                        startAIThinkingMachine(currentTextEl, 'preparing', 30000, sourceText);
+                        console.log('🧠 Started AI thinking machine (preparing → translating)');
+                    } else if (currentTextEl && displayMode === 'transcription') {
+                        // In transcription mode, just show the final text
+                        currentTextEl.textContent = data.corrected || data.original;
+                        console.log('📝 Completed transcription displayed');
+                    }
+
+                    // Add copy + TTS buttons to card-actions
+                    const actions = tempCard.querySelector('.card-actions');
+                    if (actions) {
+                        actions.innerHTML = '<button class="copy-btn" id="copy-btn-' + data.id + '" data-translation-id="' + data.id + '" onclick="copyTranslationFromButton(this)" title="Copy"><span>📋</span></button>' +
+                            '<button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="" title="Speak">🔊</button>';
+                    }
+
+                    // Add to translations array
+                    translations.unshift(data);
+                    translationsTotal++;
+                    renderedCount++;
+                    const itemCount = document.getElementById('itemCount');
+                    if (itemCount) itemCount.textContent = translationsTotal;
+
+                    // Trigger background translation
+                    if (displayMode !== 'transcription') {
+                        translateInBackground(data, itemId, currentTextEl);
+                    }
+
+                    if (ttsEnabled && data.translated) speakText(data.translated);
+                    return;
+                }
+            }
+        }
+
+        // No interim card found — add normally
         pendingNewTranslations.push(data);
         if (!newTranslationTimer) {
             newTranslationTimer = setTimeout(processPendingTranslations, 200);

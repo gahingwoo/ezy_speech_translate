@@ -12,6 +12,8 @@ let finalTranscript = '';
 let recognitionAttempts = 0;
 const MAX_SILENT_TIME = 15000;
 let lastSpeechTimestamp = Date.now();
+let currentTempId = null;     // Temporary ID for linking interim->final (per utterance)
+let interimThrottleTimer = null;  // Throttle interim sends
 
 // XSS Protection
 function sanitizeInput(input) {
@@ -267,7 +269,19 @@ function connectWebSocket() {
     });
 
     socket.on('new_translation', (data) => {
+        // Only process if not sent by this admin (server skips sender,
+        // but handle edge cases like import from another admin)
         console.log('📥 Received translation:', data);
+        const exists = translations.some(t => t.id === data.id);
+        if (!exists) {
+            translations.push(data);
+            renderTranscriptions();
+        }
+    });
+
+    // Confirmation that our transcription was stored with its server-assigned ID
+    socket.on('transcription_confirmed', (data) => {
+        console.log('✅ Transcription confirmed, id:', data.id);
         translations.push(data);
         renderTranscriptions();
     });
@@ -411,6 +425,7 @@ function setupRecognitionHandlers() {
             }, 300);
         } else {
             isRecording = false;
+            currentTempId = null;
             updateRecordButton();
             updateInterimDisplay('Stopped', false);
             document.getElementById('autoRestartBadge').style.display = 'none';
@@ -461,8 +476,10 @@ function setupRecognitionHandlers() {
             const confidence = event.results[i][0].confidence;
 
             if (event.results[i].isFinal) {
-                console.log(`📤 SENDING TO SERVER: "${transcript}"`);
-                sendTranscription(transcript, confidence);
+                console.log(`📤 SENDING FINAL: "${transcript}"`);
+                // Send final with same temp_id so user-side replaces the interim card
+                sendTranscription(transcript, confidence, true);
+                currentTempId = null;  // Reset for next utterance
                 updateInterimDisplay('✓ Sent: ' + transcript.substring(0, 50) + '...', true);
                 setTimeout(() => {
                     if (isRecording) {
@@ -475,8 +492,16 @@ function setupRecognitionHandlers() {
         }
 
         if (interimTranscript.trim()) {
+            // Generate temp_id for this utterance if not yet created
+            if (!currentTempId) {
+                currentTempId = 'rec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            }
+            // Throttle interim sends to max ~3/sec to avoid flooding
+            if (!interimThrottleTimer) {
+                sendTranscription(interimTranscript, 0.85, false);
+                interimThrottleTimer = setTimeout(() => { interimThrottleTimer = null; }, 300);
+            }
             updateInterimDisplay(interimTranscript, true);
-            console.log('💭 Interim:', interimTranscript.substring(0, 50) + '...');
         }
     };
 }
@@ -489,7 +514,7 @@ function updateInterimDisplay(text, active) {
     display.className = active ? 'interim-display active' : 'interim-display inactive';
 }
 
-function sendTranscription(text, confidence) {
+function sendTranscription(text, confidence, isFinal = true) {
     if (!text || !socket || !socket.connected) {
         console.warn('⚠️ Cannot send - no text or no connection');
         return;
@@ -503,16 +528,20 @@ function sendTranscription(text, confidence) {
     }
 
     const sanitizedText = validation.text;
-    console.log(`📤 SENDING TO SERVER: "${sanitizedText}" (confidence: ${confidence})`);
+    console.log(`📤 SENDING: "${sanitizedText}" (confidence: ${confidence}, final: ${isFinal})`);
 
     socket.emit('new_transcription', {
         text: sanitizedText,
         language: recognitionLanguage.split('-')[0],
         timestamp: new Date().toISOString(),
-        confidence: confidence
+        confidence: confidence,
+        is_final: isFinal,
+        temp_id: currentTempId
     });
 
-    updateInterimDisplay('✓ Sent: ' + sanitizedText.substring(0, 50) + '...', true);
+    if (isFinal) {
+        updateInterimDisplay('✓ Sent: ' + sanitizedText.substring(0, 50) + '...', true);
+    }
 }
 
 function updateRecordButton() {

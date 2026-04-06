@@ -20,6 +20,8 @@
     --text: #151515;
     --text-secondary: #6a6e73;
     --shadow: rgba(3, 3, 3, 0.16);
+    --card-radius: 3px;
+    --btn-radius: 3px;
 }
 
 /* CSS Variables for Dark Theme */
@@ -579,7 +581,7 @@ select:focus {
 .translation-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--card-radius);
     padding: 1.25rem;
     transition: all 0.2s;
     /* Removed slideIn animation to prevent flashing (accessibility for photosensitivity) */
@@ -605,33 +607,40 @@ select:focus {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.75rem;
+    min-height: 1.75rem;  /* Ensure header has minimum height */
 }
 
 .card-time {
     font-size: 0.813rem;
     color: var(--text-secondary);
     font-weight: 500;
+    display: flex;
+    align-items: center;  /* Vertically center with actions */
 }
 
 .card-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    height: 1.5rem;  /* Fixed height to prevent fluctuations */
 }
 
 .card-badge {
     background: var(--success);
     color: white;
     padding: 0.125rem 0.5rem;
-    border-radius: 3px;
+    border-radius: var(--btn-radius) !important;
     font-size: 0.75rem;
     font-weight: 600;
+    height: 1.25rem;  /* Fixed height to match action items */
+    display: flex;
+    align-items: center;  /* Vertically center text inside badge */
 }
 
 .copy-btn {
     cursor: pointer;
     padding: 0.25rem 0.5rem;
-    border-radius: 3px;
+    border-radius: var(--btn-radius) !important;
     background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--border);
@@ -639,6 +648,10 @@ select:focus {
     transition: all 0.2s;
     min-width: 32px;
     text-align: center;
+    height: 1.25rem;  /* Fixed height to prevent expansion */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .copy-btn:hover {
@@ -656,17 +669,115 @@ select:focus {
 .tts-icon {
     cursor: pointer;
     padding: 0.25rem 0.5rem;
-    border-radius: 3px;
+    border-radius: var(--btn-radius) !important;
     background: var(--primary);
     color: white;
     border: none;
     font-size: 0.875rem;
     transition: all 0.2s;
+    height: 1.25rem;  /* Fixed height to prevent expansion */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;  /* Square-ish shape */
 }
 
 .tts-icon:hover {
     background: var(--primary-hover);
     transform: scale(1.1);
+}
+
+/* ✅ Responsive buttons: smart sizing for mobile vs desktop */
+@media (max-width: 768px) {
+    /* Mobile devices: moderate buttons for touch, not too large */
+    .copy-btn {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.75rem;
+        min-width: 1.75rem;
+        border-radius: 4px;
+    }
+
+    .tts-icon {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.75rem;
+        min-width: 1.75rem;
+        border-radius: 4px;
+    }
+
+    .card-actions {
+        height: 2rem;  /* Slightly taller for mobile */
+        gap: 0.625rem;
+    }
+
+    .card-badge {
+        font-size: 0.8125rem;
+        padding: 0.1875rem 0.625rem;
+        height: 1.5rem;
+    }
+
+    .card-header {
+        min-height: 2.25rem;
+    }
+}
+
+/* Tablet: medium sizing */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .copy-btn {
+        font-size: 0.9375rem;
+        padding: 0.3125rem 0.563rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .tts-icon {
+        font-size: 0.9375rem;
+        padding: 0.3125rem 0.563rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .card-actions {
+        height: 1.75rem;
+    }
+
+    .card-badge {
+        height: 1.375rem;
+    }
+
+    .card-header {
+        min-height: 2rem;
+    }
+}
+
+/* Desktop: larger sizing for better visibility */
+@media (min-width: 1025px) {
+    .copy-btn {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .tts-icon {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .card-actions {
+        height: 1.75rem;
+    }
+
+    .card-badge {
+        height: 1.375rem;
+    }
+
+    .card-header {
+        min-height: 2rem;
+    }
 }
 
 .text-source {
@@ -1074,3 +1185,139 @@ select:focus {
         height: 24px;
     }
 }
+
+/* --- Improved Responsive Button Sizing --- */
+@media (max-width: 480px) {
+    /* Small mobile: compact but touchable */
+    .copy-btn, .tts-icon {
+        font-size: 0.95rem;
+        padding: 0.25rem 0.5rem;
+        height: 1.35rem;
+        min-width: 1.35rem;
+        border-radius: 4px;
+    }
+    .card-actions { height: 1.6rem; }
+    .card-header { min-height: 1.7rem; }
+    .card-badge { height: 1.1rem; font-size: 0.75rem; }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+    /* Large mobile: slightly bigger */
+    .copy-btn, .tts-icon {
+        font-size: 1.05rem;
+        padding: 0.3rem 0.55rem;
+        height: 1.55rem;
+        min-width: 1.55rem;
+    }
+    .card-actions { height: 1.8rem; }
+    .card-header { min-height: 1.9rem; }
+    .card-badge { height: 1.2rem; font-size: 0.8rem; }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    /* Tablet: medium */
+    .copy-btn, .tts-icon {
+        font-size: 1.15rem;
+        padding: 0.35rem 0.6rem;
+        height: 1.7rem;
+        min-width: 1.7rem;
+    }
+    .card-actions { height: 2rem; }
+    .card-header { min-height: 2.1rem; }
+    .card-badge { height: 1.3rem; font-size: 0.85rem; }
+}
+
+@media (min-width: 1025px) {
+    /* Desktop: clearly bigger */
+    .copy-btn, .tts-icon {
+        font-size: 1.25rem;
+        padding: 0.45rem 0.8rem;
+        height: 2.1rem;
+        min-width: 2.1rem;
+    }
+    .card-actions { height: 2.3rem; }
+    .card-header { min-height: 2.5rem; }
+    .card-badge { height: 1.7rem; font-size: 1rem; }
+}
+/* --- End Improved Responsive Button Sizing --- */
+
+/* --- Force square action buttons --- */
+.copy-btn, .tts-icon {
+    aspect-ratio: 1 / 1;
+    width: unset; /* allow min-width to control */
+    min-width: unset;
+    max-width: unset;
+}
+
+@media (max-width: 480px) {
+    .copy-btn, .tts-icon {
+        width: 1.35rem;
+        min-width: 1.35rem;
+        max-width: 1.35rem;
+        height: 1.35rem;
+    }
+}
+@media (min-width: 481px) and (max-width: 767px) {
+    .copy-btn, .tts-icon {
+        width: 1.55rem;
+        min-width: 1.55rem;
+        max-width: 1.55rem;
+        height: 1.55rem;
+    }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+    .copy-btn, .tts-icon {
+        width: 1.7rem;
+        min-width: 1.7rem;
+        max-width: 1.7rem;
+        height: 1.7rem;
+    }
+}
+@media (min-width: 1025px) {
+    .copy-btn, .tts-icon {
+        width: 2.1rem;
+        min-width: 2.1rem;
+        max-width: 2.1rem;
+        height: 2.1rem;
+    }
+}
+/* --- End force square action buttons --- */
+
+/* --- Refined square button sizes for better balance --- */
+@media (max-width: 480px) {
+    .copy-btn, .tts-icon {
+        width: 1.8rem;
+        min-width: 1.8rem;
+        max-width: 1.8rem;
+        height: 1.8rem;
+        font-size: 1.1rem;
+    }
+}
+@media (min-width: 481px) and (max-width: 767px) {
+    .copy-btn, .tts-icon {
+        width: 2.1rem;
+        min-width: 2.1rem;
+        max-width: 2.1rem;
+        height: 2.1rem;
+        font-size: 1.18rem;
+    }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+    .copy-btn, .tts-icon {
+        width: 2.2rem;
+        min-width: 2.2rem;
+        max-width: 2.2rem;
+        height: 2.2rem;
+        font-size: 1.22rem;
+    }
+}
+@media (min-width: 1025px) {
+    .copy-btn, .tts-icon {
+        width: 2.05rem;
+        min-width: 2.05rem;
+        max-width: 2.05rem;
+        height: 2.05rem;
+        font-size: 1.13rem;
+    }
+}
+/* --- End refined square button sizes --- */
