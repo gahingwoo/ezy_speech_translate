@@ -336,6 +336,34 @@ def rate_limit_check(f):
     return decorated_function
 
 # ──────────────────────────────────────────
+# Cache Control Middleware (prevent browser caching of JS/CSS)
+# ──────────────────────────────────────────
+@app.after_request
+def set_cache_headers(response):
+    """Set proper cache headers for static and dynamic content"""
+    # Disable caching for HTML pages (always fetch fresh version)
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, public, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    
+    # Disable caching for API responses
+    elif request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, public, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    
+    # For static files (JS, CSS, images), allow short-term caching but always validate
+    elif request.path.startswith('/static/'):
+        # Browser can cache these for 1 hour, but MUST revalidate with server
+        response.headers['Cache-Control'] = 'public, max-age=3600, must-revalidate'
+        # Add ETag for better cache validation
+        if not response.headers.get('ETag'):
+            response.set_etag()
+    
+    return response
+
+# ──────────────────────────────────────────
 # Routes
 # ──────────────────────────────────────────
 @app.route("/")
