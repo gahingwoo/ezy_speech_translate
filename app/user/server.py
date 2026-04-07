@@ -453,9 +453,10 @@ MAX_HISTORY_SIZE = get_config('advanced', 'performance', 'cache_size', default=1
 translations_history = []
 next_translation_id = 0  # Global ID counter (never resets, always increments)
 connected_clients = set()          # all socket SIDs
-listener_clients = defaultdict(set) # ip -> {sids}  (non-admin only)
-admin_sessions = {}
-api_session_tokens = {}  # Maps token -> {sid, created_at, expires_at}
+listener_clients = {}              # client_key -> latest SID  (user clients only, 1 per user)
+admin_sessions = {}                 # sid -> username (admin sessions)
+api_session_tokens = {}             # Maps token -> {sid, created_at, expires_at}
+sid_to_client_key = {}              # Mapping: sid -> (client_key, client_type) for cleanup on disconnect
 
 def add_translation(data):
     """Add translation with size limit"""
@@ -1060,36 +1061,52 @@ def clear_translation_cache():
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection with validation"""
-    # For Socket.IO, get client_id from handshake cookies
-    client_id = None
-    if hasattr(request, 'cookies'):
-        client_id = request.cookies.get('_client_id')
-
-    # If no client_id in cookies, generate one
+    # Priority: Get client_id from query params (sent by client), then cookies
+    client_id = request.args.get('client_id')
+    client_type = request.args.get('type', 'user')  # 'user' or 'admin'
+    
+    if not client_id:
+        # Fallback to cookies if query param not provided
+        if hasattr(request, 'cookies'):
+            client_id = request.cookies.get('_client_id')
+    
+    # If still no client_id, generate one (fallback)
     if not client_id:
         client_id = f"browser_{secrets.token_hex(16)}"
+        logger.warning(f"No client_id provided, generated fallback: {client_id}")
 
     client_key = f"client:{client_id}"
     client_ip = get_real_ip()
 
-    logger.info(f"Socket.IO connect attempt from {client_ip} (Client: {client_id}, SID: {request.sid})")
+    logger.info(f"Socket.IO connect attempt from {client_ip} (Client: {client_id}, Type: {client_type}, SID: {request.sid})")
 
     if is_client_blocked(client_key):
         security_logger.warning(f"Blocked client attempted WebSocket: {client_key}")
         logger.error(f"Connection rejected: Client {client_key} is blocked")
         return False
 
-    # Limit connections per client session
-    client_connections = sum(1 for c in connected_clients if c.startswith(client_key))
-    if client_connections >= max_ws_connections:
-        security_logger.warning(f"Too many connections from {client_key}: {client_connections} >= {max_ws_connections}")
-        logger.error(f"Connection rejected: Too many connections from {client_key} ({client_connections}/{max_ws_connections})")
-        return False
+    # Only count user-type clients as listeners (not admin)
+    if client_type == 'user':
+        # If this client_key already has an old SID, evict it (handles page refresh)
+        old_sid = listener_clients.get(client_key)
+        if old_sid and old_sid != request.sid:
+            logger.info(f"Evicting stale SID {old_sid} for {client_key} (replaced by {request.sid})")
+            sid_to_client_key.pop(old_sid, None)
+            stale_key = f"{client_key}:{old_sid}"
+            connected_clients.discard(stale_key)
 
-    client_id_full = f"{client_key}:{request.sid}"
-    connected_clients.add(client_id_full)
-    listener_clients[client_key].add(request.sid)  # assumed listener until admin_connect
-    logger.info(f"Client connected: {client_ip} (Client: {client_id}, SID: {request.sid}, Total: {len(connected_clients)})")
+        client_id_full = f"{client_key}:{request.sid}"
+        connected_clients.add(client_id_full)
+        listener_clients[client_key] = request.sid  # Only keep latest SID per user
+        logger.info(f"User client connected: {client_ip} (Client: {client_id}, SID: {request.sid}, Total listeners: {len(listener_clients)})")
+    elif client_type == 'admin':
+        # Admin clients still need to be tracked, but not as listeners
+        client_id_full = f"{client_key}:{request.sid}"
+        connected_clients.add(client_id_full)
+        logger.info(f"Admin client connected: {client_ip} (Client: {client_id}, SID: {request.sid})")
+    
+    # Store mapping for reliable cleanup on disconnect
+    sid_to_client_key[request.sid] = (client_key, client_type)
 
     # Notify client that history is available via HTTP API (pagination)
     # Don't send all history via WebSocket - use HTTP API for better performance
@@ -1106,31 +1123,39 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect(sid=None):
     """Handle client disconnection - find and clean up client info"""
-    # Try to get client_id from cookies (same as in connect)
-    client_id = None
-    if hasattr(request, 'cookies'):
-        client_id = request.cookies.get('_client_id')
-
-    if not client_id:
-        client_id = 'unknown'
-
-    client_key = f"client:{client_id}"
     sid_used = sid if sid is not None else request.sid
-    client_id_full = f"{client_key}:{sid_used}"
-    connected_clients.discard(client_id_full)
-
-    # Remove this SID from listener tracking; clean up empty entries
-    listener_clients[client_key].discard(sid_used)
-    if not listener_clients[client_key]:
-        del listener_clients[client_key]
+    
+    # Use stored mapping to find client_key and type reliably
+    mapping = sid_to_client_key.pop(sid_used, None)
+    
+    if mapping:
+        client_key, client_type = mapping
+        
+        # Clean up only if it was a user (listener)
+        if client_type == 'user':
+            # Only remove from listener_clients if this SID is still the active one
+            # (avoids removing a newer connection when a stale disconnect fires late)
+            if listener_clients.get(client_key) == sid_used:
+                del listener_clients[client_key]
+            logger.info(f"User client disconnected: SID {sid_used} from {client_key} (Total listeners: {len(listener_clients)})")
+        else:
+            logger.info(f"Admin client disconnected: SID {sid_used} from {client_key}")
+    else:
+        logger.warning(f"Disconnect: Unknown client mapping for SID {sid_used}")
+    
+    # Always try to remove from connected_clients
+    connected_clients.discard(sid_used)
+    for key in list(connected_clients):
+        if key.endswith(f":{sid_used}"):
+            connected_clients.discard(key)
+            break
+    
     admin_sessions.pop(sid_used, None)
     
     # Clean up API tokens associated with this SID
     tokens_to_remove = [t for t, info in api_session_tokens.items() if info['sid'] == sid_used]
     for token in tokens_to_remove:
         del api_session_tokens[token]
-    
-    logger.info(f"Client disconnected: {get_real_ip()} (Client: {client_id}, Total: {len(connected_clients)})")
 
 @socketio.on('admin_connect')
 def handle_admin_connect(data):
@@ -1155,12 +1180,6 @@ def handle_admin_connect(data):
     decoded = validate_jwt_token(token)
     if decoded:
         admin_sessions[request.sid] = decoded['username']
-        # Remove this SID from listener tracking so admin tabs are not counted
-        client_id = request.cookies.get('_client_id', 'unknown')
-        client_key = f"client:{client_id}"
-        listener_clients[client_key].discard(request.sid)
-        if not listener_clients[client_key]:
-            del listener_clients[client_key]
         # Send translation history to admin
         emit('history', translations_history)
         emit('admin_connected', {'success': True})

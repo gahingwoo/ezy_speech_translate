@@ -3,6 +3,20 @@ let socket = null;
 let socketRetryCount = 0;
 let socketListenersSetup = false;
 
+// Generate or retrieve persistent client ID (stored in localStorage)
+function getOrCreateClientId() {
+    let clientId = localStorage.getItem('_client_id');
+    if (!clientId) {
+        // Generate a new UUID-like client ID - stored for persistence across sessions
+        clientId = 'user_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+        localStorage.setItem('_client_id', clientId);
+        console.log('✓ Generated new persistent client ID:', clientId);
+    } else {
+        console.log('✓ Using persistent client ID:', clientId);
+    }
+    return clientId;
+}
+
 function initSocket() {
     if (socket && socket.connected) {
         console.log('Socket already connected');
@@ -10,6 +24,9 @@ function initSocket() {
     }
 
     console.log('Initializing Socket.IO connection...');
+    
+    // Get persistent client ID and send it to server
+    const clientId = getOrCreateClientId();
 
     socket = io({
         reconnection: true,
@@ -20,7 +37,11 @@ function initSocket() {
         upgrade: true,
         rememberUpgrade: true,
         rejectUnauthorized: false,  // For self-signed certificates
-        forceNew: false  // Reuse existing connection if possible
+        forceNew: false,  // Reuse existing connection if possible
+        query: {
+            client_id: clientId,  // Send persistent client ID to server
+            type: 'user'  // Identify as user client (not admin)
+        }
     });
 
     socket.on('connect', () => {

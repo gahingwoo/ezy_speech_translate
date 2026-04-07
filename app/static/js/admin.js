@@ -212,12 +212,24 @@ document.addEventListener('keydown', (e) => {
 function connectWebSocket() {
     console.log('🔌 Connecting to WebSocket:', SERVER_URL);
     console.log('🔑 Using token:', authToken ? 'Yes' : 'No');
+    
+    // Admin should use separate persistent client ID (distinct from user client)
+    const adminClientIdKey = '_admin_client_id';
+    let clientId = localStorage.getItem(adminClientIdKey);
+    if (!clientId) {
+        clientId = 'admin_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+        localStorage.setItem(adminClientIdKey, clientId);
+    }
 
     socket = io(SERVER_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 1000
+        reconnectionDelay: 1000,
+        query: {
+            client_id: clientId,  // Send persistent client ID to server
+            type: 'admin'  // Identify as admin client
+        }
     });
 
     socket.on('connect', () => {
