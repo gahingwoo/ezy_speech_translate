@@ -83,6 +83,8 @@ let ttsRate = 1.0;
 let ttsVolume = 1.0;
 let availableVoices = [];
 let selectedVoice = null;
+let ttsEngine = 'system';  // 'system' (Local) or 'edge' (Cloud)
+let edgeTTSVoices = [];     // Available Edge TTS voices
 
 // Use shared translations provided by /static/js/i18n.js
 const i18n = window.sharedI18n || {};
@@ -349,6 +351,10 @@ function escapeHtml(s) {
    Init
    ========================= */
 function init() {
+    // Note: Do NOT restore apiSessionToken from localStorage
+    // Always wait for WebSocket connection to receive a fresh token
+    // This ensures the token is always valid with the current server session
+    
     loadSettings();
     applyDisplayLanguageLocal();
     applyDisplayMode();
@@ -358,9 +364,14 @@ function init() {
     // Initialize Socket.IO connection
     ensureSocketConnected();
 
+    // Load appropriate voices based on TTS engine
     if ('speechSynthesis' in window) {
         loadVoices();
-        speechSynthesis.addEventListener('voiceschanged', loadVoices);
+        speechSynthesis.addEventListener('voiceschanged', function() {
+            if (ttsEngine === 'system') {
+                loadVoices();
+            }
+        });
     }
 
     const langSel = document.getElementById('displayLanguage');
@@ -672,6 +683,33 @@ function loadSettings() {
     const savedTheme = localStorage.getItem('theme');
     const savedFontSize = localStorage.getItem('fontSize');
     const savedDisplayLanguage = localStorage.getItem('displayLanguage');
+    const savedTTSEngine = localStorage.getItem('ttsEngine');
+    const savedTTSEnabled = localStorage.getItem('ttsEnabled');
+
+    // Load TTS enabled state
+    if (savedTTSEnabled !== null) {
+        ttsEnabled = savedTTSEnabled === 'true';
+        const btn = document.getElementById('toggleTTS');
+        if (btn) {
+            if (ttsEnabled) {
+                btn.classList.add('active');
+                btn.querySelector('span:first-child').textContent = '🔇';
+                btn.querySelector('span:last-child').textContent = 'Disable TTS';
+            } else {
+                btn.classList.remove('active');
+                btn.querySelector('span:first-child').textContent = '🔊';
+                btn.querySelector('span:last-child').textContent = 'Enable TTS';
+            }
+        }
+        console.log('✅ Loaded TTS enabled state:', ttsEnabled);
+    }
+
+    // Load TTS engine preference
+    if (savedTTSEngine && (savedTTSEngine === 'system' || savedTTSEngine === 'edge')) {
+        ttsEngine = savedTTSEngine;
+    }
+    const engineSelect = document.getElementById('ttsEngine');
+    if (engineSelect) engineSelect.value = ttsEngine;
 
     // Load display language (be tolerant of variants like 'en-US')
     if (savedDisplayLanguage) {
@@ -748,6 +786,17 @@ function loadSettings() {
    =================================== */
 
 function loadVoices() {
+    const voiceSelect = document.getElementById('voiceSelect');
+    
+    if (ttsEngine === 'edge') {
+        loadEdgeTTSVoices();
+    } else {
+        loadSystemVoices();
+    }
+}
+
+function loadSystemVoices() {
+    // Load Web Speech API (System) voices
     availableVoices = speechSynthesis.getVoices();
 
     if (availableVoices.length === 0) {
@@ -867,24 +916,163 @@ function loadVoices() {
         }
     }
 
-    console.log('✅ Loaded ' + availableVoices.length + ' voices, showing ' + voicesToShow.length + ' for ' + targetLang);
+    console.log('✅ Loaded ' + availableVoices.length + ' system voices, showing ' + voicesToShow.length + ' for ' + targetLang);
+}
+
+async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
+    // Load Edge TTS voices from backend API with automatic retry
+    const voiceSelect = document.getElementById('voiceSelect');
+    
+    // Only show loading message on first attempt
+    if (retryCount === 0) {
+        voiceSelect.innerHTML = '<option value="">Loading Edge TTS voices...</option>';
+    }
+    
+    try {
+        // Map target language to Edge TTS language code
+        const ttsLang = TTS_LANG_MAP[targetLang] || targetLang;
+        const savedVoice = localStorage.getItem('selectedVoice');
+        
+        if (retryCount === 0) {
+            console.log('📥 Fetching Edge TTS voices for language:', targetLang, '→', ttsLang);
+        } else {
+            console.log(`📥 Retrying Edge TTS voices (attempt ${retryCount + 1}/${maxRetries})...`);
+        }
+        
+        const response = await fetch('/api/tts/voices?lang=' + encodeURIComponent(ttsLang));
+        
+        // Check HTTP response status
+        if (!response.ok) {
+            console.error(`❌ HTTP ${response.status} error from /api/tts/voices`);
+            
+            let errorMsg = `Server error (${response.status})`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorData.message || errorMsg;
+            } catch (e) {
+                // Response is not JSON
+            }
+            
+            voiceSelect.innerHTML = `<option value="">Edge TTS Error: ${errorMsg}</option>`;
+            console.warn(`⚠️ Edge TTS server error: ${errorMsg}`);
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // Check if voices are still loading
+        if (data.warning && data.warning.includes('loading')) {
+            console.log(`⏳ Voices still loading, retrying in 2 seconds...`);
+            if (retryCount < maxRetries) {
+                // Wait and retry
+                voiceSelect.innerHTML = `<option value="">Loading Edge TTS voices (${retryCount + 1}/${maxRetries})...</option>`;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return loadEdgeTTSVoices(retryCount + 1, maxRetries);
+            } else {
+                console.warn('⚠️ Edge TTS voices still loading after max retries');
+                voiceSelect.innerHTML = '<option value="">Voices loading, please refresh...</option>';
+                return;
+            }
+        }
+        
+        if (!data.success || !data.edge_tts_available) {
+            const msg = data.error || 'Edge TTS not available';
+            console.warn(`⚠️ Edge TTS not available: ${msg}`);
+            voiceSelect.innerHTML = `<option value="">${msg}</option>`;
+            return;
+        }
+        
+        edgeTTSVoices = data.edge_voices || [];
+        
+        voiceSelect.innerHTML = '';
+        
+        // Add auto option
+        const autoOption = document.createElement('option');
+        autoOption.value = '';
+        autoOption.textContent = '🤖 Auto (Cloud Default)';
+        voiceSelect.appendChild(autoOption);
+        
+        if (edgeTTSVoices.length === 0) {
+            const noVoicesOption = document.createElement('option');
+            noVoicesOption.value = '';
+            noVoicesOption.textContent = 'No voices available for this language';
+            voiceSelect.appendChild(noVoicesOption);
+            console.warn('⚠️ No Edge TTS voices available for language:', targetLang);
+            return;
+        }
+        
+        // Group voices by language
+        const grouped = {};
+        edgeTTSVoices.forEach(function (voice) {
+            const lang = voice.locale;
+            if (!grouped[lang]) grouped[lang] = [];
+            grouped[lang].push(voice);
+        });
+        
+        // Add voice options
+        Object.keys(grouped).sort().forEach(function (lang) {
+            grouped[lang].forEach(function (voice) {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = voice.display_name + ' (' + voice.gender + ')';
+                voiceSelect.appendChild(option);
+            });
+        });
+        
+        // Restore saved voice selection
+        if (savedVoice) {
+            const voiceExists = edgeTTSVoices.find(function (v) {
+                return v.name === savedVoice;
+            });
+            if (voiceExists) {
+                voiceSelect.value = savedVoice;
+                console.log('✅ Restored saved Edge TTS voice:', savedVoice);
+            } else {
+                voiceSelect.value = '';
+                console.log('⚠️ Saved voice not available, using auto selection');
+            }
+        }
+        
+        console.log('✅ Loaded ' + edgeTTSVoices.length + ' Edge TTS voices');
+    } catch (error) {
+        console.error('❌ Error loading Edge TTS voices:', error);
+        voiceSelect.innerHTML = `<option value="">Error: ${error.message}</option>`;
+    }
 }
 
 function changeVoice() {
     const voiceSelect = document.getElementById('voiceSelect');
     const voiceName = voiceSelect.value;
 
-    if (voiceName) {
-        selectedVoice = availableVoices.find(function (v) {
-            return v.name === voiceName;
-        });
+    if (ttsEngine === 'system') {
+        // System TTS
+        if (voiceName) {
+            selectedVoice = availableVoices.find(function (v) {
+                return v.name === voiceName;
+            });
+            localStorage.setItem('selectedVoice', voiceName);
+            console.log('Selected system voice: ' + voiceName);
+        } else {
+            selectedVoice = null;
+            localStorage.removeItem('selectedVoice');
+            console.log('Using auto voice selection');
+        }
+    } else if (ttsEngine === 'edge') {
+        // Edge TTS
         localStorage.setItem('selectedVoice', voiceName);
-        console.log('Selected voice: ' + voiceName);
-    } else {
-        selectedVoice = null;
-        localStorage.removeItem('selectedVoice');
-        console.log('Using auto voice selection');
+        console.log('Selected Edge TTS voice: ' + voiceName);
     }
+}
+
+function changeTTSEngine() {
+    const engineSelect = document.getElementById('ttsEngine');
+    ttsEngine = engineSelect.value;
+    localStorage.setItem('ttsEngine', ttsEngine);
+    
+    console.log('🔄 Switched TTS engine to:', ttsEngine === 'system' ? '🖥️ System (Local)' : '☁️ Edge TTS (Cloud)');
+    
+    // Load appropriate voices for the new engine
+    loadVoices();
 }
 
 function changeLanguage() {
@@ -1599,13 +1787,6 @@ async function translateLongText(text, targetLang, translationLang) {
    =================================== */
 
 function speakText(text) {
-    if (!('speechSynthesis' in window)) {
-        alert('Your browser does not support text-to-speech');
-        return;
-    }
-
-    speechSynthesis.cancel();
-
     // Validate and sanitize text before speaking
     const validation = validateText(text, 5000);
     if (!validation.valid) {
@@ -1616,7 +1797,23 @@ function speakText(text) {
     const cleanText = validation.text.replace(/\s*\([^)]*\)\s*/g, '').trim();
     if (!cleanText) return;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+    if (ttsEngine === 'system') {
+        speakTextSystem(cleanText);
+    } else if (ttsEngine === 'edge') {
+        speakTextEdge(cleanText);
+    }
+}
+
+function speakTextSystem(text) {
+    // Use Web Speech API (System TTS) 
+    if (!('speechSynthesis' in window)) {
+        alert('Your browser does not support text-to-speech');
+        return;
+    }
+
+    speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
     const ttsLang = TTS_LANG_MAP[targetLang] || targetLang;
     utterance.lang = ttsLang;
     utterance.rate = ttsRate;
@@ -1624,7 +1821,7 @@ function speakText(text) {
 
     if (selectedVoice) {
         utterance.voice = selectedVoice;
-        console.log('Using selected voice: ' + selectedVoice.name);
+        console.log('🖥️ Using selected system voice: ' + selectedVoice.name);
     } else {
         const voices = speechSynthesis.getVoices();
         let autoVoice = voices.find(function (v) {
@@ -1638,19 +1835,78 @@ function speakText(text) {
         }
         if (autoVoice) {
             utterance.voice = autoVoice;
-            console.log('Using auto voice: ' + autoVoice.name);
+            console.log('🖥️ Using auto system voice: ' + autoVoice.name);
         }
     }
 
     utterance.onerror = function (e) {
-        console.error('TTS error:', e);
+        console.error('🖥️ System TTS error:', e);
     };
 
     speechSynthesis.speak(utterance);
 }
 
+async function speakTextEdge(text) {
+    // Use Edge TTS (Cloud-based)
+    try {
+        console.log('☁️ Sending text to Edge TTS...');
+        
+        // Check if token is available
+        if (!apiSessionToken) {
+            throw new Error('Waiting for server connection... Please try again in a moment');
+        }
+        
+        const selectedVoiceValue = document.getElementById('voiceSelect').value;
+        
+        const response = await fetch('/api/tts/synthesize', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiSessionToken}`
+            },
+            body: JSON.stringify({
+                text: text,
+                lang: TTS_LANG_MAP[targetLang] || targetLang,
+                voice: selectedVoiceValue || null
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'TTS synthesis failed');
+        }
+        
+        // Get audio blob
+        const audioBlob = await response.blob();
+        
+        // Play audio
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio();
+        audio.src = audioUrl;
+        audio.volume = ttsVolume;
+        
+        audio.onerror = function (e) {
+            console.error('☁️ Edge TTS playback error:', e);
+        };
+        
+        audio.onended = function () {
+            URL.revokeObjectURL(audioUrl);
+        };
+        
+        audio.play().catch(function (e) {
+            console.error('☁️ Failed to play Edge TTS audio:', e);
+        });
+        
+        console.log('☁️ Edge TTS audio playing...');
+    } catch (error) {
+        console.error('☁️ Edge TTS error:', error);
+        alert('Error using Edge TTS: ' + error.message);
+    }
+}
+
 function toggleTTS() {
     ttsEnabled = !ttsEnabled;
+    localStorage.setItem('ttsEnabled', ttsEnabled);
     const btn = document.getElementById('toggleTTS');
     const icon = btn.querySelector('span:first-child');
     const text = btn.querySelector('span:last-child');
@@ -2951,7 +3207,9 @@ function setupSocketEventListeners() {
         // Server sent API token for session
         if (data && data.api_token) {
             apiSessionToken = data.api_token;
-            console.log('🔐 API session token received');
+            // Save token to localStorage for persistence across page refreshes
+            localStorage.setItem('apiSessionToken', apiSessionToken);
+            console.log('🔐 API session token received and saved');
             // Load translations with the new token
             await loadInitialTranslations();
         }
@@ -3241,155 +3499,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 console.log('✅ EzySpeechTranslate Client Ready');
-
-/* ===================================
-   Debug Function (call from console)
-   =================================== */
-
-window.debugTranslate = async function(text, targetLang = 'zh') {
-    console.clear();
-    console.log('🔍 DEBUG TRANSLATION');
-    console.log('='.repeat(60));
-    console.log('Text length:', text.length, 'characters');
-    console.log('Target language:', targetLang);
-    console.log('='.repeat(60));
-    
-    try {
-        const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(targetLang) + '&dt=t&q=' + encodeURIComponent(text);
-        
-        console.log('\n📡 Fetching from Google Translate API...');
-        console.log('URL length:', url.length);
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        console.log('\n📊 RAW API RESPONSE:');
-        console.log(JSON.stringify(data, null, 2));
-        
-        console.log('\n🔎 ANALYZING RESPONSE STRUCTURE:');
-        console.log('data is array:', Array.isArray(data));
-        console.log('data length:', data ? data.length : 'undefined');
-        console.log('data[0] is array:', data && data[0] ? Array.isArray(data[0]) : 'undefined');
-        console.log('data[0] length:', data && data[0] ? data[0].length : 'undefined');
-        
-        if (data && data[0]) {
-            console.log('\n📋 DATA[0] CONTENTS (first 10 items):');
-            for (let i = 0; i < Math.min(10, data[0].length); i++) {
-                const item = data[0][i];
-                if (Array.isArray(item) && item.length > 0) {
-                    console.log(`  [${i}]:`, {
-                        isArray: Array.isArray(item),
-                        length: item.length,
-                        firstElement: typeof item[0],
-                        firstElementContent: item[0],
-                        secondElement: typeof item[1],
-                        secondElementContent: item[1]
-                    });
-                } else {
-                    console.log(`  [${i}]:`, item);
-                }
-            }
-        }
-        
-        console.log('\n✅ EXTRACTION METHODS:');
-        
-        // Test Method 1
-        if (data && data[0] && data[0][0] && Array.isArray(data[0][0])) {
-            console.log('Method 1 (data[0][0][0]):', data[0][0][0]);
-        } else {
-            console.log('Method 1: NOT APPLICABLE');
-        }
-        
-        // Test Method 2
-        let method2Result = '';
-        if (data && data[0] && Array.isArray(data[0])) {
-            for (let i = 0; i < data[0].length; i++) {
-                const item = data[0][i];
-                if (Array.isArray(item) && item.length > 0 && typeof item[0] === 'string') {
-                    method2Result += item[0];
-                }
-            }
-        }
-        console.log('Method 2 (collect all):', method2Result.substring(0, 100) + (method2Result.length > 100 ? '...' : ''));
-        console.log('  Length:', method2Result.length, 'chars');
-        
-    } catch (error) {
-        console.error('❌ Error:', error.message);
-    }
-    
-    console.log('\n' + '='.repeat(60));
-    console.log('🎯 To test, call: debugTranslate("your text here", "zh")');
-};
-
-console.log('\n💡 DEBUG TIPS:');
-console.log('debugTranslate("And acting on the Sermon on the Mount arises in our hearts...", "zh")');
-console.log('debugTranslateMultipleLangs("And acting on the Sermon on the Mount arises in our hearts...")');
-
-window.debugTranslateMultipleLangs = async function(text) {
-    console.clear();
-    console.log('🔍 MULTI-LANGUAGE DEBUG');
-    console.log('='.repeat(60));
-    
-    const languages = ['zh', 'zh-tw', 'yue', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar'];
-    const results = {};
-    
-    for (const lang of languages) {
-        console.log(`\n📡 Testing ${lang}...`);
-        
-        try {
-            const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(lang) + '&dt=t&q=' + encodeURIComponent(text);
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            // Analyze structure
-            const data0Length = data && data[0] ? data[0].length : 0;
-            
-            let extractedText = '';
-            if (data && data[0] && Array.isArray(data[0])) {
-                for (let i = 0; i < data[0].length; i++) {
-                    const item = data[0][i];
-                    if (Array.isArray(item) && item.length > 0 && typeof item[0] === 'string') {
-                        extractedText += item[0];
-                    }
-                }
-            }
-            
-            results[lang] = {
-                segments: data0Length,
-                extractedLength: extractedText.length,
-                extractedSample: extractedText.substring(0, 60) + (extractedText.length > 60 ? '...' : ''),
-                status: '✅'
-            };
-            
-            console.log(`  ✅ Segments: ${data0Length}, Total: ${extractedText.length} chars`);
-            
-        } catch (error) {
-            results[lang] = {
-                status: '❌',
-                error: error.message
-            };
-            console.log(`  ❌ Error: ${error.message}`);
-        }
-        
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 SUMMARY:');
-    console.log('='.repeat(60));
-    
-    for (const [lang, result] of Object.entries(results)) {
-        if (result.status === '✅') {
-            console.log(`${lang.padEnd(6)} | Segments: ${String(result.segments).padEnd(2)} | Length: ${String(result.extractedLength).padEnd(3)} | ${result.extractedSample}`);
-        } else {
-            console.log(`${lang.padEnd(6)} | ❌ ${result.error}`);
-        }
-    }
-    
-    console.log('='.repeat(60));
-    console.log('\n💡 Potential issues to watch for:');
-    console.log('- Languages with multiple segments (like zh) need merging');
-    console.log('- Different languages may have different response formats');
-    console.log('- Some languages might return incomplete translations');
-};

@@ -157,6 +157,23 @@
                     </button>
                 </div>
             </div>
+
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">🎙️ TTS Cache</h3>
+                <div class="control-group">
+                    <div id="ttsCacheStats" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        <div style="color: var(--text-secondary);">Loading cache stats...</div>
+                    </div>
+                </div>
+                <div class="button-group" style="flex-direction: column; gap: 0.5rem;">
+                    <button class="pf-c-button pf-c-button--info" onclick="refreshTTSCacheStats()" style="width: 100%;">
+                        <span>🔄</span> <span>Refresh</span>
+                    </button>
+                    <button class="pf-c-button pf-c-button--danger" onclick="clearTTSCache()" style="width: 100%;">
+                        <span>🗑️</span> <span>Clear Cache</span>
+                    </button>
+                </div>
+            </div>
         </aside>
 
         <!-- Main Section -->

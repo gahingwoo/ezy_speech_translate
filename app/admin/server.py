@@ -10,6 +10,7 @@ import logging
 import hashlib
 import jwt
 import time
+import requests
 from datetime import datetime, timedelta
 from functools import wraps
 from collections import defaultdict
@@ -513,6 +514,116 @@ def get_admin_config():
 def get_oem_config_admin():
     """Get OEM configuration for frontend"""
     return jsonify(app.config.get('OEM', {}))
+
+@app.route("/api/tts/cache-stats", methods=["GET"])
+@require_auth
+@rate_limit_check
+def get_tts_cache_stats():
+    """
+    Get TTS synthesis cache statistics (admin only)
+    
+    Makes a request to the user server to fetch cache stats
+    """
+    try:
+        # Determine user server URL
+        external_url = get_config('server', 'external_url')
+        if external_url:
+            user_server_url = external_url
+        else:
+            user_server_port = get_config('server', 'port', default=1915)
+            user_server_url = f'http://localhost:{user_server_port}'
+        
+        # Get auth token from session
+        token = session.get('token')
+        if not token:
+            return jsonify({'success': False, 'error': 'No auth token'}), 401
+        
+        # Request cache stats from user server
+        response = requests.get(
+            f'{user_server_url}/api/tts/cache-stats',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=5,
+            verify=False  # For self-signed certs
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return jsonify({
+                'success': True,
+                'cache_items': data.get('cache_items', 0),
+                'cache_size_mb': data.get('cache_size_mb', 0),
+                'cache_ttl_seconds': data.get('cache_ttl_seconds', 3600),
+                'max_cache_size_mb': data.get('max_cache_size_mb', 500),
+                'max_cache_items': data.get('max_cache_items', 500),
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'User server error: {response.status_code}'
+            }), response.status_code
+    
+    except Exception as e:
+        logger.error(f"Error fetching TTS cache stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route("/api/tts/cache-clear", methods=["POST"])
+@require_auth
+@rate_limit_check
+def clear_tts_cache():
+    """
+    Clear all TTS synthesis cache (admin only)
+    
+    Makes a request to the user server to clear cache
+    """
+    try:
+        # Determine user server URL
+        external_url = get_config('server', 'external_url')
+        if external_url:
+            user_server_url = external_url
+        else:
+            user_server_port = get_config('server', 'port', default=1915)
+            user_server_url = f'http://localhost:{user_server_port}'
+        
+        # Get auth token from session
+        token = session.get('token')
+        if not token:
+            return jsonify({'success': False, 'error': 'No auth token'}), 401
+        
+        # Request cache clear from user server
+        response = requests.post(
+            f'{user_server_url}/api/tts/cache-clear',
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=5,
+            verify=False  # For self-signed certs
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            logger.info(f"🗑️ TTS cache cleared by admin: {data.get('cleared_items', 0)} items, {data.get('freed_mb', 0)}MB freed")
+            security_logger.info(f"TTS cache cleared by admin user")
+            
+            return jsonify({
+                'success': True,
+                'cleared_items': data.get('cleared_items', 0),
+                'freed_mb': data.get('freed_mb', 0),
+                'message': f"Cleared {data.get('cleared_items', 0)} items, freed {data.get('freed_mb', 0)}MB"
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'User server error: {response.status_code}'
+            }), response.status_code
+    
+    except Exception as e:
+        logger.error(f"Error clearing TTS cache: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route("/api/protected-endpoint")
 @require_auth

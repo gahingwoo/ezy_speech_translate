@@ -1102,6 +1102,106 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/* ===================================
+   TTS Cache Management
+   =================================== */
+
+async function refreshTTSCacheStats() {
+    try {
+        const response = await fetch('/api/tts/cache-stats', {
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            console.error('Failed to fetch TTS cache stats:', response.status);
+            document.getElementById('ttsCacheStats').innerHTML = 
+                `<div style="color: var(--text-danger);">❌ Failed to load cache stats</div>`;
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const statsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem;">
+                    <div style="border-right: 1px solid var(--border-color); padding-right: 0.5rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.75rem;">Items</div>
+                        <div style="font-weight: 600; color: var(--text-primary);">${data.cache_items}/${data.max_cache_items}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-secondary); font-size: 0.75rem;">Memory</div>
+                        <div style="font-weight: 600; color: var(--text-primary);">${data.cache_size_mb.toFixed(2)}MB/${data.max_cache_size_mb}MB</div>
+                    </div>
+                </div>
+                <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-secondary);">
+                    Last updated: ${new Date().toLocaleTimeString()}
+                </div>
+            `;
+            document.getElementById('ttsCacheStats').innerHTML = statsHtml;
+            console.log('✅ TTS Cache Stats:', data);
+        } else {
+            document.getElementById('ttsCacheStats').innerHTML = 
+                `<div style="color: var(--text-danger);">❌ ${data.error || 'Failed to fetch cache stats'}</div>`;
+        }
+    } catch (error) {
+        console.error('Error refreshing TTS cache stats:', error);
+        document.getElementById('ttsCacheStats').innerHTML = 
+            `<div style="color: var(--text-danger);">❌ ${error.message}</div>`;
+    }
+}
+
+async function clearTTSCache() {
+    if (!confirm('⚠️ Are you sure you want to clear all TTS audio cache? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/tts/cache-clear', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            console.error('Failed to clear TTS cache:', response.status);
+            alert('❌ Failed to clear TTS cache');
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ TTS Cache Cleared!\n\nCleared: ${data.cleared_items} items\nFreed: ${data.freed_mb.toFixed(2)}MB`);
+            console.log('✅ TTS Cache cleared:', data);
+            // Refresh stats after clearing
+            setTimeout(() => refreshTTSCacheStats(), 500);
+        } else {
+            alert(`❌ ${data.error || 'Failed to clear cache'}`);
+        }
+    } catch (error) {
+        console.error('Error clearing TTS cache:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+// Load TTS cache stats on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Auto-load cache stats after a short delay (after auth is ready)
+    setTimeout(() => {
+        if (authToken) {
+            refreshTTSCacheStats();
+        }
+    }, 1000);
+});
+
 console.log('✅ EzySpeechTranslate Admin Panel Ready');
 console.log('📝 Keyboard Shortcuts:');
 console.log('   Ctrl+R: Toggle recording');
