@@ -1698,13 +1698,20 @@ def synthesize_tts():
         if time.time() - cache_time < SYNTHESIS_CACHE_TTL:
             logger.info(f"🔄 Cache hit for synthesis request (client: {client_id})")
             audio_data = SYNTHESIS_REQUEST_CACHE[cache_key]
+            logger.info(f"✅ Returning cached audio: {len(audio_data)} bytes, mimetype=audio/mpeg")
             return Response(
                 audio_data,
                 mimetype='audio/mpeg',
+                status=200,
                 headers={
-                    'Content-Disposition': 'attachment; filename="speech.mp3"',
+                    'Content-Type': 'audio/mpeg',  # Explicit Content-Type
+                    'Content-Length': str(len(audio_data)),
+                    'Content-Disposition': 'inline; filename="speech.mp3"',
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'X-Cache': 'HIT'
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                    'X-Cache': 'HIT',
+                    'X-Content-Type-Options': 'nosniff'
                 }
             )
     
@@ -1870,15 +1877,21 @@ asyncio.run(synthesize())
             logger.info(f"🗑️ Trimmed synthesis cache (now {len(SYNTHESIS_REQUEST_CACHE)} items)")
         
         
-        # Build response with CSP header explicitly
+        # Build response with explicit audio headers
         # Return compressed audio (both cached and new requests return compressed version)
         response = Response(
             compressed_audio,
             mimetype='audio/mpeg',
+            status=200,
             headers={
-                'Content-Disposition': 'attachment; filename="speech.mp3"',
+                'Content-Type': 'audio/mpeg',  # Explicit Content-Type
+                'Content-Length': str(len(compressed_audio)),
+                'Content-Disposition': 'inline; filename="speech.mp3"',  # inline not attachment
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
                 'X-Cache': 'MISS',
+                'X-Content-Type-Options': 'nosniff',  # Prevent content type sniffing
                 'Content-Security-Policy': (
                     "default-src 'self'; "
                     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
@@ -1890,6 +1903,8 @@ asyncio.run(synthesize())
                 )
             }
         )
+        
+        logger.info(f"✅ Returning audio response: {len(compressed_audio)} bytes, mimetype=audio/mpeg")
         return response
     
     except subprocess.TimeoutExpired:

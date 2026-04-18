@@ -1975,12 +1975,29 @@ async function speakTextEdge(text) {
         });
         
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'TTS synthesis failed');
+            const contentType = response.headers.get('content-type');
+            let error = 'TTS synthesis failed';
+            
+            if (contentType && contentType.includes('application/json')) {
+                try {
+                    const errorData = await response.json();
+                    error = errorData.error || error;
+                } catch (e) {
+                    // Couldn't parse JSON
+                }
+            }
+            
+            console.error(`☁️ TTS Response error: status=${response.status}, content-type=${contentType}`);
+            throw new Error(error);
         }
+        
+        // Log response details
+        const contentType = response.headers.get('content-type');
+        console.log(`☁️ TTS Response: status=${response.status}, content-type=${contentType}`);
         
         // Get audio blob
         const audioBlob = await response.blob();
+        console.log(`☁️ Audio blob: size=${audioBlob.size}, type=${audioBlob.type}`);
         
         // Play audio
         const audioUrl = URL.createObjectURL(audioBlob);
