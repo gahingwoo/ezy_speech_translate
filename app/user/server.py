@@ -1722,92 +1722,71 @@ def synthesize_tts():
         return jsonify({'success': False, 'error': rate_limit_error}), 429
     
     try:
-        # Use subprocess to avoid eventlet/asyncio conflicts
-        import base64
-        import json
+        # Direct async call in Flask process (instead of subprocess)
+        # This allows connection reuse and proper session management
+        import edge_tts
         
-        # Pass arguments via JSON to avoid string escaping issues
-        args = {"text": text, "voice": validated_voice if validated_voice else None}
+        async def synthesize_with_retry(text, voice, max_retries=2):
+            '''Synthesize with retry logic for 403 errors - direct async call'''
+            for attempt in range(max_retries + 1):
+                try:
+                    audio_buffer = io.BytesIO()
+                    communicate = edge_tts.Communicate(
+                        text=text,
+                        voice=voice,
+                        rate="+0%"
+                    )
+                    
+                    async for chunk in communicate.stream():
+                        if chunk['type'] == 'audio':
+                            audio_buffer.write(chunk['data'])
+                    
+                    audio_buffer.seek(0)
+                    audio_data = audio_buffer.getvalue()
+                    if audio_data:
+                        logger.info(f"✅ Synthesis succeeded on attempt {attempt + 1}")
+                        return audio_data
+                    else:
+                        raise Exception("Empty audio data")
+                
+                except Exception as e:
+                    error_msg = str(e)
+                    is_403 = '403' in error_msg or 'Invalid response status' in error_msg
+                    
+                    if is_403 and attempt < max_retries:
+                        # For 403 errors, wait before retrying
+                        wait_time = 2 ** (attempt + 1)  # 2 sec, 4 sec exponential backoff
+                        logger.warning(f"⚠️ Attempt {attempt + 1} failed with 403, retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        # Non-403 error or max retries reached
+                        raise
         
-        # Create Python code to synthesize audio in subprocess with retry logic
-        synthesis_code = """
-import asyncio
-import edge_tts
-import io
-import base64
-import json
-import sys
-import time
-
-async def synthesize_with_retry(text, voice, max_retries=2):
-    '''Synthesize with retry logic for 403 errors'''
-    for attempt in range(max_retries + 1):
+        # Run the async function using asyncio
+        # Create new event loop to avoid conflicts with eventlet
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            audio_buffer = io.BytesIO()
-            communicate = edge_tts.Communicate(
-                text=text,
-                voice=voice,
-                rate="+0%"
+            audio_data = loop.run_until_complete(
+                synthesize_with_retry(text, validated_voice, max_retries=2)
             )
-            
-            async for chunk in communicate.stream():
-                if chunk['type'] == 'audio':
-                    audio_buffer.write(chunk['data'])
-            
-            audio_buffer.seek(0)
-            audio_data = audio_buffer.getvalue()
-            if audio_data:
-                return audio_data
-            else:
-                raise Exception("Empty audio data")
+        finally:
+            loop.close()
         
-        except Exception as e:
-            error_msg = str(e)
-            is_403 = '403' in error_msg or 'Invalid response status' in error_msg
-            
-            if is_403 and attempt < max_retries:
-                # For 403 errors, wait before retrying
-                wait_time = 2 ** (attempt + 1)  # 2 sec, 4 sec exponential backoff
-                print(f"⚠️  Attempt {attempt + 1} failed with 403, retrying in {wait_time}s...", file=sys.stderr)
-                await asyncio.sleep(wait_time)
-                continue
-            else:
-                # Non-403 error or max retries reached
-                raise
-
-async def synthesize():
-    args = json.loads(sys.stdin.read())
-    text = args['text']
-    voice = args['voice']
-    
-    try:
-        audio_data = await synthesize_with_retry(text, voice, max_retries=2)
-        # Base64 encode for transmission through subprocess
-        encoded = base64.b64encode(audio_data).decode('utf-8')
-        print(encoded)
+        if not audio_data or len(audio_data) == 0:
+            logger.error(f"Synthesis produced empty audio data")
+            return jsonify({'success': False, 'error': 'Audio synthesis failed - empty audio'}), 500
+        
+        logger.info(f"✅ Audio synthesized successfully: {len(audio_data)} bytes")
+        
     except Exception as e:
-        print(f"ERROR: {str(e)}", file=sys.stderr)
-        sys.exit(1)
-
-asyncio.run(synthesize())
-"""
+        error_msg = str(e)
+        logger.error(f"❌ Synthesis error: {error_msg[:500]}")
         
-        result = subprocess.run(
-            [sys.executable, '-c', synthesis_code],
-            input=json.dumps(args),
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        if result.returncode != 0:
-            stderr_text = result.stderr if result.stderr else "(no stderr output)"
-            logger.error(f"❌ Synthesis subprocess error (return code: {result.returncode})")
-            logger.error(f"   stderr: {stderr_text[:500]}")  # Log first 500 chars
-            
-            # Check if it's a network/connectivity error
-            if '403' in stderr_text or 'Invalid response status' in stderr_text:
-                logger.warning(f"⚠️ Edge TTS returned 403 - possible rate limiting or service restriction")
+        # Check if it's a network/connectivity error
+        if '403' in error_msg or 'Invalid response status' in error_msg:
+            logger.warning(f"⚠️ Edge TTS returned 403 - possible rate limiting or service restriction")
                 # Return 429 (Too Many Requests) or 503 depending on context
                 if 'Too many' in stderr_text or 'rate' in stderr_text.lower():
                     return jsonify({'success': False, 'error': 'TTS rate limit exceeded. Please try again in a few moments.'}), 429
@@ -1818,23 +1797,7 @@ asyncio.run(synthesize())
                 return jsonify({'success': False, 'error': 'Network connection error: Cannot reach TTS service. Please check your internet connection.'}), 503
             else:
                 return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
-        
-        if not result.stdout or not result.stdout.strip():
-            logger.error(f"❌ Synthesis subprocess returned empty output")
-            logger.error(f"   stderr was: {result.stderr[:200] if result.stderr else '(none)'}")
-            return jsonify({'success': False, 'error': 'Audio synthesis failed - empty output'}), 500
-        
-        # Decode Base64 audio data
-        import base64
-        try:
-            audio_data = base64.b64decode(result.stdout.strip())
-        except Exception as decode_error:
-            logger.error(f"Base64 decode error: {decode_error}")
-            return jsonify({'success': False, 'error': 'Audio synthesis failed - decode error'}), 500
-        
-        if not audio_data or len(audio_data) == 0:
-            logger.error(f"Synthesis produced empty audio data")
-            return jsonify({'success': False, 'error': 'Audio synthesis failed - empty audio'}), 500
+            return jsonify({'success': False, 'error': rate_limit_error}), 429
         
         # Validate audio data looks like MP3 (has MP3 frame header)
         logger.info(f"📊 Raw audio size: {len(audio_data)} bytes, header bytes: {audio_data[:4].hex()}")
@@ -1938,8 +1901,8 @@ asyncio.run(synthesize())
         logger.info(f"✅ Returning audio response: {len(compressed_audio)} bytes, mimetype=audio/mpeg")
         return response
     
-    except subprocess.TimeoutExpired:
-        logger.error("Synthesis subprocess timeout")
+    except asyncio.TimeoutError:
+        logger.error("Synthesis timeout")
         return jsonify({'success': False, 'error': 'Synthesis timeout'}), 500
     except Exception as e:
         logger.error(f"Edge TTS synthesis error: {e}")
