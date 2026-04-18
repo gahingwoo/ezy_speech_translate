@@ -1729,7 +1729,7 @@ def synthesize_tts():
         # Pass arguments via JSON to avoid string escaping issues
         args = {"text": text, "voice": validated_voice if validated_voice else None}
         
-        # Create Python code to synthesize audio in subprocess
+        # Create Python code to synthesize audio in subprocess with retry logic
         synthesis_code = """
 import asyncio
 import edge_tts
@@ -1737,26 +1737,51 @@ import io
 import base64
 import json
 import sys
+import time
+
+async def synthesize_with_retry(text, voice, max_retries=2):
+    '''Synthesize with retry logic for 403 errors'''
+    for attempt in range(max_retries + 1):
+        try:
+            audio_buffer = io.BytesIO()
+            communicate = edge_tts.Communicate(
+                text=text,
+                voice=voice,
+                rate="+0%"
+            )
+            
+            async for chunk in communicate.stream():
+                if chunk['type'] == 'audio':
+                    audio_buffer.write(chunk['data'])
+            
+            audio_buffer.seek(0)
+            audio_data = audio_buffer.getvalue()
+            if audio_data:
+                return audio_data
+            else:
+                raise Exception("Empty audio data")
+        
+        except Exception as e:
+            error_msg = str(e)
+            is_403 = '403' in error_msg or 'Invalid response status' in error_msg
+            
+            if is_403 and attempt < max_retries:
+                # For 403 errors, wait before retrying
+                wait_time = 2 ** (attempt + 1)  # 2 sec, 4 sec exponential backoff
+                print(f"⚠️  Attempt {attempt + 1} failed with 403, retrying in {wait_time}s...", file=sys.stderr)
+                await asyncio.sleep(wait_time)
+                continue
+            else:
+                # Non-403 error or max retries reached
+                raise
 
 async def synthesize():
     args = json.loads(sys.stdin.read())
     text = args['text']
     voice = args['voice']
     
-    audio_buffer = io.BytesIO()
     try:
-        communicate = edge_tts.Communicate(
-            text=text,
-            voice=voice,
-            rate="+0%"  # rate must be a string
-        )
-        
-        async for chunk in communicate.stream():
-            if chunk['type'] == 'audio':
-                audio_buffer.write(chunk['data'])
-        
-        audio_buffer.seek(0)
-        audio_data = audio_buffer.getvalue()
+        audio_data = await synthesize_with_retry(text, voice, max_retries=2)
         # Base64 encode for transmission through subprocess
         encoded = base64.b64encode(audio_data).decode('utf-8')
         print(encoded)
