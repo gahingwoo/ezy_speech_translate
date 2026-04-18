@@ -338,7 +338,7 @@ body {
    =================================== */
 .pf-c-page__sidebar {
     width: 320px;
-    height: 100%;  /* ✅ Ensure sidebar fills parent flex container and respects overflow-y */
+    flex-shrink: 0;  /* ✅ Don't shrink sidebar, maintain fixed width */
     background: var(--surface);
     border-right: 1px solid var(--border);
     display: flex;
