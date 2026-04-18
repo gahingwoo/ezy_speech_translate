@@ -24,6 +24,7 @@ from collections import defaultdict
 import time
 import asyncio
 import io
+import subprocess
 
 # ──────────────────────────────────────────
 # Path Setup (BEFORE any app imports)
@@ -1513,6 +1514,11 @@ def compress_audio_to_low_quality(audio_data):
     Returns:
         Compressed audio data (bytes)
     """
+    # Validate input
+    if not audio_data or len(audio_data) == 0:
+        logger.warning("⚠️ Empty audio data passed to compression")
+        return audio_data
+    
     try:
         original_size_kb = len(audio_data) / 1024
         logger.info(f"🔄 Starting audio compression: {original_size_kb:.1f}KB → 16kHz mono MP3")
@@ -1548,36 +1554,67 @@ def compress_audio_to_low_quality(audio_data):
             result = subprocess.run(
                 compress_cmd,
                 capture_output=True,
-                timeout=10
+                timeout=10,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE
             )
             
             if result.returncode != 0:
-                logger.warning(f"Audio compression failed: {result.stderr.decode()}")
+                stderr_msg = result.stderr.decode('utf-8', errors='ignore') if result.stderr else "Unknown error"
+                logger.warning(f"⚠️ Audio compression failed with return code {result.returncode}: {stderr_msg[:200]}")
                 return audio_data
             
             # Read compressed audio
+            if not os.path.exists(output_path):
+                logger.warning(f"⚠️ ffmpeg output file not created: {output_path}")
+                return audio_data
+            
             with open(output_path, 'rb') as f:
                 compressed_data = f.read()
+            
+            # Validate compressed audio - check for valid MP3 frame headers
+            if not compressed_data or len(compressed_data) == 0:
+                logger.warning(f"⚠️ ffmpeg produced empty output file")
+                return audio_data
+            
+            # Check for valid MP3 (frame sync or ID3 tag)
+            is_valid_compressed = False
+            if len(compressed_data) >= 2:
+                first_byte = compressed_data[0]
+                second_byte = compressed_data[1]
+                
+                # Check for MPEG frame sync (FF followed by byte with bits 7,6,5 set)
+                if first_byte == 0xff and (second_byte & 0xe0) == 0xe0:
+                    is_valid_compressed = True
+                
+                # Also check for ID3 tag
+                if len(compressed_data) >= 3 and compressed_data[:3] == b'ID3':
+                    is_valid_compressed = True
+            
+            if not is_valid_compressed:
+                logger.warning(f"⚠️ Compressed audio doesn't look like valid MP3 (header bytes: {compressed_data[:4].hex() if len(compressed_data) >= 4 else compressed_data.hex()})")
+                return audio_data
             
             original_size = len(audio_data) / 1024  # KB
             compressed_size = len(compressed_data) / 1024  # KB
             compression_ratio = (1 - len(compressed_data) / len(audio_data)) * 100
             
-            logger.info(f"💾 Audio compressed: {original_size:.1f}KB → {compressed_size:.1f}KB ({compression_ratio:.1f}% reduction)")
+            logger.info(f"✅ Audio compressed: {original_size:.1f}KB → {compressed_size:.1f}KB ({compression_ratio:.1f}% reduction)")
             
             return compressed_data
             
         finally:
             # Clean up temp files
-            import os
             try:
-                os.unlink(input_path)
-                os.unlink(output_path)
-            except:
-                pass
+                if os.path.exists(input_path):
+                    os.unlink(input_path)
+                if os.path.exists(output_path):
+                    os.unlink(output_path)
+            except Exception as cleanup_error:
+                logger.warning(f"⚠️ Failed to clean up temp files: {cleanup_error}")
                 
     except Exception as e:
-        logger.warning(f"⚠️ Audio compression error: {e}")
+        logger.warning(f"⚠️ Audio compression error (returning original): {e}")
         return audio_data
 
 @app.route('/api/tts/synthesize', methods=['POST'])
@@ -1679,7 +1716,6 @@ def synthesize_tts():
     
     try:
         # Use subprocess to avoid eventlet/asyncio conflicts
-        import subprocess
         import base64
         import json
         
@@ -1733,11 +1769,21 @@ asyncio.run(synthesize())
         )
         
         if result.returncode != 0:
-            logger.error(f"Synthesis subprocess error: {result.stderr}")
-            return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
+            stderr_text = result.stderr if result.stderr else "(no stderr output)"
+            logger.error(f"❌ Synthesis subprocess error (return code: {result.returncode})")
+            logger.error(f"   stderr: {stderr_text[:500]}")  # Log first 500 chars
+            
+            # Check if it's a network/connectivity error
+            if '403' in stderr_text or 'Invalid response status' in stderr_text:
+                return jsonify({'success': False, 'error': 'Edge TTS service unavailable (403). Server may need network access to speech.platform.bing.com'}), 503
+            elif 'wss://' in stderr_text or 'WebSocket' in stderr_text:
+                return jsonify({'success': False, 'error': 'Network connection error: Cannot reach Bing Edge TTS service'}), 503
+            else:
+                return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
         
         if not result.stdout or not result.stdout.strip():
-            logger.error(f"Synthesis subprocess returned empty output")
+            logger.error(f"❌ Synthesis subprocess returned empty output")
+            logger.error(f"   stderr was: {result.stderr[:200] if result.stderr else '(none)'}")
             return jsonify({'success': False, 'error': 'Audio synthesis failed - empty output'}), 500
         
         # Decode Base64 audio data
@@ -1752,8 +1798,53 @@ asyncio.run(synthesize())
             logger.error(f"Synthesis produced empty audio data")
             return jsonify({'success': False, 'error': 'Audio synthesis failed - empty audio'}), 500
         
-        # Compress audio before caching (to save memory)
-        compressed_audio = compress_audio_to_low_quality(audio_data)
+        # Validate audio data looks like MP3 (has MP3 frame header)
+        logger.info(f"📊 Raw audio size: {len(audio_data)} bytes, header bytes: {audio_data[:4].hex()}")
+        
+        # MP3 files can have multiple valid frame headers:
+        # - FF FB/FA/FE/FC: MPEG frame sync with different configs
+        # - FF F3: Alternative MPEG frame sync
+        # - ID3: ID3 tag header (sometimes added by ffmpeg)
+        # Check for MPEG frame sync (FF followed by byte with bits 7-6 set, and bit 5 should be 1 for Layer 3)
+        # Or check for ID3 tag
+        
+        is_valid_mp3 = False
+        if len(audio_data) >= 2:
+            first_byte = audio_data[0]
+            second_byte = audio_data[1]
+            
+            # Check for MPEG frame sync: first byte is FF
+            if first_byte == 0xff:
+                # Second byte should have pattern 111xxxxx for valid MPEG frame
+                # (bits 7, 6, 5 all set = 0b111xxxxx)
+                if (second_byte & 0xe0) == 0xe0:  # Check if bits 7,6,5 are all 1
+                    is_valid_mp3 = True
+            
+            # Also check for ID3 tag
+            if len(audio_data) >= 3 and audio_data[:3] == b'ID3':
+                is_valid_mp3 = True
+        
+        if not is_valid_mp3:
+            logger.warning(f"⚠️ Audio may not be valid MP3 format (header: {audio_data[:4].hex() if len(audio_data) >= 4 else audio_data.hex()}). Will use as-is without compression.")
+            # Don't compress potentially invalid audio - might be corrupted
+            compressed_audio = audio_data
+        else:
+            # Check if we should compress (can be disabled for debugging)
+            # Default: disabled if ffmpeg is not available
+            # Enable with: export ENABLE_AUDIO_COMPRESSION=true
+            should_compress = os.environ.get('ENABLE_AUDIO_COMPRESSION', 'false').lower() == 'true'
+            
+            if should_compress:
+                # Compress audio before caching (to save memory)
+                logger.info("🔄 Compressing audio...")
+                compressed_audio = compress_audio_to_low_quality(audio_data)
+            else:
+                logger.info("⏭️ Audio compression disabled (set ENABLE_AUDIO_COMPRESSION=true to enable)")
+                compressed_audio = audio_data
+        
+        if not compressed_audio or len(compressed_audio) == 0:
+            logger.error(f"No valid audio data after processing")
+            return jsonify({'success': False, 'error': 'Audio synthesis failed - no valid output'}), 500
         
         # Cache the synthesized audio (compressed)
         SYNTHESIS_REQUEST_CACHE[cache_key] = compressed_audio
