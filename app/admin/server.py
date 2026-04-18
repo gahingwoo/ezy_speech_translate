@@ -359,7 +359,7 @@ def rate_limit_check(f):
 # ──────────────────────────────────────────
 @app.after_request
 def set_cache_headers(response):
-    """Set proper cache headers for static and dynamic content"""
+    """Set proper cache headers for static and dynamic content and CSP"""
     # Disable caching for HTML pages (always fetch fresh version)
     if response.content_type and 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, public, max-age=0'
@@ -379,6 +379,40 @@ def set_cache_headers(response):
         # Add ETag for better cache validation
         if not response.headers.get('ETag'):
             response.set_etag()
+    
+    # ✅ Add dynamic CSP header that includes external URL if configured
+    if 'Content-Security-Policy' not in response.headers:
+        external_url = get_config('server', 'external_url', default='')
+        
+        # Build connect-src with local and external URLs
+        connect_src_list = ["'self'", "http://localhost:*", "http://127.0.0.1:*", 
+                           "ws://localhost:*", "ws://127.0.0.1:*",
+                           "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", 
+                           "https://fonts.gstatic.com"]
+        
+        # Add external URL if configured (for CF Tunnel or reverse proxy)
+        if external_url:
+            # Add both https:// and wss:// versions
+            if external_url.startswith('https://'):
+                external_host = external_url.replace('https://', '')
+                connect_src_list.append(f"https://{external_host}")
+                connect_src_list.append(f"wss://{external_host}")
+            elif external_url.startswith('http://'):
+                external_host = external_url.replace('http://', '')
+                connect_src_list.append(f"http://{external_host}")
+                connect_src_list.append(f"ws://{external_host}")
+        
+        connect_src = ' '.join(connect_src_list)
+        
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+            "media-src 'self' blob:; "
+            f"connect-src {connect_src}; "
+            "img-src 'self' data:; "
+            "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
+        )
     
     return response
 

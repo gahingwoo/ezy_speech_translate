@@ -525,13 +525,35 @@ def after_request(response):
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     
-    # Content Security Policy - allow blob URLs for audio playback and localhost connections for admin panel
+    # ✅ Content Security Policy - dynamically include external URL if configured
+    external_url = get_config('server', 'external_url', default='')
+    
+    # Build connect-src with local and external URLs
+    connect_src_list = ["'self'", "http://localhost:*", "http://127.0.0.1:*", 
+                       "ws://localhost:*", "ws://127.0.0.1:*",
+                       "https://cdnjs.cloudflare.com", "https://translate.googleapis.com", 
+                       "https://fonts.googleapis.com", "https://fonts.gstatic.com"]
+    
+    # Add external URL if configured (for CF Tunnel or reverse proxy)
+    if external_url:
+        # Add both https:// and wss:// versions
+        if external_url.startswith('https://'):
+            external_host = external_url.replace('https://', '').rstrip('/')
+            connect_src_list.append(f"https://{external_host}")
+            connect_src_list.append(f"wss://{external_host}")
+        elif external_url.startswith('http://'):
+            external_host = external_url.replace('http://', '').rstrip('/')
+            connect_src_list.append(f"http://{external_host}")
+            connect_src_list.append(f"ws://{external_host}")
+    
+    connect_src = ' '.join(connect_src_list)
+    
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "media-src 'self' blob:; "
-        "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
+        f"connect-src {connect_src}; "
         "img-src 'self' data:; "
         "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
     )
@@ -675,14 +697,36 @@ def is_admin(sid):
 @app.after_request
 def set_cache_headers(response):
     """Set proper cache headers for static and dynamic content"""
-    # Ensure CSP is always present (in case first after_request was skipped)
+    # ✅ Ensure CSP is always present with external URL support
     if 'Content-Security-Policy' not in response.headers:
+        external_url = get_config('server', 'external_url', default='')
+        
+        # Build connect-src with local and external URLs
+        connect_src_list = ["'self'", "http://localhost:*", "http://127.0.0.1:*", 
+                           "ws://localhost:*", "ws://127.0.0.1:*",
+                           "https://cdnjs.cloudflare.com", "https://translate.googleapis.com", 
+                           "https://fonts.googleapis.com", "https://fonts.gstatic.com"]
+        
+        # Add external URL if configured (for CF Tunnel or reverse proxy)
+        if external_url:
+            # Add both https:// and wss:// versions
+            if external_url.startswith('https://'):
+                external_host = external_url.replace('https://', '').rstrip('/')
+                connect_src_list.append(f"https://{external_host}")
+                connect_src_list.append(f"wss://{external_host}")
+            elif external_url.startswith('http://'):
+                external_host = external_url.replace('http://', '').rstrip('/')
+                connect_src_list.append(f"http://{external_host}")
+                connect_src_list.append(f"ws://{external_host}")
+        
+        connect_src = ' '.join(connect_src_list)
+        
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "media-src 'self' blob:; "
-            "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
+            f"connect-src {connect_src}; "
             "img-src 'self' data:; "
             "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
         )
