@@ -86,6 +86,15 @@ let selectedVoice = null;
 let ttsEngine = 'system';  // 'system' (Local) or 'edge' (Cloud)
 let edgeTTSVoices = [];     // Available Edge TTS voices
 
+// TTS Queue Management - prevents parallel playback and maintains order
+let ttsQueue = [];          // Queue of {text, isAutoPlay} waiting to be spoken
+let isTTSPlaying = false;   // Currently playing TTS
+let currentAudioElement = null;  // Current playing audio element for Edge TTS
+let currentUtterance = null;     // Current utterance for System TTS
+let lastTTSClickText = '';  // Track last clicked TTS text for double-tap stop
+let lastTTSClickTime = 0;   // Track when user last clicked TTS button
+const TTS_DOUBLE_TAP_THRESHOLD = 500;  // 500ms window for double-tap detection
+
 // Use shared translations provided by /static/js/i18n.js
 const i18n = window.sharedI18n || {};
 let displayLanguage = localStorage.getItem('displayLanguage') || detectDisplayLanguageLocal();
@@ -1044,6 +1053,9 @@ function changeVoice() {
     const voiceSelect = document.getElementById('voiceSelect');
     const voiceName = voiceSelect.value;
 
+    // Clear TTS queue when changing voice to prevent wrong voice playback
+    clearTTSQueue();
+
     if (ttsEngine === 'system') {
         // System TTS
         if (voiceName) {
@@ -1070,6 +1082,9 @@ function changeTTSEngine() {
     localStorage.setItem('ttsEngine', ttsEngine);
     
     console.log('🔄 Switched TTS engine to:', ttsEngine === 'system' ? '🖥️ System (Local)' : '☁️ Edge TTS (Cloud)');
+    
+    // Clear TTS queue when switching engines to avoid mixing
+    clearTTSQueue();
     
     // Load appropriate voices for the new engine
     loadVoices();
@@ -1786,7 +1801,7 @@ async function translateLongText(text, targetLang, translationLang) {
    Text-to-Speech Functions
    =================================== */
 
-function speakText(text) {
+function speakText(text, isAutoPlay = false) {
     // Validate and sanitize text before speaking
     const validation = validateText(text, 5000);
     if (!validation.valid) {
@@ -1797,20 +1812,96 @@ function speakText(text) {
     const cleanText = validation.text.replace(/\s*\([^)]*\)\s*/g, '').trim();
     if (!cleanText) return;
 
-    if (ttsEngine === 'system') {
-        speakTextSystem(cleanText);
-    } else if (ttsEngine === 'edge') {
-        speakTextEdge(cleanText);
+    // Enqueue instead of playing directly
+    enqueueTTSPlayback(cleanText, isAutoPlay);
+}
+
+// ===== NEW: TTS Queue Management =====
+function enqueueTTSPlayback(text, isAutoPlay = false) {
+    const now = Date.now();
+    
+    // Check if this is a double-tap on the same text (within 500ms)
+    if (!isAutoPlay && text === lastTTSClickText && (now - lastTTSClickTime) < TTS_DOUBLE_TAP_THRESHOLD) {
+        console.log('🛑 Double-tap detected! Stopping TTS playback...');
+        clearTTSQueue();
+        lastTTSClickText = '';
+        lastTTSClickTime = 0;
+        return;
     }
+    
+    // Update click tracking for manual plays (not auto)
+    if (!isAutoPlay) {
+        lastTTSClickText = text;
+        lastTTSClickTime = now;
+    }
+    
+    // Add to queue instead of playing immediately
+    ttsQueue.push({text, isAutoPlay});
+    console.log(`📻 Queued TTS (auto=${isAutoPlay}): ${text.substring(0, 50)}... Queue length: ${ttsQueue.length}`);
+    
+    // Start processing queue if nothing is currently playing
+    if (!isTTSPlaying) {
+        processTTSQueue();
+    }
+}
+
+function processTTSQueue() {
+    // Process next item in queue
+    if (ttsQueue.length === 0) {
+        isTTSPlaying = false;
+        console.log('📻 TTS Queue empty');
+        return;
+    }
+    
+    if (isTTSPlaying) {
+        console.log('📻 TTS still playing, waiting...');
+        return;
+    }
+    
+    const item = ttsQueue.shift();
+    console.log(`📻 Playing from queue (auto=${item.isAutoPlay}): ${item.text.substring(0, 50)}...`);
+    
+    isTTSPlaying = true;
+    
+    if (ttsEngine === 'system') {
+        speakTextSystem(item.text);
+    } else if (ttsEngine === 'edge') {
+        speakTextEdge(item.text);
+    }
+}
+
+function clearTTSQueue() {
+    // Clear all pending TTS and stop current playback
+    console.log(`📻 Clearing TTS queue (${ttsQueue.length} items)`);
+    ttsQueue = [];
+    isTTSPlaying = false;
+    
+    // Stop current playback
+    if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+    }
+    if (currentAudioElement) {
+        currentAudioElement.pause();
+        currentAudioElement.src = '';
+        currentAudioElement = null;
+    }
+    currentUtterance = null;
 }
 
 function speakTextSystem(text) {
     // Use Web Speech API (System TTS) 
     if (!('speechSynthesis' in window)) {
         alert('Your browser does not support text-to-speech');
+        isTTSPlaying = false;
+        processTTSQueue();
         return;
     }
 
+    // Cancel any previous utterance
+    if (currentUtterance) {
+        speechSynthesis.cancel();
+    }
+    
     speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -1839,10 +1930,22 @@ function speakTextSystem(text) {
         }
     }
 
-    utterance.onerror = function (e) {
-        console.error('🖥️ System TTS error:', e);
+    utterance.onend = function () {
+        console.log('🖥️ System TTS finished');
+        currentUtterance = null;
+        isTTSPlaying = false;
+        // Process next in queue
+        processTTSQueue();
     };
 
+    utterance.onerror = function (e) {
+        console.error('🖥️ System TTS error:', e);
+        isTTSPlaying = false;
+        // Process next in queue even on error
+        processTTSQueue();
+    };
+
+    currentUtterance = utterance;
     speechSynthesis.speak(utterance);
 }
 
@@ -1885,21 +1988,34 @@ async function speakTextEdge(text) {
         audio.src = audioUrl;
         audio.volume = ttsVolume;
         
+        currentAudioElement = audio;
+        
         audio.onerror = function (e) {
             console.error('☁️ Edge TTS playback error:', e);
+            isTTSPlaying = false;
+            processTTSQueue();
         };
         
         audio.onended = function () {
+            console.log('☁️ Edge TTS finished');
             URL.revokeObjectURL(audioUrl);
+            currentAudioElement = null;
+            isTTSPlaying = false;
+            // Process next in queue
+            processTTSQueue();
         };
         
         audio.play().catch(function (e) {
             console.error('☁️ Failed to play Edge TTS audio:', e);
+            isTTSPlaying = false;
+            processTTSQueue();
         });
         
         console.log('☁️ Edge TTS audio playing...');
     } catch (error) {
         console.error('☁️ Edge TTS error:', error);
+        isTTSPlaying = false;
+        processTTSQueue();
         alert('Error using Edge TTS: ' + error.message);
     }
 }
@@ -1919,7 +2035,8 @@ function toggleTTS() {
         btn.classList.remove('active');
         icon.textContent = '🔊';
         text.textContent = 'Enable TTS';
-        speechSynthesis.cancel();
+        // Clear TTS queue and stop current playback when disabling
+        clearTTSQueue();
     }
 }
 
@@ -2318,7 +2435,7 @@ async function processPendingTranslations() {
         
         // Only speak the latest one
         if (ttsEnabled && i === 0 && data.translated) {
-            speakText(data.translated);
+            speakText(data.translated, true);
         }
         
         // Small delay between items to avoid UI freeze and rate limits
@@ -3428,7 +3545,8 @@ function setupSocketEventListeners() {
                         translateInBackground(data, itemId, currentTextEl);
                     }
 
-                    if (ttsEnabled && data.translated) speakText(data.translated);
+                    // Queue auto-TTS playback with isAutoPlay=true to maintain order
+                    if (ttsEnabled && data.translated) speakText(data.translated, true);
                     return;
                 }
             }
