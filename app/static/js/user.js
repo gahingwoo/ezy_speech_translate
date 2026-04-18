@@ -2956,6 +2956,12 @@ async function translateInBackground(item, itemId, textEl) {
             if (ttsBtn) {
                 ttsBtn.setAttribute('data-text', item.translated);
             }
+            
+            // Auto-play translated text if TTS is enabled
+            if (ttsEnabled && item.translated) {
+                console.log('🎯 Auto-playing translation via TTS');
+                speakText(item.translated, true);
+            }
         }
     } catch (e) {
         console.warn('Background translation failed for item ' + itemId + ':', e.message);
