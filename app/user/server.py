@@ -1282,8 +1282,10 @@ import json
 print(json.dumps(voices))
 """
         
+        # ✅ Use sys.executable to ensure we use the correct Python environment (venv)
+        # instead of hardcoded 'python3' which would use system Python
         result = subprocess.run(
-            ['python3', '-c', code],
+            [sys.executable, '-c', code],
             capture_output=True,
             text=True,
             timeout=60
@@ -1658,7 +1660,7 @@ asyncio.run(synthesize())
 """
         
         result = subprocess.run(
-            ['python3', '-c', synthesis_code],
+            [sys.executable, '-c', synthesis_code],
             input=json.dumps(args),
             capture_output=True,
             text=True,

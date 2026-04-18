@@ -561,8 +561,11 @@ def get_admin_config():
             "adminPort": ADMIN_PORT
         })
     else:
-        # Fall back to localhost/127.0.0.1
+        # ✅ For local development: use localhost instead of 0.0.0.0
+        # 0.0.0.0 is only valid for server binding, not for client connections
+        localhost_url = f"{user_server_protocol}://localhost:{MAIN_SERVER_PORT}"
         return jsonify({
+            "mainServerUrl": localhost_url,
             "mainServerPort": MAIN_SERVER_PORT,
             "mainServerProtocol": user_server_protocol,
             "adminPort": ADMIN_PORT
