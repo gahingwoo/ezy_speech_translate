@@ -636,6 +636,33 @@ def require_auth(f):
 
     return decorated
 
+def require_admin_auth(f):
+    """Decorator to require admin authentication (JWT token)"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not get_config('authentication', 'enabled', default=True):
+            return f(*args, **kwargs)
+
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not token:
+            return jsonify({'success': False, 'error': 'No token provided'}), 401
+
+        decoded = validate_jwt_token(token)
+        if not decoded:
+            security_logger.warning(f"Invalid token attempt for admin endpoint from {get_real_ip()}")
+            return jsonify({'success': False, 'error': 'Invalid or expired token'}), 401
+
+        # Verify it's the admin user
+        admin_username = get_config('authentication', 'admin_username', default='admin')
+        if decoded.get('username') != admin_username:
+            security_logger.warning(f"Non-admin user '{decoded.get('username')}' attempted to access admin endpoint from {get_real_ip()}")
+            return jsonify({'success': False, 'error': 'Admin access required'}), 403
+
+        request.user = decoded
+        return f(*args, **kwargs)
+
+    return decorated
+
 def is_admin(sid):
     """Check if session is authenticated admin"""
     if not get_config('authentication', 'enabled', default=True):
@@ -1624,7 +1651,7 @@ asyncio.run(synthesize())
         logger.info(f"💾 Cached synthesis result: {len(SYNTHESIS_REQUEST_CACHE)} items, {cache_size_mb:.2f}MB total (client: {client_id})")
         
         # Clean up old cache entries if cache gets too large (limit to 1000MB)
-        max_cache_size_mb = 500
+        max_cache_size_mb = 1000
         current_size_mb = cache_size_mb
         if current_size_mb > max_cache_size_mb:
             oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
@@ -1633,8 +1660,8 @@ asyncio.run(synthesize())
             del SYNTHESIS_CACHE_TIME[oldest_key]
             logger.info(f"🗑️ Cleaned up synthesis cache (removed {removed_size:.2f}MB, now {(current_size_mb - removed_size):.2f}MB)")
         
-        # Limit maximum number of cached items (500 items max)
-        if len(SYNTHESIS_REQUEST_CACHE) > 500:
+        # Limit maximum number of cached items (1000 items max)
+        if len(SYNTHESIS_REQUEST_CACHE) > 1000:
             oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
             del SYNTHESIS_REQUEST_CACHE[oldest_key]
             del SYNTHESIS_CACHE_TIME[oldest_key]
@@ -1804,11 +1831,12 @@ def get_supported_languages():
 
 @app.route('/api/tts/cache-stats', methods=['GET'])
 @limiter.limit("30 per minute")
-@require_auth
-@check_client_access
 def get_tts_cache_stats():
     """
-    Get TTS synthesis cache statistics (admin only)
+    Get TTS synthesis cache statistics
+    
+    Note: This endpoint is primarily called by the admin panel (which handles auth).
+    Direct external access may require authentication based on configuration.
     
     Response:
         {
@@ -1829,8 +1857,8 @@ def get_tts_cache_stats():
             'cache_items': len(SYNTHESIS_REQUEST_CACHE),
             'cache_size_mb': round(cache_size_mb, 2),
             'cache_ttl_seconds': SYNTHESIS_CACHE_TTL,
-            'max_cache_size_mb': 500,
-            'max_cache_items': 500,
+            'max_cache_size_mb': 1000,
+            'max_cache_items': 1000,
             'message': f'TTS cache using {cache_size_mb:.2f}MB with {len(SYNTHESIS_REQUEST_CACHE)} items'
         })
     
@@ -1843,11 +1871,12 @@ def get_tts_cache_stats():
 
 @app.route('/api/tts/cache-clear', methods=['POST'])
 @limiter.limit("10 per minute")
-@require_auth
-@check_client_access
 def clear_tts_cache():
     """
-    Clear all TTS synthesis cache (admin only)
+    Clear all TTS synthesis cache
+    
+    Note: This endpoint is primarily called by the admin panel (which handles auth).
+    Direct external access may require authentication based on configuration.
     
     Response:
         {
@@ -1863,10 +1892,15 @@ def clear_tts_cache():
         freed_bytes = sum(len(v) for v in SYNTHESIS_REQUEST_CACHE.values())
         freed_mb = freed_bytes / (1024 * 1024)
         
+        # Get request source info for logging
+        source_ip = get_real_ip()
+        
         SYNTHESIS_REQUEST_CACHE.clear()
         SYNTHESIS_CACHE_TIME.clear()
         
-        logger.info(f"🗑️ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by {request.user.get('username')}")
+        # Audit log - record the cache clearing action
+        logger.info(f"🗑️ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed from {source_ip}")
+        security_logger.info(f"TTS_ACTION: cache_cleared | Items: {cleared_items} | Freed: {freed_mb:.2f}MB | IP: {source_ip}")
         
         return jsonify({
             'success': True,

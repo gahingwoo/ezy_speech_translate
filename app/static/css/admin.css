@@ -361,6 +361,7 @@ body {
 .sidebar-section {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border);
+    overflow-x: hidden;
 }
 
 .sidebar-title {
@@ -423,9 +424,6 @@ select:disabled {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-}
-
-#autoSentenceSplitBtn {
     height: 38.5px;
 }
 

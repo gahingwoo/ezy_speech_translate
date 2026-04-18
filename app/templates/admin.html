@@ -159,18 +159,38 @@
             </div>
 
             <div class="sidebar-section">
-                <h3 class="sidebar-title">🎙️ TTS Cache</h3>
-                <div class="control-group">
-                    <div id="ttsCacheStats" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; font-size: 0.875rem; margin-bottom: 0.5rem;">
-                        <div style="color: var(--text-secondary);">Loading cache stats...</div>
+                <h3 class="sidebar-title">TTS Cache</h3>
+                
+                <div id="ttsCacheContainer" class="pf-v5-c-card" aria-label="TTS Cache" style="margin: 0; min-width: 0;">
+                    <div class="pf-v5-c-card__body" style="padding: 1rem;">
+                        <dl class="pf-v5-c-description-list" id="ttsCacheStats" style="display: block;">
+                            <div class="pf-v5-c-description-list__group" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #ddd;">
+                                <dt class="pf-v5-c-description-list__term" style="margin: 0;">
+                                    <span class="pf-v5-c-description-list__text">Items</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description" style="margin: 0;">
+                                    <strong id="cache-items" style="color: #000; font-size: 0.875rem;">0/1000</strong>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                                <dt class="pf-v5-c-description-list__term" style="margin: 0;">
+                                    <span class="pf-v5-c-description-list__text">Memory</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description" style="margin: 0;">
+                                    <strong id="cache-memory" style="color: #000; font-size: 0.875rem;">0.00MB/1000MB</strong>
+                                </dd>
+                            </div>
+                        </dl>
                     </div>
                 </div>
-                <div class="button-group" style="flex-direction: column; gap: 0.5rem;">
+
+                <div class="button-group" style="flex-direction: column; gap: 0.5rem; margin-top: 0.75rem;">
                     <button class="pf-c-button pf-c-button--info" onclick="refreshTTSCacheStats()" style="width: 100%;">
                         <span>🔄</span> <span>Refresh</span>
                     </button>
                     <button class="pf-c-button pf-c-button--danger" onclick="clearTTSCache()" style="width: 100%;">
-                        <span>🗑️</span> <span>Clear Cache</span>
+                        <span>🗑️</span> <span>Clear</span>
                     </button>
                 </div>
             </div>

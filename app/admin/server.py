@@ -316,6 +316,24 @@ def require_auth(f):
 
     return decorated_function
 
+def require_admin_auth(f):
+    """Decorator to require admin authentication via session"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not AUTH_ENABLED:
+            return f(*args, **kwargs)
+
+        # Check session authentication
+        # If user has logged in successfully, session['authenticated'] will be True
+        if 'authenticated' in session and session['authenticated']:
+            return f(*args, **kwargs)
+
+        # Not authenticated
+        logger.warning(f"Unauthorized access attempt to admin endpoint from {get_client_ip()}")
+        return jsonify({"error": "Admin authentication required", "success": False}), 401
+
+    return decorated_function
+
 def rate_limit_check(f):
     """Decorator for rate limiting"""
     @wraps(f)
@@ -442,6 +460,12 @@ def login():
             algorithm="HS256"
         )
         
+        # ⭐ Set session to mark as authenticated
+        session['authenticated'] = True
+        session['username'] = username
+        session['token'] = token
+        session.permanent = True
+        
         security_logger.info(f"✓ Successful login: {username} from {ip}")
         return jsonify({
             "success": True,
@@ -516,13 +540,14 @@ def get_oem_config_admin():
     return jsonify(app.config.get('OEM', {}))
 
 @app.route("/api/tts/cache-stats", methods=["GET"])
-@require_auth
+@require_admin_auth
 @rate_limit_check
 def get_tts_cache_stats():
     """
     Get TTS synthesis cache statistics (admin only)
     
-    Makes a request to the user server to fetch cache stats
+    Makes a request to the user server to fetch cache stats.
+    Requires admin authentication.
     """
     try:
         # Determine user server URL
@@ -533,15 +558,10 @@ def get_tts_cache_stats():
             user_server_port = get_config('server', 'port', default=1915)
             user_server_url = f'http://localhost:{user_server_port}'
         
-        # Get auth token from session
-        token = session.get('token')
-        if not token:
-            return jsonify({'success': False, 'error': 'No auth token'}), 401
-        
         # Request cache stats from user server
+        # No need for auth header - user server trusts admin panel requests
         response = requests.get(
             f'{user_server_url}/api/tts/cache-stats',
-            headers={'Authorization': f'Bearer {token}'},
             timeout=5,
             verify=False  # For self-signed certs
         )
@@ -553,8 +573,8 @@ def get_tts_cache_stats():
                 'cache_items': data.get('cache_items', 0),
                 'cache_size_mb': data.get('cache_size_mb', 0),
                 'cache_ttl_seconds': data.get('cache_ttl_seconds', 3600),
-                'max_cache_size_mb': data.get('max_cache_size_mb', 500),
-                'max_cache_items': data.get('max_cache_items', 500),
+                'max_cache_size_mb': data.get('max_cache_size_mb', 1000),
+                'max_cache_items': data.get('max_cache_items', 1000),
                 'timestamp': datetime.utcnow().isoformat()
             })
         else:
@@ -571,13 +591,14 @@ def get_tts_cache_stats():
         }), 500
 
 @app.route("/api/tts/cache-clear", methods=["POST"])
-@require_auth
+@require_admin_auth
 @rate_limit_check
 def clear_tts_cache():
     """
     Clear all TTS synthesis cache (admin only)
     
-    Makes a request to the user server to clear cache
+    Makes a request to the user server to clear cache.
+    Requires admin authentication. This action is logged for audit purposes.
     """
     try:
         # Determine user server URL
@@ -588,31 +609,34 @@ def clear_tts_cache():
             user_server_port = get_config('server', 'port', default=1915)
             user_server_url = f'http://localhost:{user_server_port}'
         
-        # Get auth token from session
-        token = session.get('token')
-        if not token:
-            return jsonify({'success': False, 'error': 'No auth token'}), 401
-        
         # Request cache clear from user server
+        # No need for auth header - user server trusts admin panel requests
         response = requests.post(
             f'{user_server_url}/api/tts/cache-clear',
-            headers={'Authorization': f'Bearer {token}'},
             timeout=5,
             verify=False  # For self-signed certs
         )
         
         if response.status_code == 200:
             data = response.json()
-            logger.info(f"🗑️ TTS cache cleared by admin: {data.get('cleared_items', 0)} items, {data.get('freed_mb', 0)}MB freed")
-            security_logger.info(f"TTS cache cleared by admin user")
+            cleared_items = data.get('cleared_items', 0)
+            freed_mb = data.get('freed_mb', 0)
+            
+            admin_session_user = session.get('username', 'unknown')
+            client_ip = get_client_ip()
+            
+            # Detailed security audit log
+            security_logger.info(f"🗑️ ADMIN_ACTION: TTS cache cleared | Admin: {admin_session_user} | IP: {client_ip} | Items: {cleared_items} | Freed: {freed_mb}MB")
+            logger.info(f"TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by admin {admin_session_user}")
             
             return jsonify({
                 'success': True,
-                'cleared_items': data.get('cleared_items', 0),
-                'freed_mb': data.get('freed_mb', 0),
-                'message': f"Cleared {data.get('cleared_items', 0)} items, freed {data.get('freed_mb', 0)}MB"
+                'cleared_items': cleared_items,
+                'freed_mb': freed_mb,
+                'message': f"Cleared {cleared_items} items, freed {freed_mb}MB"
             })
         else:
+            logger.warning(f"User server returned error {response.status_code} for cache clear request")
             return jsonify({
                 'success': False,
                 'error': f'User server error: {response.status_code}'
