@@ -1126,25 +1126,39 @@ async function refreshTTSCacheStats() {
             }
         });
         
+        const cacheItemsEl = document.getElementById('cache-items');
+        const cacheMemoryEl = document.getElementById('cache-memory');
+        
         // Handle authentication errors
         if (response.status === 401) {
-            console.error('Authentication failed for TTS cache stats');
-            document.getElementById('cache-items').textContent = '⚠️ Not authenticated';
-            document.getElementById('cache-memory').textContent = '⚠️ Not authenticated';
+            console.error('❌ Authentication failed for TTS cache stats');
+            cacheItemsEl.textContent = '⚠️ Not authenticated';
+            cacheMemoryEl.textContent = '⚠️ Not authenticated';
             return;
         }
         
         if (response.status === 403) {
-            console.error('Access denied for TTS cache stats');
-            document.getElementById('cache-items').textContent = '⚠️ Access denied';
-            document.getElementById('cache-memory').textContent = '⚠️ Access denied';
+            console.error('❌ Access denied for TTS cache stats');
+            cacheItemsEl.textContent = '⚠️ Access denied';
+            cacheMemoryEl.textContent = '⚠️ Access denied';
             return;
         }
         
         if (!response.ok) {
-            console.error('Failed to fetch TTS cache stats:', response.status);
-            document.getElementById('cache-items').textContent = '❌ Error';
-            document.getElementById('cache-memory').textContent = '❌ Error';
+            console.error(`❌ Failed to fetch TTS cache stats: HTTP ${response.status}`);
+            cacheItemsEl.textContent = '❌ Error';
+            cacheMemoryEl.textContent = `❌ HTTP ${response.status}`;
+            return;
+        }
+        
+        // Check if response is actually JSON (not HTML error page)
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const bodyText = await response.text();
+            console.error('❌ Backend returned non-JSON response:', bodyText.substring(0, 200));
+            cacheItemsEl.textContent = '❌ Server Error';
+            cacheMemoryEl.textContent = '❌ Invalid response from server';
+            console.warn('💡 Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
         
@@ -1152,19 +1166,23 @@ async function refreshTTSCacheStats() {
         
         if (data.success) {
             // Update the values
-            document.getElementById('cache-items').textContent = 
+            cacheItemsEl.textContent = 
                 `${data.cache_items}/${data.max_cache_items}`;
-            document.getElementById('cache-memory').textContent = 
+            cacheMemoryEl.textContent = 
                 `${data.cache_size_mb.toFixed(2)}MB/${data.max_cache_size_mb}MB`;
             console.log('✅ TTS Cache Stats:', data);
         } else {
-            document.getElementById('cache-items').textContent = '❌ Error';
-            document.getElementById('cache-memory').textContent = `❌ ${data.error || 'Error'}`;
+            const errorMsg = data.error || 'Unknown error';
+            console.error('❌ Backend error:', errorMsg);
+            cacheItemsEl.textContent = '❌ Error';
+            cacheMemoryEl.textContent = `❌ ${errorMsg}`;
+            console.warn('💡 Tip: Check admin server logs for details about the TTS cache error.');
         }
     } catch (error) {
-        console.error('Error refreshing TTS cache stats:', error);
+        console.error('❌ Network error refreshing TTS cache stats:', error);
         document.getElementById('cache-items').textContent = '❌ Error';
-        document.getElementById('cache-memory').textContent = error.message;
+        document.getElementById('cache-memory').textContent = '❌ ' + (error.message || 'Network error');
+        console.warn('💡 Tip: Check if the admin panel is accessible and the backend is running.');
     }
 }
 
@@ -1186,20 +1204,30 @@ async function clearTTSCache() {
         
         // Handle authentication errors
         if (response.status === 401) {
-            console.error('Authentication failed for TTS cache clear');
+            console.error('❌ Authentication failed for TTS cache clear');
             alert('❌ Session expired, please login again');
             return;
         }
         
         if (response.status === 403) {
-            console.error('Access denied for TTS cache clear');
+            console.error('❌ Access denied for TTS cache clear');
             alert('❌ Admin access required to clear cache');
             return;
         }
         
         if (!response.ok) {
-            console.error('Failed to clear TTS cache:', response.status);
-            alert(`❌ Failed to clear TTS cache (${response.status})`);
+            console.error(`❌ Failed to clear TTS cache: HTTP ${response.status}`);
+            alert(`❌ Failed to clear TTS cache (HTTP ${response.status})\n\nCheck browser console and server logs for details.`);
+            return;
+        }
+        
+        // Check if response is actually JSON (not HTML error page)
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const bodyText = await response.text();
+            console.error('❌ Backend returned non-JSON response:', bodyText.substring(0, 200));
+            alert('❌ Invalid response from server. Check browser console for details.');
+            console.warn('💡 Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
         
@@ -1211,11 +1239,13 @@ async function clearTTSCache() {
             // Refresh stats after clearing
             setTimeout(() => refreshTTSCacheStats(), 500);
         } else {
-            alert(`❌ ${data.error || 'Failed to clear cache'}`);
+            const errorMsg = data.error || 'Failed to clear cache';
+            console.error('❌ Backend error:', errorMsg);
+            alert(`❌ ${errorMsg}\n\nCheck admin server logs for details.`);
         }
     } catch (error) {
-        console.error('Error clearing TTS cache:', error);
-        alert(`❌ Error: ${error.message}`);
+        console.error('❌ Network error clearing TTS cache:', error);
+        alert(`❌ Error: ${error.message}\n\nCheck if the admin panel is accessible and the backend is running.`);
     }
 }
 

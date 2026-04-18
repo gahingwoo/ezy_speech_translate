@@ -525,13 +525,13 @@ def after_request(response):
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
     
-    # Content Security Policy - allow blob URLs for audio playback
+    # Content Security Policy - allow blob URLs for audio playback and localhost connections for admin panel
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "media-src 'self' blob:; "
-        "connect-src 'self' https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
+        "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
         "img-src 'self' data:; "
         "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
     )
@@ -682,7 +682,7 @@ def set_cache_headers(response):
             "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "media-src 'self' blob:; "
-            "connect-src 'self' https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
+            "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
             "img-src 'self' data:; "
             "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
         )
@@ -1682,7 +1682,7 @@ asyncio.run(synthesize())
                     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
                     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
                     "media-src 'self' blob:; "
-                    "connect-src 'self' https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
+                    "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://cdnjs.cloudflare.com https://translate.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; "
                     "img-src 'self' data:; "
                     "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
                 )

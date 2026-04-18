@@ -548,15 +548,17 @@ def get_tts_cache_stats():
     
     Makes a request to the user server to fetch cache stats.
     Requires admin authentication.
+    
+    Note: Always uses localhost for internal communication.
+    external_url is only for external client access, not server-to-server.
     """
     try:
-        # Determine user server URL
-        external_url = get_config('server', 'external_url')
-        if external_url:
-            user_server_url = external_url
-        else:
-            user_server_port = get_config('server', 'port', default=1915)
-            user_server_url = f'http://localhost:{user_server_port}'
+        # Always use localhost for internal server-to-server communication
+        # external_url (CF tunnel, etc.) is for external clients only
+        user_server_port = get_config('server', 'port', default=1915)
+        user_server_url = f'http://localhost:{user_server_port}'
+        
+        logger.debug(f"Fetching TTS cache stats from user server: {user_server_url}")
         
         # Request cache stats from user server
         # No need for auth header - user server trusts admin panel requests
@@ -568,6 +570,7 @@ def get_tts_cache_stats():
         
         if response.status_code == 200:
             data = response.json()
+            logger.debug(f"✅ TTS cache stats retrieved: {data}")
             return jsonify({
                 'success': True,
                 'cache_items': data.get('cache_items', 0),
@@ -578,13 +581,20 @@ def get_tts_cache_stats():
                 'timestamp': datetime.utcnow().isoformat()
             })
         else:
+            error_msg = f'User server error: {response.status_code}'
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', error_msg)
+            except:
+                pass
+            logger.warning(f"⚠️ {error_msg}")
             return jsonify({
                 'success': False,
-                'error': f'User server error: {response.status_code}'
+                'error': error_msg
             }), response.status_code
     
     except Exception as e:
-        logger.error(f"Error fetching TTS cache stats: {e}")
+        logger.error(f"❌ Error fetching TTS cache stats: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
@@ -599,15 +609,17 @@ def clear_tts_cache():
     
     Makes a request to the user server to clear cache.
     Requires admin authentication. This action is logged for audit purposes.
+    
+    Note: Always uses localhost for internal communication.
+    external_url is only for external client access, not server-to-server.
     """
     try:
-        # Determine user server URL
-        external_url = get_config('server', 'external_url')
-        if external_url:
-            user_server_url = external_url
-        else:
-            user_server_port = get_config('server', 'port', default=1915)
-            user_server_url = f'http://localhost:{user_server_port}'
+        # Always use localhost for internal server-to-server communication
+        # external_url (CF tunnel, etc.) is for external clients only
+        user_server_port = get_config('server', 'port', default=1915)
+        user_server_url = f'http://localhost:{user_server_port}'
+        
+        logger.debug(f"Clearing TTS cache on user server: {user_server_url}")
         
         # Request cache clear from user server
         # No need for auth header - user server trusts admin panel requests
@@ -627,7 +639,7 @@ def clear_tts_cache():
             
             # Detailed security audit log
             security_logger.info(f"🗑️ ADMIN_ACTION: TTS cache cleared | Admin: {admin_session_user} | IP: {client_ip} | Items: {cleared_items} | Freed: {freed_mb}MB")
-            logger.info(f"TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by admin {admin_session_user}")
+            logger.info(f"✅ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by admin {admin_session_user}")
             
             return jsonify({
                 'success': True,
@@ -636,14 +648,20 @@ def clear_tts_cache():
                 'message': f"Cleared {cleared_items} items, freed {freed_mb}MB"
             })
         else:
-            logger.warning(f"User server returned error {response.status_code} for cache clear request")
+            error_msg = f'User server error: {response.status_code}'
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', error_msg)
+            except:
+                pass
+            logger.warning(f"⚠️ {error_msg}")
             return jsonify({
                 'success': False,
-                'error': f'User server error: {response.status_code}'
+                'error': error_msg
             }), response.status_code
     
     except Exception as e:
-        logger.error(f"Error clearing TTS cache: {e}")
+        logger.error(f"❌ Error clearing TTS cache: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
