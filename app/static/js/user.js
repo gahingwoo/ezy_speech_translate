@@ -1977,18 +1977,29 @@ async function speakTextEdge(text) {
         if (!response.ok) {
             const contentType = response.headers.get('content-type');
             let error = 'TTS synthesis failed';
+            let errorDetail = '';
             
             if (contentType && contentType.includes('application/json')) {
                 try {
                     const errorData = await response.json();
                     error = errorData.error || error;
+                    errorDetail = errorData.error || '';
                 } catch (e) {
                     // Couldn't parse JSON
                 }
             }
             
             console.error(`☁️ TTS Response error: status=${response.status}, content-type=${contentType}`);
-            throw new Error(error);
+            console.error(`☁️ Error detail: ${errorDetail}`);
+            
+            // Provide user-friendly error messages
+            if (response.status === 503) {
+                throw new Error('Edge TTS service is temporarily unavailable. Please try again later.');
+            } else if (response.status === 429) {
+                throw new Error('Too many TTS requests. Please wait a moment and try again.');
+            } else {
+                throw new Error(error);
+            }
         }
         
         // Log response details

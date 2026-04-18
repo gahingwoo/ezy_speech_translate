@@ -1782,9 +1782,15 @@ asyncio.run(synthesize())
             
             # Check if it's a network/connectivity error
             if '403' in stderr_text or 'Invalid response status' in stderr_text:
-                return jsonify({'success': False, 'error': 'Edge TTS service unavailable (403). Server may need network access to speech.platform.bing.com'}), 503
+                logger.warning(f"⚠️ Edge TTS returned 403 - possible rate limiting or service restriction")
+                # Return 429 (Too Many Requests) or 503 depending on context
+                if 'Too many' in stderr_text or 'rate' in stderr_text.lower():
+                    return jsonify({'success': False, 'error': 'TTS rate limit exceeded. Please try again in a few moments.'}), 429
+                else:
+                    return jsonify({'success': False, 'error': 'Edge TTS service rejected request (403). This may be due to rate limiting or regional restrictions. Please try again later.'}), 503
             elif 'wss://' in stderr_text or 'WebSocket' in stderr_text:
-                return jsonify({'success': False, 'error': 'Network connection error: Cannot reach Bing Edge TTS service'}), 503
+                logger.warning(f"⚠️ WebSocket connection error - cannot reach Bing Edge TTS service")
+                return jsonify({'success': False, 'error': 'Network connection error: Cannot reach TTS service. Please check your internet connection.'}), 503
             else:
                 return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
         
