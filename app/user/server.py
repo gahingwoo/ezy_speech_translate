@@ -1079,6 +1079,25 @@ except ImportError:
     SYNTHESIS_CACHE_TIME = {}
     CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)
 
+# ✅ Ensure all TTS-related globals are defined (fail-safe)
+# This prevents AttributeError if Edge TTS import fails partially
+if 'EDGE_TTS_AVAILABLE' not in globals():
+    EDGE_TTS_AVAILABLE = False
+if 'SYNTHESIS_REQUEST_CACHE' not in globals():
+    SYNTHESIS_REQUEST_CACHE = {}
+if 'SYNTHESIS_CACHE_TIME' not in globals():
+    SYNTHESIS_CACHE_TIME = {}
+if 'SYNTHESIS_CACHE_TTL' not in globals():
+    SYNTHESIS_CACHE_TTL = 3600
+if 'CLIENT_SYNTHESIS_REQUESTS' not in globals():
+    CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)
+if 'EDGE_TTS_VOICES_CACHE' not in globals():
+    EDGE_TTS_VOICES_CACHE = None
+if 'EDGE_TTS_VOICES_CACHE_TIME' not in globals():
+    EDGE_TTS_VOICES_CACHE_TIME = None
+
+logger.info(f"🔍 Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(SYNTHESIS_REQUEST_CACHE)} items")
+
 @app.route('/api/translate', methods=['POST'])
 @limiter.limit("300 per minute")  # 5 requests per second per client (need headroom for bulk imports)
 @check_client_access
@@ -1260,6 +1279,7 @@ def fetch_edge_tts_voices_in_thread():
     global EDGE_TTS_VOICES_CACHE, EDGE_TTS_VOICES_CACHE_TIME
     
     if not EDGE_TTS_AVAILABLE:
+        logger.warning("⚠️ Edge TTS not available, skipping voice fetch")
         return []
     
     try:
@@ -1272,13 +1292,18 @@ def fetch_edge_tts_voices_in_thread():
         code = """
 import asyncio
 import edge_tts
+import sys
+import json
 
 async def fetch():
-    voices = await edge_tts.list_voices()
-    return voices
+    try:
+        voices = await edge_tts.list_voices()
+        return voices
+    except Exception as e:
+        print(f"ERROR in subprocess: {str(e)}", file=sys.stderr)
+        raise
 
 voices = asyncio.run(fetch())
-import json
 print(json.dumps(voices))
 """
         
@@ -1292,27 +1317,38 @@ print(json.dumps(voices))
         )
         
         if result.returncode != 0:
-            logger.error(f"Subprocess error: {result.stderr}")
+            logger.error(f"❌ Edge TTS subprocess failed with return code {result.returncode}")
+            if result.stderr:
+                logger.error(f"   stderr: {result.stderr[:500]}")  # Log first 500 chars
+            return []
+        
+        if not result.stdout or not result.stdout.strip():
+            logger.error("❌ Edge TTS subprocess returned empty output")
             return []
         
         # Parse JSON from subprocess output
         import json
-        voices_list = json.loads(result.stdout)
+        try:
+            voices_list = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ Failed to parse Edge TTS JSON response: {e}")
+            logger.error(f"   stdout (first 500 chars): {result.stdout[:500]}")
+            return []
         
-        if voices_list:
-            logger.info(f"✅ Successfully cached {len(voices_list)} Edge TTS voices via subprocess")
-            EDGE_TTS_VOICES_CACHE = voices_list
-            EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
-        else:
+        if not voices_list or len(voices_list) == 0:
             logger.warning("⚠️ No voices returned from Edge TTS subprocess")
+            return []
         
+        logger.info(f"✅ Successfully cached {len(voices_list)} Edge TTS voices via subprocess")
+        EDGE_TTS_VOICES_CACHE = voices_list
+        EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
         return voices_list
             
     except subprocess.TimeoutExpired:
-        logger.error("Subprocess timeout while fetching voices")
+        logger.error("❌ Edge TTS subprocess timeout (60 seconds exceeded)")
         return []
     except Exception as e:
-        logger.error(f"Error fetching Edge TTS voices: {e}", exc_info=True)
+        logger.error(f"❌ Error fetching Edge TTS voices: {e}", exc_info=True)
         return []
 
 def get_cached_edge_tts_voices():
@@ -1329,7 +1365,7 @@ def get_cached_edge_tts_voices():
     
     # If not cached, fetch in a background thread
     if EDGE_TTS_VOICES_CACHE is None and EDGE_TTS_VOICES_CACHE_TIME is None:
-        logger.info("Fetching Edge TTS voices for the first time...")
+        logger.info("📥 Fetching Edge TTS voices for the first time in background thread...")
         import threading
         thread = threading.Thread(target=fetch_edge_tts_voices_in_thread, daemon=True)
         thread.start()
@@ -1895,8 +1931,23 @@ def get_tts_cache_stats():
         }
     """
     try:
+        # ✅ Safely check if SYNTHESIS_REQUEST_CACHE is defined and is a dict
+        if not isinstance(SYNTHESIS_REQUEST_CACHE, dict):
+            logger.warning("⚠️ SYNTHESIS_REQUEST_CACHE is not initialized as dict")
+            return jsonify({
+                'success': True,
+                'cache_items': 0,
+                'cache_size_mb': 0,
+                'cache_ttl_seconds': SYNTHESIS_CACHE_TTL if 'SYNTHESIS_CACHE_TTL' in globals() else 3600,
+                'max_cache_size_mb': 1000,
+                'max_cache_items': 1000,
+                'message': 'TTS cache not initialized'
+            })
+        
         cache_size_bytes = sum(len(v) for v in SYNTHESIS_REQUEST_CACHE.values())
         cache_size_mb = cache_size_bytes / (1024 * 1024)
+        
+        logger.debug(f"📊 TTS cache stats: {len(SYNTHESIS_REQUEST_CACHE)} items, {cache_size_mb:.2f}MB")
         
         return jsonify({
             'success': True,
@@ -1909,10 +1960,13 @@ def get_tts_cache_stats():
         })
     
     except Exception as e:
-        logger.error(f"Error in get_tts_cache_stats: {e}", exc_info=True)
+        logger.error(f"❌ Error in get_tts_cache_stats: {e}", exc_info=True)
+        # Return proper JSON error even if something goes wrong
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'cache_items': 0,
+            'cache_size_mb': 0
         }), 500
 
 @app.route('/api/tts/cache-clear', methods=['POST'])
