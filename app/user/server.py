@@ -743,15 +743,44 @@ def set_cache_headers(response):
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
     
-    # For static files (JS, CSS, images), allow short-term caching but always validate
+    # For static files (JS, CSS, images) - use versioning strategy
     elif request.path.startswith('/static/'):
-        # Browser can cache these for 1 hour, but MUST revalidate with server
-        response.headers['Cache-Control'] = 'public, max-age=3600, must-revalidate'
-        # Add ETag for better cache validation
+        # If URL has version/hash parameter (?v=...), cache forever (immutable)
+        if request.args.get('v'):
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'  # 1 year
+        else:
+            # Without version, don't cache - forces browser to check for updates
+            # This handles unversioned requests during development/debugging
+            response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
+        
+        # Add ETag for cache validation
         if not response.headers.get('ETag'):
             response.set_etag()
     
     return response
+
+# ──────────────────────────────────────────
+# Jinja2 Helpers - Static File Versioning
+# ──────────────────────────────────────────
+def get_static_file_version(filename):
+    """
+    Get file modification time as version string for cache busting
+    Usage in templates: {{ url_for('static', filename='css/user.css') }}?v={{ 'css/user.css' | static_version }}
+    """
+    try:
+        filepath = os.path.join(STATIC_DIR, filename)
+        if os.path.exists(filepath):
+            mtime = os.path.getmtime(filepath)
+            return str(int(mtime))
+        else:
+            logger.warning(f"Static file not found for versioning: {filename}")
+            return "1"
+    except Exception as e:
+        logger.error(f"Error getting static file version for {filename}: {e}")
+        return "1"
+
+# Register Jinja2 filter for static file versioning
+app.jinja_env.filters['static_version'] = get_static_file_version
 
 # ──────────────────────────────────────────
 # Routes with Protection

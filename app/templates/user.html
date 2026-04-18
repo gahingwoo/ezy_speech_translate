@@ -14,9 +14,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Red+Hat+Mono:wght@400;500&family=Red+Hat+Text:wght@400;500;600;700&display=swap">
-    <link href="/static/css/user.css" rel="stylesheet">
-    <!-- OEM Configuration Loader -->
-    <script src="/static/js/oem-loader.js"></script>
+    <!-- ✅ CSS with cache-busting version number based on file modification time -->
+    <link href="{{ url_for('static', filename='css/user.css') }}?v={{ 'css/user.css' | static_version }}" rel="stylesheet">
+    <!-- OEM Configuration Loader with cache-busting -->
+    <script src="{{ url_for('static', filename='js/oem-loader.js') }}?v={{ 'js/oem-loader.js' | static_version }}"></script>
     <!-- Google Translate removed to comply with CSP; using local i18n instead -->
 </head>
 
@@ -334,8 +335,9 @@
     <!-- Google Translate Element -->
     <div id="google_translate_element" style="display: none;"></div>
 
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/user.js"></script>
+    <!-- ✅ Scripts with cache-busting version numbers -->
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v={{ 'js/i18n.js' | static_version }}"></script>
+    <script src="{{ url_for('static', filename='js/user.js') }}?v={{ 'js/user.js' | static_version }}"></script>
 </body>
 
 </html>
