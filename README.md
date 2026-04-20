@@ -34,7 +34,7 @@ Tech stack (from runtime code and dependencies):
 
 ## 2. System Architecture
 
-### High-level structure
+### High-Level structure
 
 - `app/user/server.py`
   - Primary backend and viewer UI host (default port `1915`)
@@ -112,6 +112,7 @@ Tech stack (from runtime code and dependencies):
 Potential barriers:
 - Translation quality depends on source transcript quality and external translation availability.
 - Some status/error strings are still English-only in UI logic.
+- Recommended follow-up: add a localization backlog item to move hardcoded status/error text into the shared i18n map.
 
 ### 3.2 Users with disabilities
 
@@ -272,7 +273,9 @@ Operational cautions:
 
 Observed weak points from current code:
 - `app/static/js/user.js` is very large and contains duplicate/redefined functions, increasing maintenance risk.
+  - Recommended follow-up: split this file by concern (socket lifecycle, translation pipeline, TTS, rendering) and deduplicate shared helpers.
 - `app/admin/server.py` uses broad CORS and includes debug endpoints that should be gated or removed in hardened deployments.
+  - Recommended follow-up: disable `/api/debug/*` by default and expose only behind an explicit development-only config flag.
 - Admin and user auth models are mixed (session + JWT + API token), which increases complexity.
 - Translation history is memory-only; restart loses state.
 - Some UI behavior and language strings are inconsistent between templates and JS.
