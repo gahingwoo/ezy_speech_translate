@@ -345,6 +345,8 @@ python3 app/user/server.py
 python3 app/admin/server.py
 ```
 
+Run the two server commands in separate terminals (or run one in background) so both services stay available.
+
 Open:
 - Viewer: `http(s)://localhost:1915/`
 - Admin login: `http(s)://localhost:1916/login`
