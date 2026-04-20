@@ -229,7 +229,7 @@ Implemented controls:
 
 Operational cautions:
 - `config/secrets.key` is sensitive and machine-local.
-- Debug endpoints exist in admin server (`/api/debug/*`) and should not be exposed in production.
+- Debug endpoints exist in admin server (`/api/debug/*`) and must be removed or fully disabled in production deployments.
 
 ---
 
