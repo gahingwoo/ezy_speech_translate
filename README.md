@@ -86,11 +86,11 @@ Tech stack (from runtime code and dependencies):
 
 ```text
 [Admin Browser]
-  ├─ HTTPS -> [Admin Server :1916]  (login/session, config)
+  ├─ HTTP/HTTPS -> [Admin Server :1916]  (login/session, config)
   └─ WS/HTTP -> [User Server :1915] (admin_connect, new_transcription, corrections)
 
 [Viewer Browser]
-  └─ WS/HTTP -> [User Server :1915] (ready/api_token, history, translate, TTS, exports)
+  └─ WS/HTTP/HTTPS -> [User Server :1915] (ready/api_token, history, translate, TTS, exports)
 
 [User Server]
   ├─ In-memory history + session token maps
@@ -204,6 +204,7 @@ Manual (development):
 
 - Main logs: `logs/app.log` (rotating handler)
 - Security logs: `logs/security.log`
+- Default app log rotation (from `config/config.yaml`): `max_bytes=10485760` (10MB), `backup_count=5`.
 - Health endpoints:
   - user server: `GET /api/health`
   - admin server: `GET /health`
@@ -387,4 +388,5 @@ Project lifecycle is script-driven:
 ### Version notes
 
 UI and legacy docs reference version `3.3.0`.
+There is no single canonical version constant in runtime code; the value is repeated in documentation/template text.
 No formal changelog file is present; commit history is the source of change detail.
