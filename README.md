@@ -34,7 +34,7 @@ Tech stack (from runtime code and dependencies):
 
 ## 2. System Architecture
 
-### High-Level structure
+### High-Level Structure
 
 - `app/user/server.py`
   - Primary backend and viewer UI host (default port `1915`)
