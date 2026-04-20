@@ -336,7 +336,7 @@ Outbound:
 ### Minimal local run (development)
 
 ```bash
-cd /home/runner/work/ezy_speech_translate/ezy_speech_translate
+cd ezy_speech_translate
 python3 setup.py
 python3 app/user/server.py
 python3 app/admin/server.py
