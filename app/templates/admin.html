@@ -20,6 +20,9 @@
 </head>
 
 <body data-theme="light">
+    <!-- Toast Notification Container (additive) -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
     <!-- Header -->
     <header class="pf-c-page__header">
         <div class="header-left">
@@ -146,14 +149,20 @@
                     </select>
                 </div>
                 <div class="control-group">
-                    <button class="sidebar-menu-item" onclick="toggleTheme(); closeMobileMenu();">
-                        <span id="themeIcon">🌙</span>
+                    <button aria-label="Toggle theme" class="sidebar-menu-item" onclick="toggleTheme(); closeMobileMenu();">
+                        <span aria-hidden="true" id="themeIcon">🌙</span>
                         <span id="themeText" data-i18n="darkMode">Dark Mode</span>
                     </button>
                 </div>
                 <div class="control-group">
-                    <button class="sidebar-menu-item" onclick="showAbout(); closeMobileMenu();">
-                        <span>ℹ️</span>
+                    <button aria-label="Keyboard shortcuts" class="sidebar-menu-item" onclick="showShortcuts(); closeMobileMenu();">
+                        <span aria-hidden="true">⌨️</span>
+                        <span data-i18n="shortcuts_title">Keyboard Shortcuts</span>
+                    </button>
+                </div>
+                <div class="control-group">
+                    <button aria-label="About" class="sidebar-menu-item" onclick="showAbout(); closeMobileMenu();">
+                        <span aria-hidden="true">ℹ️</span>
                         <span data-i18n="about">About</span>
                     </button>
                 </div>
@@ -347,6 +356,76 @@
 
                 <div class="about-version">
                     v3.3.0 • Open Source • MIT License
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal (additive, reuses .about-modal) -->
+    <div class="about-modal" id="shortcutsModal" onclick="hideShortcuts(event)">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title">
+                    <span>⌨️</span>
+                    <span data-i18n="shortcuts_title">Keyboard Shortcuts</span>
+                </div>
+                <button class="about-close" onclick="hideShortcuts()" aria-label="Close">✕</button>
+            </div>
+            <div class="about-body">
+                <div class="shortcut-list">
+                    <div class="shortcut-row"><kbd>?</kbd><span data-i18n="shortcuts_help">Show this help</span></div>
+                    <div class="shortcut-row"><kbd>Esc</kbd><span data-i18n="shortcuts_close">Close dialog / menu</span></div>
+                    <div class="shortcut-row"><kbd>Ctrl/⌘</kbd> + <kbd>R</kbd><span data-i18n="adminShortcut_record">Toggle recording</span></div>
+                    <div class="shortcut-row"><kbd>Ctrl/⌘</kbd> + <kbd>S</kbd><span data-i18n="adminShortcut_save">Save correction</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Modal (replaces prompt() for adding manual transcription) -->
+    <div class="about-modal" id="inputModal" onclick="hideInputModal(event)">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title">
+                    <span>✏️</span>
+                    <span id="inputModalTitle" data-i18n="addManualTitle">Add Transcription</span>
+                </div>
+                <button class="about-close" onclick="hideInputModal()" aria-label="Close">✕</button>
+            </div>
+            <div class="about-body">
+                <p id="inputModalLabel" data-i18n="addManualLabel" style="margin-bottom:0.5rem;color:var(--text-secondary);">Enter transcription text:</p>
+                <textarea id="inputModalField" rows="3"
+                    style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text);font-family:inherit;font-size:0.875rem;resize:vertical;box-sizing:border-box;"></textarea>
+                <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+                    <button class="pf-c-button pf-c-button--secondary" onclick="hideInputModal()" data-i18n="cancel">Cancel</button>
+                    <button class="pf-c-button pf-c-button--primary" onclick="__inputModalConfirm()" data-i18n="ok">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Format Modal (replaces prompt() for choosing export format) -->
+    <div class="about-modal" id="exportModal" onclick="hideExportModal(event)">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title">
+                    <span>📥</span>
+                    <span data-i18n="exportTitle">Export Transcriptions</span>
+                </div>
+                <button class="about-close" onclick="hideExportModal()" aria-label="Close">✕</button>
+            </div>
+            <div class="about-body">
+                <p style="margin-bottom:0.75rem;color:var(--text-secondary);" data-i18n="exportChoose">Choose a format:</p>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <button class="pf-c-button pf-c-button--secondary" style="justify-content:flex-start;text-align:left;" onclick="__doExport('txt')">
+                        <strong>TXT</strong> — <span data-i18n="exportTxtDesc">Plain text</span>
+                    </button>
+                    <button class="pf-c-button pf-c-button--secondary" style="justify-content:flex-start;text-align:left;" onclick="__doExport('json')">
+                        <strong>JSON</strong> — <span data-i18n="exportJsonDesc">Structured data</span>
+                    </button>
+                    <button class="pf-c-button pf-c-button--secondary" style="justify-content:flex-start;text-align:left;" onclick="__doExport('srt')">
+                        <strong>SRT</strong> — <span data-i18n="exportSrtDesc">Subtitle file</span>
+                    </button>
                 </div>
             </div>
         </div>

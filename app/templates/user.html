@@ -22,15 +22,21 @@
 </head>
 
 <body data-theme="light">
+    <!-- Skip-to-main link (additive, accessibility) -->
+    <a class="skip-link" href="#mainTitle" data-i18n="skipToMain">Skip to translations</a>
+
     <!-- Sync Notification Indicator -->
     <div aria-live="polite" class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated">
         🔄 Translations Updated
     </div>
 
+    <!-- Toast Notification Container (additive) -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
     <!-- Header -->
     <header class="pf-c-page__header" role="banner">
         <div class="header-left">
-            <button aria-expanded="false" aria-label="Toggle mobile menu" class="mobile-menu-toggle"
+            <button aria-controls="sidebar" aria-expanded="false" aria-label="Toggle mobile menu" class="mobile-menu-toggle"
                 id="mobileMenuToggle" onclick="toggleMobileMenu()">
                 <span aria-hidden="true">☰</span>
             </button>
@@ -229,6 +235,15 @@
                 <h3 class="sidebar-title" data-i18n="settings">Settings</h3>
 
                 <div class="control-group">
+                    <label class="control-label" for="uiMode" data-i18n="uiMode">View Mode</label>
+                    <select aria-label="View mode" id="uiMode" onchange="updateUIMode()">
+                        <option value="standard" data-i18n="uiMode_standard">🎯 Standard</option>
+                        <option value="accessibility" data-i18n="uiMode_accessibility">♿ Accessibility</option>
+                        <option value="elderly" data-i18n="uiMode_elderly">👵 Elderly</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
                     <label class="control-label" for="fontSizeSlider" data-i18n="fontSize">Font Size</label>
                     <div class="slider-wrapper">
                         <input aria-label="Translation font size" class="slider" id="fontSizeSlider" max="24" min="12"
@@ -255,6 +270,20 @@
                     <button aria-label="Reset settings" class="sidebar-menu-item" onclick="resetSettings()">
                         <span aria-hidden="true">🔄</span>
                         <span data-i18n="resetSettings">Reset Settings</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="User guide" class="sidebar-menu-item" onclick="showTour()">
+                        <span aria-hidden="true">💡</span>
+                        <span data-i18n="userGuide">User Guide</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Keyboard shortcuts" class="sidebar-menu-item" onclick="showShortcuts()">
+                        <span aria-hidden="true">⌨️</span>
+                        <span data-i18n="shortcuts_title">Keyboard Shortcuts</span>
                     </button>
                 </div>
 
@@ -327,10 +356,82 @@
         </div>
     </div>
 
+    <!-- Keyboard Shortcuts Modal (reuses .about-modal styles) -->
+    <div aria-labelledby="shortcutsTitle" aria-modal="true" class="about-modal" id="shortcutsModal"
+        onclick="hideShortcuts(event)" role="dialog">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="shortcutsTitle">
+                    <span aria-hidden="true">⌨️</span>
+                    <span data-i18n="shortcuts_title">Keyboard Shortcuts</span>
+                </div>
+                <button aria-label="Close" class="about-close" onclick="hideShortcuts()">✕</button>
+            </div>
+            <div class="about-body">
+                <div class="shortcut-list">
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_help">Show this help</span><kbd>?</kbd></div>
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_search">Focus search</span><kbd>/</kbd></div>
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_top">Scroll to top</span><kbd>g</kbd></div>
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_close">Close dialog / menu</span><kbd>Esc</kbd></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-visit Welcome Modal (reuses .about-modal styles) -->
+    <div aria-labelledby="welcomeTitle" aria-modal="true" class="about-modal" id="welcomeModal"
+        onclick="hideWelcome(event)" role="dialog">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="welcomeTitle">
+                    <span aria-hidden="true">👋</span>
+                    <span data-i18n="welcome_title">Welcome to EzySpeech</span>
+                </div>
+                <button aria-label="Close" class="about-close" onclick="hideWelcome()">✕</button>
+            </div>
+            <div class="about-body">
+                <p data-i18n="welcome_intro">Real-time speech translations will appear here as the host speaks.</p>
+                <div class="shortcut-list">
+                    <div class="onboarding-tip"><span class="tip-icon">🌐</span><span data-i18n="welcome_tip_lang">Pick your display language in the sidebar.</span></div>
+                    <div class="onboarding-tip"><span class="tip-icon">🔊</span><span data-i18n="welcome_tip_tts">Enable Text-to-Speech to hear translations aloud.</span></div>
+                    <div class="onboarding-tip"><span class="tip-icon">📋</span><span data-i18n="welcome_tip_copy">Tap a card to copy or replay it.</span></div>
+                    <div class="onboarding-tip"><span class="tip-icon">⌨️</span><span><span data-i18n="welcome_tip_keys">Press</span> <kbd>?</kbd> <span data-i18n="welcome_tip_keys_after">any time for shortcuts.</span></span></div>
+                </div>
+            </div>
+            <div class="about-version">
+                <button class="pf-c-button pf-c-button--secondary" onclick="hideWelcome()" data-i18n="welcome_gotIt" style="margin-right:0.5rem;">Got it</button>
+                <button class="pf-c-button pf-c-button--primary" onclick="hideWelcome(); showTour();" data-i18n="welcome_takeTour">Take a quick tour</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scroll to Top Button -->
     <button aria-label="Scroll to top" class="scroll-to-top" id="scrollToTopBtn" onclick="scrollToTop()">
         ↑
     </button>
+
+    <!-- Feature Tour Modal (reuses .about-modal styles) -->
+    <div aria-labelledby="tourTitle" aria-modal="true" class="about-modal" id="tourModal"
+        onclick="hideTour(event)" role="dialog">
+        <div class="about-content tour-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="tourTitle">
+                    <span aria-hidden="true" id="tourStepIcon">✨</span>
+                    <span id="tourStepTitle">User Guide</span>
+                </div>
+                <button aria-label="Close" class="about-close" onclick="hideTour()">✕</button>
+            </div>
+            <div class="about-body">
+                <div class="tour-body" id="tourStepBody"></div>
+                <div class="tour-dots" id="tourDots" role="tablist" aria-label="Tour progress"></div>
+            </div>
+            <div class="tour-footer">
+                <button class="pf-c-button pf-c-button--secondary" id="tourPrev" onclick="tourPrev()" data-i18n="tour_prev">Back</button>
+                <span class="tour-progress" id="tourProgress">1 / 1</span>
+                <button class="pf-c-button pf-c-button--primary" id="tourNext" onclick="tourNext()" data-i18n="tour_next">Next</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Google Translate Element -->
     <div id="google_translate_element" style="display: none;"></div>

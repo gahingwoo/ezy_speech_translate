@@ -393,6 +393,45 @@ function init() {
     // Ensure source text toggle button UI is updated after all DOM elements are loaded
     updateSourceTextToggleUI();
 
+    // Apply saved view mode (standard / accessibility / elderly)
+    loadUIMode();
+
+    // Browser-level network status (additive, complements socket events)
+    try {
+        window.addEventListener('offline', function () {
+            setConnectionStatus('offline');
+            showToast(t('toast_offline', 'You are offline'), 'warning', 4000);
+        });
+        window.addEventListener('online', function () {
+            setConnectionStatus('waiting');
+            showToast(t('toast_reconnected', 'Back online'), 'success', 2500);
+        });
+    } catch (e) {}
+
+    // First-visit onboarding (only shows once per browser).
+    // Gate: don't interrupt if user is already interacting (scroll, focus, or another modal open).
+    try {
+        if (!localStorage.getItem('onboardingSeen_v1')) {
+            let __userInteracted = false;
+            const __markInteract = function () { __userInteracted = true; };
+            window.addEventListener('scroll', __markInteract, { once: true, passive: true });
+            window.addEventListener('keydown', __markInteract, { once: true });
+            window.addEventListener('mousedown', __markInteract, { once: true });
+            window.addEventListener('touchstart', __markInteract, { once: true, passive: true });
+            const __tryShow = function () {
+                if (__userInteracted) return; // user is busy; skip welcome this session
+                if (__activeModalId) return;  // some other modal is open
+                if (document.hidden) return;  // tab not visible
+                showWelcome();
+            };
+            if (typeof requestIdleCallback === 'function') {
+                requestIdleCallback(function () { setTimeout(__tryShow, 600); }, { timeout: 2000 });
+            } else {
+                setTimeout(__tryShow, 1200);
+            }
+        }
+    } catch (e) {}
+
     console.log('user.js initialized');
 }
 
@@ -1173,10 +1212,14 @@ function toggleMobileMenu() {
         sidebar.classList.remove('mobile-open');
         overlay.classList.remove('active');
         toggle.classList.remove('active');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        if (overlay) overlay.setAttribute('aria-hidden', 'true');
     } else {
         sidebar.classList.add('mobile-open');
         overlay.classList.add('active');
         toggle.classList.add('active');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+        if (overlay) overlay.setAttribute('aria-hidden', 'false');
     }
 }
 
@@ -1188,6 +1231,8 @@ function closeMobileMenu() {
     sidebar.classList.remove('mobile-open');
     overlay.classList.remove('active');
     toggle.classList.remove('active');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    if (overlay) overlay.setAttribute('aria-hidden', 'true');
 }
 
 function toggleMobileSearch() {
@@ -1231,10 +1276,10 @@ function updateThemeUI(theme) {
     const text = document.getElementById('themeText');
     if (theme === 'dark') {
         if (icon) icon.textContent = '☀️';
-        if (text) text.textContent = displayLanguage === 'zh' ? '浅色模式' : 'Light Mode';
+        if (text) text.textContent = t('lightMode', 'Light Mode');
     } else {
         if (icon) icon.textContent = '🌙';
-        if (text) text.textContent = i18n[displayLanguage]?.darkMode || 'Dark Mode';
+        if (text) text.textContent = t('darkMode', 'Dark Mode');
     }
 }
 
@@ -1252,6 +1297,7 @@ function resetSettings() {
     localStorage.removeItem('theme');
     localStorage.removeItem('fontSize');
     localStorage.removeItem('displayLanguage');
+    localStorage.removeItem('uiMode');
 
     console.log('🔄 Settings reset to defaults');
 
@@ -1266,6 +1312,245 @@ function showSyncIndicator() {
         indicator.classList.remove('show');
     }, 3000);
 }
+
+/* ===================================
+   View Mode (standard / accessibility / elderly)
+   =================================== */
+function applyUIMode(mode) {
+    const valid = { standard: 1, accessibility: 1, elderly: 1 };
+    const m = valid[mode] ? mode : 'standard';
+    document.body.setAttribute('data-ui-mode', m);
+    const sel = document.getElementById('uiMode');
+    if (sel && sel.value !== m) sel.value = m;
+}
+function updateUIMode() {
+    const sel = document.getElementById('uiMode');
+    if (!sel) return;
+    const m = sel.value || 'standard';
+    applyUIMode(m);
+    try { localStorage.setItem('uiMode', m); } catch (e) {}
+    const labelMap = {
+        standard: t('uiMode_standard', 'Standard'),
+        accessibility: t('uiMode_accessibility', 'Accessibility'),
+        elderly: t('uiMode_elderly', 'Elderly')
+    };
+    if (typeof showToast === 'function') {
+        showToast(t('uiMode', 'View Mode') + ': ' + labelMap[m], 'info', 2000);
+    }
+}
+function loadUIMode() {
+    let saved = 'standard';
+    try { saved = localStorage.getItem('uiMode') || 'standard'; } catch (e) {}
+    applyUIMode(saved);
+}
+
+/* ===================================
+   Toast Notifications (additive helper)
+   =================================== */
+const MAX_VISIBLE_TOASTS = 4;
+function showToast(message, type, duration) {
+    type = type || 'info';
+    duration = duration || 3000;
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        console.log('[toast]', type, message);
+        return;
+    }
+    // Cap stack
+    while (container.children.length >= MAX_VISIBLE_TOASTS) {
+        container.firstChild.remove();
+    }
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+    toast.textContent = message;
+    container.appendChild(toast);
+    // Force reflow then add .show for transition
+    // eslint-disable-next-line no-unused-expressions
+    toast.offsetHeight;
+    toast.classList.add('show');
+    setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () { toast.remove(); }, 300);
+    }, duration);
+}
+function t(key, fallback) {
+    return (window.i18n && i18n[displayLanguage] && i18n[displayLanguage][key])
+        || (window.i18n && i18n.en && i18n.en[key])
+        || fallback;
+}
+
+/* ===================================
+   Connection Status helper (additive)
+   =================================== */
+function setConnectionStatus(state) {
+    const badge = document.getElementById('statusBadge');
+    if (!badge) return;
+    const known = { online: 'online', offline: 'offline', waiting: 'waiting' };
+    const cls = known[state] || 'waiting';
+    badge.className = 'connection-badge ' + cls;
+    const sp = badge.querySelector('span:last-child');
+    if (sp) sp.textContent = t(cls, sp.textContent || cls);
+}
+
+/* ===================================
+   Modal helpers for shortcuts/welcome (additive)
+   =================================== */
+let __modalLastFocus = null;
+let __activeModalId = null;
+const __FOCUSABLE_SEL = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+function __getFocusable(modal) {
+    return Array.prototype.filter.call(
+        modal.querySelectorAll(__FOCUSABLE_SEL),
+        function (el) { return el.offsetParent !== null || el === document.activeElement; }
+    );
+}
+function __trapFocus(e) {
+    if (e.key !== 'Tab' || !__activeModalId) return;
+    const m = document.getElementById(__activeModalId);
+    if (!m || !m.classList.contains('active')) return;
+    const items = __getFocusable(m);
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+document.addEventListener('keydown', __trapFocus, true);
+function __openModal(id) {
+    try { __modalLastFocus = document.activeElement; } catch (e) { __modalLastFocus = null; }
+    const m = document.getElementById(id);
+    if (!m) return;
+    m.classList.add('active');
+    __activeModalId = id;
+    // Focus the first focusable element (or close button)
+    setTimeout(function () {
+        const items = __getFocusable(m);
+        const closeBtn = m.querySelector('.about-close');
+        const target = closeBtn || items[0];
+        if (target) try { target.focus(); } catch (e) {}
+    }, 50);
+}
+function __closeModal(id) {
+    const m = document.getElementById(id);
+    if (m) m.classList.remove('active');
+    if (__activeModalId === id) __activeModalId = null;
+    if (__modalLastFocus && typeof __modalLastFocus.focus === 'function') {
+        try { __modalLastFocus.focus(); } catch (e) {}
+    }
+    __modalLastFocus = null;
+}
+function showShortcuts() { __openModal('shortcutsModal'); }
+function hideShortcuts(event) {
+    if (event && event.target !== event.currentTarget) return;
+    __closeModal('shortcutsModal');
+}
+function showWelcome() { __openModal('welcomeModal'); }
+function hideWelcome(event) {
+    if (event && event.target !== event.currentTarget) return;
+    __closeModal('welcomeModal');
+    try { localStorage.setItem('onboardingSeen_v1', '1'); } catch (e) {}
+}
+
+/* ===================================
+   Feature Tour (multi-step guide)
+   =================================== */
+let __tourStep = 0;
+function __tourSteps() {
+    return [
+        { icon: '🎙️', titleKey: 'tour_s1_title', titleFb: 'Live Translation', bodyKey: 'tour_s1_body',
+          bodyFb: 'As the host speaks, transcriptions and translations appear here in real time. Newer cards stack at the top.' },
+        { icon: '🌐', titleKey: 'tour_s2_title', titleFb: 'Choose Your Language', bodyKey: 'tour_s2_body',
+          bodyFb: 'Use "Display Language" in the sidebar to change the interface, and "Target Language" to control the translation output.' },
+        { icon: '🔊', titleKey: 'tour_s3_title', titleFb: 'Listen with TTS', bodyKey: 'tour_s3_body',
+          bodyFb: 'Enable Text-to-Speech to hear translations read aloud automatically. Adjust voice, speed and volume in the sidebar.' },
+        { icon: '📝', titleKey: 'tour_s4_title', titleFb: 'Cards & Actions', bodyKey: 'tour_s4_body',
+          bodyFb: 'Each card has a copy button and a replay button. The ⚡ badge means the result was served instantly from cache.' },
+        { icon: '🔍', titleKey: 'tour_s5_title', titleFb: 'Search & Export', bodyKey: 'tour_s5_body',
+          bodyFb: 'Use the search bar to filter the visible list. Export keeps your full history as TXT, JSON, CSV or SRT subtitles.' },
+        { icon: '♿', titleKey: 'tour_s6_title', titleFb: 'View Modes', bodyKey: 'tour_s6_body',
+          bodyFb: 'Switch between Standard, Accessibility (larger focus, bigger tap targets) and Elderly (large text and buttons) in Settings.' },
+        { icon: '⌨️', titleKey: 'tour_s7_title', titleFb: 'Shortcuts', bodyKey: 'tour_s7_body',
+          bodyFb: 'Press "?" anytime to see keyboard shortcuts. Press "/" to focus search, "g" to scroll to top, "Esc" to close dialogs.' }
+    ];
+}
+function __renderTour() {
+    const steps = __tourSteps();
+    const total = steps.length;
+    if (__tourStep < 0) __tourStep = 0;
+    if (__tourStep >= total) __tourStep = total - 1;
+    const step = steps[__tourStep];
+    const iconEl = document.getElementById('tourStepIcon');
+    const titleEl = document.getElementById('tourStepTitle');
+    const bodyEl = document.getElementById('tourStepBody');
+    const dotsEl = document.getElementById('tourDots');
+    const progEl = document.getElementById('tourProgress');
+    const prevBtn = document.getElementById('tourPrev');
+    const nextBtn = document.getElementById('tourNext');
+    if (!bodyEl) return;
+    if (iconEl) iconEl.textContent = step.icon;
+    if (titleEl) titleEl.textContent = t(step.titleKey, step.titleFb);
+    bodyEl.innerHTML = '';
+    const p = document.createElement('p');
+    p.textContent = t(step.bodyKey, step.bodyFb);
+    bodyEl.appendChild(p);
+    if (dotsEl) {
+        dotsEl.innerHTML = '';
+        for (let i = 0; i < total; i++) {
+            const d = document.createElement('button');
+            d.type = 'button';
+            d.className = 'tour-dot' + (i === __tourStep ? ' active' : '');
+            d.setAttribute('aria-label', 'Go to step ' + (i + 1));
+            d.onclick = (function (idx) { return function () { __tourStep = idx; __renderTour(); }; })(i);
+            dotsEl.appendChild(d);
+        }
+    }
+    if (progEl) progEl.textContent = (__tourStep + 1) + ' / ' + total;
+    if (prevBtn) prevBtn.disabled = (__tourStep === 0);
+    if (nextBtn) nextBtn.textContent = (__tourStep === total - 1)
+        ? t('tour_done', 'Done')
+        : t('tour_next', 'Next');
+}
+function showTour() {
+    __tourStep = 0;
+    const m = document.getElementById('tourModal');
+    if (m) {
+        m.classList.add('active');
+        __renderTour();
+    }
+    // also mark welcome as seen
+    try { localStorage.setItem('onboardingSeen_v1', '1'); } catch (e) {}
+}
+function hideTour(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const m = document.getElementById('tourModal');
+    if (m) m.classList.remove('active');
+}
+function tourPrev() { __tourStep--; __renderTour(); }
+function tourNext() {
+    const total = __tourSteps().length;
+    if (__tourStep >= total - 1) { hideTour(); return; }
+    __tourStep++;
+    __renderTour();
+}
+
+/* ===================================
+   Translation cache metadata (additive)
+   Tracks whether a cacheKey result came from the server-side cache.
+   =================================== */
+window.__translationCacheMeta = window.__translationCacheMeta || {};
+
+function markCacheHit(elem) {
+    if (!elem) return;
+    const cardActions = elem.querySelector('.card-actions');
+    if (!cardActions) return;
+    if (cardActions.querySelector('.card-badge.cache-hit')) return;
+    const badge = document.createElement('span');
+    badge.className = 'card-badge cache-hit';
+    badge.textContent = t('cacheHit', '⚡');
+    badge.title = t('cacheHitTooltip', 'Served from translation cache');
+    cardActions.insertBefore(badge, cardActions.firstChild);
+}
+
 
 function updateFontSize() {
     fontSize = parseInt(document.getElementById('fontSizeSlider').value);
@@ -1519,7 +1804,9 @@ async function performSingleTranslation(text, targetLang, translationLang) {
 }
 
 async function translateViaApi(text, targetLang) {
-    const cacheKey = `${text}|${targetLang}`;
+    // Use Unit Separator (U+001F) — guaranteed to never appear in user text — to avoid
+    // boundary ambiguity if the text itself contains a pipe character.
+    const cacheKey = `${text}\u001f${targetLang}`;
     
     // 1️⃣ Check local cache first
     if (translationCache[cacheKey]) {
@@ -1566,6 +1853,8 @@ async function translateViaApi(text, targetLang) {
         
         if (data.success && data.translated) {
             translationCache[cacheKey] = data.translated;
+            // Track whether the server served this from its translation cache
+            try { window.__translationCacheMeta[cacheKey] = !!data.cached; } catch (e) {}
             releaseTranslationSlot();
             return data.translated;
         }
@@ -1891,7 +2180,7 @@ function clearTTSQueue() {
 function speakTextSystem(text) {
     // Use Web Speech API (System TTS) 
     if (!('speechSynthesis' in window)) {
-        alert('Your browser does not support text-to-speech');
+        showToast(t('toast_ttsUnsupported', 'Your browser does not support text-to-speech'), 'warning');
         isTTSPlaying = false;
         processTTSQueue();
         return;
@@ -2044,7 +2333,7 @@ async function speakTextEdge(text) {
         console.error('☁️ Edge TTS error:', error);
         isTTSPlaying = false;
         processTTSQueue();
-        alert('Error using Edge TTS: ' + error.message);
+        showToast(t('toast_ttsError', 'TTS error') + ': ' + error.message, 'danger');
     }
 }
 
@@ -2139,11 +2428,11 @@ function copyWithFallback(id, text) {
             showCopyFeedback(id);
         } else {
             console.error('Fallback copy failed');
-            alert('Failed to copy to clipboard');
+            showToast(t('toast_copyFailed', 'Failed to copy to clipboard'), 'danger');
         }
     } catch (err) {
         console.error('Fallback copy error:', err);
-        alert('Failed to copy to clipboard');
+        showToast(t('toast_copyFailed', 'Failed to copy to clipboard'), 'danger');
     }
 }
 
@@ -2160,6 +2449,10 @@ function showCopyFeedback(id) {
             span.textContent = originalText;
             btn.classList.remove('copied');
         }, 2000);
+    }
+    // Also announce via toast (uses previously-unused i18n key)
+    if (typeof showToast === 'function') {
+        showToast(t('toast_copied', 'Copied to clipboard'), 'success', 1500);
     }
 }
 
@@ -2979,6 +3272,13 @@ async function translateInBackground(item, itemId, textEl) {
                 textEl.setAttribute('data-original-text', item.translated);
                 textEl.classList.remove('translating');
             }
+            // If this translation came from server-side cache, surface a small badge
+            try {
+                const cKey = (item.corrected || '') + '\u001f' + lang;
+                if (window.__translationCacheMeta && window.__translationCacheMeta[cKey]) {
+                    markCacheHit(elem2);
+                }
+            } catch (e) {}
             // Update TTS button data
             const ttsBtn = elem2.querySelector('.tts-icon');
             if (ttsBtn) {
@@ -3114,7 +3414,7 @@ function clearLocal() {
 
 function exportData() {
     if (translations.length === 0) {
-        alert('No translations to export');
+        showToast(t('toast_exportEmpty', 'No translations to export'), 'warning');
         return;
     }
 
@@ -3319,7 +3619,39 @@ function scrollToTop() {
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         hideAbout();
+        hideShortcuts();
+        hideWelcome();
+        if (typeof hideTour === 'function') hideTour();
         closeMobileMenu();
+        return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // "?" should always work, even from <select>/<button> focus
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+        // only block when typing actual text
+        const typingText = (tag === 'INPUT' && /^(text|search|email|number|password|tel|url)$/i.test(e.target.type || 'text'))
+            || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable);
+        if (typingText) return;
+        e.preventDefault();
+        showShortcuts();
+        return;
+    }
+
+    // Other shortcuts: ignore while interacting with form controls
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+    const isFormControl = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable);
+    if (isFormControl) return;
+
+    if (e.key === '/') {
+        const search = document.getElementById('searchInput') || document.getElementById('searchInputMobile');
+        if (search) { e.preventDefault(); search.focus(); search.select && search.select(); }
+        return;
+    }
+    if (e.key === 'g') {
+        if (typeof scrollToTop === 'function') { e.preventDefault(); scrollToTop(); }
+        return;
     }
 });
 
@@ -3344,12 +3676,7 @@ function setupSocketEventListeners() {
 
     socket.on('connect', async () => {
         console.log('Connected to server');
-        const badge = document.getElementById('statusBadge');
-        if (badge) {
-            badge.className = 'connection-badge online';
-            const sp = badge.querySelector('span:last-child');
-            if (sp) sp.textContent = i18n[displayLanguage]?.online || sp.textContent || 'Online';
-        }
+        setConnectionStatus('online');
         // Load translations now that we're connected and have token
         await loadInitialTranslations();
     });
@@ -3368,13 +3695,24 @@ function setupSocketEventListeners() {
 
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
-        const badge = document.getElementById('statusBadge');
-        if (badge) {
-            badge.className = 'connection-badge offline';
-            const sp = badge.querySelector('span:last-child');
-            if (sp) sp.textContent = i18n[displayLanguage]?.offline || sp.textContent || 'Offline';
-        }
+        setConnectionStatus('offline');
+        showToast(t('toast_offline', 'Connection lost. Reconnecting…'), 'warning', 4000);
     });
+
+    // Reconnection lifecycle (additive)
+    if (socket.io && typeof socket.io.on === 'function') {
+        socket.io.on('reconnect_attempt', () => {
+            setConnectionStatus('waiting');
+        });
+        socket.io.on('reconnect', () => {
+            setConnectionStatus('online');
+            showToast(t('toast_reconnected', 'Back online'), 'success', 2500);
+        });
+        socket.io.on('reconnect_failed', () => {
+            setConnectionStatus('offline');
+            showToast(t('toast_reconnectFailed', 'Could not reconnect. Please refresh the page.'), 'danger', 8000);
+        });
+    }
 
     socket.on('history', async (history) => {
         // Legacy: server still sends history, but we ignore it

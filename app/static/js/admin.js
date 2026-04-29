@@ -13,6 +13,46 @@ let recognitionAttempts = 0;
 const MAX_SILENT_TIME = 15000;
 let lastSpeechTimestamp = Date.now();
 let currentTempId = null;     // Temporary ID for linking interim->final (per utterance)
+
+/* ===================================
+   Toast helper (additive, mirrors user.js)
+   =================================== */
+const ADMIN_MAX_TOASTS = 4;
+function showToast(message, type, duration) {
+    type = type || 'info';
+    duration = duration || 3000;
+    const container = document.getElementById('toastContainer');
+    if (!container) { console.log('[toast]', type, message); return; }
+    while (container.children.length >= ADMIN_MAX_TOASTS) container.firstChild.remove();
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+    toast.textContent = message;
+    container.appendChild(toast);
+    // eslint-disable-next-line no-unused-expressions
+    toast.offsetHeight;
+    toast.classList.add('show');
+    setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () { toast.remove(); }, 300);
+    }, duration);
+}
+
+/* ===================================
+   i18n lookup helper (with English fallback)
+   =================================== */
+function t(key, fallback) {
+    try {
+        const lang = localStorage.getItem('displayLanguage') || 'en';
+        const lib = window.sharedI18n || {};
+        const langDict = lib[lang] || {};
+        const enDict = lib.en || {};
+        return langDict[key] || enDict[key] || fallback || key;
+    } catch (e) {
+        return fallback || key;
+    }
+}
+
 let interimThrottleTimer = null;  // Throttle interim sends
 
 // XSS Protection
@@ -98,6 +138,70 @@ function hideAbout(event) {
     }
 }
 
+function showShortcuts() {
+    const m = document.getElementById('shortcutsModal');
+    if (m) m.classList.add('active');
+}
+function hideShortcuts(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const m = document.getElementById('shortcutsModal');
+    if (m) m.classList.remove('active');
+}
+
+/* ===================================
+   Input / Export modals (replace prompt())
+   =================================== */
+let __inputModalCallback = null;
+function showInputModal(opts) {
+    opts = opts || {};
+    const m = document.getElementById('inputModal');
+    const titleEl = document.getElementById('inputModalTitle');
+    const labelEl = document.getElementById('inputModalLabel');
+    const fieldEl = document.getElementById('inputModalField');
+    if (!m || !fieldEl) return;
+    if (opts.title && titleEl) titleEl.textContent = opts.title;
+    if (opts.label && labelEl) labelEl.textContent = opts.label;
+    fieldEl.value = opts.value || '';
+    __inputModalCallback = opts.onConfirm || null;
+    m.classList.add('active');
+    setTimeout(function () { try { fieldEl.focus(); } catch (e) {} }, 50);
+}
+function hideInputModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const m = document.getElementById('inputModal');
+    if (m) m.classList.remove('active');
+    __inputModalCallback = null;
+}
+function __inputModalConfirm() {
+    const fieldEl = document.getElementById('inputModalField');
+    const val = fieldEl ? fieldEl.value : '';
+    const cb = __inputModalCallback;
+    hideInputModal();
+    if (cb) cb(val);
+}
+
+function showExportModal() {
+    const m = document.getElementById('exportModal');
+    if (m) m.classList.add('active');
+}
+function hideExportModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const m = document.getElementById('exportModal');
+    if (m) m.classList.remove('active');
+}
+function __doExport(format) {
+    hideExportModal();
+    if (!format) return;
+    const exportUrl = `${SERVER_URL}/api/export/${format}?token=${encodeURIComponent(authToken)}`;
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.target = '_blank';
+    link.download = `transcriptions.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     const newTheme = current === 'light' ? 'dark' : 'light';
@@ -113,10 +217,10 @@ function updateThemeUI(theme) {
 
     if (theme === 'dark') {
         if (icon) icon.textContent = '☀️';
-        if (text) text.textContent = 'Light Mode';
+        if (text) text.textContent = t('lightMode', 'Light Mode');
     } else {
         if (icon) icon.textContent = '🌙';
-        if (text) text.textContent = 'Dark Mode';
+        if (text) text.textContent = t('darkMode', 'Dark Mode');
     }
 }
 
@@ -198,12 +302,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    const isText = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable);
+
     if (e.key === 'Escape') {
         hideAbout();
+        hideShortcuts();
+        hideInputModal();
+        hideExportModal();
         closeMobileMenu();
         if (selectedItem) {
             cancelCorrection();
         }
+        return;
+    }
+
+    // "?" opens shortcuts (allow even when select is focused; block only on text fields)
+    if (e.key === '?' && !isText && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        showShortcuts();
+        return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
@@ -256,7 +374,7 @@ function connectWebSocket() {
         console.log('✅ Admin connected response:', response);
         if (!response.success) {
             console.error('❌ Admin connection rejected:', response.error);
-            alert('Session expired. Please login again.');
+            showToast('Session expired. Please login again.', 'danger');
             localStorage.removeItem('authToken');
             window.location.href = '/login';
         } else {
@@ -279,7 +397,7 @@ function connectWebSocket() {
         console.error('❌ Socket error:', error);
 
         if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Invalid token'))) {
-            alert('Session expired. Please login again.');
+            showToast('Session expired. Please login again.', 'danger');
             localStorage.removeItem('authToken');
             window.location.href = '/login';
         }
@@ -377,7 +495,7 @@ async function loadAudioDevices() {
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         select.innerHTML = '<option>❌ Not supported</option>';
-        alert('⚠️ Web Speech API not supported!\n\nPlease use Chrome or Edge.');
+        showToast('⚠️ Web Speech API not supported! — Please use Chrome or Edge.', 'warning');
         return;
     }
 
@@ -402,7 +520,7 @@ async function loadAudioDevices() {
     } catch (error) {
         console.error('Microphone access error:', error);
         select.innerHTML = '<option>❌ Access denied</option>';
-        alert('⚠️ Microphone access denied!\n\nPlease allow microphone access.');
+        showToast('⚠️ Microphone access denied! — Please allow microphone access.', 'danger');
     }
 }
 
@@ -464,7 +582,7 @@ function setupRecognitionHandlers() {
                 break;
 
             case 'audio-capture':
-                alert('❌ Cannot access microphone');
+                showToast('❌ Cannot access microphone', 'danger');
                 isRecording = false;
                 updateRecordButton();
                 updateInterimDisplay('Error: No microphone', false);
@@ -477,7 +595,7 @@ function setupRecognitionHandlers() {
                 break;
 
             case 'not-allowed':
-                alert('❌ Microphone permission denied');
+                showToast('❌ Microphone permission denied', 'danger');
                 isRecording = false;
                 updateRecordButton();
                 updateInterimDisplay('Error: Permission denied', false);
@@ -590,7 +708,7 @@ function updateRecordButton() {
 
 async function toggleRecording() {
     if (!recognition) {
-        alert('Speech Recognition not initialized. Please refresh.');
+        showToast('Speech Recognition not initialized. Please refresh.', 'warning');
         return;
     }
 
@@ -609,7 +727,7 @@ async function toggleRecording() {
             console.error('❌ Start failed:', error);
             isRecording = false;
             updateRecordButton();
-            alert('Failed to start recording: ' + error.message);
+            showToast('Failed to start recording: ' + error.message, 'danger');
         }
     } else {
         stopRecording();
@@ -640,7 +758,7 @@ function stopRecording() {
 
 function changeSourceLanguage() {
     if (isRecording) {
-        alert('⚠️ Cannot change language while recording. Please stop recording first.');
+        showToast('⚠️ Cannot change language while recording. Please stop recording first.', 'danger');
         const select = document.getElementById('sourceLangSelect');
         select.value = recognitionLanguage;
         return;
@@ -853,24 +971,27 @@ function selectItem(id) {
 }
 
 function addNewItem() {
-    const text = prompt('Enter transcription text:');
-    if (!text) return;
-
-    const validation = validateText(text);
-    if (!validation.valid) {
-        alert('❌ ' + validation.error);
-        return;
-    }
-
-    socket.emit('new_transcription', {
-        text: validation.text,
-        language: 'manual'
+    showInputModal({
+        title: '✏️ Add Transcription',
+        label: 'Enter transcription text:',
+        onConfirm: function (text) {
+            if (!text) return;
+            const validation = validateText(text);
+            if (!validation.valid) {
+                showToast('❌ ' + validation.error, 'danger');
+                return;
+            }
+            socket.emit('new_transcription', {
+                text: validation.text,
+                language: 'manual'
+            });
+        }
     });
 }
 
 function editSelected() {
     if (!selectedItem) {
-        alert('Please select an item to edit');
+        showToast('Please select an item to edit', 'warning');
         return;
     }
     document.getElementById('correctedText').focus();
@@ -879,7 +1000,7 @@ function editSelected() {
 function deleteSelected() {
     const checkboxes = document.querySelectorAll('.card-checkbox:checked');
     if (checkboxes.length === 0) {
-        alert('Please select items to delete');
+        showToast('Please select items to delete', 'warning');
         return;
     }
 
@@ -898,7 +1019,7 @@ function deleteSelected() {
 
 function saveCorrection() {
     if (!selectedItem) {
-        alert('No item selected');
+        showToast('No item selected', 'warning');
         return;
     }
 
@@ -906,7 +1027,7 @@ function saveCorrection() {
 
     const validation = validateText(corrected);
     if (!validation.valid) {
-        alert('❌ ' + validation.error);
+        showToast('❌ ' + validation.error, 'danger');
         return;
     }
 
@@ -915,7 +1036,7 @@ function saveCorrection() {
         corrected_text: validation.text
     });
 
-    alert('✅ Correction saved and broadcasted to all clients!');
+    showToast('✅ Correction saved and broadcasted to all clients!', 'success');
 
     setTimeout(() => {
         cancelCorrection();
@@ -936,22 +1057,10 @@ function clearHistory() {
 
 function exportData() {
     if (translations.length === 0) {
-        alert('No data to export');
+        showToast('No data to export', 'warning');
         return;
     }
-
-    const format = prompt('Export format:\n\n• txt - Plain text\n• json - JSON data\n• srt - Subtitle format\n\nEnter format:', 'txt');
-    if (!format) return;
-
-    const exportUrl = `${SERVER_URL}/api/export/${format}?token=${encodeURIComponent(authToken)}`;
-
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.target = '_blank';
-    link.download = `transcriptions.${format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    showExportModal();
 }
 
 function handleImportFile(event) {
@@ -960,7 +1069,7 @@ function handleImportFile(event) {
 
     // Validate file type
     if (!file.name.endsWith('.json')) {
-        alert('❌ Please select a JSON file');
+        showToast('❌ Please select a JSON file', 'danger');
         return;
     }
 
@@ -972,7 +1081,7 @@ function handleImportFile(event) {
             
             // Validate data structure
             if (!data.translations || !Array.isArray(data.translations)) {
-                alert('❌ Invalid JSON format. Expected {translations: []}');
+                showToast('❌ Invalid JSON format. Expected {translations: []}', 'danger');
                 return;
             }
 
@@ -981,7 +1090,7 @@ function handleImportFile(event) {
             for (const item of data.translations) {
                 for (const field of requiredFields) {
                     if (!(field in item)) {
-                        alert(`❌ Missing required field: ${field}`);
+                        showToast(`❌ Missing required field: ${field}`, 'danger');
                         return;
                     }
                 }
@@ -989,7 +1098,7 @@ function handleImportFile(event) {
 
             importTranslations(data.translations);
         } catch (error) {
-            alert(`❌ Error parsing JSON: ${error.message}`);
+            showToast(`❌ Error parsing JSON: ${error.message}`, 'danger');
             console.error('JSON parse error:', error);
         }
     };
@@ -1001,7 +1110,7 @@ function handleImportFile(event) {
 
 function importTranslations(translationsToImport) {
     if (translationsToImport.length === 0) {
-        alert('No translations to import');
+        showToast('No translations to import', 'warning');
         return;
     }
 
@@ -1042,7 +1151,7 @@ function importTranslations(translationsToImport) {
         imported++;
     }
 
-    alert(`✅ Import completed!\n\n${imported} transcription(s) imported\n${failed > 0 ? `${failed} skipped (validation failed)` : 'No errors'}`);
+    showToast(`✅ Import completed! — ${imported} transcription(s) imported ${failed > 0 ? `${failed} skipped (validation failed)` : 'No errors'}`, 'danger');
     
     console.log(`✅ Import completed: ${imported}/${translationsToImport.length}`);
 }
@@ -1205,19 +1314,19 @@ async function clearTTSCache() {
         // Handle authentication errors
         if (response.status === 401) {
             console.error('❌ Authentication failed for TTS cache clear');
-            alert('❌ Session expired, please login again');
+            showToast('❌ Session expired, please login again', 'danger');
             return;
         }
         
         if (response.status === 403) {
             console.error('❌ Access denied for TTS cache clear');
-            alert('❌ Admin access required to clear cache');
+            showToast('❌ Admin access required to clear cache', 'danger');
             return;
         }
         
         if (!response.ok) {
             console.error(`❌ Failed to clear TTS cache: HTTP ${response.status}`);
-            alert(`❌ Failed to clear TTS cache (HTTP ${response.status})\n\nCheck browser console and server logs for details.`);
+            showToast(`❌ Failed to clear TTS cache (HTTP ${response.status}) — Check browser console and server logs for details.`, 'danger');
             return;
         }
         
@@ -1226,7 +1335,7 @@ async function clearTTSCache() {
         if (!contentType || !contentType.includes('application/json')) {
             const bodyText = await response.text();
             console.error('❌ Backend returned non-JSON response:', bodyText.substring(0, 200));
-            alert('❌ Invalid response from server. Check browser console for details.');
+            showToast('❌ Invalid response from server. Check browser console for details.', 'danger');
             console.warn('💡 Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
@@ -1234,18 +1343,18 @@ async function clearTTSCache() {
         const data = await response.json();
         
         if (data.success) {
-            alert(`✅ TTS Cache Cleared!\n\nCleared: ${data.cleared_items} items\nFreed: ${data.freed_mb.toFixed(2)}MB`);
+            showToast(`✅ TTS Cache Cleared! — Cleared: ${data.cleared_items} items Freed: ${data.freed_mb.toFixed(2)}MB`, 'success');
             console.log('✅ TTS Cache cleared:', data);
             // Refresh stats after clearing
             setTimeout(() => refreshTTSCacheStats(), 500);
         } else {
             const errorMsg = data.error || 'Failed to clear cache';
             console.error('❌ Backend error:', errorMsg);
-            alert(`❌ ${errorMsg}\n\nCheck admin server logs for details.`);
+            showToast(`❌ ${errorMsg} — Check admin server logs for details.`, 'danger');
         }
     } catch (error) {
         console.error('❌ Network error clearing TTS cache:', error);
-        alert(`❌ Error: ${error.message}\n\nCheck if the admin panel is accessible and the backend is running.`);
+        showToast(`❌ Error: ${error.message} — Check if the admin panel is accessible and the backend is running.`, 'danger');
     }
 }
 
