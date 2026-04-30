@@ -793,6 +793,19 @@ def index():
     """Main client interface"""
     return render_template('user.html')
 
+@app.route('/captions')
+@limiter.limit("60 per minute")
+@check_client_access
+def captions():
+    """OBS / streaming overlay — transparent caption renderer.
+
+    Configurable via URL query params (see captions.html header for full list).
+    Examples:
+        /captions?mode=translated&size=64&pos=bottom
+        /captions?mode=both&color=ffff00&strokew=6
+    """
+    return render_template('captions.html')
+
 @app.route('/admin')
 def admin_route():
     """Admin interface route"""

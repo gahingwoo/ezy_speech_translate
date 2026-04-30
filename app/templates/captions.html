@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EzySpeech Captions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!--
+  OBS / streaming overlay — transparent background, large readable captions.
+
+  Query params (all optional):
+    mode=translated | original | both    (default: translated)
+    lang=en|zh|yue|...                   (filter: only show entries whose source_language matches; default: any)
+    lines=1..10                          (how many recent lines to keep on screen; default: 2)
+    size=12..200                         (font size in px; default: 56)
+    color=RRGGBB                         (text color; default: ffffff)
+    stroke=RRGGBB                        (outline color; default: 000000)
+    strokew=0..16                        (outline width in px; default: 4)
+    shadow=0|1                           (drop shadow; default: 1)
+    bg=transparent | RRGGBB | RRGGBBAA   (background; default: transparent)
+    align=left | center | right          (default: center)
+    pos=top | center | bottom            (vertical anchor; default: bottom)
+    pad=0..200                           (edge padding in px; default: 40)
+    font=                                (CSS font-family; default: system sans)
+    weight=100..900                      (default: 700)
+    fade=ms                              (per-line fade-out after no updates; 0 = never; default: 0)
+    maxchars=N                           (hard truncate per line; default: no limit)
+    showorig=0|1                         (legacy alias for mode=both)
+
+  Examples:
+    /captions?mode=translated&size=64&pos=bottom
+    /captions?mode=both&color=ffff00&stroke=000000&strokew=6
+    /captions?bg=000000aa&align=left&pos=top
+-->
+<style>
+    :root {
+        --cap-size: 56px;
+        --cap-color: #ffffff;
+        --cap-stroke: #000000;
+        --cap-strokew: 4px;
+        --cap-pad: 40px;
+        --cap-bg: transparent;
+        --cap-weight: 700;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--cap-bg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: var(--cap-color);
+    }
+    #stage {
+        position: fixed;
+        inset: 0;
+        padding: var(--cap-pad);
+        pointer-events: none;
+    }
+
+    /* TVNZ-style fixed N-line block. Text wraps naturally; typewriter
+       appends chars. When the block overflows, we drop a word from the
+       front so the visible window stays N lines tall — no horizontal
+       motion, no scroll bounce. Calm and easy to read. */
+    .cap-line {
+        position: absolute;
+        left: var(--cap-pad);
+        right: var(--cap-pad);
+        max-width: var(--cap-maxw, none);
+        margin-left: auto;
+        margin-right: auto;
+        font-size: var(--cap-size);
+        font-weight: var(--cap-weight);
+        line-height: 1.3;
+        height: calc(var(--cap-size) * 1.3 * var(--cap-lines, 2));
+        opacity: 1;
+        transition: opacity var(--cap-block-fade, 140ms) ease;
+        -webkit-text-stroke: var(--cap-strokew) var(--cap-stroke);
+        paint-order: stroke fill;
+        text-shadow:
+            0 2px 6px rgba(0,0,0,0.55),
+            0 0 2px rgba(0,0,0,0.6);
+        overflow: hidden;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        word-break: normal;
+    }
+    .cap-line.fading { opacity: 0; }
+    .cap-line .text { display: block; }
+    /* Each word is its own span so we can fade it in independently. */
+    .cap-line .w {
+        display: inline-block;
+        opacity: 0;
+        transform: translateY(2px);
+        transition:
+            opacity var(--cap-word-fade, 140ms) ease-out,
+            transform var(--cap-word-fade, 140ms) ease-out;
+    }
+    .cap-line .w.in {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Vertical anchoring. */
+    #stage.pos-top    .cap-line { top: var(--cap-pad); }
+    #stage.pos-bottom .cap-line { bottom: var(--cap-pad); }
+    #stage.pos-center .cap-line { top: 50%; transform: translateY(-50%); }
+
+    /* Horizontal alignment. */
+    #stage.align-left   .cap-line { text-align: left; }
+    #stage.align-center .cap-line { text-align: center; }
+    #stage.align-right  .cap-line { text-align: right; }
+
+    /* No-shadow variant */
+    body.no-shadow .cap-line { text-shadow: none; }
+
+    /* Status (only shown when ?debug=1) */
+    #status {
+        position: fixed;
+        top: 6px;
+        right: 8px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.6);
+        background: rgba(0,0,0,0.4);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+        display: none;
+    }
+    body.debug #status { display: block; }
+</style>
+</head>
+<body>
+<div id="stage" class="pos-bottom align-center" aria-live="polite" aria-atomic="false"></div>
+<div id="status">connecting…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    // ── Param parsing ─────────────────────────────────────────────
+    var qs = new URLSearchParams(window.location.search);
+    function p(name, def) {
+        var v = qs.get(name);
+        return (v === null || v === '') ? def : v;
+    }
+    function pInt(name, def, min, max) {
+        var n = parseInt(p(name, def), 10);
+        if (isNaN(n)) n = def;
+        if (typeof min === 'number') n = Math.max(min, n);
+        if (typeof max === 'number') n = Math.min(max, n);
+        return n;
+    }
+    function isHex(s) { return /^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s); }
+    function colorParam(name, def) {
+        var v = (p(name, def) || '').replace(/^#/, '');
+        return isHex(v) ? '#' + v : def;
+    }
+
+    var MODE      = (p('mode', 'translated') || 'translated').toLowerCase();
+    if (p('showorig', '0') === '1') MODE = 'both';
+    if (['translated','original','both'].indexOf(MODE) === -1) MODE = 'translated';
+
+    var FILTER_LANG = (p('lang', '') || '').toLowerCase();
+    // TVNZ-style: 2 lines by default. Text wraps; old words drop from front
+    // when block overflows.
+    var LINES     = pInt('lines',   2, 1, 6);
+    var SIZE      = pInt('size',   56, 12, 200);
+    var STROKEW   = pInt('strokew', 4, 0, 16);
+    var WEIGHT    = pInt('weight', 700, 100, 900);
+    var PAD       = pInt('pad',    40, 0, 200);
+    var FADE_MS       = pInt('fade',       0, 0, 600000);
+    // Auto-clear a finalized line after N ms (default 8000). Once no new
+    // updates arrive for this long after the last finalized sentence, the
+    // ticker scrolls the rest of the buffer off-screen and resets.
+    var CLEAR_FINAL   = pInt('clearfinal', 8000, 0, 600000);
+    var MAXCHARS  = pInt('maxchars', 0, 0, 5000);
+    // Idle timeout (ms): if no new caption arrives for this long, blank the
+    // screen. Default 10s. Set `idle=0` to disable.
+    var IDLE_MS       = pInt('idle', 10000, 0, 600000);
+    // Edge fade width in px (where the text fades in/out at left/right edges).
+    var FADE_PX       = pInt('edgefade', 120, 0, 1000);
+    // How many characters of historical text to keep in the scrolling buffer
+    // before trimming from the left. Larger = longer scroll-back ribbon.
+    var BUFFER_CHARS  = pInt('buffer', 400, 50, 5000);
+    // Typewriter speed: milliseconds per WORD (default 180ms ~ 330 wpm).
+    var WORD_MS       = pInt('wordms', 180, 30, 2000);
+    // Target words per line. Used to compute a max-width so wrapping
+    // happens roughly around this count. ~6 reads comfortably.
+    var WORDS_PER_LINE = pInt('wordsperline', 6, 2, 20);
+    // Per-word fade-in duration (ms). 0 = no fade, instant.
+    var WORD_FADE_MS  = pInt('wordfade', 140, 0, 2000);
+    // Block fade duration when clearing/swapping sentences (ms).
+    var BLOCK_FADE_MS = pInt('blockfade', 140, 0, 2000);
+    var SHADOW    = p('shadow', '1') !== '0';
+
+    var COLOR     = colorParam('color',  '#ffffff');
+    var STROKE    = colorParam('stroke', '#000000');
+
+    var ALIGN     = (p('align', 'center') || 'center').toLowerCase();
+    if (['left','center','right'].indexOf(ALIGN) === -1) ALIGN = 'center';
+    var POS       = (p('pos', 'bottom') || 'bottom').toLowerCase();
+    if (['top','center','bottom'].indexOf(POS) === -1) POS = 'bottom';
+
+    var BG_RAW = (p('bg', 'transparent') || 'transparent').toLowerCase().replace(/^#/, '');
+    var BG = (BG_RAW === 'transparent' || BG_RAW === 'none')
+        ? 'transparent'
+        : (isHex(BG_RAW) ? '#' + BG_RAW : 'transparent');
+
+    var FONT = p('font', '');
+    var DEBUG = p('debug', '0') === '1';
+
+    // ── Apply CSS vars ────────────────────────────────────────────
+    var root = document.documentElement;
+    root.style.setProperty('--cap-size',    SIZE + 'px');
+    root.style.setProperty('--cap-color',   COLOR);
+    root.style.setProperty('--cap-stroke',  STROKE);
+    root.style.setProperty('--cap-strokew', STROKEW + 'px');
+    root.style.setProperty('--cap-pad',     PAD + 'px');
+    root.style.setProperty('--cap-bg',      BG);
+    root.style.setProperty('--cap-weight',  String(WEIGHT));
+    root.style.setProperty('--cap-lines',   String(LINES));
+    root.style.setProperty('--cap-fade',    FADE_PX + 'px');
+    // Cap line width to ~ WORDS_PER_LINE words. Average word ≈ 5 chars + 1
+    // space, and `ch` ~ width of a digit, so use ~6.2ch per word as a
+    // calm, readable estimate.
+    root.style.setProperty('--cap-maxw',
+        Math.round(WORDS_PER_LINE * 6.2) + 'ch');
+    root.style.setProperty('--cap-word-fade',  WORD_FADE_MS  + 'ms');
+    root.style.setProperty('--cap-block-fade', BLOCK_FADE_MS + 'ms');
+    if (FONT) {
+        // Allow only a safe subset of characters in font-family to avoid CSS injection.
+        var safe = FONT.replace(/[^a-zA-Z0-9 ,_'"\-]/g, '');
+        if (safe) document.body.style.fontFamily = safe + ', ' + getComputedStyle(document.body).fontFamily;
+    }
+    if (!SHADOW) document.body.classList.add('no-shadow');
+    if (DEBUG) document.body.classList.add('debug');
+
+    var stage = document.getElementById('stage');
+    stage.classList.remove('pos-bottom', 'align-center');
+    stage.classList.add('pos-' + POS, 'align-' + ALIGN);
+
+    var status = document.getElementById('status');
+    function setStatus(s) { if (status) status.textContent = s; }
+
+    // ── Renderer (typewriter + horizontal ticker) ─────────────────
+    // One running string slides left while a continuous rAF loop animates
+    // each character in or out (typewriter). Mid-sentence corrections are
+    // handled by deleting wrong trailing chars and retyping — same animator,
+    // never stops/starts.
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function textFor(item) {
+        var orig  = item.corrected || item.original || '';
+        var trans = item.translated || '';
+        if (MAXCHARS) {
+            if (orig.length  > MAXCHARS) orig  = orig.slice(-MAXCHARS);
+            if (trans.length > MAXCHARS) trans = trans.slice(-MAXCHARS);
+        }
+        if (MODE === 'original')      return orig;
+        if (MODE === 'both' && trans) return orig + ' → ' + trans;
+        return trans || orig;
+    }
+
+    function shouldShow(item) {
+        if (!item) return false;
+        if (FILTER_LANG) {
+            var src = String(item.source_language || '').toLowerCase();
+            if (src !== FILTER_LANG && src.split('-')[0] !== FILTER_LANG) {
+                if (MODE === 'original') return false;
+            }
+        }
+        return true;
+    }
+
+    // ── Renderer (clean rewrite) ──────────────────────────────────
+    //
+    // Display model:
+    //   * One fixed-height block, LINES tall (default 2). Never scrolls.
+    //   * Words appear one at a time as separate <span class="w">. Each
+    //     fades in (opacity 0→1, translateY 2px→0) over WORD_FADE_MS.
+    //   * The block container has a transition on opacity. We use it to
+    //     fade the whole block out before any "destructive" change, then
+    //     mutate DOM, then fade back in.
+    //
+    // State machine — when does the block fade out?
+    //   A) New sentence arrives (different temp_id/id).
+    //   B) Adding the next word would overflow N lines.
+    //   C) Idle for IDLE_MS with no new content.
+    //
+    // When does a word get added?
+    //   Per-sentence, we track `acceptedCount` = how many words from this
+    //   sentence we've already enqueued. New interim → tokenize → push
+    //   words[acceptedCount..] to queue. Append-only, never un-type.
+    //
+    // typeNext() drains the queue one word per WORD_MS via setTimeout.
+    // While a block is mid-fade, typing pauses; it resumes when fade ends.
+    //
+    var line = document.createElement('div');
+    line.className = 'cap-line';
+    line.innerHTML = '<span class="text"></span>';
+    stage.appendChild(line);
+    var textEl = line.querySelector('.text');
+
+    var queue         = [];     // pending words (FIFO)
+    var acceptedCount = 0;      // words consumed from current sentence
+    var currentKey    = null;   // temp_id/id of the current sentence
+    var hasContent    = false;  // is there at least one word visible?
+    var typeTimer     = null;
+    var idleTimer     = null;
+    var clearTimer    = null;
+    var fading        = false;  // block fade in progress
+    var afterFade     = [];     // callbacks queued during fade
+
+    function tokenize(s) {
+        s = (s || '').trim();
+        return s ? s.split(/\s+/) : [];
+    }
+
+    function isOverflowing() {
+        return line.scrollHeight - line.clientHeight > 1;
+    }
+
+    function clearWords() {
+        textEl.textContent = '';
+        hasContent = false;
+    }
+
+    function appendWord(w) {
+        if (textEl.firstChild) textEl.appendChild(document.createTextNode(' '));
+        var span = document.createElement('span');
+        span.className = 'w';
+        span.textContent = w;
+        textEl.appendChild(span);
+        // Trigger transition on next frame so opacity change actually animates.
+        requestAnimationFrame(function () { span.classList.add('in'); });
+        hasContent = true;
+        return span;
+    }
+
+    // Fade the entire block out, run cb (DOM mutation), fade back in.
+    // Calls during a fade are queued and run in arrival order.
+    function fadeSwap(cb) {
+        if (BLOCK_FADE_MS <= 0) { cb(); return; }
+        if (fading) { afterFade.push(cb); return; }
+        fading = true;
+        line.classList.add('fading');
+        setTimeout(function () {
+            try { cb(); } catch (e) { console.error(e); }
+            while (afterFade.length) {
+                try { afterFade.shift()(); } catch (e) { console.error(e); }
+            }
+            // Force a reflow so removing the class actually re-fades-in
+            // rather than skipping the transition.
+            void line.offsetHeight;
+            line.classList.remove('fading');
+            fading = false;
+            // Resume typing if there are words waiting.
+            scheduleNext();
+        }, BLOCK_FADE_MS);
+    }
+
+    function scheduleNext() {
+        if (typeTimer != null) return;
+        if (queue.length === 0) return;
+        if (fading) return;
+        typeTimer = setTimeout(function () {
+            typeTimer = null;
+            typeNext();
+        }, WORD_MS);
+    }
+
+    function typeNext() {
+        if (fading) return;            // resumed by fadeSwap end
+        if (queue.length === 0) return;
+
+        var w = queue.shift();
+        var span = appendWord(w);
+
+        if (isOverflowing()) {
+            // Don't show the overflowing word in the OLD block — pull it
+            // back out, fade old block away, then make this word the first
+            // word of a fresh block.
+            var prev = span.previousSibling;
+            span.remove();
+            if (prev && prev.nodeType === 3 && /^\s*$/.test(prev.nodeValue)) {
+                prev.remove();
+            }
+            if (textEl.firstChild == null) hasContent = false;
+            fadeSwap(function () {
+                clearWords();
+                appendWord(w);
+            });
+            return; // scheduleNext will be called when fade completes
+        }
+        scheduleNext();
+    }
+
+    function blankNow() {
+        if (typeTimer != null) { clearTimeout(typeTimer); typeTimer = null; }
+        clearWords();
+    }
+
+    // Cancel any in-flight stuff and fade-blank the screen.
+    function blankFaded(cb) {
+        if (!hasContent) { if (cb) cb(); return; }
+        fadeSwap(function () {
+            clearWords();
+            if (cb) cb();
+        });
+    }
+
+    function armIdle() {
+        if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+        if (!IDLE_MS) return;
+        idleTimer = setTimeout(function () {
+            // No new content for IDLE_MS — fade away.
+            queue = [];
+            acceptedCount = 0;
+            currentKey = null;
+            blankFaded();
+        }, IDLE_MS);
+    }
+
+    function clearAll() {
+        if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+        if (idleTimer)  { clearTimeout(idleTimer);  idleTimer  = null; }
+        if (typeTimer)  { clearTimeout(typeTimer);  typeTimer  = null; }
+        queue = [];
+        acceptedCount = 0;
+        currentKey = null;
+        blankFaded();
+    }
+
+    function pushLine(item) {
+        if (!shouldShow(item)) return;
+
+        var key = item.temp_id      ? 't' + item.temp_id
+                : item.id != null   ? 'i' + item.id
+                : null;
+
+        if (key !== currentKey) {
+            // New sentence boundary. Drop any unsung words from the
+            // previous sentence and fade the old block away. The new
+            // sentence's words will start typing once the fade completes
+            // (scheduleNext is called from fadeSwap's end-of-fade).
+            queue = [];
+            acceptedCount = 0;
+            currentKey = key;
+            blankFaded();
+        }
+
+        // Diff: append-only. Only enqueue words beyond what we've already
+        // accepted for this sentence.
+        var words = tokenize(textFor(item));
+        if (words.length > acceptedCount) {
+            for (var i = acceptedCount; i < words.length; i++) {
+                queue.push(words[i]);
+            }
+            acceptedCount = words.length;
+            scheduleNext();
+        }
+
+        armIdle();
+
+        // Optional auto-clear after CLEAR_FINAL ms once a final id arrives.
+        if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+        if (CLEAR_FINAL && item.id != null) {
+            var keyAtSchedule = currentKey;
+            clearTimer = setTimeout(function () {
+                if (currentKey !== keyAtSchedule) return;
+                clearAll();
+            }, CLEAR_FINAL);
+        }
+    }
+
+    // ── Socket.IO wiring ──────────────────────────────────────────
+    var socket;
+    function getOrCreateClientId() {
+        var k = '_client_id';
+        var id;
+        try { id = localStorage.getItem(k); } catch (e) { id = null; }
+        if (!id) {
+            id = 'caption_' + Math.random().toString(36).slice(2, 12) + '_' + Date.now();
+            try { localStorage.setItem(k, id); } catch (e) {}
+        }
+        return id;
+    }
+
+    setStatus('connecting…');
+    try {
+        socket = io({
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            transports: ['websocket', 'polling'],
+            query: {
+                client_id: getOrCreateClientId(),
+                type: 'caption'
+            }
+        });
+    } catch (e) {
+        setStatus('socket-init-failed');
+        console.error('Socket init failed:', e);
+        return;
+    }
+
+    socket.on('connect', function () { setStatus('connected'); });
+    socket.on('disconnect', function () { setStatus('disconnected'); });
+    socket.on('connect_error', function (err) {
+        setStatus('error');
+        console.warn('connect_error:', err && err.message);
+    });
+
+    socket.on('new_translation', function (data) {
+        try { pushLine(data || {}); }
+        catch (e) { console.error('new_translation handler:', e); }
+    });
+
+    socket.on('translation_corrected', function (data) {
+        try { pushLine(data || {}); }
+        catch (e) { console.error('translation_corrected handler:', e); }
+    });
+
+    // Interim (live, mid-sentence) transcription from admin. Server emits
+    // {temp_id, text, source_language, is_interim:true}. We render it as the
+    // "original" so users can see captions appear as words are spoken; when the
+    // final `new_translation` arrives with the same temp_id, pushLine() will
+    // update the same DOM node in place and add the translation.
+    socket.on('realtime_transcription', function (data) {
+        if (!data || !data.text) return;
+        try {
+            pushLine({
+                temp_id: data.temp_id,
+                original: data.text,
+                corrected: data.text,
+                translated: '',
+                source_language: data.source_language || ''
+            });
+        } catch (e) { console.error('realtime_transcription handler:', e); }
+    });
+
+    socket.on('history_cleared', function () { clearAll(); });
+
+    // Note: we intentionally do NOT call /api/history for backfill — that
+    // endpoint requires auth, and captions overlays are unauthenticated by
+    // design. The overlay simply starts empty and fills in as live
+    // `new_translation` events arrive.
+})();
+</script>
+</body>
+</html>
