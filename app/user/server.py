@@ -1621,14 +1621,16 @@ def synthesize_tts():
 
     # 超限清理
     if cache_size_mb > 1000:
-        oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
-        del SYNTHESIS_REQUEST_CACHE[oldest_key]
-        del SYNTHESIS_CACHE_TIME[oldest_key]
+        if SYNTHESIS_CACHE_TIME:
+            oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
+            SYNTHESIS_REQUEST_CACHE.pop(oldest_key, None)
+            SYNTHESIS_CACHE_TIME.pop(oldest_key, None)
 
     if len(SYNTHESIS_REQUEST_CACHE) > 1000:
-        oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
-        del SYNTHESIS_REQUEST_CACHE[oldest_key]
-        del SYNTHESIS_CACHE_TIME[oldest_key]
+        if SYNTHESIS_CACHE_TIME:
+            oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
+            SYNTHESIS_REQUEST_CACHE.pop(oldest_key, None)
+            SYNTHESIS_CACHE_TIME.pop(oldest_key, None)
 
     return Response(
         audio_data,
@@ -1780,8 +1782,9 @@ def get_tts_cache_stats():
 
 @app.route('/api/tts/cache-clear', methods=['POST'])
 @limiter.limit("10 per minute")
+@require_admin_auth
 def clear_tts_cache():
-    """Clear all TTS synthesis cache"""
+    """Clear all TTS synthesis cache (admin only)."""
     try:
         global SYNTHESIS_REQUEST_CACHE, SYNTHESIS_CACHE_TIME
 
@@ -1825,6 +1828,13 @@ def handle_connect():
     if not client_id:
         client_id = f"browser_{secrets.token_hex(16)}"
         logger.warning(f"No client_id provided, generated fallback: {client_id}")
+
+    # Validate client_type to a known whitelist; anything else is treated
+    # as 'user'. Prevents callers from injecting arbitrary type strings
+    # via the query string and ending up in unexpected branches.
+    if client_type not in ('user', 'admin', 'caption'):
+        logger.warning(f"Unknown client_type '{client_type}' from {client_id}, defaulting to 'user'")
+        client_type = 'user'
 
     client_key = f"client:{client_id}"
     client_ip = get_real_ip()

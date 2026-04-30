@@ -1160,7 +1160,12 @@ function changeDisplayMode() {
         console.log('🧹 Removing ' + interimCards.length + ' interim cards');
         interimCards.forEach(card => card.remove());
     }
-    
+
+    // Reset virtual-scroll cursor — renderTranslations() will rebuild the
+    // DOM from scratch and append items afresh; keeping the old count
+    // would skip items or duplicate them.
+    renderedCount = 0;
+
     updateDisplayMode();
     renderTranslations();
 }
@@ -1666,35 +1671,47 @@ function performSearch() {
 }
 
 function highlightSearchText(card, query) {
-    if (!query) {
-        const sourceDiv = card.querySelector('.text-source');
-        const targetDiv = card.querySelector('.text-target');
-
-        [sourceDiv, targetDiv].forEach(function (div) {
-            if (!div) return;
-            const originalText = div.getAttribute('data-original-text');
-            if (originalText) {
-                div.textContent = originalText;
-                div.removeAttribute('data-original-text');
-            }
-        });
-        return;
-    }
-
     const sourceDiv = card.querySelector('.text-source');
     const targetDiv = card.querySelector('.text-target');
 
     [sourceDiv, targetDiv].forEach(function (div) {
         if (!div) return;
-
         const originalText = div.getAttribute('data-original-text') || div.textContent;
         if (!div.getAttribute('data-original-text')) {
             div.setAttribute('data-original-text', originalText);
         }
 
-        const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi');
-        const highlightedText = originalText.replace(regex, '<mark class="search-highlight">$1</mark>');
-        div.innerHTML = highlightedText;
+        if (!query) {
+            // Restore original plain text (no highlights, no HTML).
+            div.textContent = originalText;
+            div.removeAttribute('data-original-text');
+            return;
+        }
+
+        // Build highlighted output safely using DOM nodes — never innerHTML
+        // with user-controlled text. Splits the original on regex matches
+        // and inserts <mark> elements with textContent for the hit pieces.
+        const regex = new RegExp(escapeRegex(query), 'gi');
+        div.textContent = '';
+        let lastIndex = 0;
+        let m;
+        while ((m = regex.exec(originalText)) !== null) {
+            if (m.index > lastIndex) {
+                div.appendChild(document.createTextNode(
+                    originalText.slice(lastIndex, m.index)
+                ));
+            }
+            const mark = document.createElement('mark');
+            mark.className = 'search-highlight';
+            mark.textContent = m[0];
+            div.appendChild(mark);
+            lastIndex = m.index + m[0].length;
+            // Guard against zero-width matches causing an infinite loop.
+            if (m.index === regex.lastIndex) regex.lastIndex++;
+        }
+        if (lastIndex < originalText.length) {
+            div.appendChild(document.createTextNode(originalText.slice(lastIndex)));
+        }
     });
 }
 
@@ -1816,18 +1833,23 @@ async function translateViaApi(text, targetLang) {
     
     // 2️⃣ Throttle: wait for a slot in the translation queue
     await waitForTranslationSlot();
-    
+
     // Re-check cache (another request may have translated while waiting)
     if (translationCache[cacheKey]) {
         releaseTranslationSlot();
         return translationCache[cacheKey];
     }
-    
-    // 3️⃣ Try backend translation (single attempt, no aggressive retry)
+
+    // 3️⃣ Try backend translation (single attempt, no aggressive retry).
+    // Wrap the slot-using region in try/finally so any unexpected throw
+    // (network, parse, abort, refactor footgun) can never leak the
+    // concurrency counter and deadlock subsequent translations.
+    let backendResult = null;
+    let rateLimited = false;
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
+
         const response = await fetch('/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1835,35 +1857,33 @@ async function translateViaApi(text, targetLang) {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
-        
+
         if (response.status === 429) {
-            // Rate limited - back off, don't retry immediately
             console.warn('⚠️ Rate limited, backing off 5s...');
-            releaseTranslationSlot();
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            // Try client-side instead of hitting server again
-            return await translateViaClientFallback(text, targetLang, cacheKey);
-        }
-        
-        if (!response.ok) {
+            rateLimited = true;
+        } else if (!response.ok) {
             throw new Error('Status ' + response.status);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success && data.translated) {
-            translationCache[cacheKey] = data.translated;
-            // Track whether the server served this from its translation cache
-            try { window.__translationCacheMeta[cacheKey] = !!data.cached; } catch (e) {}
-            releaseTranslationSlot();
-            return data.translated;
+        } else {
+            const data = await response.json();
+            if (data.success && data.translated) {
+                translationCache[cacheKey] = data.translated;
+                try { window.__translationCacheMeta[cacheKey] = !!data.cached; } catch (e) {}
+                backendResult = data.translated;
+            }
         }
     } catch (error) {
         console.warn('⏱️ Backend translation failed:', error.message);
+    } finally {
+        releaseTranslationSlot();
     }
-    
-    releaseTranslationSlot();
-    
+
+    if (backendResult) return backendResult;
+
+    if (rateLimited) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return await translateViaClientFallback(text, targetLang, cacheKey);
+    }
+
     // 4️⃣ Backend failed, try client-side translation
     return await translateViaClientFallback(text, targetLang, cacheKey);
 }
@@ -2242,8 +2262,15 @@ async function speakTextEdge(text) {
     // Use Edge TTS (Cloud-based)
     try {
         console.log('☁️ Sending text to Edge TTS...');
-        
-        // Check if token is available
+
+        // Token is delivered asynchronously via the 'ready' socket event.
+        // Briefly poll for it (up to ~2s) before failing — otherwise an
+        // early click after page load would error out with "no token".
+        if (!apiSessionToken) {
+            for (let i = 0; i < 20 && !apiSessionToken; i++) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
         if (!apiSessionToken) {
             throw new Error('Waiting for server connection... Please try again in a moment');
         }
@@ -3407,6 +3434,19 @@ function clearLocal() {
     if (translations.length === 0) return;
     if (confirm(i18n[displayLanguage]?.confirmClear || 'Clear all translations from display?')) {
         translations = [];
+        translationsTotal = 0;
+        hasMoreTranslations = false;
+        renderedCount = 0;
+        // Drop any queued incoming translations and cancel the debounce
+        // timer; otherwise they would be re-rendered moments after the
+        // user explicitly cleared the view.
+        pendingNewTranslations = [];
+        if (newTranslationTimer) {
+            clearTimeout(newTranslationTimer);
+            newTranslationTimer = null;
+        }
+        const itemCount = document.getElementById('itemCount');
+        if (itemCount) itemCount.textContent = '0';
         renderTranslations();
         clearSearch();
     }
@@ -3508,23 +3548,12 @@ function exportAsTXT() {
 }
 
 function exportAsJSON() {
-    const exportData = {
-        metadata: {
-            generated: new Date().toISOString(),
-            mode: displayMode,
-            targetLanguage: displayMode === 'translation' ? targetLang : null,
-            totalEntries: translations.length
-        },
-        translations: translations.map(item => ({
-            id: item.id,
-            timestamp: item.timestamp,
-            original: item.corrected,
-            translated: displayMode === 'translation' ? (item.translated || null) : null,
-            isCorrected: item.is_corrected
-        }))
-    };
-
-    return JSON.stringify(exportData, null, 2);
+    // Mirror the server-side admin export shape exactly:
+    //   { "translations": [ ...raw items... ] }
+    // Items are kept as-is (snake_case fields, full payload) so an admin
+    // JSON export and a user JSON export of the same history are diffable
+    // and importable through the same code path.
+    return JSON.stringify({ translations: translations }, null, 2);
 }
 
 function exportAsCSV() {
@@ -3696,6 +3725,12 @@ function setupSocketEventListeners() {
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
         setConnectionStatus('offline');
+        // Cancel any pending render so it doesn't fire after disconnect
+        // (it would try to use a stale socket and throw).
+        if (newTranslationTimer) {
+            clearTimeout(newTranslationTimer);
+            newTranslationTimer = null;
+        }
         showToast(t('toast_offline', 'Connection lost. Reconnecting…'), 'warning', 4000);
     });
 
@@ -3736,16 +3771,40 @@ function setupSocketEventListeners() {
 
         let tempCard = list.querySelector('[data-temp-id="' + tempId + '"]');
         if (!tempCard) {
-            // Create interim card with proper structure: text-source + text-target
+            // Create interim card with proper structure: text-source + text-target.
+            // Build via DOM nodes (NOT innerHTML) — data.timestamp / data.text
+            // come from a websocket peer and must never reach innerHTML as
+            // strings, or a malicious admin could inject script.
             tempCard = document.createElement('div');
             tempCard.className = 'translation-card';
             tempCard.setAttribute('data-temp-id', tempId);
-            tempCard.innerHTML = '<div class="card-header">' +
-                '<span class="card-time">' + (data.timestamp || new Date().toLocaleTimeString()) + '</span>' +
-                '<div class="card-actions"></div>' +
-                '</div>' +
-                (displayMode === 'transcription' ? '<div class="text-target"></div>' : (showSourceText ? '<div class="text-source" data-original-text=""></div>' : '')) +
-                (displayMode !== 'transcription' ? '<div class="text-target"></div>' : '');
+
+            const header = document.createElement('div');
+            header.className = 'card-header';
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'card-time';
+            timeSpan.textContent = data.timestamp || new Date().toLocaleTimeString();
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'card-actions';
+            header.appendChild(timeSpan);
+            header.appendChild(actionsDiv);
+            tempCard.appendChild(header);
+
+            if (displayMode === 'transcription') {
+                const target = document.createElement('div');
+                target.className = 'text-target';
+                tempCard.appendChild(target);
+            } else {
+                if (showSourceText) {
+                    const source = document.createElement('div');
+                    source.className = 'text-source';
+                    source.setAttribute('data-original-text', '');
+                    tempCard.appendChild(source);
+                }
+                const target = document.createElement('div');
+                target.className = 'text-target';
+                tempCard.appendChild(target);
+            }
             list.insertBefore(tempCard, list.firstChild);
             
             // Initialize chunk tracking
@@ -3950,6 +4009,18 @@ function setupSocketEventListeners() {
     socket.on('history_cleared', () => {
         console.log('History cleared');
         translations = [];
+        translationsTotal = 0;
+        hasMoreTranslations = false;
+        renderedCount = 0;
+        // Same reasoning as clearLocal(): purge buffered translations and
+        // any pending render timer so cleared state actually stays cleared.
+        pendingNewTranslations = [];
+        if (newTranslationTimer) {
+            clearTimeout(newTranslationTimer);
+            newTranslationTimer = null;
+        }
+        const itemCount = document.getElementById('itemCount');
+        if (itemCount) itemCount.textContent = '0';
         renderTranslations();
         clearSearch();
     });
@@ -3957,7 +4028,12 @@ function setupSocketEventListeners() {
     socket.on('items_deleted', (data) => {
         console.log('Items deleted:', data.ids);
         const idsToDelete = data.ids || [];
+        const before = translations.length;
         translations = translations.filter(item => !idsToDelete.includes(item.id));
+        const removed = before - translations.length;
+        translationsTotal = Math.max(0, translationsTotal - removed);
+        const itemCount = document.getElementById('itemCount');
+        if (itemCount) itemCount.textContent = translationsTotal;
         renderTranslations();
     });
 }
