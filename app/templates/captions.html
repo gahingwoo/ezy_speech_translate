@@ -92,6 +92,8 @@
     /* Each word is its own span so we can fade it in independently. */
     .cap-line .w {
         display: inline-block;
+        vertical-align: top;
+        line-height: inherit;
         opacity: 0;
         transform: translateY(2px);
         transition:
@@ -281,28 +283,40 @@
         return true;
     }
 
-    // ── Renderer (clean rewrite) ──────────────────────────────────
+    // ─── Renderer (full rewrite — single source of truth) ────────
     //
-    // Display model:
-    //   * One fixed-height block, LINES tall (default 2). Never scrolls.
-    //   * Words appear one at a time as separate <span class="w">. Each
-    //     fades in (opacity 0→1, translateY 2px→0) over WORD_FADE_MS.
-    //   * The block container has a transition on opacity. We use it to
-    //     fade the whole block out before any "destructive" change, then
-    //     mutate DOM, then fade back in.
+    // Mental model:
+    //   * One fixed-height block, LINES rows tall. Never scrolls.
+    //   * The block holds AT MOST ONE "sentence" at a time (the `current`).
+    //   * That sentence is a list of words. Each rendered word is its own
+    //     <span class="w"> so it can fade in independently.
+    //   * State: queue[] = words from `current` not yet typed onto the DOM.
+    //     `current` = { key, words } currently on screen / being typed.
+    //     `pending` = { key, words } scheduled to replace current after a
+    //     block fade-out completes.
     //
-    // State machine — when does the block fade out?
-    //   A) New sentence arrives (different temp_id/id).
-    //   B) Adding the next word would overflow N lines.
-    //   C) Idle for IDLE_MS with no new content.
+    // All inputs (interim, final, correction) flow through `ingest(item)`.
+    // ingest decides one of three things:
+    //   A) item.key === current.key → diffApply(item.words) in place,
+    //      no fades, smallest possible DOM change.
+    //   B) item.key === pending.key → just update pending.words; the
+    //      install will pick up the latest version when fade completes.
+    //   C) Anything else → start a transition: fade out current, then
+    //      install the new sentence. If a transition is already in
+    //      progress, the latest target wins.
     //
-    // When does a word get added?
-    //   Per-sentence, we track `acceptedCount` = how many words from this
-    //   sentence we've already enqueued. New interim → tokenize → push
-    //   words[acceptedCount..] to queue. Append-only, never un-type.
-    //
-    // typeNext() drains the queue one word per WORD_MS via setTimeout.
-    // While a block is mid-fade, typing pauses; it resumes when fade ends.
+    // Stale-event protection:
+    //   * Finals carry a monotonically increasing `id`. We track
+    //     `lastFinalId`. Any final with `id < lastFinalId` is dropped
+    //     outright — that's a delayed translation for a sentence we've
+    //     already moved past, which would otherwise cause "old text
+    //     flashes back" bugs.
+    //   * Interims (temp_id-only) get no extra guard; they only cause
+    //     change if their key matches current/pending or the user really
+    //     started a new sentence.
+    //   * `translation_corrected` (admin edit) is special: it must NEVER
+    //     cause a transition. If the corrected sentence isn't on screen,
+    //     ignore it (re-fading would flash too fast to read).
     //
     var line = document.createElement('div');
     line.className = 'cap-line';
@@ -310,28 +324,71 @@
     stage.appendChild(line);
     var textEl = line.querySelector('.text');
 
-    var queue         = [];     // pending words (FIFO)
-    var acceptedCount = 0;      // words consumed from current sentence
-    var currentKey    = null;   // temp_id/id of the current sentence
-    var hasContent    = false;  // is there at least one word visible?
-    var typeTimer     = null;
-    var idleTimer     = null;
-    var clearTimer    = null;
-    var fading        = false;  // block fade in progress
-    var afterFade     = [];     // callbacks queued during fade
+    var queue       = [];     // words from current sentence still to type
+    var current     = null;   // { key, words[] } shown / being typed
+    var pending     = null;   // { key, words[] } to install after fade-out
+    var fading      = false;  // block is mid fade-out
+    var typeTimer   = null;
+    var idleTimer   = null;
+    var clearTimer  = null;
+    var lastFinalId = -1;     // monotonic stale-final guard
+
+    // ── Past-key tracking ─────────────────────────────────────────
+    // Keys we have moved past — i.e. they were once current/pending and
+    // got replaced, idle-cleared, history-cleared, or had their final
+    // applied. Any further event for these keys is a stale late delivery
+    // and must be dropped, otherwise it would re-show old content.
+    var pastKeys      = new Set();
+    var pastKeysOrder = [];
+    var PAST_MAX      = 500;
+    function markPast(k) {
+        if (k == null || pastKeys.has(k)) return;
+        pastKeys.add(k);
+        pastKeysOrder.push(k);
+        if (pastKeysOrder.length > PAST_MAX) {
+            pastKeys.delete(pastKeysOrder.shift());
+        }
+    }
+    // Keys for which a final (item.id) has already been applied. Further
+    // interim events (no id, just temp_id) for these keys are stale and
+    // would otherwise revert the displayed text from "translated/final"
+    // back to "raw interim".
+    var keysFinalized = new Set();
 
     function tokenize(s) {
         s = (s || '').trim();
         return s ? s.split(/\s+/) : [];
     }
 
-    function isOverflowing() {
-        return line.scrollHeight - line.clientHeight > 1;
+    function keyOf(item) {
+        if (item.temp_id)    return 't' + item.temp_id;
+        if (item.id != null) return 'i' + item.id;
+        return null;
     }
 
-    function clearWords() {
-        textEl.textContent = '';
-        hasContent = false;
+    function hasContent() { return textEl.firstChild != null; }
+    function clearWords() { textEl.textContent = ''; }
+
+    function getRendered() {
+        var spans = textEl.getElementsByClassName('w');
+        return Array.prototype.slice.call(spans);
+    }
+
+    // Count distinct line-box rows by reading each word span's bounding
+    // rect top. Robust against font-metric / sub-pixel rounding that makes
+    // scrollHeight unreliable.
+    function rowCount() {
+        var spans = getRendered();
+        if (spans.length === 0) return 0;
+        var rows = 0, lastTop = null;
+        for (var i = 0; i < spans.length; i++) {
+            var top = spans[i].getBoundingClientRect().top;
+            if (lastTop === null || Math.abs(top - lastTop) > 2) {
+                rows++;
+                lastTop = top;
+            }
+        }
+        return rows;
     }
 
     function appendWord(w) {
@@ -340,34 +397,57 @@
         span.className = 'w';
         span.textContent = w;
         textEl.appendChild(span);
-        // Trigger transition on next frame so opacity change actually animates.
         requestAnimationFrame(function () { span.classList.add('in'); });
-        hasContent = true;
         return span;
     }
 
-    // Fade the entire block out, run cb (DOM mutation), fade back in.
-    // Calls during a fade are queued and run in arrival order.
-    function fadeSwap(cb) {
-        if (BLOCK_FADE_MS <= 0) { cb(); return; }
-        if (fading) { afterFade.push(cb); return; }
+    function removeLastSpan() {
+        var spans = getRendered();
+        if (spans.length === 0) return;
+        var last = spans[spans.length - 1];
+        var prev = last.previousSibling;
+        if (last.parentNode) last.parentNode.removeChild(last);
+        if (prev && prev.nodeType === 3 && prev.parentNode) {
+            prev.parentNode.removeChild(prev);
+        }
+    }
+
+    // ─── Block fade ─────────────────────────────────────────────
+    //
+    // fade(commit): fade the block out, run `commit` (DOM mutation invisible
+    // to the user), fade back in. If called during an in-progress fade, the
+    // commit REPLACES the previous one (latest wins) — rapid-fire transitions
+    // collapse to a single visible swap.
+    var pendingCommit = null;
+    function fade(commit) {
+        if (BLOCK_FADE_MS <= 0) {
+            try { commit(); } catch (e) { console.error(e); }
+            scheduleNext();
+            return;
+        }
+        pendingCommit = commit;
+        if (fading) return;
         fading = true;
         line.classList.add('fading');
         setTimeout(function () {
-            try { cb(); } catch (e) { console.error(e); }
-            while (afterFade.length) {
-                try { afterFade.shift()(); } catch (e) { console.error(e); }
-            }
-            // Force a reflow so removing the class actually re-fades-in
-            // rather than skipping the transition.
-            void line.offsetHeight;
+            var cb = pendingCommit;
+            pendingCommit = null;
+            try { if (cb) cb(); } catch (e) { console.error(e); }
+            void line.offsetHeight;        // force reflow
             line.classList.remove('fading');
             fading = false;
-            // Resume typing if there are words waiting.
-            scheduleNext();
+            // If something was queued during this fade's commit, run another fade.
+            if (pendingCommit) {
+                var next = pendingCommit;
+                pendingCommit = null;
+                fade(next);
+            } else {
+                scheduleNext();
+            }
         }, BLOCK_FADE_MS);
     }
 
+    // ─── Typewriter ─────────────────────────────────────────────
     function scheduleNext() {
         if (typeTimer != null) return;
         if (queue.length === 0) return;
@@ -379,114 +459,266 @@
     }
 
     function typeNext() {
-        if (fading) return;            // resumed by fadeSwap end
-        if (queue.length === 0) return;
-
-        var w = queue.shift();
+        if (fading || queue.length === 0) return;
+        var w = queue[0];
         var span = appendWord(w);
-
-        if (isOverflowing()) {
-            // Don't show the overflowing word in the OLD block — pull it
-            // back out, fade old block away, then make this word the first
-            // word of a fresh block.
-            var prev = span.previousSibling;
-            span.remove();
-            if (prev && prev.nodeType === 3 && /^\s*$/.test(prev.nodeValue)) {
-                prev.remove();
-            }
-            if (textEl.firstChild == null) hasContent = false;
-            fadeSwap(function () {
+        if (rowCount() > LINES) {
+            // Overflow: roll back this append. The current viewport is
+            // full. Start a fresh viewport whose first word is `w`. We
+            // also advance the sentence's offset so subsequent diff
+            // applies against the correct sentence-relative window.
+            removeLastSpan();
+            var carry = queue.slice();
+            queue = [];
+            // The new viewport starts at sentence-index = (current offset
+            // + everything that was rendered before this attempt).
+            // Rendered count BEFORE the rolled-back append:
+            var renderedBefore = getRendered().length;
+            var newOffset = (current ? current.offset : 0) + renderedBefore;
+            fade(function () {
                 clearWords();
-                appendWord(w);
+                if (current) current.offset = newOffset;
+                queue = carry;
             });
-            return; // scheduleNext will be called when fade completes
+            return;
         }
+        queue.shift();         // commit
         scheduleNext();
     }
 
-    function blankNow() {
-        if (typeTimer != null) { clearTimeout(typeTimer); typeTimer = null; }
-        clearWords();
+    // ─── Diff: align rendered + queue with newWords ─────────────
+    //
+    // newWords is the FULL sentence. We diff against the visible window
+    // (rendered + queue), which represents newWords starting at
+    // `current.offset`. Words before offset have already scrolled off the
+    // top of the viewport in earlier overflow cycles and are gone for good.
+    function diffApply(newWords) {
+        var offset = current ? current.offset : 0;
+        // If new sentence got SHORTER than what we already scrolled past
+        // (very rare; usually means a totally different correction), reset
+        // by transitioning. Falls through to caller.
+        if (newWords.length < offset) {
+            offset = 0;
+            current.offset = 0;
+            // Force a clean viewport with the new (shorter) text.
+            var carry = newWords.slice();
+            queue = [];
+            fade(function () { clearWords(); queue = carry; });
+            return;
+        }
+        var windowed = newWords.slice(offset);
+
+        var rendered = getRendered();
+        var R = rendered.length;
+        var oldRendered = rendered.map(function (s) { return s.textContent; });
+        var oldFull = oldRendered.concat(queue);
+        var nO = oldFull.length, nN = windowed.length;
+
+        var pre = 0, mp = Math.min(nO, nN);
+        while (pre < mp && oldFull[pre] === windowed[pre]) pre++;
+        if (pre === nO && pre === nN) return;       // identical
+
+        var suf = 0, ms = Math.min(nO - pre, nN - pre);
+        while (suf < ms && oldFull[nO - 1 - suf] === windowed[nN - 1 - suf]) suf++;
+
+        if (pre >= R) {
+            // Change is entirely past the rendered region; just rebuild queue.
+            queue = windowed.slice(R);
+            scheduleNext();
+            return;
+        }
+
+        var sufInR = Math.min(suf, R - pre);
+        var anchor = (R - sufInR < R) ? rendered[R - sufInR] : null;
+        var oldMid = rendered.slice(pre, R - sufInR);
+        var newMid = windowed.slice(pre, nN - sufInR);
+
+        // 1) Patch overlap (silent text swap).
+        var ovr = Math.min(oldMid.length, newMid.length);
+        for (var i = 0; i < ovr; i++) {
+            if (oldMid[i].textContent !== newMid[i]) {
+                oldMid[i].textContent = newMid[i];
+            }
+        }
+        // 2) Delete extras when middle shrunk.
+        for (var d = oldMid.length - 1; d >= newMid.length; d--) {
+            var sp = oldMid[d];
+            var prev = sp.previousSibling;
+            if (sp.parentNode) sp.parentNode.removeChild(sp);
+            if (prev && prev.nodeType === 3 && prev.parentNode) {
+                prev.parentNode.removeChild(prev);
+            }
+        }
+        // 3) Insert new mid words (fade in).
+        for (var ins = oldMid.length; ins < newMid.length; ins++) {
+            var space = document.createTextNode(' ');
+            var span = document.createElement('span');
+            span.className = 'w';
+            span.textContent = newMid[ins];
+            if (anchor) {
+                textEl.insertBefore(space, anchor);
+                textEl.insertBefore(span, anchor);
+            } else {
+                if (textEl.firstChild) textEl.appendChild(space);
+                textEl.appendChild(span);
+            }
+            (function (s) {
+                requestAnimationFrame(function () { s.classList.add('in'); });
+            }(span));
+        }
+
+        // 4) Rebuild queue (windowed coordinates).
+        var newR = pre + newMid.length + sufInR;
+        queue = windowed.slice(newR);
+
+        // After insertions, we may now be overflowing. If so, advance the
+        // sentence offset and transition to a fresh viewport with the
+        // un-rendered tail.
+        if (rowCount() > LINES) {
+            // The new viewport will start where the un-rendered tail begins
+            // in the full sentence: offset + (current rendered count).
+            var nowRendered = getRendered().length;
+            var newOffset = offset + nowRendered;
+            var tail = newWords.slice(newOffset);
+            queue = [];
+            fade(function () {
+                clearWords();
+                if (current) current.offset = newOffset;
+                queue = tail;
+            });
+            return;
+        }
+        if (queue.length > 0) scheduleNext();
     }
 
-    // Cancel any in-flight stuff and fade-blank the screen.
-    function blankFaded(cb) {
-        if (!hasContent) { if (cb) cb(); return; }
-        fadeSwap(function () {
+    // ─── Sentence transitions ──────────────────────────────────
+    function installSentence(s) {
+        // Caller has already cleared the DOM (or DOM is empty).
+        current = { key: s.key, words: s.words.slice(), offset: 0 };
+        if (typeTimer) { clearTimeout(typeTimer); typeTimer = null; }
+        queue = s.words.slice();
+        scheduleNext();
+    }
+
+    function transitionTo(key, words) {
+        // The current sentence is being abandoned — record it as past so
+        // any late events for it get dropped.
+        if (current && current.key !== key) markPast(current.key);
+        if (pending && pending.key !== key) markPast(pending.key);
+        pending = { key: key, words: words.slice() };
+        if (!hasContent() && !fading) {
+            // Nothing to fade out; install immediately.
+            var p = pending; pending = null;
+            installSentence(p);
+            return;
+        }
+        fade(function () {
+            // Read pending fresh — it may have been updated mid-fade.
+            var p = pending; pending = null;
+            if (!p) return;
+            // The previously-shown sentence is now leaving the screen.
+            if (current) markPast(current.key);
             clearWords();
-            if (cb) cb();
+            installSentence(p);
         });
     }
 
+    // ─── Timers ────────────────────────────────────────────────
     function armIdle() {
         if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
         if (!IDLE_MS) return;
-        idleTimer = setTimeout(function () {
-            // No new content for IDLE_MS — fade away.
-            queue = [];
-            acceptedCount = 0;
-            currentKey = null;
-            blankFaded();
-        }, IDLE_MS);
+        idleTimer = setTimeout(function () { clearAll(); }, IDLE_MS);
+    }
+
+    function armClearFinal(item) {
+        if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+        if (!CLEAR_FINAL || item.id == null) return;
+        var k = (current && current.key) || (pending && pending.key) || null;
+        clearTimer = setTimeout(function () {
+            var nowK = (current && current.key) || (pending && pending.key) || null;
+            if (nowK !== k) return;
+            clearAll();
+        }, CLEAR_FINAL);
     }
 
     function clearAll() {
         if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
         if (idleTimer)  { clearTimeout(idleTimer);  idleTimer  = null; }
         if (typeTimer)  { clearTimeout(typeTimer);  typeTimer  = null; }
+        if (current) markPast(current.key);
+        if (pending) markPast(pending.key);
         queue = [];
-        acceptedCount = 0;
-        currentKey = null;
-        blankFaded();
+        current = null;
+        pending = null;
+        if (!hasContent() && !fading) return;
+        fade(function () { clearWords(); });
     }
 
-    function pushLine(item) {
+    // ─── Ingest ────────────────────────────────────────────────
+    function ingest(item) {
         if (!shouldShow(item)) return;
+        var key = keyOf(item);
+        if (key == null) return;
 
-        var key = item.temp_id      ? 't' + item.temp_id
-                : item.id != null   ? 'i' + item.id
-                : null;
+        // Drop events for keys we have already moved past. This catches
+        // late-arriving interims/finals for sentences that were replaced,
+        // idle-cleared, or history-cleared. Without this, branch C below
+        // would happily fade away current content and re-show the stale
+        // old sentence.
+        if (pastKeys.has(key)) return;
 
-        if (key !== currentKey) {
-            // New sentence boundary. Drop any unsung words from the
-            // previous sentence and fade the old block away. The new
-            // sentence's words will start typing once the fade completes
-            // (scheduleNext is called from fadeSwap's end-of-fade).
-            queue = [];
-            acceptedCount = 0;
-            currentKey = key;
-            blankFaded();
+        var isFinal = (item.id != null);
+
+        // Stale-final guard (monotonic id). Catches finals delivered out
+        // of order across keys. Interims (no id) bypass this; pastKeys
+        // covers them.
+        if (isFinal) {
+            if (item.id < lastFinalId) return;
+            lastFinalId = item.id;
+        } else {
+            // Interim event for a key whose final has already been
+            // applied → stale. Dropping prevents the displayed final
+            // text from being reverted to a raw interim transcript.
+            if (keysFinalized.has(key)) return;
         }
 
-        // Diff: append-only. Only enqueue words beyond what we've already
-        // accepted for this sentence.
         var words = tokenize(textFor(item));
-        if (words.length > acceptedCount) {
-            for (var i = acceptedCount; i < words.length; i++) {
-                queue.push(words[i]);
-            }
-            acceptedCount = words.length;
-            scheduleNext();
+        if (words.length === 0) return;
+
+        // (A) Same as currently-shown sentence → in-place diff. But if
+        // we're already transitioning AWAY from this sentence (pending
+        // set), don't keep mutating it — it's about to disappear.
+        if (current && key === current.key) {
+            if (pending != null) return;
+            current.words = words;
+            diffApply(words);
+            if (isFinal) keysFinalized.add(key);
+            armIdle();
+            armClearFinal(item);
+            return;
         }
 
+        // (B) Same as the sentence we're transitioning to → just refresh
+        // pending; the fade-end install will pick up the latest words.
+        if (pending && key === pending.key) {
+            pending.words = words.slice();
+            if (isFinal) keysFinalized.add(key);
+            armIdle();
+            armClearFinal(item);
+            return;
+        }
+
+        // (C) New sentence — fade out and install.
+        transitionTo(key, words);
+        if (isFinal) keysFinalized.add(key);
         armIdle();
-
-        // Optional auto-clear after CLEAR_FINAL ms once a final id arrives.
-        if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
-        if (CLEAR_FINAL && item.id != null) {
-            var keyAtSchedule = currentKey;
-            clearTimer = setTimeout(function () {
-                if (currentKey !== keyAtSchedule) return;
-                clearAll();
-            }, CLEAR_FINAL);
-        }
+        armClearFinal(item);
     }
 
-    // ── Socket.IO wiring ──────────────────────────────────────────
+    // ─── Socket.IO ─────────────────────────────────────────────
     var socket;
     function getOrCreateClientId() {
-        var k = '_client_id';
-        var id;
+        var k = '_client_id', id;
         try { id = localStorage.getItem(k); } catch (e) { id = null; }
         if (!id) {
             id = 'caption_' + Math.random().toString(36).slice(2, 12) + '_' + Date.now();
@@ -502,10 +734,7 @@
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
             transports: ['websocket', 'polling'],
-            query: {
-                client_id: getOrCreateClientId(),
-                type: 'caption'
-            }
+            query: { client_id: getOrCreateClientId(), type: 'caption' }
         });
     } catch (e) {
         setStatus('socket-init-failed');
@@ -513,32 +742,43 @@
         return;
     }
 
-    socket.on('connect', function () { setStatus('connected'); });
-    socket.on('disconnect', function () { setStatus('disconnected'); });
+    socket.on('connect',       function ()    { setStatus('connected'); });
+    socket.on('disconnect',    function ()    { setStatus('disconnected'); });
     socket.on('connect_error', function (err) {
         setStatus('error');
         console.warn('connect_error:', err && err.message);
     });
 
     socket.on('new_translation', function (data) {
-        try { pushLine(data || {}); }
+        try { ingest(data || {}); }
         catch (e) { console.error('new_translation handler:', e); }
     });
 
+    // Admin correction. Only patches if the corrected sentence is currently
+    // on screen — never causes a transition or re-fades old content.
     socket.on('translation_corrected', function (data) {
-        try { pushLine(data || {}); }
-        catch (e) { console.error('translation_corrected handler:', e); }
+        var item = data || {};
+        if (!shouldShow(item)) return;
+        var key = keyOf(item);
+        if (key == null) return;
+        if (pastKeys.has(key)) return;     // sentence has left the screen
+        var words = tokenize(textFor(item));
+        if (current && key === current.key && pending == null) {
+            current.words = words;
+            diffApply(words);
+            return;
+        }
+        if (pending && key === pending.key) {
+            pending.words = words.slice();
+            return;
+        }
+        // Off-screen correction: ignore (intentional — re-fading would flash).
     });
 
-    // Interim (live, mid-sentence) transcription from admin. Server emits
-    // {temp_id, text, source_language, is_interim:true}. We render it as the
-    // "original" so users can see captions appear as words are spoken; when the
-    // final `new_translation` arrives with the same temp_id, pushLine() will
-    // update the same DOM node in place and add the translation.
     socket.on('realtime_transcription', function (data) {
         if (!data || !data.text) return;
         try {
-            pushLine({
+            ingest({
                 temp_id: data.temp_id,
                 original: data.text,
                 corrected: data.text,
@@ -548,12 +788,19 @@
         } catch (e) { console.error('realtime_transcription handler:', e); }
     });
 
-    socket.on('history_cleared', function () { clearAll(); });
+    socket.on('history_cleared', function () {
+        // Server reset all history (including next_translation_id back to 0).
+        // Reset our stale-event guards too, otherwise new sentences after
+        // reset (which start at id=0 again) would be mistaken for stale.
+        pastKeys = new Set();
+        pastKeysOrder = [];
+        keysFinalized = new Set();
+        lastFinalId = -1;
+        clearAll();
+    });
 
-    // Note: we intentionally do NOT call /api/history for backfill — that
-    // endpoint requires auth, and captions overlays are unauthenticated by
-    // design. The overlay simply starts empty and fills in as live
-    // `new_translation` events arrive.
+    // Note: no /api/history backfill — that endpoint requires auth and the
+    // overlay is unauthenticated by design. Starts empty, fills via events.
 })();
 </script>
 </body>
