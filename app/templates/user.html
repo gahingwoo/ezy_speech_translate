@@ -294,6 +294,35 @@
                     </button>
                 </div>
             </section>
+
+            {% if bible_detection_enabled %}
+            <!-- Bible Verses — standalone section, separate from Settings -->
+            <section class="sidebar-section" id="bibleSidebarSection" aria-label="Bible Verses">
+                <h3 class="sidebar-title">📖 Bible Verses</h3>
+
+                <div class="control-group">
+                    <button aria-label="Toggle Bible verse display" aria-pressed="false"
+                            class="sidebar-menu-item" id="bibleVerseToggle"
+                            onclick="toggleBibleVerse()">
+                        <span aria-hidden="true">📖</span>
+                        <span id="bibleVerseText">Show Bible Verses</span>
+                    </button>
+                </div>
+
+                <div class="control-group" id="bibleVerseToggleWrap">
+                    <label class="control-label" for="bibleTargetTranslation">Your Bible</label>
+                    <select aria-label="Select Bible translation for your language"
+                            id="bibleTargetTranslation"
+                            onchange="onBibleTranslationChange()">
+                        <option value="">— Loading... —</option>
+                    </select>
+                    <div id="bibleTransLoadingHint"
+                         style="font-size:11px; color:var(--text-secondary,#888); margin-top:4px; display:none;">
+                        Auto-matched to your language. Choose any Bible below.
+                    </div>
+                </div>
+            </section>
+            {% endif %}
         </aside>
 
         <!-- Main Section -->

@@ -204,6 +204,23 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Bible Settings — source translation is admin-only -->
+            <div class="sidebar-section" id="bibleAdminSection">
+                <h3 class="sidebar-title">📖 Bible</h3>
+
+                <div class="control-group">
+                    <label class="control-label" for="adminBibleSourceSelect">Source Translation</label>
+                    <select id="adminBibleSourceSelect"
+                            onchange="saveBibleSourceTranslation()"
+                            title="Bible translation shown alongside the original-language caption. Choose based on the language being spoken.">
+                        <option value="">— Loading... —</option>
+                    </select>
+                    <div id="adminBibleSaveStatus"
+                         style="font-size:11px; margin-top:4px; color:var(--text-secondary,#888);">
+                    </div>
+                </div>
+            </div>
         </aside>
 
         <!-- Main Section -->

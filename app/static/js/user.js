@@ -44,16 +44,9 @@ function initSocket() {
         }
     });
 
-    socket.on('connect', () => {
-        console.log('✅ Socket.IO connected');
-        socketRetryCount = 0;  // Reset retry count on successful connection
-    });
-
     socket.on('connect_error', (error) => {
         socketRetryCount++;
         console.error(`❌ Socket.IO connection error (attempt ${socketRetryCount}):`, error);
-
-        // Don't show error for initial connection attempts - Socket.IO handles retries
         if (socketRetryCount > 3) {
             console.warn('Connection failed multiple times. Check server status and network settings.');
         }
@@ -63,9 +56,9 @@ function initSocket() {
         console.error('❌ Socket.IO error:', error);
     });
 
-    socket.on('disconnect', (reason) => {
-        console.warn('⚠️ Socket.IO disconnected:', reason);
-    });
+    // Register all app-level listeners immediately — before the socket
+    // can connect — so connect/ready events are never missed.
+    setupSocketEventListeners();
 
     return socket;
 }
@@ -112,7 +105,7 @@ let translationsLimit = 13;          // Items per load (10 visible + 3 preload)
 let translationsTotal = 0;           // Total items on server
 let isLoadingMore = false;           // Prevent duplicate requests
 let hasMoreTranslations = false;     // More items available on server
-let apiSessionToken = null;          // API token from WebSocket connection
+let apiSessionToken = localStorage.getItem('apiSessionToken') || null;  // API token from WebSocket connection
 let pageVisible = true;              // Track if page is visible (for optimization)
 
 // Virtual Scrolling Optimization - PERFORMANCE FIX
@@ -284,6 +277,380 @@ function updateSourceTextToggleUI() {
     } else {
         console.warn('⚠️ Could not find sourceTextToggle or sourceTextText elements');
     }
+}
+
+/* =========================
+   Bible verse panel (opt-in, server-gated)
+   =========================
+   Server attaches `bible_refs` to translations when
+   features.bible_detection.enabled is true in config.yaml.  The server
+   broadcasts only ref METADATA (book/chapter/verse/display) — no verse
+   text.  Each client fetches verse text via /api/bible/lookup using
+   their own preferred target translation, which is auto-matched to the
+   user's selected display/target language.
+
+   Source translation is admin-configured (admin HTML) and never sent
+   by the user client — the server uses its own configured value.
+
+   The Bible section (✝️) is rendered server-side (Jinja2) so it only
+   appears when the admin has enabled bible_detection.
+*/
+let bibleFeatureAvailable = false;
+// Default ON — set 'showBibleVerse'='false' in localStorage to opt out.
+let showBibleVerse = localStorage.getItem('showBibleVerse') !== 'false';
+
+// User's chosen target Bible translation (persisted in localStorage).
+// "" means "none" — no second translation shown.
+let bibleTargetTrans = localStorage.getItem('bibleTargetTrans') || '';
+
+// ── Language → PrayerPulse language-name mapping ─────────────────────
+// Maps UI lang codes to the PrayerPulse language group name and a
+// preferred default translation code for that language.
+const _LANG_BIBLE = {
+    en:      { pp: 'English',             def: 'KJV'    },
+    zh:      { pp: 'Chinese',             def: 'CUNP',   script: 'simplified' },  // simplified → new punct
+    'zh-tw': { pp: 'Chinese',             def: 'CUV',    script: 'traditional' },  // traditional
+    yue:     { pp: 'Chinese',             def: 'CUV',    script: 'traditional' },  // Cantonese → traditional
+    ja:      { pp: 'Japanese',            def: null     },  // first available
+    ko:      { pp: 'Korean',              def: 'KRV'    },
+    es:      { pp: 'Spanish',             def: 'RV1960' },
+    fr:      { pp: 'French',              def: null     },  // first available
+    de:      { pp: 'German',              def: 'ELB'    },
+    ru:      { pp: 'Russian',             def: 'SYNOD'  },
+    pt:      { pp: 'Portuguese',          def: null     },
+    id:      { pp: 'Indonesian',          def: 'TB'     },
+    ar:      { pp: 'Arabic',              def: null     },
+    hi:      { pp: 'Hindi',               def: null     },
+    nl:      { pp: 'Dutch',               def: null     },
+    pl:      { pp: 'Polish',              def: null     },
+    vi:      { pp: 'Vietnamese',          def: null     },
+    tr:      { pp: null,                  def: null     },  // not in PrayerPulse
+    th:      { pp: null,                  def: null     },
+    it:      { pp: null,                  def: null     },
+    ms:      { pp: 'Indonesian',          def: 'TB'     },  // closest available
+    ta:      { pp: 'Tamil',               def: null     },
+};
+
+// Fetched once from /api/bible/languages and cached in-memory.
+// Shape: [{ language: "English", translations: [{short_name, full_name}, ...] }, ...]
+let _bibleLanguageData = null;
+
+async function _loadBibleLanguages() {
+    if (_bibleLanguageData) return _bibleLanguageData;
+    try {
+        const r = await fetch('/api/bible/languages');
+        if (r.ok) _bibleLanguageData = await r.json();
+    } catch (e) { /* offline / not enabled */ }
+    return _bibleLanguageData || [];
+}
+
+/**
+ * Populate the target translation <select> with all options from PrayerPulse,
+ * putting the user's matched language group first, then everything else.
+ * Auto-selects the best default for the given langCode.
+ */
+async function loadBibleTranslationOptions(langCode) {
+    const sel = document.getElementById('bibleTargetTranslation');
+    if (!sel) return;
+    const prevTgt = bibleTargetTrans;
+
+    const langData = await _loadBibleLanguages();
+    if (!langData || !langData.length) {
+        // Fallback: keep whatever is currently selected
+        return;
+    }
+
+    const hint = document.getElementById('bibleTransLoadingHint');
+    const info = _LANG_BIBLE[langCode] || {};
+    const ppLangName = info.pp || null;
+
+    sel.innerHTML = '<option value="">— None —</option>';
+
+    // Only show translations for the user's matched language — no giant global list.
+    const matched = langData.filter(g =>
+        ppLangName && g.language.toLowerCase().startsWith(ppLangName.toLowerCase())
+    );
+
+    // Build options for matched group only (flat list, no optgroup header needed)
+    const allMatchedCodes = [];
+    matched.forEach(group => {
+        let label = group.language;
+        if (ppLangName === 'Chinese' && info.script) {
+            label = info.script === 'simplified'
+                ? '中文 — 简体 (Simplified)'
+                : '中文 — 繁体 (Traditional)';
+        }
+        const og = document.createElement('optgroup');
+        og.label = label;
+        (group.translations || []).forEach(t => {
+            const o = document.createElement('option');
+            o.value = t.short_name;
+            o.textContent = `${t.short_name} — ${t.full_name}`;
+            og.appendChild(o);
+            allMatchedCodes.push(t.short_name);
+        });
+        sel.appendChild(og);
+    });
+
+    // If no match (language not in PrayerPulse), show English as fallback
+    if (!matched.length) {
+        const enGroup = langData.find(g => g.language === 'English');
+        if (enGroup) {
+            const og = document.createElement('optgroup');
+            og.label = 'English (fallback)';
+            (enGroup.translations || []).forEach(t => {
+                const o = document.createElement('option');
+                o.value = t.short_name;
+                o.textContent = `${t.short_name} — ${t.full_name}`;
+                og.appendChild(o);
+                allMatchedCodes.push(t.short_name);
+            });
+            sel.appendChild(og);
+        }
+    }
+
+    if (hint) hint.style.display = ppLangName ? '' : 'none';
+
+    // Restore saved preference if still valid for this language, else auto-match
+    if (bibleTargetTrans && allMatchedCodes.includes(bibleTargetTrans)) {
+        sel.value = bibleTargetTrans;
+    } else {
+        // Auto-match: use language default, or first in matched group
+        const preferred = info.def;
+        if (preferred && allMatchedCodes.includes(preferred)) {
+            sel.value = preferred;
+        } else if (allMatchedCodes.length) {
+            sel.value = allMatchedCodes[0];
+        } else {
+            sel.value = '';
+        }
+        bibleTargetTrans = sel.value;
+        try { localStorage.setItem('bibleTargetTrans', bibleTargetTrans); } catch (e) {}
+    }
+
+    // If the effective target translation changed, clear cache and reload visible panels
+    if (bibleTargetTrans !== prevTgt) {
+        _bibleLookupCache.clear();
+        if (showBibleVerse) {
+            translations.forEach(item => {
+                if (item.bible_refs && item.bible_refs.length) {
+                    const card = document.getElementById('translation-' + item.id);
+                    if (card) loadBiblePanel(card, item.bible_refs);
+                }
+            });
+        }
+    }
+}
+
+// In-flight lookup promises: key = refs+translation fingerprint → Promise<enrichedRefs>
+const _bibleLookupCache = new Map();
+
+async function _fetchBibleVerses(refs, tgt) {
+    // Source translation is admin-configured — not sent by client.
+    const cacheKey = JSON.stringify({ refs: refs.map(r => r.display).sort(), tgt });
+    if (_bibleLookupCache.has(cacheKey)) return _bibleLookupCache.get(cacheKey);
+
+    const promise = fetch('/api/bible/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refs, target_translation: tgt }),
+    })
+    .then(r => r.ok ? r.json() : [])
+    .catch(() => []);
+
+    _bibleLookupCache.set(cacheKey, promise);
+    setTimeout(() => _bibleLookupCache.delete(cacheKey), 120000);
+    return promise;
+}
+
+/**
+ * Fetch verse text for refs and attach to card.
+ */
+async function loadBiblePanel(card, refs) {
+    if (!card || !refs || !refs.length) return;
+    if (!showBibleVerse || !bibleFeatureAvailable) return;
+    try {
+        const enriched = await _fetchBibleVerses(refs, bibleTargetTrans);
+        if (enriched && enriched.length && card.isConnected) {
+            attachBiblePanel(card, enriched);
+        }
+    } catch (e) {
+        console.warn('loadBiblePanel failed:', e);
+    }
+}
+
+function initBibleFeature() {
+    // The server renders the Bible section only when bible_detection is enabled.
+    bibleFeatureAvailable = !!document.getElementById('bibleVerseToggle');
+    if (!bibleFeatureAvailable) return;
+
+    // Load translation options for the user's current language (async — non-blocking)
+    const currentLang = (typeof displayLanguage !== 'undefined' ? displayLanguage : null)
+        || localStorage.getItem('displayLanguage')
+        || localStorage.getItem('targetLang')
+        || 'en';
+    loadBibleTranslationOptions(currentLang);
+    updateBibleToggleUI();
+}
+
+function _restoreBibleTranslationSelectors() {
+    // Legacy stub — options are now populated dynamically by loadBibleTranslationOptions().
+    // Called by initBibleFeature() indirectly; keeping for backward compat.
+}
+
+function onBibleTranslationChange() {
+    const tgtSel = document.getElementById('bibleTargetTranslation');
+    if (tgtSel) bibleTargetTrans = tgtSel.value;
+
+    try { localStorage.setItem('bibleTargetTrans', bibleTargetTrans); } catch (e) {}
+    _bibleLookupCache.clear();
+
+    // Re-fetch for all visible cards
+    if (showBibleVerse) {
+        translations.forEach(item => {
+            if (item.bible_refs && item.bible_refs.length) {
+                const card = document.getElementById('translation-' + item.id);
+                if (card) loadBiblePanel(card, item.bible_refs);
+            }
+        });
+    }
+}
+
+function toggleBibleVerse() {
+    showBibleVerse = !showBibleVerse;
+    localStorage.setItem('showBibleVerse', showBibleVerse);
+    updateBibleToggleUI();
+
+    if (showBibleVerse) {
+        // Load verse text for all cards that have refs
+        translations.forEach(item => {
+            if (item.bible_refs && item.bible_refs.length) {
+                const card = document.getElementById('translation-' + item.id);
+                if (card) loadBiblePanel(card, item.bible_refs);
+            }
+        });
+    } else {
+        document.querySelectorAll('.bible-verse-panel').forEach(el => el.remove());
+    }
+}
+
+function updateBibleToggleUI() {
+    const textSpan = document.getElementById('bibleVerseText');
+    if (!textSpan) return;
+    const onText = (window.i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseHide) || 'Hide Bible Verses';
+    const offText = (window.i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseShow) || 'Show Bible Verses';
+    textSpan.textContent = showBibleVerse ? onText : offText;
+}
+
+/**
+ * Returns 'simplified', 'traditional', or null based on the user's current language setting.
+ */
+function _bibleChineseScript() {
+    const lang = (typeof displayLanguage !== 'undefined' ? displayLanguage : null)
+        || localStorage.getItem('displayLanguage')
+        || (typeof targetLang !== 'undefined' ? targetLang : null)
+        || '';
+    return (_LANG_BIBLE[lang] || {}).script || null;
+}
+
+/**
+ * Build the verse panel DOM for a list of enriched refs and append to `card`.
+ * Idempotent — replaces any existing panel. Uses only textContent/createElement
+ * to prevent any HTML injection from API responses.
+ */
+function attachBiblePanel(card, refs) {
+    if (!card || !refs || !refs.length) return;
+    const old = card.querySelector('.bible-verse-panel');
+    if (old) old.remove();
+
+    const panel = document.createElement('div');
+    panel.className = 'bible-verse-panel';
+
+    refs.forEach(ref => {
+        const block = document.createElement('div');
+        block.className = 'bible-verse-block';
+
+        // ── Header: icon + reference display + translation badges ──
+        const head = document.createElement('div');
+        head.className = 'bible-verse-head';
+        const icon = document.createElement('span');
+        icon.textContent = '📖 ';
+        icon.setAttribute('aria-hidden', 'true');
+        const title = document.createElement('span');
+        title.className = 'bible-verse-ref';
+        title.textContent = ref.display || '';
+        head.appendChild(icon);
+        head.appendChild(title);
+
+        // Show translation badges for whichever slots are present
+        ['source', 'target'].forEach(slot => {
+            const slot_data = ref[slot];
+            if (slot_data && slot_data.translation) {
+                const tag = document.createElement('span');
+                tag.className = 'bible-verse-translation bible-verse-translation-' + slot;
+                tag.textContent = slot_data.translation.toUpperCase();
+                if (slot === 'target') {
+                    const script = _bibleChineseScript();
+                    if (script) tag.dataset.script = script;
+                }
+                head.appendChild(tag);
+            }
+        });
+        block.appendChild(head);
+
+        // ── Helper: build a verse-body div from a list of {n, text} ──
+        function buildVerseBody(verses, slotClass) {
+            const body = document.createElement('div');
+            body.className = 'bible-verse-body ' + slotClass;
+            if (!verses || !verses.length) {
+                const empty = document.createElement('em');
+                empty.className = 'bible-verse-missing';
+                empty.textContent = 'Verse text unavailable';
+                body.appendChild(empty);
+            } else {
+                verses.forEach(v => {
+                    const line = document.createElement('div');
+                    line.className = 'bible-verse-line';
+                    const num = document.createElement('sup');
+                    num.className = 'bible-verse-num';
+                    num.textContent = String(v.n);
+                    line.appendChild(num);
+                    line.appendChild(document.createTextNode(' ' + (v.text || '')));
+                    body.appendChild(line);
+                });
+            }
+            return body;
+        }
+
+        // ── Render source (original-language) slot ──
+        if (ref.source) {
+            block.appendChild(buildVerseBody(ref.source.verses, 'bible-verse-source'));
+        }
+
+        // ── Render target (translated) slot if present and different ──
+        if (ref.target && ref.target.translation &&
+                (!ref.source || ref.target.translation !== ref.source.translation)) {
+            const divider = document.createElement('div');
+            divider.className = 'bible-verse-divider';
+            block.appendChild(divider);
+            block.appendChild(buildVerseBody(ref.target.verses, 'bible-verse-target'));
+        }
+
+        // Legacy fallback: old data shape with `verses` array (single translation)
+        if (!ref.source && !ref.target && ref.verses) {
+            if (ref.translation) {
+                const tag = document.createElement('span');
+                tag.className = 'bible-verse-translation';
+                tag.textContent = ref.translation.toUpperCase();
+                head.appendChild(tag);
+            }
+            block.appendChild(buildVerseBody(ref.verses, 'bible-verse-source'));
+        }
+
+        panel.appendChild(block);
+    });
+
+    card.appendChild(panel);
 }
 
 /* =========================
@@ -716,6 +1083,10 @@ async function changeDisplayLanguageLocal() {
     await renderTranslations();
     // Re-apply display mode to update mode-specific text
     updateDisplayMode();
+    // Auto-match Bible target translation to the new display language
+    if (bibleFeatureAvailable) {
+        loadBibleTranslationOptions(newLang);
+    }
 }
 
 /* ===================================
@@ -1144,6 +1515,11 @@ function changeLanguage() {
     
     // Re-render with new language (will trigger translation)
     renderTranslations();
+
+    // Auto-match Bible target translation to the new target language
+    if (bibleFeatureAvailable) {
+        loadBibleTranslationOptions(targetLang);
+    }
 }
 
 function changeDisplayMode() {
@@ -2558,7 +2934,17 @@ async function renderTranslationsBatch(startIdx, endIdx) {
     } else {
         list.insertAdjacentHTML('beforeend', htmlBatch);
     }
-    
+
+    // Load Bible verse panels for this batch (async fetch from /api/bible/lookup).
+    if (showBibleVerse && bibleFeatureAvailable) {
+        for (const item of batch) {
+            if (item.bible_refs && item.bible_refs.length) {
+                const card = document.getElementById('translation-' + item.id);
+                loadBiblePanel(card, item.bible_refs);
+            }
+        }
+    }
+
     renderedCount = endIdx;
     console.log('📊 Rendered items ' + startIdx + '-' + endIdx + '/' + translations.length);
     
@@ -2754,6 +3140,12 @@ async function addTranslation(data) {
     // Update count to show server total
     const itemCount = document.getElementById('itemCount');
     if (itemCount) itemCount.textContent = translationsTotal;
+
+    // Load Bible verse panel (async fetch from /api/bible/lookup)
+    if (showBibleVerse && bibleFeatureAvailable && data.bible_refs && data.bible_refs.length) {
+        const card = document.getElementById('translation-' + data.id);
+        loadBiblePanel(card, data.bible_refs);
+    }
 
     // Trigger background translation if needed
     const itemId = 'translation-' + data.id;
@@ -3971,6 +4363,11 @@ function setupSocketEventListeners() {
                     const itemCount = document.getElementById('itemCount');
                     if (itemCount) itemCount.textContent = translationsTotal;
 
+                    // Load Bible verse panel (async fetch from /api/bible/lookup)
+                    if (showBibleVerse && bibleFeatureAvailable && data.bible_refs && data.bible_refs.length) {
+                        loadBiblePanel(tempCard, data.bible_refs);
+                    }
+
                     // Trigger background translation
                     if (displayMode !== 'transcription') {
                         translateInBackground(data, itemId, currentTextEl);
@@ -4057,11 +4454,11 @@ if ('speechSynthesis' in window) {
 
 // Setup socket event listeners when DOM is loaded (only once)
 document.addEventListener('DOMContentLoaded', function () {
+    // ensureSocketConnected() is called by init(); setupSocketEventListeners()
+    // is now called inside initSocket() to guarantee listeners are registered
+    // before the first connect/ready events can fire (race-condition fix).
     ensureSocketConnected();
-    // Give socket a moment to initialize before setting up listeners
-    setTimeout(() => {
-        setupSocketEventListeners();
-    }, 0);
+    initBibleFeature();
 });
 
 console.log('✅ EzySpeechTranslate Client Ready');

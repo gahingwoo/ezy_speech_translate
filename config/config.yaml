@@ -169,6 +169,28 @@ features:
   export_enabled: true               # Allow exports
   dark_mode: true                    # Dark mode toggle
 
+  # ── Bible reference detection (church deployments) ───────────────
+  # When enabled the server scans every finalized transcription for
+  # Bible references (e.g. "John 3:16", "1 Cor 13:4-8") and fetches
+  # verse text live from bolls.life (free, no API key needed).
+  #
+  # Verse text is appended below the matching caption card and is
+  # intentionally NOT sent through the translation pipeline.
+  #
+  # Translation codes must match bolls.life identifiers:
+  #   English (public domain): WEB  KJV  ASV  YLT  DARBY
+  #   English (modern):        NIV  NLT  ESV  NASB  CSB
+  #   Chinese traditional:     CUV
+  #   (Check bolls.life for more codes — unsupported codes return empty.)
+  #
+  # Set target_translation to "" to show only one translation.
+  bible_detection:
+    enabled: true                    # Master switch (server-side)
+    source_translation: "NLT"        # Original-language column (e.g. WEB, NIV, NLT)
+    target_translation: "CUV"        # Translated column (e.g. CUV for Chinese); "" = disabled
+    max_verses: 10                   # Cap verses per reference shown in UI
+    api_timeout: 8                   # HTTP timeout in seconds for bolls.life API
+
 # ============================================
 # PRODUCTION DEPLOYMENT CHECKLIST
 # ============================================

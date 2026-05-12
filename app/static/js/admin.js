@@ -1363,3 +1363,97 @@ console.log('📝 Keyboard Shortcuts:');
 console.log('   Ctrl+R: Toggle recording');
 console.log('   Ctrl+S: Save correction');
 console.log('   Escape: Cancel selection');
+
+// ── Bible Source Translation (admin) ─────────────────────────────────────────
+
+/**
+ * Load available translations from PrayerPulse via the user server proxy,
+ * and populate the source translation selector with the current saved value.
+ */
+async function loadBibleSourceTranslation() {
+    const sel = document.getElementById('adminBibleSourceSelect');
+    const status = document.getElementById('adminBibleSaveStatus');
+    if (!sel) return;
+
+    try {
+        // Fetch language list (proxied via user server)
+        const langResp = await fetch(`${SERVER_URL}/api/bible/languages`);
+        if (!langResp.ok) {
+            sel.innerHTML = '<option value="">Bible detection not enabled</option>';
+            return;
+        }
+        const langData = await langResp.json();
+
+        // Fetch current saved value
+        let currentSrc = 'KJV';
+        try {
+            const srcResp = await fetch(`${SERVER_URL}/api/bible/source-translation`);
+            if (srcResp.ok) {
+                const d = await srcResp.json();
+                currentSrc = d.source_translation || 'KJV';
+            }
+        } catch (e) { /* use default */ }
+
+        sel.innerHTML = '';
+        langData.forEach(group => {
+            const og = document.createElement('optgroup');
+            og.label = group.language;
+            (group.translations || []).forEach(t => {
+                const o = document.createElement('option');
+                o.value = t.short_name;
+                o.textContent = `${t.short_name} — ${t.full_name}`;
+                og.appendChild(o);
+            });
+            sel.appendChild(og);
+        });
+
+        sel.value = currentSrc;
+        if (status) status.textContent = `Current: ${currentSrc}`;
+    } catch (e) {
+        if (sel) sel.innerHTML = '<option value="">Error loading translations</option>';
+        console.warn('loadBibleSourceTranslation failed:', e);
+    }
+}
+
+/**
+ * Save the selected source translation to the user server (requires admin JWT).
+ */
+async function saveBibleSourceTranslation() {
+    const sel = document.getElementById('adminBibleSourceSelect');
+    const status = document.getElementById('adminBibleSaveStatus');
+    if (!sel || !sel.value) return;
+
+    const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || '';
+    if (!token) {
+        if (status) status.textContent = '⚠️ Not authenticated';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${SERVER_URL}/api/bible/source-translation`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ source_translation: sel.value }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.updated) {
+            if (status) status.textContent = `✅ Saved: ${sel.value}`;
+            showToast(`📖 Bible source set to ${sel.value}`, 'success');
+        } else {
+            if (status) status.textContent = `❌ ${data.error || 'Failed'}`;
+        }
+    } catch (e) {
+        if (status) status.textContent = '❌ Network error';
+        console.warn('saveBibleSourceTranslation failed:', e);
+    }
+}
+
+// Load Bible source translation after the admin panel initialises
+// (SERVER_URL is set by initAdminPanel → we wait for DOMContentLoaded +
+//  a short delay to ensure the server URL is resolved)
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => loadBibleSourceTranslation(), 1500);
+});

@@ -802,6 +802,108 @@ select:focus {
     animation: dotPulse 1.2s infinite;
 }
 
+/* ── Bible verse panel (church mode, opt-in) ─────────────────── */
+.bible-verse-panel {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--card-radius);
+    box-shadow: 0 1px 3px var(--shadow);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+.bible-verse-block + .bible-verse-block {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.bible-verse-head {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+.bible-verse-ref {
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--text);
+    flex: 1 1 auto;
+}
+.bible-verse-translation {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 1px 7px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.6;
+}
+.bible-verse-translation-source {
+    background: rgba(0, 102, 204, 0.1);
+    color: var(--primary);
+    border-color: rgba(0, 102, 204, 0.25);
+}
+.bible-verse-translation-target {
+    background: rgba(62, 201, 48, 0.12);
+    color: #1e7e0e;
+    border-color: rgba(62, 201, 48, 0.3);
+}
+[data-theme="dark"] .bible-verse-translation-source {
+    background: rgba(77, 156, 240, 0.18);
+    color: #4d9cf0;
+    border-color: rgba(77, 156, 240, 0.35);
+}
+[data-theme="dark"] .bible-verse-translation-target {
+    background: rgba(92, 217, 78, 0.15);
+    color: #5cd94e;
+    border-color: rgba(92, 217, 78, 0.35);
+}
+/* Chinese script variants — amber for 简体, purple for 繁体 */
+.bible-verse-translation[data-script="simplified"] {
+    background: rgba(240, 171, 0, 0.12);
+    color: #7d5a00;
+    border-color: rgba(240, 171, 0, 0.4);
+}
+.bible-verse-translation[data-script="traditional"] {
+    background: rgba(163, 0, 128, 0.1);
+    color: #6f0057;
+    border-color: rgba(163, 0, 128, 0.3);
+}
+[data-theme="dark"] .bible-verse-translation[data-script="simplified"] {
+    background: rgba(240, 171, 0, 0.2);
+    color: #f5c518;
+    border-color: rgba(245, 197, 24, 0.4);
+}
+[data-theme="dark"] .bible-verse-translation[data-script="traditional"] {
+    background: rgba(206, 109, 188, 0.2);
+    color: #ce6dbc;
+    border-color: rgba(206, 109, 188, 0.4);
+}
+.bible-verse-divider {
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px dashed var(--border);
+}
+.bible-verse-body { color: var(--text); line-height: 1.65; }
+.bible-verse-line + .bible-verse-line { margin-top: 0.3rem; }
+.bible-verse-num {
+    font-size: 0.65em;
+    font-weight: 700;
+    color: var(--primary);
+    margin-right: 1px;
+    vertical-align: super;
+}
+.bible-verse-missing {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
 .loading-dot {
     display: inline;
     color: var(--text-secondary);

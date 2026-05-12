@@ -226,6 +226,43 @@ socketio = SocketIO(
 )
 
 # ──────────────────────────────────────────
+# Bible reference detection (optional, opt-in)
+# ──────────────────────────────────────────
+BIBLE_DETECTION_ENABLED = bool(get_config('features', 'bible_detection', 'enabled', default=False))
+BIBLE_SOURCE_TRANSLATION = get_config('features', 'bible_detection', 'source_translation', default='WEB')
+BIBLE_TARGET_TRANSLATION = get_config('features', 'bible_detection', 'target_translation', default='')
+BIBLE_MAX_VERSES = int(get_config('features', 'bible_detection', 'max_verses', default=10))
+BIBLE_API_TIMEOUT = int(get_config('features', 'bible_detection', 'api_timeout', default=8))
+bible_detector = None
+if BIBLE_DETECTION_ENABLED:
+    try:
+        try:
+            from . import bible_detector as _bible_mod   # module mode: python -m app.user.server
+        except ImportError:
+            import importlib, os as _os
+            _spec = importlib.util.spec_from_file_location(
+                "bible_detector",
+                _os.path.join(_os.path.dirname(__file__), "bible_detector.py"),
+            )
+            _bible_mod = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_bible_mod)
+        _bible_mod.init(
+            source_translation=BIBLE_SOURCE_TRANSLATION,
+            target_translation=BIBLE_TARGET_TRANSLATION,
+            max_verses=BIBLE_MAX_VERSES,
+            api_timeout=BIBLE_API_TIMEOUT,
+        )
+        bible_detector = _bible_mod
+        logging.getLogger("bible").info(
+            f"📖 Bible detection enabled (source={BIBLE_SOURCE_TRANSLATION}"
+            + (f", target={BIBLE_TARGET_TRANSLATION}" if BIBLE_TARGET_TRANSLATION else "")
+            + ")"
+        )
+    except Exception as e:
+        logging.getLogger("bible").error(f"Failed to init bible_detector: {e}")
+        bible_detector = None
+
+# ──────────────────────────────────────────
 # Protocol Configuration (HTTP/HTTPS)
 # ──────────────────────────────────────────
 USE_HTTPS = get_config('server', 'use_https', default=True)
@@ -474,6 +511,19 @@ def add_translation(data):
     if 'id' not in data or data['id'] is None:
         data['id'] = next_translation_id
         next_translation_id += 1
+
+    # Bible reference detection — opt-in via config. Runs only on the
+    # corrected/original text (already final, never on interim) and is
+    # best-effort: any failure is logged and ignored so it can never
+    # break the core translation pipeline.
+    if bible_detector is not None and 'bible_refs' not in data:
+        try:
+            scan_text = data.get('corrected') or data.get('original') or ''
+            results = bible_detector.detect_and_lookup(scan_text)
+            if results:
+                data['bible_refs'] = results
+        except Exception as e:
+            logger.warning(f"Bible detection failed: {e}")
 
     translations_history.append(data)
 
@@ -791,7 +841,10 @@ app.jinja_env.filters['static_version'] = get_static_file_version
 @check_client_access
 def index():
     """Main client interface"""
-    return render_template('user.html')
+    return render_template(
+        'user.html',
+        bible_detection_enabled=bool(BIBLE_DETECTION_ENABLED and bible_detector is not None),
+    )
 
 @app.route('/captions')
 @limiter.limit("60 per minute")
@@ -894,7 +947,153 @@ def get_oem_config():
     """Get OEM configuration for frontend"""
     return jsonify(app.config.get('OEM', {}))
 
-@app.route('/api/translations', methods=['GET'])
+@app.route('/api/features', methods=['GET'])
+@limiter.limit("60 per minute")
+def get_features():
+    """Expose feature flags the client cares about.
+
+    Used by user.js to decide whether to render optional UI like the
+    Bible verse panel toggle. Public endpoint — only returns booleans
+    plus inert config (translation id), no secrets.
+    """
+    return jsonify({
+        'bible_detection': {
+            'enabled': bool(BIBLE_DETECTION_ENABLED and bible_detector is not None),
+            'source_translation': BIBLE_SOURCE_TRANSLATION,
+            'target_translation': BIBLE_TARGET_TRANSLATION,
+        },
+    })
+
+_VALID_TRANS_RE = re.compile(r'^[A-Za-z0-9_-]{1,20}$')
+
+@app.route('/api/bible/lookup', methods=['POST'])
+@limiter.limit("120 per minute")
+def bible_lookup():
+    """Fetch verse text from PrayerPulse API for a list of refs.
+
+    Body (JSON):
+      {
+        "refs": [{book, chapter, verse_start, verse_end, display}, ...],
+        "source_translation": "WEB",   // bolls.life translation code
+        "target_translation": "CUV"    // optional; "" to disable
+      }
+
+    Returns the same list with source/target verse text attached.
+    Results are cached server-side so repeated requests are cheap.
+    """
+    if bible_detector is None:
+        return jsonify({'error': 'Bible detection not enabled'}), 404
+
+    payload = request.get_json(silent=True) or {}
+    refs = payload.get('refs')
+    if not refs or not isinstance(refs, list) or len(refs) > 20:
+        return jsonify({'error': 'refs must be a list of 1-20 items'}), 400
+
+    src = str(payload.get('source_translation') or BIBLE_SOURCE_TRANSLATION)[:20]
+    tgt = str(payload.get('target_translation', BIBLE_TARGET_TRANSLATION) or '')[:20]
+
+    # Validate translation codes (alphanumeric + dash/underscore)
+    if not _VALID_TRANS_RE.match(src):
+        return jsonify({'error': 'invalid source_translation'}), 400
+    if tgt and not _VALID_TRANS_RE.match(tgt):
+        return jsonify({'error': 'invalid target_translation'}), 400
+
+    # Allow only the expected keys in each ref to prevent injection
+    clean_refs = []
+    for r in refs:
+        if not isinstance(r, dict):
+            continue
+        book = r.get('book', '')
+        chapter = r.get('chapter')
+        if not isinstance(book, str) or not isinstance(chapter, int):
+            continue
+        clean_refs.append({
+            'book': book[:50],
+            'chapter': int(chapter),
+            'verse_start': int(r['verse_start']) if isinstance(r.get('verse_start'), int) else None,
+            'verse_end':   int(r['verse_end'])   if isinstance(r.get('verse_end'), int)   else None,
+            'display': str(r.get('display', ''))[:80],
+        })
+
+    if not clean_refs:
+        return jsonify([])
+
+    try:
+        results = bible_detector.lookup(clean_refs, source_translation=src, target_translation=tgt or None)
+        return jsonify(results)
+    except Exception as e:
+        logger.warning(f"bible_lookup endpoint failed: {e}")
+        return jsonify({'error': 'lookup failed'}), 500
+
+
+# ── In-process cache for the language list (large, rarely changes) ──
+_bible_languages_cache: list = []
+_bible_languages_cached_at: float = 0.0
+_BIBLE_LANGUAGES_TTL = 3600  # re-fetch once per hour
+
+@app.route('/api/bible/languages', methods=['GET'])
+@limiter.limit("20 per minute")
+def bible_languages():
+    """Return available Bible translations grouped by language from PrayerPulse API.
+
+    Proxied and cached server-side (1-hour TTL) so the browser never has
+    to hit an external host directly.  Shape:
+      [{"language": "English", "translations": [{"short_name": "KJV", "full_name": "..."}, ...]}, ...]
+    """
+    import time as _time
+    global _bible_languages_cache, _bible_languages_cached_at
+    if bible_detector is None:
+        return jsonify([]), 404
+    now = _time.time()
+    if not _bible_languages_cache or (now - _bible_languages_cached_at) > _BIBLE_LANGUAGES_TTL:
+        data = bible_detector.fetch_languages()
+        if data:
+            _bible_languages_cache = data
+            _bible_languages_cached_at = now
+    return jsonify(_bible_languages_cache)
+
+
+@app.route('/api/bible/source-translation', methods=['GET', 'POST'])
+@limiter.limit("30 per minute")
+def bible_source_translation_endpoint():
+    """GET: return the admin-configured source translation.
+    POST (admin auth required): update the source translation live.
+
+    POST body: {"source_translation": "KJV"}
+    """
+    global BIBLE_SOURCE_TRANSLATION
+    if request.method == 'GET':
+        return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION})
+
+    # POST — require admin token
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+    token = auth_header.split(' ', 1)[1]
+    try:
+        import jwt as _jwt
+        decoded = _jwt.decode(token, get_config('authentication', 'jwt_secret', default=''), algorithms=['HS256'])
+        admin_username = get_config('authentication', 'admin_username', default='admin')
+        if decoded.get('username') != admin_username:
+            return jsonify({'error': 'Admin access required'}), 403
+    except Exception:
+        return jsonify({'error': 'Invalid token'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    new_src = str(payload.get('source_translation') or '')[:20].strip()
+    if not new_src or not _VALID_TRANS_RE.match(new_src):
+        return jsonify({'error': 'invalid source_translation'}), 400
+
+    BIBLE_SOURCE_TRANSLATION = new_src
+    if bible_detector is not None:
+        bible_detector.init(
+            source_translation=BIBLE_SOURCE_TRANSLATION,
+            target_translation=BIBLE_TARGET_TRANSLATION,
+        )
+    logger.info("📖 Admin updated source translation to: %s", BIBLE_SOURCE_TRANSLATION)
+    return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION, 'updated': True})
+
+
 @limiter.limit("120 per minute")
 @require_api_token
 def get_translations():

@@ -27,3 +27,4 @@ bandit_report.json
 
 # macOS
 .DS_Store
+/app/static/oem/images/
