@@ -108,6 +108,27 @@ let hasMoreTranslations = false;     // More items available on server
 let apiSessionToken = localStorage.getItem('apiSessionToken') || null;  // API token from WebSocket connection
 let pageVisible = true;              // Track if page is visible (for optimization)
 
+// Race-condition guard: each loadInitialTranslations call gets a sequence
+// number; only the LAST call is allowed to commit its result to the DOM.
+let _translationsLoadSeq = 0;
+
+// ── Client-side translation cache ────────────────────────────────────────────
+// Restore up to 50 most-recent translations from localStorage so the user
+// sees their data immediately on page load — even if the server just restarted.
+const _CACHE_KEY = '_txCache_v1';
+const _CACHE_LIMIT = 50;
+try {
+    const _raw = localStorage.getItem(_CACHE_KEY);
+    if (_raw) {
+        const _cached = JSON.parse(_raw);
+        if (Array.isArray(_cached) && _cached.length) {
+            translations = _cached;
+            translationsTotal = _cached.length;
+            console.log('🗃️ Restored ' + _cached.length + ' translations from local cache');
+        }
+    }
+} catch (e) {}
+
 // Virtual Scrolling Optimization - PERFORMANCE FIX
 let renderedCount = 0;               // How many items currently rendered in DOM
 let renderBatchSize = 30;            // Render this many items at once (was rendering all!)
@@ -484,10 +505,14 @@ function initBibleFeature() {
     bibleFeatureAvailable = !!document.getElementById('bibleVerseToggle');
     if (!bibleFeatureAvailable) return;
 
-    // Load translation options for the user's current language (async — non-blocking)
-    const currentLang = (typeof displayLanguage !== 'undefined' ? displayLanguage : null)
-        || localStorage.getItem('displayLanguage')
+    // Prefer targetLang (translation output language) as the Bible language;
+    // fall back to displayLanguage (UI language) for users who haven’t set a target.
+    const currentLang = (typeof targetLang !== 'undefined' && targetLang && targetLang !== 'en'
+            ? targetLang
+            : null)
         || localStorage.getItem('targetLang')
+        || (typeof displayLanguage !== 'undefined' ? displayLanguage : null)
+        || localStorage.getItem('displayLanguage')
         || 'en';
     loadBibleTranslationOptions(currentLang);
     updateBibleToggleUI();
@@ -727,15 +752,19 @@ function escapeHtml(s) {
    Init
    ========================= */
 function init() {
-    // Note: Do NOT restore apiSessionToken from localStorage
-    // Always wait for WebSocket connection to receive a fresh token
-    // This ensures the token is always valid with the current server session
-    
     loadSettings();
     applyDisplayLanguageLocal();
     applyDisplayMode();
-    // Don't load translations here - wait for WebSocket connection
-    // so authToken is available
+
+    // Must set bibleFeatureAvailable = true BEFORE renderTranslations() so that
+    // Bible panels are loaded for cached cards shown immediately on page restore.
+    initBibleFeature();
+
+    // Show cached translations immediately so the user sees their data on
+    // page load without waiting for the server round-trip.
+    if (translations.length) {
+        renderTranslations();
+    }
 
     // Initialize Socket.IO connection
     ensureSocketConnected();
@@ -3041,23 +3070,39 @@ async function loadInitialTranslations() {
         console.warn('⚠️ No API token yet, skipping translation load');
         return;
     }
-    
+
+    // Claim this call's sequence slot; only the last caller may commit.
+    const mySeq = ++_translationsLoadSeq;
+
     try {
         translationsOffset = 0;
         const response = await fetch(
             '/api/translations?offset=0&limit=' + translationsLimit + '&api_token=' + encodeURIComponent(apiSessionToken)
         );
-        
+
+        if (mySeq !== _translationsLoadSeq) return; // a newer call already won
+
         if (response.ok) {
             const data = await response.json();
+            if (mySeq !== _translationsLoadSeq) return; // check again after await
+
             translations = data.translations || [];
             translationsTotal = data.total || 0;
             hasMoreTranslations = data.has_more || false;
             translationsOffset = 0;
-            
-            console.log(`📥 Loaded ${translations.length} translations (total: ${translationsTotal}, has_more: ${hasMoreTranslations})`);
-            console.log(`🔍 API Response: offset=${data.offset}, limit=${data.limit}, total=${data.total}, has_more=${data.has_more}`);
+
+            // Persist to localStorage so the next page-load shows cached data
+            // immediately rather than waiting for the server round-trip.
+            if (translations.length) {
+                try {
+                    localStorage.setItem(_CACHE_KEY, JSON.stringify(translations.slice(0, _CACHE_LIMIT)));
+                } catch (e) {}
+            }
+
+            console.log('📥 Loaded ' + translations.length + ' translations (total: ' + translationsTotal + ')');
             await renderTranslations();
+        } else if (response.status === 401) {
+            console.warn('⚠️ API token rejected (401) — waiting for ready event with fresh token');
         } else {
             console.warn('⚠️ Failed to load translations: ' + response.status);
         }
@@ -3126,6 +3171,11 @@ async function addTranslation(data) {
     translations.unshift(data);
     translationsTotal++;
     renderedCount++;  // Track that we rendered one more item
+
+    // Keep client-side cache fresh (newest _CACHE_LIMIT items)
+    try {
+        localStorage.setItem(_CACHE_KEY, JSON.stringify(translations.slice(0, _CACHE_LIMIT)));
+    } catch (e) {}
     
     // Create HTML for new item (synchronous - translation happens in background)
     const html = createTranslationHTML(data);
@@ -4098,19 +4148,21 @@ function setupSocketEventListeners() {
     socket.on('connect', async () => {
         console.log('Connected to server');
         setConnectionStatus('online');
-        // Load translations now that we're connected and have token
+        // Attempt fast load with cached token; ready event will retry if this returns 401.
         await loadInitialTranslations();
     });
 
     socket.on('ready', async (data) => {
-        // Server sent API token for session
+        // Server sent a fresh API token for this session.
         if (data && data.api_token) {
+            const prevToken = apiSessionToken;
             apiSessionToken = data.api_token;
-            // Save token to localStorage for persistence across page refreshes
             localStorage.setItem('apiSessionToken', apiSessionToken);
-            console.log('🔐 API session token received and saved');
-            // Load translations with the new token
-            await loadInitialTranslations();
+            console.log('🔐 Fresh API token received');
+            // Only reload if the connect attempt used a stale/rejected token.
+            if (!prevToken || prevToken !== apiSessionToken) {
+                await loadInitialTranslations();
+            }
         }
     });
 
@@ -4393,6 +4445,15 @@ function setupSocketEventListeners() {
         if (index !== -1) {
             translations[index] = data;
             await renderTranslations();
+            // Force Bible panel reload: clear any stale cache entry for the
+            // corrected item (server may have re-detected different refs)
+            // and re-fetch for the freshly rendered card.
+            if (showBibleVerse && bibleFeatureAvailable && data.bible_refs && data.bible_refs.length) {
+                const cacheKey = JSON.stringify({ refs: data.bible_refs.map(r => r.display).sort(), tgt: bibleTargetTrans });
+                _bibleLookupCache.delete(cacheKey);
+                const card = document.getElementById('translation-' + data.id);
+                if (card) loadBiblePanel(card, data.bible_refs);
+            }
         }
     });
 
@@ -4409,13 +4470,13 @@ function setupSocketEventListeners() {
         translationsTotal = 0;
         hasMoreTranslations = false;
         renderedCount = 0;
-        // Same reasoning as clearLocal(): purge buffered translations and
-        // any pending render timer so cleared state actually stays cleared.
         pendingNewTranslations = [];
         if (newTranslationTimer) {
             clearTimeout(newTranslationTimer);
             newTranslationTimer = null;
         }
+        // Also wipe the client-side cache so a page refresh stays clean.
+        try { localStorage.removeItem(_CACHE_KEY); } catch (e) {}
         const itemCount = document.getElementById('itemCount');
         if (itemCount) itemCount.textContent = '0';
         renderTranslations();

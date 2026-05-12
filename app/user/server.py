@@ -1094,6 +1094,7 @@ def bible_source_translation_endpoint():
     return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION, 'updated': True})
 
 
+@app.route('/api/translations', methods=['GET'])
 @limiter.limit("120 per minute")
 @require_api_token
 def get_translations():
@@ -2242,6 +2243,15 @@ def handle_correct_translation(data):
 
     target_item['corrected'] = corrected_text
     target_item['is_corrected'] = True
+
+    # Re-detect Bible references in the corrected text so the panel updates
+    # if the admin fixed a transcription error into a proper Bible citation.
+    if bible_detector is not None:
+        try:
+            new_refs = bible_detector.detect_and_lookup(corrected_text)
+            target_item['bible_refs'] = new_refs if new_refs else []
+        except Exception:
+            pass  # keep original refs on failure
 
     socketio.emit('translation_corrected', target_item)
     logger.info(f"✏️ [CORRECTED] ID {translation_id}")
