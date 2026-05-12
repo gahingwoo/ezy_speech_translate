@@ -238,12 +238,15 @@ function applyFontSize() {
 function applyDisplayMode() {
     const languageGroup = document.getElementById('languageSelectGroup');
     const ttsSection = document.querySelector('.sidebar-section:has(#toggleTTS)');
-    // Keep language selector visible in all modes (no changes needed)
-    // Only hide TTS section in transcription mode
+    const bibleTransRow = document.getElementById('bibleVerseToggleWrap');
     if (displayMode === 'transcription') {
-        if (ttsSection) ttsSection.style.display = 'none';
+        if (ttsSection)     ttsSection.style.display = 'none';
+        if (languageGroup)  languageGroup.style.display = 'none';
+        if (bibleTransRow)  bibleTransRow.style.display = 'none';
     } else {
-        if (ttsSection) ttsSection.style.display = 'block';
+        if (ttsSection)     ttsSection.style.display = 'block';
+        if (languageGroup)  languageGroup.style.display = '';
+        if (bibleTransRow)  bibleTransRow.style.display = '';
     }
 }
 
@@ -490,8 +493,10 @@ async function _fetchBibleVerses(refs, tgt) {
 async function loadBiblePanel(card, refs) {
     if (!card || !refs || !refs.length) return;
     if (!showBibleVerse || !bibleFeatureAvailable) return;
+    // In transcription mode show source text only (no target translation).
+    const tgt = displayMode === 'transcription' ? '' : bibleTargetTrans;
     try {
-        const enriched = await _fetchBibleVerses(refs, bibleTargetTrans);
+        const enriched = await _fetchBibleVerses(refs, tgt);
         if (enriched && enriched.length && card.isConnected) {
             attachBiblePanel(card, enriched);
         }
@@ -1577,13 +1582,17 @@ function changeDisplayMode() {
 
 function updateDisplayMode() {
     const ttsSection = document.querySelector('.sidebar-section:has(#toggleTTS)');
+    const languageGroup = document.getElementById('languageSelectGroup');
+    const bibleSection = document.getElementById('bibleSidebarSection');
+    const bibleTransRow = document.getElementById('bibleVerseToggleWrap');
     const mainTitleText = document.getElementById('mainTitleText');
     const emptyStateText = document.getElementById('emptyStateText');
     const emptyStateDesc = document.getElementById('emptyStateDesc');
 
     if (displayMode === 'transcription') {
-        // Hide TTS section in transcription mode (language selector stays visible)
-        if (ttsSection) ttsSection.style.display = 'none';
+        if (ttsSection)      ttsSection.style.display = 'none';
+        if (languageGroup)   languageGroup.style.display = 'none';
+        if (bibleTransRow)   bibleTransRow.style.display = 'none';
 
         // Update title (use localized string when available)
         if (mainTitleText) mainTitleText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].liveTranscriptions) || i18n['en'].liveTranscriptions || 'Live Transcriptions';
@@ -1594,8 +1603,9 @@ function updateDisplayMode() {
 
         console.log('📝 Transcription mode enabled');
     } else {
-        // Show TTS in translation mode
-        if (ttsSection) ttsSection.style.display = 'block';
+        if (ttsSection)      ttsSection.style.display = 'block';
+        if (languageGroup)   languageGroup.style.display = '';
+        if (bibleTransRow)   bibleTransRow.style.display = '';
 
         // Update title (use localized string when available)
         if (mainTitleText) mainTitleText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].liveTranslations) || (i18n['en'] && i18n['en'].liveTranslations) || 'Live Translations';
@@ -3252,6 +3262,7 @@ function createTranslationHTML(item) {
                     <span class="card-time">' + item.timestamp + '</span>\
                     <div class="card-actions">\
                         ' + correctedBadge + '\
+                        <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(item.corrected) + '" title="Speak transcription">🔊</button>\
                         <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
                             <span>📋</span>\
                         </button>\

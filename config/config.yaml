@@ -187,7 +187,6 @@ features:
   bible_detection:
     enabled: true                    # Master switch (server-side)
     source_translation: "NLT"        # Original-language column (e.g. WEB, NIV, NLT)
-    target_translation: "CUV"        # Translated column (e.g. CUV for Chinese); "" = disabled
     max_verses: 10                   # Cap verses per reference shown in UI
     api_timeout: 8                   # HTTP timeout in seconds for bolls.life API
 

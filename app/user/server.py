@@ -1019,7 +1019,7 @@ def bible_lookup():
         return jsonify([])
 
     try:
-        results = bible_detector.lookup(clean_refs, source_translation=src, target_translation=tgt or None)
+        results = bible_detector.lookup(clean_refs, source_translation=src, target_translation=tgt)
         return jsonify(results)
     except Exception as e:
         logger.warning(f"bible_lookup endpoint failed: {e}")
