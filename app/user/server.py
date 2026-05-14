@@ -26,6 +26,22 @@ import io
 import subprocess
 import threading
 
+# ── Optional persistence layer (SQLite) ───────────────────────────────────────
+try:
+    try:
+        from . import db as _db_mod
+    except ImportError:
+        import importlib as _importlib, os as _os2
+        _spec2 = _importlib.util.spec_from_file_location(
+            "db", _os2.path.join(_os2.path.dirname(__file__), "..", "db.py")
+        )
+        _db_mod = _importlib.util.module_from_spec(_spec2)
+        _spec2.loader.exec_module(_db_mod)
+    db = _db_mod
+except Exception as _db_err:
+    db = None
+    logging.getLogger(__name__).warning("DB module unavailable: %s", _db_err)
+
 # ──────────────────────────────────────────
 # Path Setup (BEFORE any app imports)
 # ──────────────────────────────────────────
@@ -220,8 +236,8 @@ socketio = SocketIO(
     app,
     cors_allowed_origins=allowed_origins,
     async_mode='eventlet',
-    ping_timeout=get_config('advanced', 'websocket', 'ping_timeout', default=60),
-    ping_interval=get_config('advanced', 'websocket', 'ping_interval', default=25),
+    ping_timeout=get_config('advanced', 'websocket', 'ping_timeout', default=20),
+    ping_interval=get_config('advanced', 'websocket', 'ping_interval', default=10),
     max_http_buffer_size=get_config('advanced', 'websocket', 'max_message_size', default=1048576)
 )
 
@@ -453,15 +469,20 @@ def sanitize_text(text, max_length=5000):
     # Limit length
     text = text[:max_length]
 
-    # Remove dangerous HTML/JS patterns
+    # Remove dangerous HTML/JS patterns (deny-list — defence in depth,
+    # main XSS protection is escapeHtml() on the frontend rendering side)
     dangerous = [
         r'<script[^>]*>.*?</script>',
-        r'javascript:',
-        r'on\w+\s*=',
-        r'<iframe',
-        r'<embed',
-        r'<object>',
-        r'data:text/html'
+        r'javascript\s*:',
+        r'vbscript\s*:',
+        r'on\w+\s*=',          # onerror=, onload=, onclick= …
+        r'<iframe[^>]*>',
+        r'<embed[^>]*>',
+        r'<object[^>]*>',
+        r'<svg[^>]*>',         # <svg onload=…>
+        r'<img[^>]+onerror',   # <img src=x onerror=…>
+        r'data\s*:\s*text/html',
+        r'expression\s*\(',    # CSS expression()
     ]
 
     for pattern in dangerous:
@@ -502,20 +523,67 @@ listener_clients = {}              # client_key -> latest SID  (user clients onl
 admin_sessions = {}                 # sid -> username (admin sessions)
 api_session_tokens = {}             # Maps token -> {sid, created_at, expires_at}
 sid_to_client_key = {}              # Mapping: sid -> (client_key, client_type) for cleanup on disconnect
+_sid_last_seen: dict = {}           # sid -> datetime of last heartbeat (user clients only)
+
+# ──────────────────────────────────────────
+# Session Analytics (Feature 9)
+# ──────────────────────────────────────────
+_session_start_time = datetime.now()
+_peak_clients       = 0             # peak concurrent user-type listeners
+_total_words        = 0             # running word count across all final transcriptions
+_total_bible_refs   = 0             # running count of bible references detected
+_total_tts_plays    = 0             # incremented by /api/tts/synthesize
+_total_translations = 0             # incremented by /api/translate
+
+ANALYTICS_ENABLED = get_config('features', 'session_analytics', 'enabled', default=True)
+
+# ──────────────────────────────────────────
+# Multi-account auth (Feature 6)
+# Build a dict  username -> {password_hash, role, channel, display_name}
+# Falls back to single admin_username / admin_password if no accounts list.
+# ──────────────────────────────────────────
+_accounts: dict = {}
+
+def _build_accounts():
+    raw_accounts = get_config('authentication', 'accounts', default=None)
+    if raw_accounts and isinstance(raw_accounts, list):
+        for acct in raw_accounts:
+            uname = acct.get('username', '')
+            raw_pwd = acct.get('password') or get_config(
+                'authentication', 'admin_password', default='admin123'
+            )
+            if uname:
+                _accounts[uname] = {
+                    'password_hash': hashlib.sha256(str(raw_pwd).encode()).hexdigest(),
+                    'role':         acct.get('role', 'operator'),
+                    'channel':      acct.get('channel', 'main'),
+                    'display_name': acct.get('display_name', uname),
+                }
+    # Always ensure the legacy admin account is present
+    if not _accounts:
+        uname = get_config('authentication', 'admin_username', default='admin')
+        pwd   = get_config('authentication', 'admin_password', default='admin123')
+        _accounts[uname] = {
+            'password_hash': hashlib.sha256(str(pwd).encode()).hexdigest(),
+            'role':         'admin',
+            'channel':      'main',
+            'display_name': uname,
+        }
+
+_build_accounts()
+
 
 def add_translation(data):
-    """Add translation with size limit"""
+    """Add translation with size limit, DB persistence, and session stats."""
     global translations_history, next_translation_id
+    global _total_words, _total_bible_refs
 
     # Assign stable ID (independent of history size)
     if 'id' not in data or data['id'] is None:
         data['id'] = next_translation_id
         next_translation_id += 1
 
-    # Bible reference detection — opt-in via config. Runs only on the
-    # corrected/original text (already final, never on interim) and is
-    # best-effort: any failure is logged and ignored so it can never
-    # break the core translation pipeline.
+    # Bible reference detection — opt-in via config.
     if bible_detector is not None and 'bible_refs' not in data:
         try:
             scan_text = data.get('corrected') or data.get('original') or ''
@@ -527,7 +595,17 @@ def add_translation(data):
 
     translations_history.append(data)
 
-    # Limit history size - keep only the most recent entries
+    # ── Session analytics ──────────────────────────────────────────
+    if ANALYTICS_ENABLED:
+        text_for_stats = data.get('corrected') or data.get('original') or ''
+        _total_words    += len(text_for_stats.split())
+        _total_bible_refs += len(data.get('bible_refs') or [])
+
+    # ── SQLite persistence ─────────────────────────────────────────
+    if db is not None:
+        db.persist(data)
+
+    # Limit history size
     if len(translations_history) > MAX_HISTORY_SIZE:
         translations_history = translations_history[-MAX_HISTORY_SIZE:]
         logger.info(f"History trimmed to {MAX_HISTORY_SIZE} items. Total IDs generated: {next_translation_id}")
@@ -725,9 +803,9 @@ def require_admin_auth(f):
             security_logger.warning(f"Invalid token attempt for admin endpoint from {get_real_ip()}")
             return jsonify({'success': False, 'error': 'Invalid or expired token'}), 401
 
-        # Verify it's the admin user
-        admin_username = get_config('authentication', 'admin_username', default='admin')
-        if decoded.get('username') != admin_username:
+        # Accept users whose account role is 'admin'
+        acct = _accounts.get(decoded.get('username', ''))
+        if not acct or acct.get('role') != 'admin':
             security_logger.warning(f"Non-admin user '{decoded.get('username')}' attempted to access admin endpoint from {get_real_ip()}")
             return jsonify({'success': False, 'error': 'Admin access required'}), 403
 
@@ -878,29 +956,33 @@ def login():
         return jsonify({'success': False, 'error': 'Invalid request'}), 400
 
     username = sanitize_text(data.get('username', ''), max_length=100)
-    password = data.get('password', '')
+    # Accept client-side pre-hashed password (SHA-256 hex) only
+    password_hash = data.get('password_hash', '')
 
-    if not username or not password:
+    if not username or not password_hash or len(password_hash) != 64:
         return jsonify({'success': False, 'error': 'Missing credentials'}), 400
 
     # Rate limiting check
-    if len(username) > 100 or len(password) > 100:
+    if len(username) > 100:
         record_suspicious_activity("Oversized credentials", client_key)
         return jsonify({'success': False, 'error': 'Invalid credentials'}), 400
 
-    # Verify credentials
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    stored_password_hash = hashlib.sha256(
-        get_config('authentication', 'admin_password', default='admin123').encode()
-    ).hexdigest()
+    # Verify credentials against multi-account table
+    # account['password_hash'] is sha256(config_password); client sends sha256(entered_password)
+    account = _accounts.get(username)
 
-    if (username == get_config('authentication', 'admin_username', default='admin') and
-            password_hash == stored_password_hash):
+    if account and account['password_hash'] == password_hash:
+        acct_role    = account.get('role', 'operator')
+        acct_channel = account.get('channel', 'main')
+        acct_display = account.get('display_name', username)
 
         # Generate secure token
         token = jwt.encode(
             {
                 'username': username,
+                'role':     acct_role,
+                'channel':  acct_channel,
+                'display_name': acct_display,
                 'exp': datetime.utcnow() + timedelta(
                     seconds=get_config('authentication', 'session_timeout', default=7200)
                 ),
@@ -911,11 +993,14 @@ def login():
             algorithm='HS256'
         )
 
-        logger.info(f"✓ Admin login successful: {username} from {client_key}")
+        logger.info(f"✓ Login successful: {username} ({acct_role}/{acct_channel}) from {client_key}")
         return jsonify({
-            'success': True,
-            'token': token,
-            'username': username
+            'success':      True,
+            'token':        token,
+            'username':     username,
+            'role':         acct_role,
+            'channel':      acct_channel,
+            'display_name': acct_display,
         })
 
     # Failed login
@@ -1170,6 +1255,7 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
         'clients': len(listener_clients),
+        'peak_clients': _peak_clients,
         'translations': len(translations_history)
     })
 
@@ -1183,6 +1269,53 @@ def get_history():
         'translations': translations_history,
         'count': len(translations_history)
     })
+
+# ──────────────────────────────────────────
+# Feature 9: Session Analytics API
+# ──────────────────────────────────────────
+@app.route('/api/analytics', methods=['GET'])
+@limiter.limit("30 per minute")
+@require_auth
+def get_analytics():
+    """Return per-session statistics for the admin dashboard."""
+    now = datetime.now()
+    elapsed = now - _session_start_time
+    elapsed_sec = int(elapsed.total_seconds())
+    hours, rem = divmod(elapsed_sec, 3600)
+    minutes, seconds = divmod(rem, 60)
+    duration_str = f"{hours}h {minutes}m {seconds}s" if hours else f"{minutes}m {seconds}s"
+
+    db_stats = db.get_stats() if db is not None else {'enabled': False, 'count': 0}
+
+    return jsonify({
+        'session_start':    _session_start_time.isoformat(),
+        'duration_seconds': elapsed_sec,
+        'duration_display': duration_str,
+        'current_clients':  len(listener_clients),
+        'peak_clients':     _peak_clients,
+        'total_transcriptions': len(translations_history),
+        'total_words':      _total_words,
+        'total_bible_refs': _total_bible_refs,
+        'total_translations': _total_translations,
+        'total_tts_plays':  _total_tts_plays,
+        'db':               db_stats,
+    })
+
+@app.route('/api/analytics/reset', methods=['POST'])
+@limiter.limit("5 per minute")
+@require_admin_auth
+def reset_analytics():
+    """Reset session analytics counters (admin only)."""
+    global _session_start_time, _peak_clients, _total_words
+    global _total_bible_refs, _total_translations, _total_tts_plays
+    _session_start_time = datetime.now()
+    _peak_clients = len(listener_clients)
+    _total_words = 0
+    _total_bible_refs = 0
+    _total_translations = 0
+    _total_tts_plays = 0
+    logger.info("Session analytics reset by %s", getattr(request, 'user', {}).get('username', 'unknown'))
+    return jsonify({'success': True, 'reset_at': _session_start_time.isoformat()})
 
 @app.route('/api/export/<export_format>', methods=['GET'])
 @limiter.limit("10 per minute")
@@ -2015,6 +2148,7 @@ def clear_tts_cache():
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection with validation"""
+    global _peak_clients
     # Priority: Get client_id from query params (sent by client), then cookies
     client_id = request.args.get('client_id')
     client_type = request.args.get('type', 'user')  # 'user' or 'admin'
@@ -2079,6 +2213,14 @@ def handle_connect():
         'api_token': api_token
     })
 
+    # ── Feature 1: broadcast live viewer count to all admins ──────
+    if client_type == 'user':
+        _sid_last_seen[request.sid] = datetime.now()   # start heartbeat tracking
+        current = len(listener_clients)
+        if current > _peak_clients:
+            _peak_clients = current
+        socketio.emit('clients_update', {'count': current}, room='admins')
+
     return True
 
 @socketio.on('disconnect')
@@ -2112,11 +2254,53 @@ def handle_disconnect(sid=None):
             break
     
     admin_sessions.pop(sid_used, None)
-    
+
     # Clean up API tokens associated with this SID
     tokens_to_remove = [t for t, info in api_session_tokens.items() if info['sid'] == sid_used]
     for token in tokens_to_remove:
         del api_session_tokens[token]
+
+    # Remove heartbeat record
+    _sid_last_seen.pop(sid_used, None)
+
+    # ── Feature 1: broadcast updated viewer count to admins ───────
+    if mapping and mapping[1] == 'user':
+        socketio.emit('clients_update', {'count': len(listener_clients)}, room='admins')
+
+@socketio.on('heartbeat')
+def handle_heartbeat():
+    """Client keepalive — update last-seen timestamp."""
+    _sid_last_seen[request.sid] = datetime.now()
+
+
+def _heartbeat_cleanup_loop():
+    """Background greenlet: evict user clients that stopped sending heartbeats.
+
+    A client is considered gone if no heartbeat arrived within
+    HEARTBEAT_TIMEOUT seconds.  This catches browsers that close
+    without triggering a clean WebSocket close (e.g. mobile sleep,
+    Cloudflare Tunnel keepalive masking the real disconnect).
+    """
+    HEARTBEAT_TIMEOUT = 45   # seconds — 3× client interval (15 s)
+    CHECK_INTERVAL   = 15   # how often we scan
+    while True:
+        eventlet.sleep(CHECK_INTERVAL)
+        now = datetime.now()
+        stale = [
+            sid for sid, last in list(_sid_last_seen.items())
+            if (now - last).total_seconds() > HEARTBEAT_TIMEOUT
+        ]
+        for sid in stale:
+            _sid_last_seen.pop(sid, None)
+            mapping = sid_to_client_key.get(sid)
+            if mapping and mapping[1] == 'user':
+                logger.info(f"[HEARTBEAT] Evicting stale user SID {sid} (no heartbeat for >{HEARTBEAT_TIMEOUT}s)")
+                # Trigger the same cleanup path as a normal disconnect
+                try:
+                    handle_disconnect(sid)
+                except Exception as _e:
+                    logger.warning(f"[HEARTBEAT] Cleanup error for {sid}: {_e}")
+
 
 @socketio.on('admin_connect')
 def handle_admin_connect(data):
@@ -2129,9 +2313,11 @@ def handle_admin_connect(data):
 
     if not get_config('authentication', 'enabled', default=True):
         admin_sessions[request.sid] = 'admin'
+        from flask_socketio import join_room
+        join_room('admins')
         # Send translation history to admin
         emit('history', translations_history)
-        emit('admin_connected', {'success': True})
+        emit('admin_connected', {'success': True, 'role': 'admin', 'channel': 'main', 'display_name': 'Admin'})
         return
 
     if not token:
@@ -2141,10 +2327,17 @@ def handle_admin_connect(data):
     decoded = validate_jwt_token(token)
     if decoded:
         admin_sessions[request.sid] = decoded['username']
+        from flask_socketio import join_room
+        join_room('admins')
         # Send translation history to admin
         emit('history', translations_history)
-        emit('admin_connected', {'success': True})
-        logger.info(f"Admin connected: {decoded['username']} from {get_real_ip()}")
+        emit('admin_connected', {
+            'success':      True,
+            'role':         decoded.get('role', 'admin'),
+            'channel':      decoded.get('channel', 'main'),
+            'display_name': decoded.get('display_name', decoded['username']),
+        })
+        logger.info(f"Admin connected: {decoded['username']} ({decoded.get('role', 'admin')}/{decoded.get('channel', 'main')}) from {get_real_ip()}")
     else:
         emit('admin_connected', {'success': False, 'error': 'Invalid token'})
 
@@ -2253,6 +2446,14 @@ def handle_correct_translation(data):
         except Exception:
             pass  # keep original refs on failure
 
+    # Persist correction to DB
+    if db is not None:
+        db.update_correction(
+            translation_id, corrected_text, True,
+            bible_refs=target_item.get('bible_refs'),
+            full_item=target_item,
+        )
+
     socketio.emit('translation_corrected', target_item)
     logger.info(f"✏️ [CORRECTED] ID {translation_id}")
     emit('correction_success', {'id': translation_id})
@@ -2268,6 +2469,8 @@ def handle_clear_history():
     global translations_history, next_translation_id
     translations_history = []
     next_translation_id = 0  # Reset ID counter when clearing history
+    if db is not None:
+        db.clear_all()
     socketio.emit('history_cleared')
     logger.info(f"[CLEARED] History by {admin_sessions.get(request.sid)}")
 
@@ -2342,10 +2545,58 @@ def handle_delete_items(data):
     translations_history = [item for item in translations_history if item.get('id') not in item_ids]
     deleted_count = original_count - len(translations_history)
 
+    # Persist deletion
+    if db is not None:
+        db.delete_ids(item_ids)
+
     # Broadcast deletion to all connected clients
     socketio.emit('items_deleted', {'ids': item_ids})
     logger.info(f"[DELETED] {deleted_count} item(s) by {admin_sessions.get(request.sid)}")
     emit('deletion_success', {'deleted_count': deleted_count})
+
+# ──────────────────────────────────────────
+# Feature 2: Announcement Broadcast
+# ──────────────────────────────────────────
+@socketio.on('send_announcement')
+def handle_send_announcement(data):
+    """Broadcast a short announcement to all connected user clients.
+
+    Payload: {text: str, duration: int (ms, 0 = sticky), type: str}
+    """
+    if not is_admin(request.sid):
+        emit('error', {'message': 'Unauthorized'})
+        return
+
+    if not data or not isinstance(data, dict):
+        emit('error', {'message': 'Invalid data'})
+        return
+
+    raw_text = sanitize_text(data.get('text', ''), max_length=300)
+    if not raw_text:
+        emit('error', {'message': 'Announcement text is empty'})
+        return
+
+    duration = int(data.get('duration', 10000))
+    # Clamp: 0 = sticky (no auto-dismiss), otherwise 3 s – 5 min
+    if duration != 0:
+        duration = max(3000, min(300000, duration))
+
+    ann_type = data.get('type', 'info')
+    if ann_type not in ('info', 'warning', 'success', 'danger'):
+        ann_type = 'info'
+
+    payload = {
+        'text':      raw_text,
+        'duration':  duration,
+        'type':      ann_type,
+        'sender':    admin_sessions.get(request.sid, 'admin'),
+        'timestamp': datetime.now().strftime('%H:%M:%S'),
+    }
+    # Broadcast to all (skip the admin who sent it)
+    socketio.emit('announcement', payload, skip_sid=[request.sid])
+    emit('announcement_sent', {'success': True, 'text': raw_text})
+    logger.info(f"[ANNOUNCEMENT] '{raw_text[:60]}' by {admin_sessions.get(request.sid)}")
+
 
 @socketio.on_error_default
 def default_error_handler(e):
@@ -2356,8 +2607,6 @@ def default_error_handler(e):
 # ──────────────────────────────────────────
 # Error Handlers
 # ──────────────────────────────────────────
-@app.errorhandler(404)
-def not_found(error):
     return jsonify({'error': 'Not found'}), 404
 
 @app.errorhandler(429)
@@ -2381,6 +2630,21 @@ if __name__ == '__main__':
     auth_enabled = get_config('authentication', 'enabled', default=True)
     logger.info(f"Authentication: {'Enabled' if auth_enabled else 'Disabled'}")
 
+    # ── Insecure-default credential check ─────────────────────────
+    _INSECURE_DEFAULTS = {
+        'jwt_secret':     ('authentication', 'jwt_secret'),
+        'admin_password': ('authentication', 'admin_password'),
+        'secret_key':     ('server', 'secret_key'),
+    }
+    _BAD_VALUES = {'secret', 'admin123', 'change-this-secret', 'change-this-secret-key', ''}
+    for label, cfg_path in _INSECURE_DEFAULTS.items():
+        val = get_config(*cfg_path, default='')
+        if str(val).strip().lower() in _BAD_VALUES:
+            logger.critical(
+                "⚠️  SECURITY WARNING: %s is set to an insecure default value. "
+                "Update config/config.yaml before deploying to production!", label
+            )
+
     host = get_config('server', 'host', default='0.0.0.0')
     port = get_config('server', 'port', default=1915)
     use_https = get_config('server', 'use_https', default=True)
@@ -2388,10 +2652,28 @@ if __name__ == '__main__':
     logger.info(f"Protocol: {'HTTPS' if use_https else 'HTTP'}")
     logger.info(f"Security logging: logs/security.log")
 
+    # ── Feature 12: Init SQLite and load persisted history ────────
+    if db is not None:
+        db_enabled = get_config('database', 'enabled', default=False)
+        db_path    = get_config('database', 'path', default='data/translations.db')
+        db.init_db(os.path.join(BASE_DIR, db_path), enabled=db_enabled)
+        if db_enabled:
+            persisted = db.load_all()
+            if persisted:
+                translations_history.extend(persisted)
+                # Restore ID counter so new IDs don't collide
+                max_id = max((item.get('id', -1) for item in persisted), default=-1)
+                next_translation_id = max_id + 1
+                logger.info(f"✅ Restored {len(persisted)} translations from DB (next_id={next_translation_id})")
+
     # Initialize Edge TTS voice cache in background (non-blocking)
     if EDGE_TTS_AVAILABLE:
         logger.info("🎙️ Pre-loading Edge TTS voices in background...")
         threading.Thread(target=fetch_edge_tts_voices_in_thread, daemon=True, name="tts-voice-preload").start()
+
+    # Start heartbeat cleanup greenlet
+    eventlet.spawn(_heartbeat_cleanup_loop)
+    logger.info("🫀 Heartbeat cleanup greenlet started (timeout=45s, interval=15s)")
 
     for directory in ['logs']:
         os.makedirs(directory, exist_ok=True)

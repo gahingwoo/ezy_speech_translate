@@ -30,6 +30,13 @@
         🔄 Translations Updated
     </div>
 
+    <!-- Feature 2: Announcement Banner -->
+    <div id="announcementBanner" class="announcement-banner" style="display:none;" role="alert" aria-live="assertive">
+        <span class="announcement-icon" id="announcementIcon" aria-hidden="true">📢</span>
+        <span class="announcement-text" id="announcementMessage"></span>
+        <button class="announcement-close" onclick="dismissAnnouncement()" aria-label="Dismiss announcement">✕</button>
+    </div>
+
     <!-- Toast Notification Container (additive) -->
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
@@ -219,6 +226,16 @@
                         <span aria-hidden="true">💾</span>
                         <span data-i18n="download">Download</span>
                     </button>
+                </div>
+
+                <!-- AI Summary: opens ChatGPT with sermon pre-loaded -->
+                <div class="control-group">
+                    <button id="ai-summary-btn" class="pf-c-button pf-c-button--secondary" style="width:100%"
+                        onclick="shareForAI('chatgpt')">
+                        <span aria-hidden="true">✨</span> AI Sermon Summary
+                    </button>
+                    <p style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.35rem;line-height:1.4;">
+                        Opens ChatGPT with sermon already loaded</p>
                 </div>
 
                 <div class="control-group">

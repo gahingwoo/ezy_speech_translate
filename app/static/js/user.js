@@ -56,6 +56,19 @@ function initSocket() {
         console.error('❌ Socket.IO error:', error);
     });
 
+    // ── Heartbeat: keep server aware this client is still alive ─────────
+    // Runs every 15 s.  Server evicts silent clients after 45 s.
+    let _heartbeatTimer = null;
+    socket.on('connect', () => {
+        if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+        _heartbeatTimer = setInterval(() => {
+            if (socket && socket.connected) socket.emit('heartbeat');
+        }, 15000);
+    });
+    socket.on('disconnect', () => {
+        if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null; }
+    });
+
     // Register all app-level listeners immediately — before the socket
     // can connect — so connect/ready events are never missed.
     setupSocketEventListeners();
@@ -757,6 +770,32 @@ function escapeHtml(s) {
    Init
    ========================= */
 function init() {
+    // ── URL param: ?lang=zh-TW  sets language without any manual selection ──
+    // Normalise to the exact option values used by the <select> dropdowns.
+    // e.g. zh-CN → zh,  zh-TW → zh-tw,  YUE → yue
+    const _URL_LANG_MAP = {
+        'zh-cn': 'zh', 'zh-hans': 'zh', 'cmn': 'zh',
+        'zh-tw': 'zh-tw', 'zh-hant': 'zh-tw', 'zh-hk': 'zh-tw',
+        'yue': 'yue', 'zh-yue': 'yue',
+    };
+    const _urlParams = new URLSearchParams(window.location.search);
+    const _urlLangRaw = _urlParams.get('lang');
+    if (_urlLangRaw) {
+        const _norm = _urlLangRaw.toLowerCase();
+        // Check explicit map first, then try direct match against select options
+        const _mapped = _URL_LANG_MAP[_norm] || _norm.split('-')[0];
+        // Validate against the actual <select> options before saving
+        const _sel = document.getElementById('targetLang');
+        const _valid = _sel ? Array.from(_sel.options).some(o => o.value === _mapped) : true;
+        const _finalLang = _valid ? _mapped : _norm.split('-')[0];
+        localStorage.setItem('targetLang', _finalLang);
+        // Also set displayLanguage from same param
+        const _dispSel = document.getElementById('displayLanguage');
+        const _dispValid = _dispSel ? Array.from(_dispSel.options).some(o => o.value === _finalLang) : false;
+        if (_dispValid) localStorage.setItem('displayLanguage', _finalLang);
+        window.history.replaceState({}, '', window.location.href);
+    }
+
     loadSettings();
     applyDisplayLanguageLocal();
     applyDisplayMode();
@@ -1406,7 +1445,7 @@ async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
                 // Response is not JSON
             }
             
-            voiceSelect.innerHTML = `<option value="">Edge TTS Error: ${errorMsg}</option>`;
+            voiceSelect.innerHTML = `<option value="">Edge TTS Error: ${errorMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}</option>`;
             console.warn(`⚠️ Edge TTS server error: ${errorMsg}`);
             return;
         }
@@ -1418,7 +1457,7 @@ async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
             console.log(`⏳ Voices still loading, retrying in 2 seconds...`);
             if (retryCount < maxRetries) {
                 // Wait and retry
-                voiceSelect.innerHTML = `<option value="">Loading Edge TTS voices (${retryCount + 1}/${maxRetries})...</option>`;
+                voiceSelect.innerHTML = `<option value="">Loading Edge TTS voices (${parseInt(retryCount) + 1}/${parseInt(maxRetries)})...</option>`;
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 return loadEdgeTTSVoices(retryCount + 1, maxRetries);
             } else {
@@ -1431,7 +1470,7 @@ async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
         if (!data.success || !data.edge_tts_available) {
             const msg = data.error || 'Edge TTS not available';
             console.warn(`⚠️ Edge TTS not available: ${msg}`);
-            voiceSelect.innerHTML = `<option value="">${msg}</option>`;
+            voiceSelect.innerHTML = `<option value="">${String(msg || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</option>`; 
             return;
         }
         
@@ -1489,7 +1528,7 @@ async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
         console.log('✅ Loaded ' + edgeTTSVoices.length + ' Edge TTS voices');
     } catch (error) {
         console.error('❌ Error loading Edge TTS voices:', error);
-        voiceSelect.innerHTML = `<option value="">Error: ${error.message}</option>`;
+        voiceSelect.innerHTML = `<option value="">Error: ${String(error.message || 'Unknown').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</option>`;
     }
 }
 
@@ -1690,6 +1729,19 @@ function toggleTheme() {
     localStorage.setItem('theme', newTheme);
     updateThemeUI(newTheme);
 }
+
+// ── Landscape / kiosk caption mode ───────────────────────────────────────────
+// When phone rotates landscape, collapse sidebar and maximise the caption area.
+(function _landscapeWatcher() {
+    function applyOrientation() {
+        const isLandscape = window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
+        document.documentElement.setAttribute('data-landscape', isLandscape ? 'true' : 'false');
+    }
+    applyOrientation();
+    window.addEventListener('orientationchange', () => setTimeout(applyOrientation, 150));
+    window.addEventListener('resize', applyOrientation);
+})();
+
 
 function updateThemeUI(theme) {
     const icon = document.getElementById('themeIcon');
@@ -3233,8 +3285,8 @@ async function processPendingTranslations() {
         const data = batch[i];
         await addTranslation(data);
         
-        // Only speak the latest one
-        if (ttsEnabled && i === 0 && data.translated) {
+        // Only speak the latest one (translation mode only)
+        if (ttsEnabled && displayMode !== 'transcription' && i === 0 && data.translated) {
             speakText(data.translated, true);
         }
         
@@ -3262,7 +3314,6 @@ function createTranslationHTML(item) {
                     <span class="card-time">' + item.timestamp + '</span>\
                     <div class="card-actions">\
                         ' + correctedBadge + '\
-                        <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(item.corrected) + '" title="Speak transcription">🔊</button>\
                         <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
                             <span>📋</span>\
                         </button>\
@@ -3765,8 +3816,8 @@ async function translateInBackground(item, itemId, textEl) {
                 ttsBtn.setAttribute('data-text', item.translated);
             }
             
-            // Auto-play translated text if TTS is enabled
-            if (ttsEnabled && item.translated) {
+            // Auto-play translated text if TTS is enabled (translation mode only)
+            if (ttsEnabled && displayMode !== 'transcription' && item.translated) {
                 console.log('🎯 Auto-playing translation via TTS');
                 speakText(item.translated, true);
             }
@@ -3882,6 +3933,117 @@ function animateTextChange(element, currentText, newText, durationMs = 300) {
 /* ===================================
    Data Management
    =================================== */
+
+// ── AI Summary via Web Share / clipboard ────────────────────────────────────
+// The user sends the sermon text to their OWN AI app (ChatGPT, Gemini, Claude).
+// Token cost is on the user's account — fully transparent, zero server cost.
+async function shareForAI(service) {
+    // Quick check before doing anything async
+    if (translationsTotal === 0 && translations.length === 0) {
+        showToast('No content to summarise yet.', 'warning');
+        return;
+    }
+
+    // Prompt in target language + explicit instruction to reply in that language.
+    // Sermon text is the original source (English) — don't use translated text
+    // which would compound translation errors.
+    const prompts = {
+        zh:      '以下是一篇英文讲道的逐字稿。请用简体中文生成摘要，包含：主题、主要经文引用、3个核心要点。\n\n',
+        'zh-tw': '以下是一篇英文講道的逐字稿。請用繁體中文生成摘要，包含：主題、主要經文引用、3個核心要點。\n\n',
+        yue:     '以下係一篇英文講道嘅逐字稿。請用廣東話生成摘要，包含：主題、主要經文引用、3個核心要點。\n\n',
+        ja:      '以下は英語の説教の逐語録です。日本語で要約を作成してください。内容：テーマ・主な聖書箇所・3つの重要ポイント。\n\n',
+        ko:      '다음은 영어 설교의 축어록입니다. 한국어로 요약해 주세요. 주제, 주요 성경 구절, 핵심 포인트 3가지를 포함해 주세요.\n\n',
+        id:      'Berikut adalah transkrip khotbah dalam bahasa Inggris. Tolong buat ringkasan dalam bahasa Indonesia, meliputi: tema, referensi Alkitab utama, dan 3 poin utama.\n\n',
+        ms:      'Berikut ialah transkrip khotbah dalam bahasa Inggeris. Sila buat ringkasan dalam bahasa Melayu, termasuk: tema, rujukan Alkitab utama, dan 3 poin utama.\n\n',
+        th:      'ต่อไปนี้คือบันทึกคำต่อคำของคำเทศนาภาษาอังกฤษ โปรดสรุปเป็นภาษาไทย โดยระบุ: หัวข้อ, ข้อพระคัมภีร์หลัก, และ 3 ประเด็นสำคัญ\n\n',
+        vi:      'Sau đây là bản ghi chép nguyên văn bài giảng tiếng Anh. Vui lòng tóm tắt bằng tiếng Việt, bao gồm: chủ đề, các câu Kinh Thánh chính, và 3 điểm chính.\n\n',
+        hi:      'निम्नलिखित अंग्रेजी उपदेश का शब्दशः प्रतिलेख है। कृपया हिंदी में सारांश बनाएं, जिसमें: विषय, मुख्य बाइबल संदर्भ और 3 मुख्य बिंदु शामिल हों।\n\n',
+        ar:      'فيما يلي نص حرفي لعظة باللغة الإنجليزية. يرجى تلخيصها بالعربية، مع تضمين: الموضوع، الآيات الكتابية الرئيسية، و3 نقاط أساسية.\n\n',
+        es:      'A continuación está la transcripción literal de un sermón en inglés. Por favor, resume en español: tema, referencias bíblicas clave y 3 puntos principales.\n\n',
+        pt:      'A seguir está a transcrição literal de um sermão em inglês. Por favor, resuma em português: tema, referências bíblicas principais e 3 pontos principais.\n\n',
+        fr:      'Voici la transcription littérale d\'un sermon en anglais. Veuillez résumer en français : thème, références bibliques clés et 3 points principaux.\n\n',
+        de:      'Im Folgenden steht die wörtliche Abschrift einer englischen Predigt. Bitte fasse auf Deutsch zusammen: Thema, wichtige Bibelstellen und 3 Hauptpunkte.\n\n',
+        it:      'Di seguito è la trascrizione letterale di un sermone in inglese. Per favore riassumi in italiano: tema, riferimenti biblici principali e 3 punti chiave.\n\n',
+        nl:      'Hieronder staat de woordelijke transcriptie van een Engelse preek. Geef een samenvatting in het Nederlands: thema, belangrijkste Bijbelverwijzingen en 3 hoofdpunten.\n\n',
+        ru:      'Ниже приведена дословная транскрипция проповеди на английском языке. Пожалуйста, составьте краткое изложение на русском: тема, ключевые библейские ссылки и 3 основных тезиса.\n\n',
+        pl:      'Poniżej znajduje się dosłowna transkrypcja kazania po angielsku. Proszę streścić po polsku: temat, kluczowe odniesienia biblijne i 3 główne punkty.\n\n',
+        tr:      'Aşağıda İngilizce bir vaazın sözcüğü sözcüğüne dökümü yer almaktadır. Lütfen Türkçe özetleyin: konu, temel İncil referansları ve 3 ana nokta.\n\n',
+        ta:      'கீழே ஆங்கிலத்தில் ஒரு பிரசங்கத்தின் வரிக்கு வரி படியெடுப்பு உள்ளது. தயவுசெய்து தமிழில் சுருக்கவும்: தலைப்பு, முக்கிய வேத வசனங்கள் மற்றும் 3 முக்கிய கருத்துக்கள்.\n\n',
+    };
+    const langKey = (typeof targetLang !== 'undefined' ? targetLang : 'en').toLowerCase();
+    const intro = prompts[langKey] || 'Please summarise the following sermon. Include: theme, key Bible references, and 3 main points.\n\n';
+
+    // Open a blank tab NOW (synchronously, inside user gesture) to avoid popup blockers.
+    // Must NOT use noopener — that returns null and kills the reference we need to navigate.
+    // eslint-disable-next-line no-restricted-globals
+    const aiTab = window.open('about:blank', '_blank');
+
+    // Show loading state
+    const btn = document.getElementById('ai-summary-btn');
+    const origLabel = btn ? btn.innerHTML : '';
+    if (btn) btn.innerHTML = '<span aria-hidden="true">⏳</span> Loading…';
+
+    // Fetch ALL translations from server (not just what's in memory) to avoid
+    // missing early-sermon content lost to lazy loading
+    let allItems = [];
+    try {
+        const resp = await fetch(
+            '/api/translations?offset=0&limit=1000&api_token=' + encodeURIComponent(apiSessionToken)
+        );
+        if (resp.ok) {
+            const data = await resp.json();
+            // API returns newest-first; reverse to chronological order
+            allItems = (data.translations || []).filter(t => t.corrected).reverse();
+        }
+    } catch (_) { /* fall through to in-memory fallback */ }
+
+    // Fallback: use what's already in memory (reverse to chronological)
+    if (allItems.length === 0) {
+        allItems = translations.filter(t => t.corrected).slice().reverse();
+    }
+
+    if (btn) btn.innerHTML = origLabel;
+
+    if (allItems.length === 0) {
+        showToast('No content to summarise yet.', 'warning');
+        return;
+    }
+
+    // Use original corrected source text — avoids compounding translation errors
+    const lines = allItems
+        .map(t => (t.corrected || '').trim())
+        .filter(Boolean)
+        .join('\n');
+
+    const prompt = intro + lines;
+
+    // Cap to safe URL length; ChatGPT ?q= has ~8k char limit in practice
+    const MAX_CHARS = 7000;
+    const urlPrompt = prompt.length > MAX_CHARS
+        ? intro + lines.substring(0, MAX_CHARS - intro.length) + '\n[… truncated]'
+        : prompt;
+
+    const AI_URLS = {
+        chatgpt: 'https://chatgpt.com/?q=',
+        gemini:  'https://gemini.google.com/app?q=',
+        claude:  'https://claude.ai/new?q=',
+    };
+    const baseUrl = AI_URLS[service] || AI_URLS.chatgpt;
+
+    // Navigate the pre-opened tab to the real URL
+    if (aiTab) {
+        aiTab.location.href = baseUrl + encodeURIComponent(urlPrompt);
+    } else {
+        // Popup was blocked — copy to clipboard instead
+        navigator.clipboard.writeText(prompt).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = prompt; ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+        });
+        showToast('✅ Prompt copied — paste into ChatGPT.', 'success', 5000);
+    }
+}
 
 function clearLocal() {
     if (translations.length === 0) return;
@@ -4177,6 +4339,11 @@ function setupSocketEventListeners() {
         }
     });
 
+    // Feature 2: Announcement from admin
+    socket.on('announcement', (data) => {
+        showAnnouncement(data.text || data.message || '', data.duration ?? 10000, data.type || 'info');
+    });
+
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
         setConnectionStatus('offline');
@@ -4436,8 +4603,8 @@ function setupSocketEventListeners() {
                         translateInBackground(data, itemId, currentTextEl);
                     }
 
-                    // Queue auto-TTS playback with isAutoPlay=true to maintain order
-                    if (ttsEnabled && data.translated) speakText(data.translated, true);
+                    // Queue auto-TTS playback (translation mode only)
+                    if (ttsEnabled && displayMode !== 'transcription' && data.translated) speakText(data.translated, true);
                     return;
                 }
             }
@@ -4526,11 +4693,56 @@ if ('speechSynthesis' in window) {
 
 // Setup socket event listeners when DOM is loaded (only once)
 document.addEventListener('DOMContentLoaded', function () {
-    // ensureSocketConnected() is called by init(); setupSocketEventListeners()
-    // is now called inside initSocket() to guarantee listeners are registered
-    // before the first connect/ready events can fire (race-condition fix).
     ensureSocketConnected();
     initBibleFeature();
 });
+
+// ── Feature 2: Announcement Banner ─────────────────────────────────────
+let _announcementTimer = null;
+
+const _ANNOUNCEMENT_ICONS = {
+    info:    '📢',
+    success: '✅',
+    warning: '⚠️',
+    danger:  '🚨',
+};
+
+function showAnnouncement(text, duration, type) {
+    if (!text) return;
+    const banner  = document.getElementById('announcementBanner');
+    const msgEl   = document.getElementById('announcementMessage');
+    const iconEl  = document.getElementById('announcementIcon');
+    if (!banner || !msgEl) return;
+
+    if (_announcementTimer) {
+        clearTimeout(_announcementTimer);
+        _announcementTimer = null;
+    }
+
+    if (iconEl) iconEl.textContent = _ANNOUNCEMENT_ICONS[type] || '📢';
+    msgEl.textContent = text;
+
+    // Map type to banner colour via data attribute
+    banner.dataset.type = type || 'info';
+    banner.style.display = '';
+    banner.classList.remove('announcement-hide');
+    banner.classList.add('announcement-show');
+
+    if (duration && duration > 0) {
+        _announcementTimer = setTimeout(() => dismissAnnouncement(), duration);
+    }
+}
+
+function dismissAnnouncement() {
+    const banner = document.getElementById('announcementBanner');
+    if (!banner) return;
+    if (_announcementTimer) { clearTimeout(_announcementTimer); _announcementTimer = null; }
+    banner.classList.remove('announcement-show');
+    banner.classList.add('announcement-hide');
+    setTimeout(() => {
+        banner.style.display = 'none';
+        banner.classList.remove('announcement-hide');
+    }, 300);
+}
 
 console.log('✅ EzySpeechTranslate Client Ready');

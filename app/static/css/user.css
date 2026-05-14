@@ -1759,3 +1759,62 @@ body[data-ui-mode="elderly"] .about-content {
 }
 
 /* --- End refined square button sizes --- */
+/* ── Feature 2: Announcement Banner ─────────────────────────────────── */
+.announcement-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--primary, #0066cc);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-family: "Red Hat Text", system-ui, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transform: translateY(-100%);
+    transition: transform 0.28s ease;
+}
+.announcement-banner.announcement-show {
+    transform: translateY(0);
+}
+.announcement-banner.announcement-hide {
+    transform: translateY(-100%);
+}
+.announcement-banner[data-type="success"] { background: #1e7e34; }
+.announcement-banner[data-type="warning"] { background: #b45309; }
+.announcement-banner[data-type="danger"]  { background: #c00; }
+
+.announcement-icon { font-size: 1.25rem; flex-shrink: 0; }
+.announcement-text { flex: 1; line-height: 1.4; }
+.announcement-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.125rem 0.4rem;
+    line-height: 1.4;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+.announcement-close:hover { opacity: 1; }
+
+[data-theme="dark"] .announcement-banner { box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+
+/* ── Landscape kiosk mode ───────────────────────────────────────────────────── */
+/* Small-height landscape (phone on side): collapse sidebar, fill screen with captions */
+[data-landscape="true"] .pf-c-page__sidebar   { display: none !important; }
+[data-landscape="true"] .pf-c-page__main-body  { margin-left: 0 !important; }
+[data-landscape="true"] header                 { padding-top: 0; padding-bottom: 0; min-height: 36px; }
+[data-landscape="true"] .header-search-desktop { display: none; }
+[data-landscape="true"] #mainTitle             { font-size: 0.9rem; }
+/* Auto-bump text size in landscape for visibility */
+[data-landscape="true"] .translation-text,
+[data-landscape="true"] .source-text           { font-size: 1.6rem !important; line-height: 1.35; }
+[data-landscape="true"] .transcription-card    { padding: 0.6rem 1rem; margin-bottom: 0.4rem; }

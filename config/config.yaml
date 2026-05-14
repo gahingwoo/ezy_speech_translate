@@ -51,6 +51,22 @@ authentication:
   admin_username: "admin"  # Change from default "admin"
   session_timeout: 7200              # 2 hours (7200 seconds)
 
+  # Multi-speaker accounts (optional — overrides admin_username/admin_password if set)
+  # Each account gets a JWT with role + channel fields.
+  # Viewers on the same channel receive this speaker's transcriptions.
+  #
+  # roles: admin (full control), operator (broadcast only)
+  # channel: string key used to namespace Socket.IO broadcasts
+  accounts:
+    - username: "admin"
+      role: "admin"
+      channel: "main"
+      display_name: "Main Speaker"
+    # - username: "worship"
+    #   role: "operator"
+    #   channel: "worship"
+    #   display_name: "Worship Leader"
+
 # ============================================
 # Logging Configuration
 # ============================================
@@ -65,7 +81,7 @@ logging:
 # Database Configuration (Optional)
 # ============================================
 database:
-  enabled: false                     # Enable if you need persistent storage
+  enabled: true                      # Enable SQLite persistence (survives restart)
   type: "sqlite"                     # Options: sqlite, postgresql, mysql
   path: "data/translations.db"       # SQLite path
 
@@ -184,6 +200,13 @@ features:
   #   (Check bolls.life for more codes — unsupported codes return empty.)
   #
   # Set target_translation to "" to show only one translation.
+  # ── Session analytics ────────────────────────────────────────────
+  # Tracks per-session statistics: duration, word count, peak viewers,
+  # translation API calls, TTS plays, and Bible references found.
+  # Visible in the Admin panel → Session Stats card.
+  session_analytics:
+    enabled: true
+
   bible_detection:
     enabled: true                    # Master switch (server-side)
     source_translation: "NLT"        # Original-language column (e.g. WEB, NIV, NLT)

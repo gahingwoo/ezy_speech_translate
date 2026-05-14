@@ -378,10 +378,13 @@ function connectWebSocket() {
             localStorage.removeItem('authToken');
             window.location.href = '/login';
         } else {
-            // Fetch history via HTTP API to ensure we get the latest data
             fetchTranslationHistory();
+
+
         }
     });
+
+    socket.on('clients_update', () => {}); // keep handler to avoid unhandled event warnings
 
     socket.on('disconnect', () => {
         console.log('⚠️ Disconnected');
@@ -823,7 +826,7 @@ function renderTranscriptions() {
                    onclick="handleCheckboxClick(event, ${item.id})">
             <div class="card-content">
                 <div class="card-header">
-                    <span class="card-time">${item.timestamp}</span>
+                    <span class="card-time">${escapeHtml(item.timestamp)}</span>
                     ${item.is_corrected ? `<span class="card-badge">${(shared && shared[lang] && shared[lang]['corrected']) || '✓ Corrected'}</span>` : ''}
                 </div>
                 <div class="card-text">${escapeHtml(item.corrected)}</div>
@@ -1159,6 +1162,9 @@ function importTranslations(translationsToImport) {
 function startSystemMonitor() {
     updateSystemInfo();
     setInterval(updateSystemInfo, 2000);
+    // Refresh analytics every 10 s
+    refreshAnalytics();
+    setInterval(refreshAnalytics, 10000);
 }
 
 async function updateSystemInfo() {
@@ -1212,6 +1218,74 @@ async function updateSystemInfo() {
         }
     } catch (error) {
         console.error('Failed to fetch system info:', error);
+    }
+}
+
+// ── Feature 2: Send Announcement ───────────────────────────────────────
+function sendAnnouncement() {
+    const textEl     = document.getElementById('announcementText');
+    const durationEl = document.getElementById('announcementDuration');
+    const typeEl     = document.getElementById('announcementType');
+    if (!textEl || !socket) return;
+
+    const text = textEl.value.trim();
+    if (!text) {
+        showToast('Please enter an announcement message.', 'warning');
+        return;
+    }
+
+    socket.emit('send_announcement', {
+        text:     text,
+        duration: parseInt(durationEl?.value ?? '10000', 10),
+        type:     typeEl?.value ?? 'info',
+    });
+
+    // Use a one-shot timeout to detect failure without capturing global errors
+    const tid = setTimeout(() => {
+        showToast('Announcement may not have reached the server.', 'warning');
+    }, 5000);
+
+    socket.once('announcement_sent', () => {
+        clearTimeout(tid);
+        showToast('Announcement sent to all viewers!', 'success', 3000);
+        textEl.value = '';
+    });
+}
+
+// ── Feature 9: Session Analytics ───────────────────────────────────────
+async function refreshAnalytics() {
+    if (!authToken) return;
+    try {
+        const res = await fetch(`${SERVER_URL}/api/analytics`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Accept': 'application/json' }
+        });
+        if (!res.ok) return;
+        const d = await res.json();
+
+        const set = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val ?? '—';
+        };
+        set('stat-duration',     d.duration_display);
+        set('stat-peak',         d.peak_clients);
+        set('stat-words',        d.total_words);
+        set('stat-translations', d.total_transcriptions);
+        set('stat-bible-refs',   d.total_bible_refs);
+
+        const dbEl = document.getElementById('stat-db');
+        if (dbEl) {
+            if (d.db && d.db.enabled) {
+                dbEl.className = 'pf-v5-c-label pf-m-green';
+                dbEl.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__text">${d.db.count} rows</span></span>`;
+            } else {
+                dbEl.className = 'pf-v5-c-label pf-m-grey';
+                dbEl.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__text">Disabled</span></span>`;
+            }
+        }
+    } catch (err) {
+        console.debug('Analytics fetch error:', err);
     }
 }
 

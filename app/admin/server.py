@@ -462,23 +462,21 @@ def login():
         return jsonify({"error": "Missing request body"}), 400
         
     username = sanitize_input(data.get("username", ""))
-    password = data.get("password", "")
-    
-    security_logger.debug(f"Raw request data: username_key_exists={('username' in data)}, password_key_exists={('password' in data)}")
-    security_logger.debug(f"After sanitize: username='{username}' (len={len(username)}), password='{('*' * len(password) if password else 'EMPTY')}'")
+    # Accept client-side pre-hashed password (SHA-256 hex) only
+    # Plaintext 'password' field is intentionally no longer accepted
+    password_hash = data.get("password_hash", "")
 
-    # Debug logging
-    security_logger.debug(f"Login attempt - username: {username}, ADMIN_USERNAME: {ADMIN_USERNAME}")
-    security_logger.debug(f"ADMIN_PASSWORD loaded: {bool(ADMIN_PASSWORD)}, length: {len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0}")
+    if not username or not password_hash or len(password_hash) != 64:
+        security_logger.warning(f"Login attempt with missing or malformed credentials from {ip}")
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    security_logger.debug(f"Login attempt - username: {username}")
     
-    if ADMIN_PASSWORD is None or ADMIN_PASSWORD == "":
-        security_logger.error(f"✗ CRITICAL: ADMIN_PASSWORD is empty or None! Cannot authenticate")
-    
-    # Verify credentials
-    provided_hash = hash_password(password)
-    expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else "NO_PASSWORD"
-    
-    if username == ADMIN_USERNAME and hash_password(password) == hash_password(ADMIN_PASSWORD):
+    # Verify credentials — client sends sha256(password), server stores plaintext
+    # so expected hash = sha256(ADMIN_PASSWORD); compare directly (no double-hash)
+    expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else ""
+
+    if username == ADMIN_USERNAME and password_hash == expected_hash:
         # Reset login attempts on successful login
         if ip in login_attempts:
             del login_attempts[ip]
@@ -508,7 +506,7 @@ def login():
         })
     
     # Failed login
-    security_logger.warning(f"✗ Failed login attempt: {username} from {ip} (username_match={username == ADMIN_USERNAME}, password_match={provided_hash == expected_hash})")
+    security_logger.warning(f"✗ Failed login attempt: {username} from {ip}")
     return jsonify({"error": "Invalid credentials"}), 401
 
 @app.route("/api/logout", methods=["POST"])

@@ -37,6 +37,7 @@
                 <span class="status-dot"></span>
                 <span data-i18n="offline">Disconnected</span>
             </div>
+
         </div>
         <div class="header-right">
             <button class="logout-btn" onclick="logout()">
@@ -221,6 +222,39 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Feature 2: Announcement Broadcast -->
+            <div class="sidebar-section" id="announcementSection">
+                <h3 class="sidebar-title">📢 Announcement</h3>
+                <div class="control-group">
+                    <label class="control-label" for="announcementText">Message</label>
+                    <textarea id="announcementText" rows="3"
+                        placeholder="Type announcement to all viewers..."
+                        style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--text);font-family:inherit;font-size:0.875rem;resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="announcementDuration">Duration</label>
+                    <select id="announcementDuration" style="width:100%;">
+                        <option value="5000">5 seconds</option>
+                        <option value="10000" selected>10 seconds</option>
+                        <option value="30000">30 seconds</option>
+                        <option value="60000">1 minute</option>
+                        <option value="0">Until dismissed</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="announcementType">Type</label>
+                    <select id="announcementType" style="width:100%;">
+                        <option value="info" selected>ℹ️ Info</option>
+                        <option value="success">✅ Success</option>
+                        <option value="warning">⚠️ Warning</option>
+                        <option value="danger">🚨 Urgent</option>
+                    </select>
+                </div>
+                <button class="pf-c-button pf-c-button--primary" style="width:100%;" onclick="sendAnnouncement()">
+                    📢 Send to All Viewers
+                </button>
+            </div>
         </aside>
 
         <!-- Main Section -->
@@ -337,6 +371,91 @@
                         </dl>
                     </div>
                 </div>
+            </div>
+
+            <!-- Feature 9: Session Analytics -->
+            <div class="panel-section" id="analyticsSection">
+                <h3 class="panel-title">📊 Session Stats</h3>
+                <div id="analyticsCard" class="pf-v5-c-card" aria-label="Session Analytics">
+                    <div class="pf-v5-c-card__body">
+                        <dl class="pf-v5-c-description-list pf-m-horizontal">
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text">Duration</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="stat-duration">—</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text">Peak Viewers</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="stat-peak" class="pf-v5-u-primary-color-100">0</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text">Total Words</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="stat-words">0</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text">Translations</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="stat-translations">0</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text">Bible Refs</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <strong id="stat-bible-refs">0</strong>
+                                    </div>
+                                </dd>
+                            </div>
+
+                            <div class="pf-v5-c-description-list__group">
+                                <dt class="pf-v5-c-description-list__term">
+                                    <span class="pf-v5-c-description-list__text">DB Entries</span>
+                                </dt>
+                                <dd class="pf-v5-c-description-list__description">
+                                    <div class="pf-v5-c-description-list__text">
+                                        <span id="stat-db" class="pf-v5-c-label pf-m-grey">
+                                            <span class="pf-v5-c-label__content">
+                                                <span class="pf-v5-c-label__text">—</span>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </dd>
+                            </div>
+
+                        </dl>
+                    </div>
+                </div>
+                <button class="pf-c-button pf-c-button--secondary" style="width:100%;margin-top:0.5rem;" onclick="refreshAnalytics()">
+                    🔄 Refresh Stats
+                </button>
             </div>
 
         </aside>
