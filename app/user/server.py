@@ -1229,6 +1229,38 @@ def get_translations():
         'has_more': has_more
     })
 
+@app.route('/api/translations/<int:translation_id>/translated', methods=['PATCH'])
+@limiter.limit("300 per minute")
+@require_api_token
+def save_translated(translation_id):
+    """
+    Cache a client-side translation result back to the server so future clients
+    skip the translate call for this item.
+
+    Body: { "translated": "...", "lang": "zh" }
+    """
+    data = request.get_json(silent=True) or {}
+    translated = data.get('translated', '').strip()
+    lang = data.get('lang', '').strip()
+
+    if not translated or not lang or len(translated) > 4000:
+        return jsonify({'success': False, 'error': 'invalid'}), 400
+
+    # Update in-memory history
+    for item in translations_history:
+        if item.get('id') == translation_id:
+            # Only update if language still matches (don't overwrite a newer lang)
+            if item.get('translated_lang') != lang:
+                item['translated'] = translated
+                item['translated_lang'] = lang
+            break
+
+    # Persist to DB
+    if db is not None:
+        db.update_translated(translation_id, translated, lang)
+
+    return jsonify({'success': True})
+
 @app.route('/api/translations/clear', methods=['POST'])
 @limiter.limit("10 per minute")
 @require_auth

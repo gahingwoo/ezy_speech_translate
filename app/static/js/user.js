@@ -3357,10 +3357,12 @@ function createTranslationHTML(item) {
     const shouldShowSource = showSourceText && normalizedSourceLang !== normalizedTargetLang;
 
     if (displayMode !== 'transcription') {
-        if (!item.translated || item.currentLang !== targetLang) {
+        // Use server-cached translation if language matches — skip the API call entirely
+        if (item.translated && item.translated_lang === targetLang) {
+            item.currentLang = targetLang;
+        } else if (!item.translated || item.currentLang !== targetLang) {
             item.currentLang = targetLang;
             item.translated = null;  // Mark as pending
-
             // Fire-and-forget: translate in background, update DOM when done
             translateInBackground(item, itemId);
         }
@@ -3767,7 +3769,16 @@ async function translateInBackground(item, itemId, textEl) {
         const translated = await translateText(item.corrected, lang);
         item.translated = translated || item.corrected;
         item.currentLang = lang;
-        
+
+        // Fire-and-forget: cache translation on server so future clients skip this call
+        if (translated && item.id != null) {
+            fetch('/api/translations/' + item.id + '/translated?api_token=' + encodeURIComponent(apiSessionToken), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ translated: translated, lang: lang })
+            }).catch(() => {}); // silent — non-critical
+        }
+
         console.log('✅ Translation complete (' + item.translated.length + ' chars): ' + item.translated.substring(0, 100));
         
         // Update DOM if element still exists

@@ -145,6 +145,29 @@ def update_correction(item_id: int, corrected: str, is_corrected: bool,
             logger.warning("DB update_correction error: %s", exc)
 
 
+def update_translated(item_id: int, translated: str, lang: str) -> None:
+    """Cache the translated text and the language it was translated into."""
+    if not _enabled or not _db_path:
+        return
+    with _lock:
+        try:
+            with _get_conn() as conn:
+                conn.execute(
+                    """
+                    UPDATE translations
+                    SET translated = ?,
+                        raw_json = json_set(COALESCE(raw_json, '{}'),
+                                           '$.translated', ?,
+                                           '$.translated_lang', ?)
+                    WHERE id = ?
+                    """,
+                    (translated, translated, lang, item_id),
+                )
+                conn.commit()
+        except Exception as exc:
+            logger.warning("DB update_translated error: %s", exc)
+
+
 def delete_ids(ids: list) -> None:
     """Delete records by id list."""
     if not _enabled or not _db_path or not ids:
