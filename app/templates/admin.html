@@ -10,6 +10,7 @@
         name="description">
     <!-- Favicon will be set by OEM loader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
@@ -254,6 +255,50 @@
                 <button class="pf-c-button pf-c-button--primary" style="width:100%;" onclick="sendAnnouncement()">
                     📢 Send to All Viewers
                 </button>
+            </div>
+
+            <!-- QR Code Generator -->
+            <div class="sidebar-section" id="qrSection">
+                <h3 class="sidebar-title">📲 Audience QR Code</h3>
+                <div class="control-group">
+                    <label class="control-label" for="qrLangSelect">Language preset</label>
+                    <select id="qrLangSelect" style="width:100%;">
+                        <option value="">— No preset (default) —</option>
+                        <option value="zh">简体中文 (Simplified Chinese)</option>
+                        <option value="zh-tw">繁體中文 (Traditional Chinese)</option>
+                        <option value="yue">粵語 (Cantonese)</option>
+                        <option value="en">English</option>
+                        <option value="id">Bahasa Indonesia (Indonesian)</option>
+                        <option value="ms">Bahasa Melayu (Malay)</option>
+                        <option value="ja">日本語 (Japanese)</option>
+                        <option value="ko">한국어 (Korean)</option>
+                        <option value="th">ภาษาไทย (Thai)</option>
+                        <option value="vi">Tiếng Việt (Vietnamese)</option>
+                        <option value="hi">हिन्दी (Hindi)</option>
+                        <option value="ar">العربية (Arabic)</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
+                        <option value="es">Español (Spanish)</option>
+                        <option value="pt">Português (Portuguese)</option>
+                        <option value="fr">Français (French)</option>
+                        <option value="de">Deutsch (German)</option>
+                        <option value="it">Italiano (Italian)</option>
+                        <option value="nl">Nederlands (Dutch)</option>
+                        <option value="ru">Русский (Russian)</option>
+                        <option value="pl">Polski (Polish)</option>
+                        <option value="tr">Türkçe (Turkish)</option>
+                    </select>
+                </div>
+                <button class="pf-c-button pf-c-button--primary" style="width:100%;margin-bottom:0.6rem;" onclick="generateQR()">
+                    📲 Generate QR Code
+                </button>
+                <!-- QR output -->
+                <div id="qrOutput" style="display:none;text-align:center;">
+                    <div id="qrCanvas" style="display:inline-block;background:#fff;padding:12px;border-radius:6px;margin-bottom:0.5rem;"></div>
+                    <div style="font-size:0.72rem;color:var(--text-secondary);word-break:break-all;margin-bottom:0.5rem;" id="qrUrlLabel"></div>
+                    <button class="pf-c-button pf-c-button--secondary" style="width:100%;" onclick="downloadQR()">
+                        ⬇️ Download PNG
+                    </button>
+                </div>
             </div>
         </aside>
 

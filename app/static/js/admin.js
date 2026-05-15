@@ -1531,3 +1531,55 @@ async function saveBibleSourceTranslation() {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => loadBibleSourceTranslation(), 1500);
 });
+
+// ─── QR Code Generator ────────────────────────────────────────────────────────
+let _qrInstance = null;
+
+function generateQR() {
+    const lang = document.getElementById('qrLangSelect').value;
+    const base = (typeof SERVER_URL !== 'undefined' && SERVER_URL)
+        ? SERVER_URL
+        : `${window.location.protocol}//${window.location.hostname}:1915`;
+    const url = lang ? `${base}/?lang=${encodeURIComponent(lang)}` : base + '/';
+
+    const container = document.getElementById('qrCanvas');
+    container.innerHTML = '';  // clear previous
+
+    _qrInstance = new QRCode(container, {
+        text: url,
+        width: 220,
+        height: 220,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+    });
+
+    document.getElementById('qrUrlLabel').textContent = url;
+    document.getElementById('qrOutput').style.display = 'block';
+}
+
+function downloadQR() {
+    const container = document.getElementById('qrCanvas');
+    const img = container.querySelector('img');
+    const canvas = container.querySelector('canvas');
+
+    let dataUrl;
+    if (canvas) {
+        dataUrl = canvas.toDataURL('image/png');
+    } else if (img) {
+        // qrcodejs may render as <img> in some browsers — convert via canvas
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth || 220;
+        c.height = img.naturalHeight || 220;
+        c.getContext('2d').drawImage(img, 0, 0);
+        dataUrl = c.toDataURL('image/png');
+    } else {
+        return;
+    }
+
+    const lang = document.getElementById('qrLangSelect').value || 'default';
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `audience-qr-${lang}.png`;
+    a.click();
+}
