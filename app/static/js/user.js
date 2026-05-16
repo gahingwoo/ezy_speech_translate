@@ -4045,18 +4045,57 @@ async function shareForAI(service) {
     }
 
     // Use original corrected source text — avoids compounding translation errors
-    const lines = allItems
-        .map(t => (t.corrected || '').trim())
-        .filter(Boolean)
-        .join('\n');
+    const segments = allItems.map(t => (t.corrected || '').trim()).filter(Boolean);
 
-    const prompt = intro + lines;
+    // Build a URL-safe sermon skeleton so ChatGPT always gets a complete picture,
+    // even for long sermons. Strategy:
+    //   1. Always include first 6 segments (theme / intro)
+    //   2. Always include last 6 segments (conclusion / application)
+    //   3. Prefer segments that contain a Bible reference
+    //   4. Fill remaining budget with evenly-sampled middle segments
+    const URL_CHAR_LIMIT = 5500;  // conservative — leaves room for prompt + encoding headroom
+    const fullText = segments.join('\n');
 
-    // Cap to safe URL length; ChatGPT ?q= has ~8k char limit in practice
-    const MAX_CHARS = 7000;
-    const urlPrompt = prompt.length > MAX_CHARS
-        ? intro + lines.substring(0, MAX_CHARS - intro.length) + '\n[… truncated]'
-        : prompt;
+    let sermonText;
+    if (fullText.length <= URL_CHAR_LIMIT) {
+        sermonText = fullText;
+    } else {
+        const BIBLE_RE = /\b(gen|exo|lev|num|deu|jos|jdg|rut|sam|kgs|chr|ezr|neh|est|job|ps|prov|ecc|song|isa|jer|lam|eze|dan|hos|joel|amos|oba|jon|mic|nah|hab|zep|hag|zec|mal|mat|mar|luk|joh|act|rom|cor|gal|eph|phi|col|the|tim|tit|phm|heb|jam|pet|rev|john|luke|mark|matthew|acts|romans|genesis|psalm|proverbs|revelation|ephesians|philippians|colossians)\s*\d/i;
+        const n = segments.length;
+        const HEAD = Math.min(6, n);
+        const TAIL = Math.min(6, Math.max(0, n - HEAD));
+        const head = segments.slice(0, HEAD);
+        const tail = segments.slice(n - TAIL);
+        const middle = segments.slice(HEAD, n - TAIL);
+
+        // Bible-ref segments from the middle (unique, up to 10)
+        const bibleSegs = middle.filter(s => BIBLE_RE.test(s)).slice(0, 10);
+
+        // Budget left after head + tail + bible refs
+        const reserved = head.join('\n') + '\n' + bibleSegs.join('\n') + '\n' + tail.join('\n');
+        const budget = URL_CHAR_LIMIT - reserved.length - 100;  // 100 for ellipsis markers
+
+        // Evenly sample remaining middle segments to fill budget
+        const remaining = middle.filter(s => !BIBLE_RE.test(s));
+        const sampled = [];
+        if (budget > 0 && remaining.length > 0) {
+            const step = Math.max(1, Math.floor(remaining.length / Math.max(1, Math.floor(budget / 120))));
+            for (let i = 0; i < remaining.length && sampled.join('\n').length < budget; i += step) {
+                sampled.push(remaining[i]);
+            }
+        }
+
+        // Assemble: head → [bible refs] → [sampled middle] → tail
+        const parts = [
+            ...head,
+            ...(bibleSegs.length ? ['[…]', ...bibleSegs] : []),
+            ...(sampled.length  ? ['[…]', ...sampled]   : []),
+            ...(tail.length     ? ['[…]', ...tail]       : []),
+        ];
+        sermonText = parts.join('\n');
+    }
+
+    const prompt = intro + sermonText;
 
     const AI_URLS = {
         chatgpt: 'https://chatgpt.com/?q=',
@@ -4065,18 +4104,12 @@ async function shareForAI(service) {
     };
     const baseUrl = AI_URLS[service] || AI_URLS.chatgpt;
 
-    // Navigate the pre-opened tab to the real URL
+    // Always navigate with prompt pre-loaded — no clipboard fallback needed
+    const target = baseUrl + encodeURIComponent(prompt);
     if (aiTab) {
-        aiTab.location.href = baseUrl + encodeURIComponent(urlPrompt);
+        aiTab.location.href = target;
     } else {
-        // Popup was blocked — copy to clipboard instead
-        navigator.clipboard.writeText(prompt).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = prompt; ta.style.cssText = 'position:fixed;opacity:0';
-            document.body.appendChild(ta); ta.select();
-            document.execCommand('copy'); document.body.removeChild(ta);
-        });
-        showToast('✅ Prompt copied — paste into ChatGPT.', 'success', 5000);
+        window.open(target, '_blank');
     }
 }
 
