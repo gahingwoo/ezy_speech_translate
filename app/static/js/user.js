@@ -877,6 +877,30 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
+// ─── Screen Wake Lock ─────────────────────────────────────────────────────────
+// Keeps the phone screen on while the audience page is visible.
+(function () {
+    if (!('wakeLock' in navigator)) return;
+
+    let _wakeLock = null;
+
+    async function _acquire() {
+        if (_wakeLock) return;
+        if (document.hidden) return;
+        try {
+            _wakeLock = await navigator.wakeLock.request('screen');
+            _wakeLock.addEventListener('release', function () { _wakeLock = null; });
+        } catch (e) {}
+    }
+
+    // Re-acquire whenever tab becomes visible (lock auto-releases on hide)
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) _acquire();
+    });
+
+    _acquire();
+})();
+
 /* ===================================
    XSS Protection
    =================================== */

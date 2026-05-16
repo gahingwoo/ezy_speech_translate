@@ -1,19 +1,9 @@
-"""
-Bible reference detection and online lookup (PrayerPulse API).
+"""Bible reference detection and online lookup (bolls.life API).
 
 Scans final transcriptions for Bible references like "John 3:16",
 "1 Cor 13:4-8", "Romans 8" and fetches verse text from the
-PrayerPulse Bible API (https://api.prayerpulse.io — free, no key
-required, 27 languages, 150+ translations).
-
-# ──────────────────────────────────────────────────────────────────
-# Migration note (bolls.life → PrayerPulse)
-# Previous API base: https://bolls.life/get-verses/
-# New API base:      https://api.prayerpulse.io/bible/get-verses/
-# The batch POST body format is identical.  PrayerPulse adds:
-#   ?clean=true   — strips Strong's numbers & HTML annotations
-#   GET /bible/get-languages/  — 150+ translations organised by lang
-# ──────────────────────────────────────────────────────────────────
+bolls.life Bible API (https://bolls.life — free, no key required,
+160+ translations across many languages).
 
 Supports two independent translations per lookup:
   source_translation — admin-configured; shown alongside the
@@ -35,6 +25,7 @@ import logging
 import pathlib
 import re
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from typing import Iterable
 
@@ -323,14 +314,13 @@ def detect_refs(text: str) -> list[dict]:
 # ──────────────────────────────────────────
 # Online API config & verse cache
 # ──────────────────────────────────────────
-# OLD API (bolls.life) — no longer used
-# _API_VERSES_URL = "https://bolls.life/get-verses/"
-
-# NEW API — PrayerPulse (free, no key, 27 languages, 150+ translations)
-# ?clean=true strips Strong's concordance numbers and HTML footnotes
-_API_VERSES_URL   = "https://api.prayerpulse.io/bible/get-verses/?clean=true"
-_API_LANGUAGES_URL = "https://api.prayerpulse.io/bible/get-languages/"
+# bolls.life single-verse endpoint:
+#   GET /get-verse/{translation}/{book_id}/{chapter}/{verse}/
+#   Returns: {pk, verse, text, comment?}
+_API_VERSE_URL    = "https://bolls.life/get-verse/{translation}/{book}/{chapter}/{verse}/"
+_API_LANGUAGES_URL = "https://bolls.life/static/bolls/app/views/languages.json"
 _API_TIMEOUT = 8          # seconds per HTTP request
+_API_MAX_WORKERS = 8      # concurrent verse fetches
 _SOURCE_TRANSLATION = "WEB"
 _TARGET_TRANSLATION = ""   # empty → single-translation mode
 _MAX_VERSES = 10
@@ -401,30 +391,61 @@ def _cache_set(translation: str, book_num: int, chapter: int, verse: int, text: 
 
 
 def _fetch_batch(requests_list: list[dict]) -> list[list[dict]]:
-    """POST /bible/get-verses/?clean=true for a list of {translation, book, chapter, verses}.
+    """Fetch verses from bolls.life for a list of {translation, book, chapter, verses}.
 
-    PrayerPulse API: https://api.prayerpulse.io/bible/get-verses/?clean=true
-    Request body: [{translation, book, chapter, verses: [...]}, ...]
-    Response:     [[{pk, verse, text}, ...], ...]  (parallel list of verse-lists)
+    bolls.life API: GET /get-verse/{translation}/{book}/{chapter}/{verse}/
+    Returns: {pk, verse, text, comment?}
 
-    Returns a parallel list of verse-lists.  On any error returns empty
-    inner lists so callers always get a list of the same length.
+    Individual verses are fetched concurrently via ThreadPoolExecutor.
+    Returns a parallel list of verse-lists matching requests_list.
+    On any error returns empty inner lists so callers always get a
+    list of the same length.
     """
-    try:
-        resp = _requests.post(
-            _API_VERSES_URL,
-            json=requests_list,
-            timeout=_API_TIMEOUT,
-            headers={"User-Agent": "EzySpeechTranslate-BibleLookup/2.0"},
+    if not requests_list:
+        return []
+
+    # Build flat list of (req_idx, verse_num) tasks
+    tasks: list[tuple[int, int]] = []
+    for i, req in enumerate(requests_list):
+        for v in req.get("verses", []):
+            tasks.append((i, v))
+
+    results: list[list[dict]] = [[] for _ in requests_list]
+
+    def _fetch_one(req_idx: int, verse_num: int) -> tuple[int, dict | None]:
+        req = requests_list[req_idx]
+        url = _API_VERSE_URL.format(
+            translation=req["translation"],
+            book=req["book"],
+            chapter=req["chapter"],
+            verse=verse_num,
         )
-        resp.raise_for_status()
-        raw = resp.json()
-        if isinstance(raw, list):
-            return raw
-        return [[] for _ in requests_list]
+        try:
+            resp = _requests.get(
+                url,
+                timeout=_API_TIMEOUT,
+                headers={"User-Agent": "EzySpeechTranslate-BibleLookup/2.0"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                # bolls.life returns {pk, verse, text, comment?}
+                # Normalise to {verse, text} so downstream code works unchanged
+                return req_idx, {"verse": data["verse"], "text": data.get("text", "")}
+        except Exception as exc:
+            logger.debug("📖 Bible verse fetch failed %s: %s", url, exc)
+        return req_idx, None
+
+    try:
+        with ThreadPoolExecutor(max_workers=_API_MAX_WORKERS) as pool:
+            futures = {pool.submit(_fetch_one, i, v): (i, v) for i, v in tasks}
+            for future in as_completed(futures):
+                req_idx, row = future.result()
+                if row is not None:
+                    results[req_idx].append(row)
     except Exception as exc:
         logger.warning("📖 Bible API batch fetch failed: %s", exc)
-        return [[] for _ in requests_list]
+
+    return results
 
 
 def _resolve_verses_for_ref(ref: dict) -> list[int]:
@@ -544,7 +565,7 @@ def detect_and_lookup(text: str) -> list[dict]:
 def fetch_languages() -> list[dict]:
     """Fetch the list of available Bible translations grouped by language.
 
-    Returns the raw JSON from PrayerPulse GET /bible/get-languages/.
+    Returns the bolls.life languages JSON.
     Each item: { language: str, translations: [{short_name, full_name, updated}, ...] }
     Returns [] on failure (caller should handle gracefully).
     """
