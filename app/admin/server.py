@@ -71,50 +71,10 @@ security_logger.addHandler(security_handler)
 security_logger.setLevel(logging.INFO)
 
 # ──────────────────────────────────────────
-# Secure Configuration Loader
+# Configuration (shared loader)
 # ──────────────────────────────────────────
-# Secure Configuration Loader
-# ──────────────────────────────────────────
-sys.path.insert(0, BASE_DIR)  # Add project root to path for secure_loader import
-
-config_file_path = os.path.join(CONFIG_DIR, "config.yaml")
-
-try:
-    from secure_loader import SecureConfig
-    config_loader = SecureConfig(config_file_path)
-
-    def get_config(*keys, default=None):
-        return config_loader.get(*keys, default=default)
-
-    logger.info("✓ Loaded encrypted configuration via secure_loader")
-
-except ImportError as e:
-    logger.warning(f"Secure loader not found ({e}), falling back to YAML config")
-
-    class ConfigFallback:
-        def __init__(self, config_path='config/config.yaml'):
-            try:
-                with open(config_path, 'r') as f:
-                    self.data = yaml.safe_load(f) or {}
-            except FileNotFoundError:
-                print(f"Error: Configuration file not found at {config_path}")
-                self.data = {}
-
-        def get(self, *keys, default=None):
-            val = self.data
-            for key in keys:
-                if isinstance(val, dict):
-                    val = val.get(key)
-                    if val is None:
-                        return default
-                else:
-                    return default
-            return val if val is not None else default
-
-    config_loader = ConfigFallback(config_file_path)
-
-    def get_config(*keys, default=None):
-        return config_loader.get(*keys, default=default)
+sys.path.insert(0, BASE_DIR)
+from app.core.config import get_config, config_loader  # noqa: E402
 
 # ──────────────────────────────────────────
 # Security Configuration
@@ -191,9 +151,15 @@ def get_client_ip():
         return request.headers.get('X-Forwarded-For').split(',')[0].strip()
     return request.remote_addr
 
-def hash_password(password):
-    """Hash password with SHA-256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+# Shared helpers from app.auth
+from app.auth import (  # noqa: E402
+    hash_password,
+    sanitize_html as sanitize_input,
+    validate_path,
+    encode_jwt as _encode_jwt,
+    decode_jwt as _decode_jwt,
+)
+
 
 def is_ip_blocked(ip):
     """Check if IP is currently blocked"""
@@ -247,48 +213,14 @@ def check_rate_limit(ip):
     request_history[ip].append(current_time)
     return True
 
-def sanitize_input(text):
-    """Basic XSS protection"""
-    if not isinstance(text, str):
-        return text
-
-    dangerous_chars = {
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#x27;',
-        '/': '&#x2F;'
-    }
-
-    for char, escaped in dangerous_chars.items():
-        text = text.replace(char, escaped)
-
-    return text
-
-def validate_path(path):
-    """Prevent path traversal attacks"""
-    if '..' in path or path.startswith('/'):
-        return False
-    return True
-
 def generate_token(username):
-    """Generate JWT token"""
-    payload = {
-        'username': username,
-        'exp': datetime.utcnow() + timedelta(seconds=SESSION_TIMEOUT),
-        'iat': datetime.utcnow()
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+    """Generate JWT token for the admin session."""
+    return _encode_jwt({'username': username}, JWT_SECRET, exp_seconds=SESSION_TIMEOUT)
+
 
 def verify_token(token):
-    """Verify JWT token"""
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
+    """Verify a JWT token; returns the payload or None."""
+    return _decode_jwt(token, JWT_SECRET)
 
 # ──────────────────────────────────────────
 # Security Decorators
@@ -701,6 +633,124 @@ def clear_tts_cache():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# ──────────────────────────────────────────
+# Rooms & Glossary proxy (forward to user server with admin's JWT)
+# ──────────────────────────────────────────
+def _user_server_url() -> str:
+    user_server_port = get_config('server', 'port', default=1915)
+    return f'http://localhost:{user_server_port}'
+
+
+def _proxy_to_user(method: str, path: str, *, params=None, json_body=None, timeout=10):
+    """Forward a request to the user server using the admin's JWT token."""
+    token = session.get('token')
+    headers = {}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    url = f'{_user_server_url()}{path}'
+    try:
+        resp = requests.request(
+            method, url,
+            params=params, json=json_body, headers=headers,
+            timeout=timeout, verify=False,
+        )
+        # Forward status + JSON body if possible
+        try:
+            return jsonify(resp.json()), resp.status_code
+        except Exception:
+            return (resp.text, resp.status_code, {'Content-Type': resp.headers.get('Content-Type', 'text/plain')})
+    except Exception as exc:
+        logger.error(f"Proxy error {method} {path}: {exc}")
+        return jsonify({'success': False, 'error': str(exc)}), 502
+
+
+@app.route("/api/rooms", methods=["GET"])
+@require_auth
+@rate_limit_check
+def proxy_list_rooms():
+    return _proxy_to_user('GET', '/api/rooms')
+
+
+@app.route("/api/rooms", methods=["POST"])
+@require_auth
+@rate_limit_check
+def proxy_create_room():
+    return _proxy_to_user('POST', '/api/rooms', json_body=request.get_json(silent=True))
+
+
+@app.route("/api/rooms/<room_id>", methods=["DELETE"])
+@require_auth
+@rate_limit_check
+def proxy_delete_room(room_id):
+    return _proxy_to_user('DELETE', f'/api/rooms/{room_id}')
+
+
+@app.route("/api/glossary", methods=["GET"])
+@require_auth
+@rate_limit_check
+def proxy_list_glossary():
+    return _proxy_to_user('GET', '/api/glossary', params=request.args.to_dict())
+
+
+@app.route("/api/glossary", methods=["POST"])
+@require_auth
+@rate_limit_check
+def proxy_add_glossary():
+    return _proxy_to_user('POST', '/api/glossary', json_body=request.get_json(silent=True))
+
+
+@app.route("/api/glossary/<int:entry_id>", methods=["PUT"])
+@require_auth
+@rate_limit_check
+def proxy_update_glossary(entry_id):
+    return _proxy_to_user('PUT', f'/api/glossary/{entry_id}', json_body=request.get_json(silent=True))
+
+
+@app.route("/api/glossary/<int:entry_id>", methods=["DELETE"])
+@require_auth
+@rate_limit_check
+def proxy_delete_glossary(entry_id):
+    return _proxy_to_user('DELETE', f'/api/glossary/{entry_id}')
+
+
+# ── Recording lock (per-room) ─────────────────────────────────────
+@app.route("/api/recording/state", methods=["GET"])
+@require_auth
+@rate_limit_check
+def proxy_get_recording_state():
+    return _proxy_to_user('GET', '/api/recording/state', params=request.args.to_dict())
+
+
+@app.route("/api/recording/acquire", methods=["POST"])
+@require_auth
+@rate_limit_check
+def proxy_acquire_recording():
+    return _proxy_to_user('POST', '/api/recording/acquire', json_body=request.get_json(silent=True))
+
+
+@app.route("/api/recording/release", methods=["POST"])
+@require_auth
+@rate_limit_check
+def proxy_release_recording():
+    return _proxy_to_user('POST', '/api/recording/release', json_body=request.get_json(silent=True))
+
+
+# ── Editable config.yaml ──────────────────────────────────────────
+@app.route("/api/config/raw", methods=["GET"])
+@require_auth
+@rate_limit_check
+def proxy_get_raw_config():
+    return _proxy_to_user('GET', '/api/config/raw')
+
+
+@app.route("/api/config/raw", methods=["POST"])
+@require_auth
+@rate_limit_check
+def proxy_save_raw_config():
+    return _proxy_to_user('POST', '/api/config/raw', json_body=request.get_json(silent=True))
+
 
 @app.route("/api/protected-endpoint")
 @require_auth

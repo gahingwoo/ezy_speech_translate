@@ -39,6 +39,16 @@
                 <span data-i18n="offline">Disconnected</span>
             </div>
 
+            <!-- Multi-room indicator + switcher -->
+            <div class="room-switcher">
+                <span class="room-switcher__icon" title="Current room">🚪</span>
+                <span id="currentRoomLabel" class="room-switcher__label">main</span>
+                <button type="button" class="room-switcher__manage"
+                        onclick="openRoomManager()" data-i18n="manage_rooms">Manage</button>
+            </div>
+            <button type="button" class="config-btn"
+                    onclick="openConfigPasswordGate()" title="Edit config.yaml">⚙️ Config</button>
+
         </div>
         <div class="header-right">
             <button class="logout-btn" onclick="logout()">
@@ -47,6 +57,166 @@
             </button>
         </div>
     </header>
+
+    <!-- Room manager modal -->
+    <div id="roomManagerModal" class="modal-overlay" onclick="if(event.target===this)closeRoomManager()">
+        <div class="modal-overlay__content">
+            <h3 class="modal-overlay__title">🚪 Rooms</h3>
+            <div class="room-toolbar">
+                <select id="roomSelect" aria-label="Select room"></select>
+                <button type="button" class="pf-c-button pf-c-button--primary"
+                        onclick="switchRoom(document.getElementById('roomSelect').value)">Switch</button>
+                <button type="button" class="pf-c-button pf-c-button--secondary"
+                        onclick="createRoom()">+ New</button>
+                <button type="button" class="pf-c-button pf-c-button--danger icon-btn"
+                        onclick="deleteRoom(document.getElementById('roomSelect').value)"
+                        title="Delete selected room">×</button>
+            </div>
+            <hr class="modal-overlay__divider">
+            <h4 class="modal-overlay__subtitle">📖 Glossary (forced translations)</h4>
+            <p class="glossary-hint">Entries scoped to a room override globals. The source term is preserved exactly during translation.</p>
+            <div class="glossary-grid">
+                <input type="text" id="glossarySource" placeholder="Source term (e.g. Yahweh)" maxlength="200" />
+                <select id="glossaryLang" aria-label="Target language">
+                    <option value="*">(all langs)</option>
+                    <option value="zh">zh — 简体中文</option>
+                    <option value="zh-tw">zh-tw — 繁體中文</option>
+                    <option value="yue">yue — 粵語</option>
+                    <option value="en">en — English</option>
+                    <option value="id">id — Bahasa Indonesia</option>
+                    <option value="ms">ms — Bahasa Melayu</option>
+                    <option value="ja">ja — 日本語</option>
+                    <option value="ko">ko — 한국어</option>
+                    <option value="th">th — ภาษาไทย</option>
+                    <option value="vi">vi — Tiếng Việt</option>
+                    <option value="hi">hi — हिन्दी</option>
+                    <option value="ar">ar — العربية</option>
+                    <option value="ta">ta — தமிழ்</option>
+                    <option value="es">es — Español</option>
+                    <option value="pt">pt — Português</option>
+                    <option value="fr">fr — Français</option>
+                    <option value="de">de — Deutsch</option>
+                    <option value="it">it — Italiano</option>
+                    <option value="nl">nl — Nederlands</option>
+                    <option value="ru">ru — Русский</option>
+                    <option value="pl">pl — Polski</option>
+                    <option value="tr">tr — Türkçe</option>
+                </select>
+                <input type="text" id="glossaryTranslation" placeholder="Translation (e.g. 耶和华)" maxlength="500" />
+                <select id="glossaryScope" aria-label="Glossary scope">
+                    <option value="">(global)</option>
+                    <option id="glossaryScopeCurrent" value=""></option>
+                </select>
+                <button type="button" class="pf-c-button pf-c-button--primary" onclick="addGlossaryEntry()">Add</button>
+            </div>
+            <label class="glossary-flag">
+                <input type="checkbox" id="glossaryCaseSensitive" /> Case sensitive
+            </label>
+            <div class="glossary-table-wrap">
+                <table>
+                    <thead><tr><th>Scope</th><th>Source</th><th>Lang</th><th>Translation</th><th>Flags</th><th></th></tr></thead>
+                    <tbody id="glossaryTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-overlay__footer">
+                <button type="button" class="pf-c-button pf-c-button--secondary" onclick="closeRoomManager()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config password gate modal -->
+    <div id="configPasswordModal" class="modal-overlay" onclick="if(event.target===this)closeConfigPasswordGate()">
+        <div class="modal-overlay__content" style="max-width:400px;">
+            <h3 class="modal-overlay__title">🔐 Confirm identity</h3>
+            <p class="glossary-hint">Enter your admin password to access the config editor.</p>
+            <input type="password" id="configPasswordInput" placeholder="Admin password"
+                   style="width:100%;padding:8px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;box-sizing:border-box;"
+                   onkeydown="if(event.key==='Enter')confirmConfigPassword()" />
+            <div class="modal-overlay__footer" style="margin-top:16px;">
+                <button type="button" class="pf-c-button pf-c-button--secondary" onclick="closeConfigPasswordGate()">Cancel</button>
+                <button type="button" class="pf-c-button pf-c-button--primary" onclick="confirmConfigPassword()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config editor modal -->
+    <div id="configEditorModal" class="modal-overlay" onclick="if(event.target===this)closeConfigEditor()">
+        <div class="modal-overlay__content">
+            <h3 class="modal-overlay__title">⚙️ Edit config.yaml</h3>
+            <p class="glossary-hint">Sensitive values (passwords, secrets) appear as <code>***</code> and remain untouched on save.</p>
+            <textarea id="configEditorTextarea" class="config-editor" spellcheck="false" placeholder="Loading…"></textarea>
+            <div class="config-warning">⚠️ Some changes (ports, secrets) only take effect after restarting the server.</div>
+            <div class="modal-overlay__footer">
+                <button type="button" class="pf-c-button pf-c-button--secondary" onclick="closeConfigEditor()">Cancel</button>
+                <button type="button" class="pf-c-button pf-c-button--primary" onclick="saveConfigEditor()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recording-lock takeover modal -->
+    <div id="recordingLockModal" class="modal-overlay" onclick="if(event.target===this)closeRecordingLock()">
+        <div class="modal-overlay__content" style="max-width:440px;">
+            <h3 class="modal-overlay__title">🔒 Room already recording</h3>
+            <div class="recording-lock-banner">
+                <strong id="recordingLockOwner">Another admin</strong> is currently recording in this room.
+            </div>
+            <p class="glossary-hint">Enter your admin password to force-stop the current recording and take over.</p>
+            <input type="password" id="recordingLockPassword" placeholder="Admin password"
+                   style="width:100%;padding:8px 10px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;box-sizing:border-box;" />
+            <div class="modal-overlay__footer">
+                <button type="button" class="pf-c-button pf-c-button--secondary" onclick="closeRecordingLock()">Cancel</button>
+                <button type="button" class="pf-c-button pf-c-button--danger" onclick="confirmForceRecording()">Force takeover</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openRoomManager() {
+            const modal = document.getElementById('roomManagerModal');
+            modal.classList.add('modal-overlay--open');
+            const optCur = document.getElementById('glossaryScopeCurrent');
+            optCur.value = window.CURRENT_ROOM_ID || 'main';
+            optCur.textContent = '(this room: ' + (window.CURRENT_ROOM_ID || 'main') + ')';
+            if (typeof refreshRoomDropdown === 'function') refreshRoomDropdown();
+            if (typeof renderGlossaryTable === 'function') renderGlossaryTable();
+        }
+        function closeRoomManager() {
+            document.getElementById('roomManagerModal').classList.remove('modal-overlay--open');
+        }
+        function openConfigPasswordGate() {
+            const modal = document.getElementById('configPasswordModal');
+            modal.classList.add('modal-overlay--open');
+            const inp = document.getElementById('configPasswordInput');
+            if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); }
+        }
+        function closeConfigPasswordGate() {
+            document.getElementById('configPasswordModal').classList.remove('modal-overlay--open');
+            const inp = document.getElementById('configPasswordInput');
+            if (inp) inp.value = '';
+        }
+        function openConfigEditor() {
+            const modal = document.getElementById('configEditorModal');
+            const ta = document.getElementById('configEditorTextarea');
+            ta.value = 'Loading…';
+            modal.classList.add('modal-overlay--open');
+            if (typeof loadConfigEditor === 'function') loadConfigEditor();
+        }
+        function closeConfigEditor() {
+            document.getElementById('configEditorModal').classList.remove('modal-overlay--open');
+        }
+        function closeRecordingLock() {
+            document.getElementById('recordingLockModal').classList.remove('modal-overlay--open');
+            const pw = document.getElementById('recordingLockPassword');
+            if (pw) pw.value = '';
+        }
+        window.openRoomManager = openRoomManager;
+        window.closeRoomManager = closeRoomManager;
+        window.openConfigPasswordGate = openConfigPasswordGate;
+        window.closeConfigPasswordGate = closeConfigPasswordGate;
+        window.openConfigEditor = openConfigEditor;
+        window.closeConfigEditor = closeConfigEditor;
+        window.closeRecordingLock = closeRecordingLock;
+    </script>
 
     <!-- Mobile Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
@@ -260,6 +430,12 @@
             <!-- QR Code Generator -->
             <div class="sidebar-section" id="qrSection">
                 <h3 class="sidebar-title">📲 Audience QR Code</h3>
+                <div class="control-group">
+                    <label class="control-label" for="qrRoomSelect">Room</label>
+                    <select id="qrRoomSelect" style="width:100%;">
+                        <option value="">— Auto (current room) —</option>
+                    </select>
+                </div>
                 <div class="control-group">
                     <label class="control-label" for="qrLangSelect">Language preset</label>
                     <select id="qrLangSelect" style="width:100%;">

@@ -77,46 +77,10 @@ STATIC_DIR = os.path.join(APP_DIR, "static")
 os.chdir(BASE_DIR)
 
 # ──────────────────────────────────────────
-# Secure Configuration Loader
+# Configuration (shared loader)
 # ──────────────────────────────────────────
-sys.path.insert(0, BASE_DIR)  # Add project root to path for secure_loader import
-
-try:
-    from secure_loader import SecureConfig
-    config_loader = SecureConfig(os.path.join(CONFIG_DIR, 'config.yaml'))
-
-    def get_config(*keys, default=None):
-        return config_loader.get(*keys, default=default)
-
-    logging.getLogger("config_loader").info("✓ Loaded encrypted configuration via secure_loader")
-
-except ImportError as e:
-    logging.getLogger("config_loader").warning(f"Secure loader not found ({e}), falling back to YAML config")
-
-    class ConfigFallback:
-        def __init__(self, config_path='config/config.yaml'):
-            try:
-                with open(config_path, 'r') as f:
-                    self.data = yaml.safe_load(f) or {}
-            except FileNotFoundError:
-                print(f"Error: Configuration file not found at {config_path}")
-                self.data = {}
-
-        def get(self, *keys, default=None):
-            val = self.data
-            for key in keys:
-                if isinstance(val, dict):
-                    val = val.get(key)
-                    if val is None:
-                        return default
-                else:
-                    return default
-            return val if val is not None else default
-
-    config_loader = ConfigFallback('config/config.yaml')
-
-    def get_config(*keys, default=None):
-        return config_loader.get(*keys, default=default)
+sys.path.insert(0, BASE_DIR)
+from app.core.config import get_config, config_loader  # noqa: E402
 
 # ──────────────────────────────────────────
 # Logging Setup with Security Logging
@@ -456,73 +420,86 @@ def check_client_access(f):
     return decorated
 
 # ──────────────────────────────────────────
-# Security: Input Validation
+# Security: Input Validation (delegated to app.auth)
 # ──────────────────────────────────────────
+from app.auth import sanitize_text as _sanitize_text_core, decode_jwt as _decode_jwt  # noqa: E402
+
+
 def sanitize_text(text, max_length=5000):
-    """Sanitize text input"""
-    if not text or not isinstance(text, str):
-        return ""
+    """Sanitize text input (delegates to app.auth.sanitize)."""
+    return _sanitize_text_core(text, max_length=max_length, ip_provider=get_real_ip)
 
-    # Remove control characters
-    text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
-
-    # Limit length
-    text = text[:max_length]
-
-    # Remove dangerous HTML/JS patterns (deny-list — defence in depth,
-    # main XSS protection is escapeHtml() on the frontend rendering side)
-    dangerous = [
-        r'<script[^>]*>.*?</script>',
-        r'javascript\s*:',
-        r'vbscript\s*:',
-        r'on\w+\s*=',          # onerror=, onload=, onclick= …
-        r'<iframe[^>]*>',
-        r'<embed[^>]*>',
-        r'<object[^>]*>',
-        r'<svg[^>]*>',         # <svg onload=…>
-        r'<img[^>]+onerror',   # <img src=x onerror=…>
-        r'data\s*:\s*text/html',
-        r'expression\s*\(',    # CSS expression()
-    ]
-
-    for pattern in dangerous:
-        if re.search(pattern, text, re.IGNORECASE):
-            security_logger.warning(f"Dangerous pattern detected from {get_real_ip()}")
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-
-    return text.strip()
 
 def validate_jwt_token(token):
-    """Validate JWT token securely"""
-    if not token:
-        return None
-
-    try:
-        decoded = jwt.decode(
-            token,
-            get_config('authentication', 'jwt_secret', default='secret'),
-            algorithms=['HS256'],
-            options={"verify_exp": True}
-        )
-        return decoded
-    except jwt.ExpiredSignatureError:
-        security_logger.info("Expired token used")
-        return None
-    except jwt.InvalidTokenError:
-        security_logger.warning(f"Invalid token from {get_real_ip()}")
-        return None
+    """Validate JWT token (delegates to app.auth.jwt_utils)."""
+    return _decode_jwt(token, get_config('authentication', 'jwt_secret', default='secret'))
 
 # ──────────────────────────────────────────
 # In-memory Storage with Limits from Config
 # ──────────────────────────────────────────
 MAX_HISTORY_SIZE = get_config('advanced', 'performance', 'cache_size', default=1000)
-translations_history = []
-next_translation_id = 0  # Global ID counter (never resets, always increments)
+
+# ── Multi-room support ───────────────────────────────────────────────────────
+# Each room has independent history, listener tracking, and ID counter.
+# Backward compat: legacy single-room deployments use the default room "main".
+DEFAULT_ROOM_ID = "main"
+_VALID_ROOM_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$')
+
+# room_id -> {history: list, listeners: dict[client_key]=sid, next_id: int, display_name: str}
+_rooms: dict = {}
+# Guards lazy creation of room state to avoid two concurrent handlers
+# clobbering each other's freshly-created entry. Dict mutations themselves
+# are atomic in CPython, but the get-then-set sequence is not.
+_rooms_lock = threading.Lock()
+
+def normalize_room_id(rid) -> str:
+    """Validate and normalize a room_id. Falls back to DEFAULT_ROOM_ID."""
+    if not rid or not isinstance(rid, str):
+        return DEFAULT_ROOM_ID
+    rid = rid.strip()
+    if not _VALID_ROOM_RE.match(rid):
+        return DEFAULT_ROOM_ID
+    return rid
+
+def _room(rid: str) -> dict:
+    """Get or lazily create the state dict for a room."""
+    rid = normalize_room_id(rid)
+    state = _rooms.get(rid)
+    if state is None:
+        with _rooms_lock:
+            state = _rooms.get(rid)  # Re-check under lock
+            if state is None:
+                state = {
+                    'history': [],
+                    'listeners': {},   # client_key -> sid
+                    'next_id': 0,
+                    'display_name': rid.replace('_', ' ').title() if rid != DEFAULT_ROOM_ID else 'Main',
+                    'recording': None,   # None or {'username': str, 'sid': str, 'started_at': iso}
+                }
+                _rooms[rid] = state
+    return state
+
+def _all_listener_count() -> int:
+    """Total user listeners across all rooms."""
+    return sum(len(s['listeners']) for s in _rooms.values())
+
+def _all_history_count() -> int:
+    return sum(len(s['history']) for s in _rooms.values())
+
+# Ensure default room exists immediately
+_room(DEFAULT_ROOM_ID)
+
+# Legacy aliases — kept for compatibility with endpoints/code paths that
+# implicitly mean "the default room". New code should use _room(rid).
+translations_history = _room(DEFAULT_ROOM_ID)['history']
+next_translation_id = 0  # legacy; per-room counters are authoritative
+listener_clients = _room(DEFAULT_ROOM_ID)['listeners']
+
 connected_clients = set()          # all socket SIDs
-listener_clients = {}              # client_key -> latest SID  (user clients only, 1 per user)
-admin_sessions = {}                 # sid -> username (admin sessions)
+admin_sessions = {}                 # sid -> {'username': str, 'room_id': str}
 api_session_tokens = {}             # Maps token -> {sid, created_at, expires_at}
-sid_to_client_key = {}              # Mapping: sid -> (client_key, client_type) for cleanup on disconnect
+# sid -> (client_key, client_type, room_id) for cleanup on disconnect
+sid_to_client_key = {}
 _sid_last_seen: dict = {}           # sid -> datetime of last heartbeat (user clients only)
 
 # ──────────────────────────────────────────
@@ -544,6 +521,9 @@ ANALYTICS_ENABLED = get_config('features', 'session_analytics', 'enabled', defau
 # ──────────────────────────────────────────
 _accounts: dict = {}
 
+from app.auth import hash_password as _hash_password  # noqa: E402
+
+
 def _build_accounts():
     raw_accounts = get_config('authentication', 'accounts', default=None)
     if raw_accounts and isinstance(raw_accounts, list):
@@ -554,7 +534,7 @@ def _build_accounts():
             )
             if uname:
                 _accounts[uname] = {
-                    'password_hash': hashlib.sha256(str(raw_pwd).encode()).hexdigest(),
+                    'password_hash': _hash_password(raw_pwd),
                     'role':         acct.get('role', 'operator'),
                     'channel':      acct.get('channel', 'main'),
                     'display_name': acct.get('display_name', uname),
@@ -564,7 +544,7 @@ def _build_accounts():
         uname = get_config('authentication', 'admin_username', default='admin')
         pwd   = get_config('authentication', 'admin_password', default='admin123')
         _accounts[uname] = {
-            'password_hash': hashlib.sha256(str(pwd).encode()).hexdigest(),
+            'password_hash': _hash_password(pwd),
             'role':         'admin',
             'channel':      'main',
             'display_name': uname,
@@ -573,15 +553,51 @@ def _build_accounts():
 _build_accounts()
 
 
-def add_translation(data):
-    """Add translation with size limit, DB persistence, and session stats."""
-    global translations_history, next_translation_id
-    global _total_words, _total_bible_refs
+# ── Admin-session helpers ─────────────────────────────────────────────────────
 
-    # Assign stable ID (independent of history size)
+def _admin_username(sid: str) -> str:
+    """Extract username from admin_sessions entry (handles both dict and legacy str forms)."""
+    info = admin_sessions.get(sid)
+    if isinstance(info, dict):
+        return info.get('username', 'admin')
+    return info or 'admin'
+
+
+def _admin_room(sid: str) -> str:
+    """Get the room_id an admin SID is currently broadcasting to."""
+    info = admin_sessions.get(sid)
+    if isinstance(info, dict):
+        return normalize_room_id(info.get('room_id'))
+    return DEFAULT_ROOM_ID
+
+
+def _sid_room(sid: str) -> str:
+    """Get the room a user/admin SID is currently in. Falls back to default."""
+    mapping = sid_to_client_key.get(sid)
+    if mapping and len(mapping) >= 3:
+        return normalize_room_id(mapping[2])
+    return _admin_room(sid) if sid in admin_sessions else DEFAULT_ROOM_ID
+
+
+def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
+    """Add translation to the given room with size limit, DB persistence, and session stats."""
+    global _total_words, _total_bible_refs
+    room_id = normalize_room_id(room_id)
+    state = _room(room_id)
+
+    # Assign stable ID (independent of history size) — per-room counter
     if 'id' not in data or data['id'] is None:
-        data['id'] = next_translation_id
-        next_translation_id += 1
+        data['id'] = state['next_id']
+        state['next_id'] += 1
+    else:
+        # Keep counter ahead of any imported IDs to avoid collisions
+        try:
+            state['next_id'] = max(state['next_id'], int(data['id']) + 1)
+        except (TypeError, ValueError):
+            pass
+
+    # Tag the record with its room so DB / clients can filter
+    data['room_id'] = room_id
 
     # Bible reference detection — opt-in via config.
     if bible_detector is not None and 'bible_refs' not in data:
@@ -593,7 +609,7 @@ def add_translation(data):
         except Exception as e:
             logger.warning(f"Bible detection failed: {e}")
 
-    translations_history.append(data)
+    state['history'].append(data)
 
     # ── Session analytics ──────────────────────────────────────────
     if ANALYTICS_ENABLED:
@@ -605,10 +621,49 @@ def add_translation(data):
     if db is not None:
         db.persist(data)
 
-    # Limit history size
-    if len(translations_history) > MAX_HISTORY_SIZE:
-        translations_history = translations_history[-MAX_HISTORY_SIZE:]
-        logger.info(f"History trimmed to {MAX_HISTORY_SIZE} items. Total IDs generated: {next_translation_id}")
+    # Limit history size (per room)
+    if len(state['history']) > MAX_HISTORY_SIZE:
+        state['history'][:] = state['history'][-MAX_HISTORY_SIZE:]
+        logger.info(
+            f"History trimmed to {MAX_HISTORY_SIZE} items for room '{room_id}'. "
+            f"Total IDs generated: {state['next_id']}"
+        )
+
+
+def _get_glossary_for(room_id: str, target_lang: str) -> list:
+    """Fetch glossary entries that apply to (room_id, target_lang).
+
+    Returns a list of dicts in the form expected by translation_service:
+        [{source_term, translation, case_sensitive}, ...]
+    Includes both global (room_id IS NULL) and room-specific entries.
+    Room-specific entries override global ones for the same source_term.
+    """
+    if db is None:
+        return []
+    try:
+        rows = db.glossary_list(room_id=room_id, include_global=True)
+    except Exception as exc:
+        logger.warning(f"glossary_list failed: {exc}")
+        return []
+    # Filter by language + enabled, and de-dupe (room-specific wins)
+    seen = {}
+    target_lang_norm = (target_lang or '').lower()
+    # Sort so global entries come first; room-specific overwrite them
+    rows.sort(key=lambda r: 0 if r.get('room_id') is None else 1)
+    for r in rows:
+        if not r.get('enabled', True):
+            continue
+        entry_lang = (r.get('target_lang') or '').lower()
+        if entry_lang != '*' and entry_lang != target_lang_norm:
+            continue
+        key = r['source_term'] if r.get('case_sensitive') else r['source_term'].lower()
+        seen[key] = {
+            'source_term':    r['source_term'],
+            'translation':    r['translation'],
+            'case_sensitive': bool(r.get('case_sensitive', False)),
+        }
+    return list(seen.values())
+
 
 # ──────────────────────────────────────────
 # Middleware
@@ -1205,24 +1260,27 @@ def get_translations():
     except (ValueError, TypeError):
         offset = 0
         limit = 100
-    
+
+    room_id = normalize_room_id(request.args.get('room'))
+    history = _room(room_id)['history']
+
     # Validate parameters
-    offset = max(0, min(offset, len(translations_history)))
+    offset = max(0, min(offset, len(history)))
     limit = max(1, min(limit, 1000))  # Max 1000 items per request
-    
-    # Get total count
-    total = len(translations_history)
-    
+
+    total = len(history)
+
     # Get slice of translations (newest first)
     start = max(0, total - offset - limit)
     end = max(0, total - offset)
-    translations_slice = translations_history[start:end]
-    translations_slice.reverse()  # Most recent first
-    
+    translations_slice = history[start:end]
+    translations_slice = list(reversed(translations_slice))
+
     has_more = (offset + limit) < total
-    
+
     return jsonify({
         'translations': translations_slice,
+        'room_id': room_id,
         'offset': offset,
         'limit': limit,
         'total': total,
@@ -1246,10 +1304,12 @@ def save_translated(translation_id):
     if not translated or not lang or len(translated) > 4000:
         return jsonify({'success': False, 'error': 'invalid'}), 400
 
-    # Update in-memory history
-    for item in translations_history:
+    room_id = normalize_room_id(request.args.get('room') or (request.get_json(silent=True) or {}).get('room'))
+    history = _room(room_id)['history']
+
+    # Update in-memory history (scoped to room)
+    for item in history:
         if item.get('id') == translation_id:
-            # Only update if language still matches (don't overwrite a newer lang)
             if item.get('translated_lang') != lang:
                 item['translated'] = translated
                 item['translated_lang'] = lang
@@ -1266,13 +1326,16 @@ def save_translated(translation_id):
 @require_auth
 @check_client_access
 def clear_translations():
-    """Clear translation history"""
-    global translations_history, next_translation_id
-    translations_history = []
-    next_translation_id = 0  # Reset ID counter when clearing history
-    socketio.emit('history_cleared')
-    logger.info(f"Translation history cleared by {request.user.get('username')}")
-    return jsonify({'success': True})
+    """Clear translation history for the specified room (default room if omitted)."""
+    room_id = normalize_room_id(request.args.get('room') or
+                                (request.get_json(silent=True) or {}).get('room'))
+    state = _room(room_id)
+    state['history'].clear()
+    state['next_id'] = 0
+    socketio.emit('history_cleared', {'room_id': room_id}, room=f'room:{room_id}')
+    socketio.emit('history_cleared', {'room_id': room_id}, room=f'admin:{room_id}')
+    logger.info(f"Translation history cleared for room '{room_id}' by {request.user.get('username')}")
+    return jsonify({'success': True, 'room_id': room_id})
 
 @app.route('/favicon.ico', methods=['GET'])
 def favicon():
@@ -1282,24 +1345,39 @@ def favicon():
 @app.route('/api/health', methods=['GET'])
 @limiter.limit("120 per minute")
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint. Accepts optional ?room= for room-scoped counts."""
+    room_param = request.args.get('room')
+    if room_param:
+        room_id = normalize_room_id(room_param)
+        room_state = _room(room_id)
+        clients = len(room_state['listeners'])
+        translations = len(room_state['history'])
+    else:
+        room_id = None
+        clients = _all_listener_count()
+        translations = _all_history_count()
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'clients': len(listener_clients),
+        'clients': clients,
         'peak_clients': _peak_clients,
-        'translations': len(translations_history)
+        'translations': translations,
+        'rooms': len(_rooms),
+        'room_id': room_id,
     })
 
 @app.route('/api/history', methods=['GET'])
 @limiter.limit("60 per minute")
 @require_auth
 def get_history():
-    """Get all transcription history"""
+    """Get all transcription history for the given room (default room if omitted)."""
+    room_id = normalize_room_id(request.args.get('room'))
+    history = _room(room_id)['history']
     return jsonify({
         'success': True,
-        'translations': translations_history,
-        'count': len(translations_history)
+        'room_id': room_id,
+        'translations': history,
+        'count': len(history),
     })
 
 # ──────────────────────────────────────────
@@ -1323,14 +1401,23 @@ def get_analytics():
         'session_start':    _session_start_time.isoformat(),
         'duration_seconds': elapsed_sec,
         'duration_display': duration_str,
-        'current_clients':  len(listener_clients),
+        'current_clients':  _all_listener_count(),
         'peak_clients':     _peak_clients,
-        'total_transcriptions': len(translations_history),
+        'total_transcriptions': _all_history_count(),
         'total_words':      _total_words,
         'total_bible_refs': _total_bible_refs,
         'total_translations': _total_translations,
         'total_tts_plays':  _total_tts_plays,
         'db':               db_stats,
+        'rooms': [
+            {
+                'room_id': rid,
+                'display_name': st['display_name'],
+                'listeners': len(st['listeners']),
+                'history': len(st['history']),
+            }
+            for rid, st in _rooms.items()
+        ],
     })
 
 @app.route('/api/analytics/reset', methods=['POST'])
@@ -1341,7 +1428,7 @@ def reset_analytics():
     global _session_start_time, _peak_clients, _total_words
     global _total_bible_refs, _total_translations, _total_tts_plays
     _session_start_time = datetime.now()
-    _peak_clients = len(listener_clients)
+    _peak_clients = _all_listener_count()
     _total_words = 0
     _total_bible_refs = 0
     _total_translations = 0
@@ -1360,9 +1447,10 @@ def export_translations(export_format):
     if export_format not in allowed_formats:
         return jsonify({'error': f'Unsupported format'}), 400
 
-    # Limit export size
+    # Limit export size (scoped to the requested room, default room if omitted)
+    room_id = normalize_room_id(request.args.get('room'))
     max_export = 5000
-    export_data = translations_history[-max_export:]
+    export_data = _room(room_id)['history'][-max_export:]
 
     if export_format == 'json':
         import json as json_module
@@ -1432,19 +1520,18 @@ def export_translations(export_format):
 # ──────────────────────────────────────────
 # Translation API with Rate Limiting and Caching
 # ──────────────────────────────────────────
-try:
-    from .translation_service import get_translation_service
-except ImportError:
-    from app.translation_service import get_translation_service
+from app.services.translation import get_translation_service  # noqa: E402
 
 # Import Edge TTS for cloud-based text-to-speech
+from app.services.tts import tts_cache  # noqa: E402
+
 try:
     import edge_tts
     EDGE_TTS_AVAILABLE = True
     # Cache for Edge TTS voices (will be populated on demand)
     EDGE_TTS_VOICES_CACHE = None
     EDGE_TTS_VOICES_CACHE_TIME = None
-    
+
     # All valid Edge TTS language codes extracted from edge-tts library
     # These are the base language codes that can be used for voice selection
     VALID_EDGE_TTS_LANGS = {
@@ -1467,36 +1554,22 @@ try:
         # Regional variants
         'zh-CN-liaoning', 'zh-CN-shaanxi'
     }
-    
-    # Synthesis request cache (hash -> audio_data) to avoid duplicate requests
-    SYNTHESIS_REQUEST_CACHE = {}
-    SYNTHESIS_CACHE_TIME = {}
-    SYNTHESIS_CACHE_TTL = 3600  # 1 hour cache for identical requests
-    
+
     # Client rate limiting tracking
     CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)  # client_id -> [(timestamp, request_hash), ...]
     CLIENT_SYNTHESIS_LIMIT = 100  # Max synthesis requests per client per hour
-    
+
 except ImportError:
     logger.warning("edge-tts not installed. Cloud TTS will not be available. Install with: pip install edge-tts")
     EDGE_TTS_AVAILABLE = False
     EDGE_TTS_VOICES_CACHE = None
     EDGE_TTS_VOICES_CACHE_TIME = None
     VALID_EDGE_TTS_LANGS = set()
-    SYNTHESIS_REQUEST_CACHE = {}
-    SYNTHESIS_CACHE_TIME = {}
     CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)
 
-# ✅ Ensure all TTS-related globals are defined (fail-safe)
-# This prevents AttributeError if Edge TTS import fails partially
+# ✅ Ensure remaining TTS-related globals are defined (fail-safe)
 if 'EDGE_TTS_AVAILABLE' not in globals():
     EDGE_TTS_AVAILABLE = False
-if 'SYNTHESIS_REQUEST_CACHE' not in globals():
-    SYNTHESIS_REQUEST_CACHE = {}
-if 'SYNTHESIS_CACHE_TIME' not in globals():
-    SYNTHESIS_CACHE_TIME = {}
-if 'SYNTHESIS_CACHE_TTL' not in globals():
-    SYNTHESIS_CACHE_TTL = 3600
 if 'CLIENT_SYNTHESIS_REQUESTS' not in globals():
     CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)
 if 'EDGE_TTS_VOICES_CACHE' not in globals():
@@ -1504,7 +1577,7 @@ if 'EDGE_TTS_VOICES_CACHE' not in globals():
 if 'EDGE_TTS_VOICES_CACHE_TIME' not in globals():
     EDGE_TTS_VOICES_CACHE_TIME = None
 
-logger.info(f"🔍 Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(SYNTHESIS_REQUEST_CACHE)} items")
+logger.info(f"🔍 Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(tts_cache)} items")
 
 @app.route('/api/translate', methods=['POST'])
 @limiter.limit("300 per minute")  # 5 requests per second per client (need headroom for bulk imports)
@@ -1538,26 +1611,32 @@ def translate_text():
     
     text = sanitize_text(data.get('text', ''), max_length=5000)
     target_lang = sanitize_text(data.get('target_lang', 'en'), max_length=20)
-    
+    room_id = normalize_room_id(data.get('room') or request.args.get('room'))
+
     if not text or not target_lang:
         return jsonify({
             'success': False,
             'error': 'Missing required fields: text, target_lang'
         }), 400
-    
+
     if len(text) > 5000:
         return jsonify({
             'success': False,
             'error': 'Text too long (max 5000 characters)'
         }), 413
-    
+
     try:
         # Get translation service instance
         translation_service = get_translation_service()
-        
+
+        # Fetch glossary entries matching this room+language (if DB enabled)
+        glossary_terms = _get_glossary_for(room_id, target_lang)
+
         # Perform translation - now returns (success, translated, from_cache)
-        success, translated, from_cache = translation_service.translate(text, target_lang)
-        
+        success, translated, from_cache = translation_service.translate(
+            text, target_lang, glossary=glossary_terms
+        )
+
         return jsonify({
             'success': success,
             'translated': translated,
@@ -1565,6 +1644,8 @@ def translate_text():
             'target_lang': target_lang,
             'source_lang': 'auto',
             'cached': from_cache,
+            'room_id': room_id,
+            'glossary_applied': len(glossary_terms) if glossary_terms else 0,
             'error': None if success else 'Translation failed'
         })
     
@@ -1611,7 +1692,8 @@ def translate_batch():
     
     texts = data.get('texts', [])
     target_lang = sanitize_text(data.get('target_lang', 'en'), max_length=20)
-    
+    room_id = normalize_room_id(data.get('room') or request.args.get('room'))
+
     if not isinstance(texts, list) or not texts or not target_lang:
         return jsonify({
             'success': False,
@@ -1627,6 +1709,7 @@ def translate_batch():
     
     try:
         translation_service = get_translation_service()
+        glossary_terms = _get_glossary_for(room_id, target_lang)
         results = []
         
         for text in texts:
@@ -1641,7 +1724,9 @@ def translate_batch():
                 })
                 continue
             
-            success, translated, from_cache = translation_service.translate(sanitized, target_lang)
+            success, translated, from_cache = translation_service.translate(
+                sanitized, target_lang, glossary=glossary_terms
+            )
             results.append({
                 'original': sanitized,
                 'translated': translated,
@@ -1653,7 +1738,9 @@ def translate_batch():
         return jsonify({
             'success': True,
             'translations': results,
-            'count': len(results)
+            'count': len(results),
+            'room_id': room_id,
+            'glossary_applied': len(glossary_terms) if glossary_terms else 0,
         })
     
     except Exception as e:
@@ -1906,26 +1993,24 @@ def synthesize_tts():
 
     # 检查缓存
     cache_key = get_synthesis_cache_key(text, validated_voice)
-    if cache_key in SYNTHESIS_REQUEST_CACHE:
-        cache_time = SYNTHESIS_CACHE_TIME.get(cache_key, 0)
-        if time.time() - cache_time < SYNTHESIS_CACHE_TTL:
-            logger.info(f"🔄 Cache hit (client: {client_id})")
-            audio_data = SYNTHESIS_REQUEST_CACHE[cache_key]
-            return Response(
-                audio_data,
-                mimetype='audio/mpeg',
-                status=200,
-                headers={
-                    'Content-Type': 'audio/mpeg',
-                    'Content-Length': str(len(audio_data)),
-                    'Content-Disposition': 'inline; filename="speech.mp3"',
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0',
-                    'X-Cache': 'HIT',
-                    'X-Content-Type-Options': 'nosniff'
-                }
-            )
+    cached_audio = tts_cache.get(cache_key)
+    if cached_audio is not None:
+        logger.info(f"🔄 Cache hit (client: {client_id})")
+        return Response(
+            cached_audio,
+            mimetype='audio/mpeg',
+            status=200,
+            headers={
+                'Content-Type': 'audio/mpeg',
+                'Content-Length': str(len(cached_audio)),
+                'Content-Disposition': 'inline; filename="speech.mp3"',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+                'X-Cache': 'HIT',
+                'X-Content-Type-Options': 'nosniff'
+            }
+        )
 
     is_allowed, rate_limit_error, request_count = check_client_synthesis_limit(client_id, cache_key)
     if not is_allowed:
@@ -1978,24 +2063,10 @@ def synthesize_tts():
 
     logger.info(f"✅ Synthesized: {len(audio_data)} bytes, voice={validated_voice}")
 
-    # 写缓存
-    SYNTHESIS_REQUEST_CACHE[cache_key] = audio_data
-    SYNTHESIS_CACHE_TIME[cache_key] = time.time()
-    cache_size_mb = sum(len(v) for v in SYNTHESIS_REQUEST_CACHE.values()) / (1024 * 1024)
-    logger.info(f"💾 Cache: {len(SYNTHESIS_REQUEST_CACHE)} items, {cache_size_mb:.2f}MB")
-
-    # 超限清理
-    if cache_size_mb > 1000:
-        if SYNTHESIS_CACHE_TIME:
-            oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
-            SYNTHESIS_REQUEST_CACHE.pop(oldest_key, None)
-            SYNTHESIS_CACHE_TIME.pop(oldest_key, None)
-
-    if len(SYNTHESIS_REQUEST_CACHE) > 1000:
-        if SYNTHESIS_CACHE_TIME:
-            oldest_key = min(SYNTHESIS_CACHE_TIME.keys(), key=lambda k: SYNTHESIS_CACHE_TIME[k])
-            SYNTHESIS_REQUEST_CACHE.pop(oldest_key, None)
-            SYNTHESIS_CACHE_TIME.pop(oldest_key, None)
+    # 写缓存 (TTL + LRU eviction handled by TTSCache)
+    tts_cache.set(cache_key, audio_data)
+    stats = tts_cache.stats()
+    logger.info(f"💾 Cache: {stats['cache_items']} items, {stats['cache_size_mb']:.2f}MB")
 
     return Response(
         audio_data,
@@ -2111,29 +2182,15 @@ def get_supported_languages():
 def get_tts_cache_stats():
     """Get TTS synthesis cache statistics"""
     try:
-        if not isinstance(SYNTHESIS_REQUEST_CACHE, dict):
-            return jsonify({
-                'success': True,
-                'cache_items': 0,
-                'cache_size_mb': 0,
-                'cache_ttl_seconds': SYNTHESIS_CACHE_TTL,
-                'max_cache_size_mb': 1000,
-                'max_cache_items': 1000,
-                'message': 'TTS cache not initialized'
-            })
-
-        cache_size_bytes = sum(len(v) for v in SYNTHESIS_REQUEST_CACHE.values())
-        cache_size_mb = cache_size_bytes / (1024 * 1024)
-
-        return jsonify({
+        stats = tts_cache.stats()
+        stats.update({
             'success': True,
-            'cache_items': len(SYNTHESIS_REQUEST_CACHE),
-            'cache_size_mb': round(cache_size_mb, 2),
-            'cache_ttl_seconds': SYNTHESIS_CACHE_TTL,
-            'max_cache_size_mb': 1000,
-            'max_cache_items': 1000,
-            'message': f'TTS cache using {cache_size_mb:.2f}MB with {len(SYNTHESIS_REQUEST_CACHE)} items'
+            'message': (
+                f"TTS cache using {stats['cache_size_mb']:.2f}MB "
+                f"with {stats['cache_items']} items"
+            ),
         })
+        return jsonify(stats)
 
     except Exception as e:
         logger.error(f"❌ Error in get_tts_cache_stats: {e}", exc_info=True)
@@ -2151,18 +2208,17 @@ def get_tts_cache_stats():
 def clear_tts_cache():
     """Clear all TTS synthesis cache (admin only)."""
     try:
-        global SYNTHESIS_REQUEST_CACHE, SYNTHESIS_CACHE_TIME
-
-        cleared_items = len(SYNTHESIS_REQUEST_CACHE)
-        freed_bytes = sum(len(v) for v in SYNTHESIS_REQUEST_CACHE.values())
+        cleared_items, freed_bytes = tts_cache.clear()
         freed_mb = freed_bytes / (1024 * 1024)
         source_ip = get_real_ip()
 
-        SYNTHESIS_REQUEST_CACHE.clear()
-        SYNTHESIS_CACHE_TIME.clear()
-
-        logger.info(f"🗑️ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed from {source_ip}")
-        security_logger.info(f"TTS_ACTION: cache_cleared | Items: {cleared_items} | Freed: {freed_mb:.2f}MB | IP: {source_ip}")
+        logger.info(
+            f"🗑️ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed from {source_ip}"
+        )
+        security_logger.info(
+            f"TTS_ACTION: cache_cleared | Items: {cleared_items} | "
+            f"Freed: {freed_mb:.2f}MB | IP: {source_ip}"
+        )
 
         return jsonify({
             'success': True,
@@ -2173,6 +2229,429 @@ def clear_tts_cache():
     except Exception as e:
         logger.error(f"Error clearing TTS cache: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ──────────────────────────────────────────
+# Rooms API (multi-room support)
+# ──────────────────────────────────────────
+@app.route('/api/rooms', methods=['GET'])
+@limiter.limit("60 per minute")
+def list_rooms():
+    """Public list of active rooms — used by the user picker overlay."""
+    db_rooms = []
+    if db is not None:
+        try:
+            db_rooms = db.list_rooms()
+        except Exception as exc:
+            logger.warning(f"db.list_rooms failed: {exc}")
+    # Merge with in-memory rooms (ensures default 'main' always shows)
+    by_id = {r['room_id']: dict(r) for r in db_rooms if r.get('is_active', True)}
+    for rid, st in _rooms.items():
+        entry = by_id.get(rid, {
+            'room_id': rid,
+            'display_name': st.get('display_name') or rid,
+            'is_active': True,
+        })
+        entry['listeners'] = len(st['listeners'])
+        by_id[rid] = entry
+    # Sort: default first, then alphabetical
+    rooms_list = sorted(
+        by_id.values(),
+        key=lambda r: (0 if r['room_id'] == DEFAULT_ROOM_ID else 1, r['room_id']),
+    )
+    return jsonify({'success': True, 'rooms': rooms_list, 'default': DEFAULT_ROOM_ID})
+
+
+@app.route('/api/rooms', methods=['POST'])
+@limiter.limit("20 per minute")
+@require_admin_auth
+def create_room():
+    """Create or update a room (admin only)."""
+    data = request.get_json(silent=True) or {}
+    room_id = (data.get('room_id') or '').strip()
+    display_name = sanitize_text(data.get('display_name', '') or room_id, max_length=120)
+    if not _VALID_ROOM_RE.match(room_id):
+        return jsonify({'success': False, 'error': 'Invalid room_id'}), 400
+    if db is not None:
+        try:
+            db.upsert_room(room_id, display_name=display_name,
+                           created_by=request.user.get('username'))
+        except Exception as exc:
+            logger.warning(f"db.upsert_room failed: {exc}")
+            return jsonify({'success': False, 'error': 'DB error'}), 500
+    # Ensure in-memory state exists
+    state = _room(room_id)
+    state['display_name'] = display_name
+    logger.info(f"[ROOM] Created/updated '{room_id}' by {request.user.get('username')}")
+    return jsonify({'success': True, 'room_id': room_id, 'display_name': display_name})
+
+
+@app.route('/api/rooms/<room_id>', methods=['DELETE'])
+@limiter.limit("20 per minute")
+@require_admin_auth
+def delete_room(room_id):
+    """Soft-delete a room (admin only). Default room is protected."""
+    room_id = (room_id or '').strip()
+    if not _VALID_ROOM_RE.match(room_id):
+        return jsonify({'success': False, 'error': 'Invalid room_id'}), 400
+    if room_id == DEFAULT_ROOM_ID:
+        return jsonify({'success': False, 'error': 'Cannot delete default room'}), 400
+    if db is not None:
+        try:
+            db.delete_room(room_id)
+        except Exception as exc:
+            logger.warning(f"db.delete_room failed: {exc}")
+            return jsonify({'success': False, 'error': 'DB error'}), 500
+    # Notify any listeners still in the room
+    socketio.emit('room_deleted', {'room_id': room_id}, room=f'room:{room_id}')
+    socketio.emit('room_deleted', {'room_id': room_id}, room=f'admin:{room_id}')
+    # Drop in-memory state
+    _rooms.pop(room_id, None)
+    logger.info(f"[ROOM] Deleted '{room_id}' by {request.user.get('username')}")
+    return jsonify({'success': True, 'room_id': room_id})
+
+
+# ──────────────────────────────────────────
+# Glossary API (forced translations)
+# ──────────────────────────────────────────
+@app.route('/api/glossary', methods=['GET'])
+@limiter.limit("60 per minute")
+@require_auth
+def get_glossary():
+    """List glossary entries (optionally filtered by room and/or language)."""
+    if db is None:
+        return jsonify({'success': True, 'entries': []})
+    room_param = request.args.get('room')
+    room_id = normalize_room_id(room_param) if room_param else None
+    include_global = request.args.get('include_global', 'true').lower() != 'false'
+    try:
+        entries = db.glossary_list(room_id=room_id, include_global=include_global)
+    except Exception as exc:
+        logger.warning(f"db.glossary_list failed: {exc}")
+        return jsonify({'success': False, 'error': 'DB error'}), 500
+    lang_filter = (request.args.get('target_lang') or '').lower()
+    if lang_filter:
+        entries = [e for e in entries if (e.get('target_lang') or '').lower() == lang_filter]
+    return jsonify({'success': True, 'entries': entries, 'count': len(entries)})
+
+
+@app.route('/api/glossary', methods=['POST'])
+@limiter.limit("60 per minute")
+@require_admin_auth
+def add_glossary():
+    """Create a new glossary entry."""
+    if db is None:
+        return jsonify({'success': False, 'error': 'Database disabled'}), 400
+    data = request.get_json(silent=True) or {}
+    source_term = sanitize_text(data.get('source_term', ''), max_length=200).strip()
+    target_lang = sanitize_text(data.get('target_lang', ''), max_length=20).strip()
+    translation = sanitize_text(data.get('translation', ''), max_length=500).strip()
+    case_sensitive = bool(data.get('case_sensitive', False))
+    enabled = bool(data.get('enabled', True))
+    room_param = data.get('room')
+    room_id = None  # None = global
+    if room_param:
+        if not _VALID_ROOM_RE.match(str(room_param).strip()):
+            return jsonify({'success': False, 'error': 'Invalid room_id'}), 400
+        room_id = str(room_param).strip()
+        # Verify room actually exists (avoid orphan glossary entries)
+        try:
+            active_ids = {r['room_id'] for r in db.list_rooms()}
+        except Exception:
+            active_ids = set()
+        if room_id != DEFAULT_ROOM_ID and room_id not in active_ids:
+            return jsonify({'success': False, 'error': f"Room '{room_id}' does not exist"}), 400
+    if not source_term or not target_lang or not translation:
+        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+    try:
+        entry_id = db.glossary_add(
+            source_term=source_term, target_lang=target_lang, translation=translation,
+            room_id=room_id, case_sensitive=case_sensitive, enabled=enabled,
+            created_by=request.user.get('username'),
+        )
+    except Exception as exc:
+        logger.warning(f"db.glossary_add failed: {exc}")
+        return jsonify({'success': False, 'error': 'DB error'}), 500
+    # Bust translation cache so changes take effect immediately
+    try:
+        get_translation_service().clear_cache()
+    except Exception:
+        pass
+    logger.info(f"[GLOSSARY] Added '{source_term}'→'{translation}' ({target_lang}, room={room_id}) "
+                f"by {request.user.get('username')}")
+    return jsonify({'success': True, 'id': entry_id})
+
+
+@app.route('/api/glossary/<int:entry_id>', methods=['PUT'])
+@limiter.limit("60 per minute")
+@require_admin_auth
+def update_glossary(entry_id):
+    """Update an existing glossary entry."""
+    if db is None:
+        return jsonify({'success': False, 'error': 'Database disabled'}), 400
+    data = request.get_json(silent=True) or {}
+    fields = {}
+    if 'source_term' in data:
+        fields['source_term'] = sanitize_text(data['source_term'], max_length=200)
+    if 'target_lang' in data:
+        fields['target_lang'] = sanitize_text(data['target_lang'], max_length=20)
+    if 'translation' in data:
+        fields['translation'] = sanitize_text(data['translation'], max_length=500)
+    if 'case_sensitive' in data:
+        fields['case_sensitive'] = bool(data['case_sensitive'])
+    if 'enabled' in data:
+        fields['enabled'] = bool(data['enabled'])
+    if not fields:
+        return jsonify({'success': False, 'error': 'Nothing to update'}), 400
+    try:
+        ok = db.glossary_update(entry_id, **fields)
+    except Exception as exc:
+        logger.warning(f"db.glossary_update failed: {exc}")
+        return jsonify({'success': False, 'error': 'DB error'}), 500
+    try:
+        get_translation_service().clear_cache()
+    except Exception:
+        pass
+    return jsonify({'success': ok, 'id': entry_id})
+
+
+@app.route('/api/glossary/<int:entry_id>', methods=['DELETE'])
+@limiter.limit("60 per minute")
+@require_admin_auth
+def remove_glossary(entry_id):
+    """Delete a glossary entry."""
+    if db is None:
+        return jsonify({'success': False, 'error': 'Database disabled'}), 400
+    try:
+        ok = db.glossary_delete(entry_id)
+    except Exception as exc:
+        logger.warning(f"db.glossary_delete failed: {exc}")
+        return jsonify({'success': False, 'error': 'DB error'}), 500
+    try:
+        get_translation_service().clear_cache()
+    except Exception:
+        pass
+    return jsonify({'success': ok, 'id': entry_id})
+
+
+# ──────────────────────────────────────────
+# Recording lock (per-room) — prevents two admins from recording the same
+# room simultaneously. A force-stop requires re-verifying the admin password.
+# ──────────────────────────────────────────
+
+def _recording_owner_dict(state):
+    rec = state.get('recording')
+    if not rec:
+        return None
+    # Hide internal sid from public callers
+    return {'username': rec.get('username'), 'started_at': rec.get('started_at')}
+
+
+@app.route('/api/recording/state', methods=['GET'])
+@limiter.limit("120 per minute")
+@require_auth
+def get_recording_state():
+    """Report who (if anyone) is currently recording in a given room."""
+    rid = normalize_room_id(request.args.get('room'))
+    state = _room(rid)
+    owner = _recording_owner_dict(state)
+    return jsonify({'success': True, 'room_id': rid, 'recording': owner})
+
+
+@app.route('/api/recording/acquire', methods=['POST'])
+@limiter.limit("60 per minute")
+@require_admin_auth
+def acquire_recording():
+    """Acquire the per-room recording lock.
+
+    Returns 200 on success. If another admin holds the lock, returns 423 with
+    owner info. To take over, pass {force: true, password_hash: <sha256>}.
+    """
+    data = request.get_json(silent=True) or {}
+    rid = normalize_room_id(data.get('room'))
+    state = _room(rid)
+    username = (request.user.get('username') if request.user else '') or 'admin'
+    sid = data.get('sid')  # optional Socket.IO sid of this admin tab
+
+    current = state.get('recording')
+    if current and current.get('username') != username:
+        # Lock held by someone else
+        if not data.get('force'):
+            return jsonify({
+                'success': False, 'error': 'locked',
+                'owner': _recording_owner_dict(state),
+            }), 423
+        # Force-takeover requires password re-verification
+        password_hash = data.get('password_hash', '')
+        account = _accounts.get(username)
+        if not account or len(password_hash) != 64 or account['password_hash'] != password_hash:
+            security_logger.warning(
+                f"Force-recording rejected: bad password from {username} for room '{rid}'"
+            )
+            return jsonify({'success': False, 'error': 'invalid_password'}), 401
+        # Notify the displaced owner so their browser stops recognition
+        evicted = current.get('username')
+        evicted_sid = current.get('sid')
+        socketio.emit(
+            'recording_force_stopped',
+            {'room_id': rid, 'by': username, 'reason': 'admin_takeover'},
+            room=evicted_sid if evicted_sid else f'admin:{rid}',
+        )
+        logger.warning(
+            f"[RECORDING] {username} force-stopped {evicted} in room '{rid}'"
+        )
+
+    state['recording'] = {
+        'username': username,
+        'sid': sid,
+        'started_at': datetime.utcnow().isoformat() + 'Z',
+    }
+    socketio.emit(
+        'recording_state',
+        {'room_id': rid, 'recording': _recording_owner_dict(state)},
+        room=f'admin:{rid}',
+    )
+    logger.info(f"[RECORDING] {username} acquired room '{rid}'")
+    return jsonify({'success': True, 'room_id': rid, 'recording': _recording_owner_dict(state)})
+
+
+@app.route('/api/recording/release', methods=['POST'])
+@limiter.limit("60 per minute")
+@require_admin_auth
+def release_recording():
+    """Release the recording lock for a room.
+
+    Only the current owner (or no-op if no owner) can release.
+    """
+    data = request.get_json(silent=True) or {}
+    rid = normalize_room_id(data.get('room'))
+    state = _room(rid)
+    username = (request.user.get('username') if request.user else '') or 'admin'
+    current = state.get('recording')
+    if current and current.get('username') != username:
+        return jsonify({'success': False, 'error': 'not_owner',
+                        'owner': _recording_owner_dict(state)}), 403
+    state['recording'] = None
+    socketio.emit(
+        'recording_state',
+        {'room_id': rid, 'recording': None},
+        room=f'admin:{rid}',
+    )
+    logger.info(f"[RECORDING] {username} released room '{rid}'")
+    return jsonify({'success': True, 'room_id': rid})
+
+
+# ──────────────────────────────────────────
+# Editable config.yaml (admin only)
+# Sensitive keys are masked on read and ignored on write — they are
+# managed via the encrypted secrets.key file, not the YAML config.
+# ──────────────────────────────────────────
+
+_CONFIG_FILE_PATH = os.path.join(BASE_DIR, 'config', 'config.yaml') \
+    if 'BASE_DIR' in globals() else os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'config.yaml')
+_SENSITIVE_CONFIG_KEYS = (
+    'admin_password', 'jwt_secret', 'server_secret_key',
+    'secret_key', 'encryption_key',
+)
+
+
+def _mask_sensitive(obj):
+    """Recursively replace values for known sensitive keys with '***'."""
+    if isinstance(obj, dict):
+        return {
+            k: ('***' if k in _SENSITIVE_CONFIG_KEYS and v else _mask_sensitive(v))
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_mask_sensitive(v) for v in obj]
+    return obj
+
+
+def _strip_masked(new_obj, existing_obj):
+    """Where new_obj contains '***' for sensitive keys, restore the value from existing_obj."""
+    if isinstance(new_obj, dict) and isinstance(existing_obj, dict):
+        out = {}
+        for k, v in new_obj.items():
+            if k in _SENSITIVE_CONFIG_KEYS and v == '***':
+                if k in existing_obj:
+                    out[k] = existing_obj[k]
+                # else: drop the masked placeholder
+            else:
+                out[k] = _strip_masked(v, existing_obj.get(k) if isinstance(existing_obj, dict) else None)
+        return out
+    if isinstance(new_obj, list):
+        return [_strip_masked(v, None) for v in new_obj]
+    return new_obj
+
+
+@app.route('/api/config/raw', methods=['GET'])
+@limiter.limit("30 per minute")
+@require_admin_auth
+def get_raw_config():
+    """Return the current config.yaml as YAML text (sensitive values masked)."""
+    try:
+        import yaml  # PyYAML; already a transitive dep via config loader
+        if not os.path.exists(_CONFIG_FILE_PATH):
+            return jsonify({'success': False, 'error': 'config.yaml not found'}), 404
+        with open(_CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        parsed = yaml.safe_load(raw) or {}
+        masked = _mask_sensitive(parsed)
+        return jsonify({
+            'success': True,
+            'yaml': yaml.safe_dump(masked, allow_unicode=True, sort_keys=False),
+            'path': _CONFIG_FILE_PATH,
+        })
+    except Exception as exc:
+        logger.warning(f"get_raw_config error: {exc}")
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+
+@app.route('/api/config/raw', methods=['POST'])
+@limiter.limit("10 per minute")
+@require_admin_auth
+def save_raw_config():
+    """Validate and write config.yaml. Sensitive keys with '***' are preserved
+    from the existing file. Caller is warned that some changes require a server
+    restart to take effect."""
+    try:
+        import yaml
+        data = request.get_json(silent=True) or {}
+        new_text = data.get('yaml', '')
+        if not isinstance(new_text, str) or not new_text.strip():
+            return jsonify({'success': False, 'error': 'Empty YAML'}), 400
+        if len(new_text) > 200_000:
+            return jsonify({'success': False, 'error': 'Config too large'}), 400
+        try:
+            parsed_new = yaml.safe_load(new_text)
+        except yaml.YAMLError as exc:
+            return jsonify({'success': False, 'error': f'YAML parse error: {exc}'}), 400
+        if not isinstance(parsed_new, dict):
+            return jsonify({'success': False, 'error': 'Top-level YAML must be a mapping'}), 400
+
+        # Load existing to restore masked sensitive values
+        existing = {}
+        if os.path.exists(_CONFIG_FILE_PATH):
+            with open(_CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+                existing = yaml.safe_load(f.read()) or {}
+
+        merged = _strip_masked(parsed_new, existing)
+
+        # Atomic write: write to .tmp then rename
+        tmp_path = _CONFIG_FILE_PATH + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(merged, f, allow_unicode=True, sort_keys=False)
+        os.replace(tmp_path, _CONFIG_FILE_PATH)
+        username = (request.user.get('username') if request.user else 'admin') or 'admin'
+        logger.warning(f"[CONFIG] config.yaml updated by {username}")
+        return jsonify({
+            'success': True,
+            'message': 'Saved. Restart the server for changes to take effect.',
+        })
+    except Exception as exc:
+        logger.error(f"save_raw_config error: {exc}")
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
 
 # ──────────────────────────────────────────
 # WebSocket Events with Security
@@ -2205,35 +2684,47 @@ def handle_connect():
     client_key = f"client:{client_id}"
     client_ip = get_real_ip()
 
-    logger.info(f"Socket.IO connect attempt from {client_ip} (Client: {client_id}, Type: {client_type}, SID: {request.sid})")
+    # Room scope for this client (validated; defaults to 'main')
+    room_id = normalize_room_id(request.args.get('room'))
+    room_state = _room(room_id)
+
+    logger.info(f"Socket.IO connect attempt from {client_ip} (Client: {client_id}, Type: {client_type}, Room: {room_id}, SID: {request.sid})")
 
     if is_client_blocked(client_key):
         security_logger.warning(f"Blocked client attempted WebSocket: {client_key}")
         logger.error(f"Connection rejected: Client {client_key} is blocked")
         return False
 
+    from flask_socketio import join_room as _join_room
+
     # Only count user-type clients as listeners (not admin)
     if client_type == 'user':
-        # If this client_key already has an old SID, evict it (handles page refresh)
-        old_sid = listener_clients.get(client_key)
-        if old_sid and old_sid != request.sid:
-            logger.info(f"Evicting stale SID {old_sid} for {client_key} (replaced by {request.sid})")
-            sid_to_client_key.pop(old_sid, None)
-            stale_key = f"{client_key}:{old_sid}"
-            connected_clients.discard(stale_key)
+        # If this client_key already has an old SID anywhere, evict it (handles page refresh)
+        for _rs in _rooms.values():
+            old_sid = _rs['listeners'].get(client_key)
+            if old_sid and old_sid != request.sid:
+                logger.info(f"Evicting stale SID {old_sid} for {client_key} (replaced by {request.sid})")
+                sid_to_client_key.pop(old_sid, None)
+                connected_clients.discard(f"{client_key}:{old_sid}")
+                _rs['listeners'].pop(client_key, None)
 
         client_id_full = f"{client_key}:{request.sid}"
         connected_clients.add(client_id_full)
-        listener_clients[client_key] = request.sid  # Only keep latest SID per user
-        logger.info(f"User client connected: {client_ip} (Client: {client_id}, SID: {request.sid}, Total listeners: {len(listener_clients)})")
+        room_state['listeners'][client_key] = request.sid
+        _join_room(f'room:{room_id}')
+        logger.info(
+            f"User client connected: {client_ip} (Client: {client_id}, Room: {room_id}, "
+            f"SID: {request.sid}, Room listeners: {len(room_state['listeners'])}, "
+            f"Total listeners: {_all_listener_count()})"
+        )
     elif client_type == 'admin':
         # Admin clients still need to be tracked, but not as listeners
         client_id_full = f"{client_key}:{request.sid}"
         connected_clients.add(client_id_full)
         logger.info(f"Admin client connected: {client_ip} (Client: {client_id}, SID: {request.sid})")
-    
-    # Store mapping for reliable cleanup on disconnect
-    sid_to_client_key[request.sid] = (client_key, client_type)
+
+    # Store mapping for reliable cleanup on disconnect (includes room_id)
+    sid_to_client_key[request.sid] = (client_key, client_type, room_id)
 
     # Notify client that history is available via HTTP API (pagination)
     # Don't send all history via WebSocket - use HTTP API for better performance
@@ -2242,16 +2733,20 @@ def handle_connect():
     emit('ready', {
         'status': 'connected',
         'message': 'Use /api/translations to fetch paginated history',
-        'api_token': api_token
+        'api_token': api_token,
+        'room_id': room_id,
     })
 
-    # ── Feature 1: broadcast live viewer count to all admins ──────
+    # ── Feature 1: broadcast live viewer count to admins of this room ────
     if client_type == 'user':
         _sid_last_seen[request.sid] = datetime.now()   # start heartbeat tracking
-        current = len(listener_clients)
-        if current > _peak_clients:
-            _peak_clients = current
-        socketio.emit('clients_update', {'count': current}, room='admins')
+        room_count = len(room_state['listeners'])
+        total_count = _all_listener_count()
+        if total_count > _peak_clients:
+            _peak_clients = total_count
+        payload = {'count': room_count, 'room_id': room_id, 'total': total_count}
+        socketio.emit('clients_update', payload, room=f'admin:{room_id}')
+        socketio.emit('clients_update', payload, room='admins')  # legacy compat
 
     return True
 
@@ -2264,19 +2759,30 @@ def handle_disconnect(sid=None):
     mapping = sid_to_client_key.pop(sid_used, None)
     
     if mapping:
-        client_key, client_type = mapping
-        
+        if len(mapping) >= 3:
+            client_key, client_type, room_id = mapping[0], mapping[1], mapping[2]
+        else:
+            client_key, client_type = mapping[0], mapping[1]
+            room_id = DEFAULT_ROOM_ID
+        room_id = normalize_room_id(room_id)
+
         # Clean up only if it was a user (listener)
         if client_type == 'user':
             # Only remove from listener_clients if this SID is still the active one
             # (avoids removing a newer connection when a stale disconnect fires late)
-            if listener_clients.get(client_key) == sid_used:
-                del listener_clients[client_key]
-            logger.info(f"User client disconnected: SID {sid_used} from {client_key} (Total listeners: {len(listener_clients)})")
+            rs = _rooms.get(room_id)
+            if rs is not None and rs['listeners'].get(client_key) == sid_used:
+                del rs['listeners'][client_key]
+            logger.info(
+                f"User client disconnected: SID {sid_used} from {client_key} "
+                f"(Room: {room_id}, Total listeners: {_all_listener_count()})"
+            )
         else:
             logger.info(f"Admin client disconnected: SID {sid_used} from {client_key}")
     else:
         logger.warning(f"Disconnect: Unknown client mapping for SID {sid_used}")
+        client_type = None
+        room_id = DEFAULT_ROOM_ID
     
     # Always try to remove from connected_clients
     connected_clients.discard(sid_used)
@@ -2287,6 +2793,18 @@ def handle_disconnect(sid=None):
     
     admin_sessions.pop(sid_used, None)
 
+    # Release recording lock if this disconnecting admin held it
+    if client_type == 'admin':
+        rs = _rooms.get(room_id)
+        if rs and rs.get('recording') and rs['recording'].get('sid') == sid_used:
+            rs['recording'] = None
+            socketio.emit(
+                'recording_state',
+                {'room_id': room_id, 'recording': None},
+                room=f'admin:{room_id}',
+            )
+            logger.info(f"[RECORDING] auto-released room '{room_id}' on admin disconnect")
+
     # Clean up API tokens associated with this SID
     tokens_to_remove = [t for t, info in api_session_tokens.items() if info['sid'] == sid_used]
     for token in tokens_to_remove:
@@ -2295,9 +2813,13 @@ def handle_disconnect(sid=None):
     # Remove heartbeat record
     _sid_last_seen.pop(sid_used, None)
 
-    # ── Feature 1: broadcast updated viewer count to admins ───────
-    if mapping and mapping[1] == 'user':
-        socketio.emit('clients_update', {'count': len(listener_clients)}, room='admins')
+    # ── Feature 1: broadcast updated viewer count to admins of the room ───
+    if client_type == 'user':
+        rs = _rooms.get(room_id)
+        room_count = len(rs['listeners']) if rs else 0
+        payload = {'count': room_count, 'room_id': room_id, 'total': _all_listener_count()}
+        socketio.emit('clients_update', payload, room=f'admin:{room_id}')
+        socketio.emit('clients_update', payload, room='admins')
 
 @socketio.on('heartbeat')
 def handle_heartbeat():
@@ -2342,14 +2864,19 @@ def handle_admin_connect(data):
         return
 
     token = data.get('token')
+    requested_room = normalize_room_id(data.get('room'))
 
     if not get_config('authentication', 'enabled', default=True):
-        admin_sessions[request.sid] = 'admin'
+        admin_sessions[request.sid] = {'username': 'admin', 'room_id': requested_room}
         from flask_socketio import join_room
         join_room('admins')
-        # Send translation history to admin
-        emit('history', translations_history)
-        emit('admin_connected', {'success': True, 'role': 'admin', 'channel': 'main', 'display_name': 'Admin'})
+        join_room(f'admin:{requested_room}')
+        # Send room-scoped history
+        emit('history', _room(requested_room)['history'])
+        emit('admin_connected', {
+            'success': True, 'role': 'admin', 'channel': requested_room,
+            'display_name': 'Admin', 'room_id': requested_room,
+        })
         return
 
     if not token:
@@ -2358,20 +2885,58 @@ def handle_admin_connect(data):
 
     decoded = validate_jwt_token(token)
     if decoded:
-        admin_sessions[request.sid] = decoded['username']
+        # Prefer explicit room in payload; fall back to JWT channel; then default
+        room_id = normalize_room_id(
+            data.get('room') or decoded.get('channel') or DEFAULT_ROOM_ID
+        )
+        admin_sessions[request.sid] = {
+            'username': decoded['username'],
+            'room_id': room_id,
+        }
         from flask_socketio import join_room
         join_room('admins')
-        # Send translation history to admin
-        emit('history', translations_history)
+        join_room(f'admin:{room_id}')
+        # Send room-scoped history
+        emit('history', _room(room_id)['history'])
         emit('admin_connected', {
             'success':      True,
             'role':         decoded.get('role', 'admin'),
-            'channel':      decoded.get('channel', 'main'),
+            'channel':      room_id,
+            'room_id':      room_id,
             'display_name': decoded.get('display_name', decoded['username']),
         })
-        logger.info(f"Admin connected: {decoded['username']} ({decoded.get('role', 'admin')}/{decoded.get('channel', 'main')}) from {get_real_ip()}")
+        logger.info(f"Admin connected: {decoded['username']} ({decoded.get('role', 'admin')}/room={room_id}) from {get_real_ip()}")
     else:
         emit('admin_connected', {'success': False, 'error': 'Invalid token'})
+
+
+@socketio.on('admin_switch_room')
+def handle_admin_switch_room(data):
+    """Allow an authenticated admin to switch the room they broadcast into."""
+    if not is_admin(request.sid):
+        emit('error', {'message': 'Unauthorized'})
+        return
+    if not data or not isinstance(data, dict):
+        emit('error', {'message': 'Invalid data'})
+        return
+    new_room = normalize_room_id(data.get('room'))
+    info = admin_sessions.get(request.sid)
+    if not isinstance(info, dict):
+        info = {'username': info or 'admin', 'room_id': DEFAULT_ROOM_ID}
+    old_room = normalize_room_id(info.get('room_id'))
+    if old_room == new_room:
+        emit('room_switched', {'success': True, 'room_id': new_room, 'changed': False})
+        return
+    from flask_socketio import leave_room, join_room
+    leave_room(f'admin:{old_room}')
+    join_room(f'admin:{new_room}')
+    info['room_id'] = new_room
+    admin_sessions[request.sid] = info
+    # Make sure target room state exists and send its history
+    emit('history', _room(new_room)['history'])
+    emit('room_switched', {'success': True, 'room_id': new_room, 'changed': True})
+    logger.info(f"[ROOM-SWITCH] {_admin_username(request.sid)}: {old_room} -> {new_room}")
+
 
 @socketio.on('new_transcription')
 def handle_new_transcription(data):
@@ -2396,41 +2961,42 @@ def handle_new_transcription(data):
 
     is_final = data.get('is_final', True)  # Default to final for backward compatibility
     temp_id = data.get('temp_id')  # Temporary ID to link interim->final results
-    
+    room_id = _admin_room(request.sid)
+
     if not is_final:
-        # Send interim result ONLY to listeners (non-admin users)
-        # Emit to all listener SIDs (exclude admins naturally)
         interim_data = {
             'temp_id': temp_id,
             'text': raw_text,
             'timestamp': datetime.now().strftime('%H:%M:%S'),
             'source_language': data.get('language', 'en')[:10],
             'confidence': data.get('confidence'),
-            'is_interim': True
+            'is_interim': True,
+            'room_id': room_id,
         }
-        # Broadcast to all non-admin clients
-        socketio.emit('realtime_transcription', interim_data, skip_sid=[request.sid])
-        logger.info(f"[INTERIM] {len(raw_text)} chars (temp_id: {temp_id})")
+        # Broadcast to listeners in this room only
+        socketio.emit('realtime_transcription', interim_data,
+                      room=f'room:{room_id}', skip_sid=[request.sid])
+        logger.info(f"[INTERIM] room={room_id} {len(raw_text)} chars (temp_id: {temp_id})")
     else:
-        # Send final result with translation
         translation_data = {
             'id': None,  # Will be assigned by add_translation()
-            'temp_id': temp_id,  # Link to interim result if present
+            'temp_id': temp_id,
             'timestamp': datetime.now().strftime('%H:%M:%S'),
             'original': raw_text,
             'corrected': raw_text,
-            'translated': data.get('translated'),  # Can be pre-translated by admin
+            'translated': data.get('translated'),
             'is_corrected': False,
             'source_language': data.get('language', 'en')[:10],
-            'confidence': data.get('confidence')
+            'confidence': data.get('confidence'),
         }
 
-        add_translation(translation_data)
-        # Emit to listeners (non-admin users)
-        socketio.emit('new_translation', translation_data, skip_sid=[request.sid])
-        # Emit to admin only (the one who sent the transcription)
+        add_translation(translation_data, room_id=room_id)
+        # Emit to listeners in this room only
+        socketio.emit('new_translation', translation_data,
+                      room=f'room:{room_id}', skip_sid=[request.sid])
+        # Echo back to the sending admin for confirmation
         emit('transcription_confirmed', translation_data)
-        logger.info(f"[FINAL] ID={translation_data.get('id')}")
+        logger.info(f"[FINAL] room={room_id} ID={translation_data.get('id')}")
 
 @socketio.on('correct_translation')
 def handle_correct_translation(data):
@@ -2455,9 +3021,11 @@ def handle_correct_translation(data):
         emit('error', {'message': 'Empty correction'})
         return
 
-    # Find translation by ID (not by index)
+    # Find translation by ID within the admin's room
+    room_id = _admin_room(request.sid)
+    history = _room(room_id)['history']
     target_item = None
-    for item in translations_history:
+    for item in history:
         if item['id'] == translation_id:
             target_item = item
             break
@@ -2486,25 +3054,28 @@ def handle_correct_translation(data):
             full_item=target_item,
         )
 
-    socketio.emit('translation_corrected', target_item)
-    logger.info(f"✏️ [CORRECTED] ID {translation_id}")
+    socketio.emit('translation_corrected', target_item, room=f'room:{room_id}')
+    socketio.emit('translation_corrected', target_item, room=f'admin:{room_id}')
+    logger.info(f"✏️ [CORRECTED] room={room_id} ID {translation_id}")
     emit('correction_success', {'id': translation_id})
 
 @socketio.on('clear_history')
 def handle_clear_history():
-    """Handle clear history with authorization"""
+    """Handle clear history with authorization (scoped to admin's room)"""
     if not is_admin(request.sid):
         emit('error', {'message': 'Unauthorized'})
         disconnect()
         return
 
-    global translations_history, next_translation_id
-    translations_history = []
-    next_translation_id = 0  # Reset ID counter when clearing history
+    room_id = _admin_room(request.sid)
+    state = _room(room_id)
+    state['history'].clear()
+    state['next_id'] = 0
     if db is not None:
-        db.clear_all()
-    socketio.emit('history_cleared')
-    logger.info(f"[CLEARED] History by {admin_sessions.get(request.sid)}")
+        db.clear_all(room_id=room_id)
+    socketio.emit('history_cleared', {'room_id': room_id}, room=f'room:{room_id}')
+    socketio.emit('history_cleared', {'room_id': room_id}, room=f'admin:{room_id}')
+    logger.info(f"[CLEARED] room={room_id} by {_admin_username(request.sid)}")
 
 @socketio.on('import_transcription')
 def handle_import_transcription(data):
@@ -2542,12 +3113,14 @@ def handle_import_transcription(data):
         emit('error', {'message': 'Original and corrected text cannot be empty'})
         return
 
-    # Add to history
-    add_translation(translation_data)
+    # Add to history (scoped to admin's room)
+    room_id = _admin_room(request.sid)
+    add_translation(translation_data, room_id=room_id)
 
-    # Broadcast to all connected clients
-    socketio.emit('new_translation', translation_data)
-    logger.info(f"[IMPORTED] ID={translation_data['id']} from {admin_sessions.get(request.sid)}")
+    # Broadcast to clients in the admin's room
+    socketio.emit('new_translation', translation_data, room=f'room:{room_id}')
+    socketio.emit('new_translation', translation_data, room=f'admin:{room_id}')
+    logger.info(f"[IMPORTED] room={room_id} ID={translation_data['id']} from {_admin_username(request.sid)}")
 
 @socketio.on('delete_items')
 def handle_delete_items(data):
@@ -2570,20 +3143,21 @@ def handle_delete_items(data):
         emit('error', {'message': 'No items to delete'})
         return
 
-    global translations_history
-
-    # Filter out items with IDs in the deletion list (ID-based deletion, not index-based)
-    original_count = len(translations_history)
-    translations_history = [item for item in translations_history if item.get('id') not in item_ids]
-    deleted_count = original_count - len(translations_history)
+    # Scope deletion to the admin's own room
+    room_id = _admin_room(request.sid)
+    state = _room(room_id)
+    original_count = len(state['history'])
+    state['history'][:] = [item for item in state['history'] if item.get('id') not in item_ids]
+    deleted_count = original_count - len(state['history'])
 
     # Persist deletion
     if db is not None:
-        db.delete_ids(item_ids)
+        db.delete_ids(item_ids, room_id=room_id)
 
-    # Broadcast deletion to all connected clients
-    socketio.emit('items_deleted', {'ids': item_ids})
-    logger.info(f"[DELETED] {deleted_count} item(s) by {admin_sessions.get(request.sid)}")
+    # Broadcast deletion to all connected clients in this room
+    socketio.emit('items_deleted', {'ids': item_ids, 'room_id': room_id}, room=f'room:{room_id}')
+    socketio.emit('items_deleted', {'ids': item_ids, 'room_id': room_id}, room=f'admin:{room_id}')
+    logger.info(f"[DELETED] room={room_id} {deleted_count} item(s) by {_admin_username(request.sid)}")
     emit('deletion_success', {'deleted_count': deleted_count})
 
 # ──────────────────────────────────────────
@@ -2621,13 +3195,15 @@ def handle_send_announcement(data):
         'text':      raw_text,
         'duration':  duration,
         'type':      ann_type,
-        'sender':    admin_sessions.get(request.sid, 'admin'),
+        'sender':    _admin_username(request.sid),
         'timestamp': datetime.now().strftime('%H:%M:%S'),
     }
-    # Broadcast to all (skip the admin who sent it)
-    socketio.emit('announcement', payload, skip_sid=[request.sid])
+    # Broadcast to clients in the admin's room (skip the sender)
+    room_id = _admin_room(request.sid)
+    payload['room_id'] = room_id
+    socketio.emit('announcement', payload, room=f'room:{room_id}', skip_sid=[request.sid])
     emit('announcement_sent', {'success': True, 'text': raw_text})
-    logger.info(f"[ANNOUNCEMENT] '{raw_text[:60]}' by {admin_sessions.get(request.sid)}")
+    logger.info(f"[ANNOUNCEMENT] room={room_id} '{raw_text[:60]}' by {_admin_username(request.sid)}")
 
 
 @socketio.on_error_default
@@ -2692,11 +3268,20 @@ if __name__ == '__main__':
         if db_enabled:
             persisted = db.load_all()
             if persisted:
-                translations_history.extend(persisted)
-                # Restore ID counter so new IDs don't collide
-                max_id = max((item.get('id', -1) for item in persisted), default=-1)
-                next_translation_id = max_id + 1
-                logger.info(f"✅ Restored {len(persisted)} translations from DB (next_id={next_translation_id})")
+                # Group by room_id and populate per-room state
+                for item in persisted:
+                    rid = normalize_room_id(item.get('room_id'))
+                    item['room_id'] = rid
+                    state = _room(rid)
+                    state['history'].append(item)
+                # Restore per-room ID counters
+                for rid, state in _rooms.items():
+                    max_id = max((it.get('id', -1) for it in state['history']), default=-1)
+                    state['next_id'] = max_id + 1
+                room_summary = ", ".join(
+                    f"{rid}={len(state['history'])}" for rid, state in _rooms.items()
+                )
+                logger.info(f"✅ Restored {len(persisted)} translations from DB – rooms: {room_summary}")
 
     # Initialize Edge TTS voice cache in background (non-blocking)
     if EDGE_TTS_AVAILABLE:

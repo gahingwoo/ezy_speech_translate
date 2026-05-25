@@ -349,6 +349,15 @@ function connectWebSocket() {
         localStorage.setItem(adminClientIdKey, clientId);
     }
 
+    // Resolve target room: URL ?room= overrides localStorage; fall back to 'main'
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRoom = (urlParams.get('room') || '').trim();
+    if (urlRoom && /^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$/.test(urlRoom)) {
+        localStorage.setItem('_admin_room_id', urlRoom);
+    }
+    window.CURRENT_ROOM_ID = localStorage.getItem('_admin_room_id') || 'main';
+    console.log('🚪 Admin room scope:', window.CURRENT_ROOM_ID);
+
     socket = io(SERVER_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -356,7 +365,8 @@ function connectWebSocket() {
         reconnectionDelay: 1000,
         query: {
             client_id: clientId,  // Send persistent client ID to server
-            type: 'admin'  // Identify as admin client
+            type: 'admin',  // Identify as admin client
+            room: window.CURRENT_ROOM_ID
         }
     });
 
@@ -365,8 +375,8 @@ function connectWebSocket() {
         updateStatus(true);
 
         if (authToken) {
-            console.log('📤 Sending admin_connect...');
-            socket.emit('admin_connect', {token: authToken});
+            console.log('📤 Sending admin_connect (room:', window.CURRENT_ROOM_ID, ')');
+            socket.emit('admin_connect', {token: authToken, room: window.CURRENT_ROOM_ID});
         }
     });
 
@@ -378,13 +388,33 @@ function connectWebSocket() {
             localStorage.removeItem('authToken');
             window.location.href = '/login';
         } else {
+            if (response.room_id) {
+                window.CURRENT_ROOM_ID = response.room_id;
+                localStorage.setItem('_admin_room_id', response.room_id);
+                updateRoomIndicator(response.room_id);
+            }
             fetchTranslationHistory();
-
-
         }
     });
 
-    socket.on('clients_update', () => {}); // keep handler to avoid unhandled event warnings
+    socket.on('room_switched', (response) => {
+        if (response && response.success && response.room_id) {
+            window.CURRENT_ROOM_ID = response.room_id;
+            localStorage.setItem('_admin_room_id', response.room_id);
+            updateRoomIndicator(response.room_id);
+            showToast('Switched to room: ' + response.room_id, 'success');
+            if (typeof refreshQrRoomDropdown === 'function') refreshQrRoomDropdown();
+            updateSystemInfo();
+        }
+    });
+
+    socket.on('clients_update', (data) => {
+        // Live-update the room-scoped listener count in System Info
+        if (data && data.room_id === (window.CURRENT_ROOM_ID || 'main')) {
+            const el = document.getElementById('sys-clients');
+            if (el) el.textContent = data.count ?? 0;
+        }
+    });
 
     socket.on('disconnect', () => {
         console.log('⚠️ Disconnected');
@@ -469,7 +499,9 @@ function updateStatus(connected) {
 async function fetchTranslationHistory() {
     try {
         console.log('📥 Fetching translation history via HTTP...');
-        const response = await fetch(`${SERVER_URL}/api/history`, {
+        const roomParam = window.CURRENT_ROOM_ID && window.CURRENT_ROOM_ID !== 'main'
+            ? '?room=' + encodeURIComponent(window.CURRENT_ROOM_ID) : '';
+        const response = await fetch(`${SERVER_URL}/api/history${roomParam}`, {
             credentials: 'include',
             headers: {
                 'Authorization': `Bearer ${authToken}`,
@@ -1169,7 +1201,8 @@ function startSystemMonitor() {
 
 async function updateSystemInfo() {
     try {
-        const response = await fetch(`${SERVER_URL}/api/health`, {
+        const roomSuffix = '?room=' + encodeURIComponent(window.CURRENT_ROOM_ID || 'main');
+        const response = await fetch(`${SERVER_URL}/api/health${roomSuffix}`, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -1537,10 +1570,17 @@ let _qrInstance = null;
 
 function generateQR() {
     const lang = document.getElementById('qrLangSelect').value;
+    const roomSel = document.getElementById('qrRoomSelect');
+    const roomChoice = roomSel ? roomSel.value : '';
+    const effectiveRoom = roomChoice || (window.CURRENT_ROOM_ID || 'main');
     const base = (typeof SERVER_URL !== 'undefined' && SERVER_URL)
         ? SERVER_URL
         : `${window.location.protocol}//${window.location.hostname}:1915`;
-    const url = lang ? `${base}/?lang=${encodeURIComponent(lang)}` : base + '/';
+    const params = new URLSearchParams();
+    if (effectiveRoom && effectiveRoom !== 'main') params.set('room', effectiveRoom);
+    if (lang) params.set('lang', lang);
+    const qs = params.toString();
+    const url = qs ? `${base}/?${qs}` : base + '/';
 
     const container = document.getElementById('qrCanvas');
     container.innerHTML = '';  // clear previous
@@ -1578,8 +1618,507 @@ function downloadQR() {
     }
 
     const lang = document.getElementById('qrLangSelect').value || 'default';
+    const roomSel = document.getElementById('qrRoomSelect');
+    const room = (roomSel && roomSel.value) || (window.CURRENT_ROOM_ID || 'main');
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `audience-qr-${lang}.png`;
+    a.download = `audience-qr-${room}-${lang}.png`;
     a.click();
 }
+
+// Populate the QR room dropdown from /api/rooms
+async function refreshQrRoomDropdown() {
+    const sel = document.getElementById('qrRoomSelect');
+    if (!sel) return;
+    try {
+        const data = await _adminFetch('/api/rooms');
+        const rooms = data.rooms || [];
+        // Preserve selection
+        const prev = sel.value;
+        sel.innerHTML = '';
+        const auto = document.createElement('option');
+        auto.value = '';
+        auto.textContent = '— Auto (current room: ' + (window.CURRENT_ROOM_ID || 'main') + ') —';
+        sel.appendChild(auto);
+        rooms.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.room_id;
+            opt.textContent = (r.display_name || r.room_id) + ' (' + r.room_id + ')';
+            sel.appendChild(opt);
+        });
+        sel.value = prev;
+    } catch (e) {
+        console.warn('refreshQrRoomDropdown failed:', e);
+    }
+}
+window.refreshQrRoomDropdown = refreshQrRoomDropdown;
+// Refresh whenever the user opens the QR section (cheap; user-initiated)
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => { if (typeof refreshQrRoomDropdown === 'function') refreshQrRoomDropdown(); }, 1600);
+});
+
+
+// ═════════════════════════════════════════════════════════════════
+// Multi-room & Glossary management
+// ═════════════════════════════════════════════════════════════════
+
+function updateRoomIndicator(roomId) {
+    const el = document.getElementById('currentRoomLabel');
+    if (el) el.textContent = roomId || 'main';
+}
+
+async function _adminFetch(url, opts = {}) {
+    opts.headers = Object.assign(
+        { 'Content-Type': 'application/json' },
+        opts.headers || {},
+        authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
+    );
+    const resp = await fetch(url, opts);
+    let data = {};
+    try { data = await resp.json(); } catch (_) { /* noop */ }
+    if (!resp.ok || data.success === false) {
+        throw new Error(data.error || ('HTTP ' + resp.status));
+    }
+    return data;
+}
+
+async function loadRoomList() {
+    try {
+        const data = await _adminFetch('/api/rooms');
+        return data.rooms || [];
+    } catch (e) {
+        console.warn('loadRoomList failed:', e);
+        return [];
+    }
+}
+
+async function createRoom() {
+    const rid = (prompt('Room ID (letters, digits, _ or -):') || '').trim();
+    if (!rid) return;
+    if (!/^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$/.test(rid)) {
+        showToast('Invalid room ID', 'danger');
+        return;
+    }
+    const name = (prompt('Display name:', rid) || rid).trim();
+    try {
+        await _adminFetch('/api/rooms', {
+            method: 'POST',
+            body: JSON.stringify({ room_id: rid, display_name: name })
+        });
+        showToast('Room created: ' + rid, 'success');
+        await refreshRoomDropdown();
+        if (typeof refreshQrRoomDropdown === 'function') await refreshQrRoomDropdown();
+    } catch (e) {
+        showToast('Create failed: ' + e.message, 'danger');
+    }
+}
+
+async function switchRoom(targetRoom) {
+    if (!targetRoom) return;
+    if (!socket || !socket.connected) {
+        showToast('Not connected', 'warning');
+        return;
+    }
+    socket.emit('admin_switch_room', { room: targetRoom });
+}
+
+async function deleteRoom(roomId) {
+    if (!roomId || roomId === 'main') {
+        showToast('Cannot delete default room', 'warning');
+        return;
+    }
+    if (!confirm('Delete room "' + roomId + '"? This is a soft delete; messages remain in DB.')) return;
+    try {
+        await _adminFetch('/api/rooms/' + encodeURIComponent(roomId), { method: 'DELETE' });
+        showToast('Room deleted', 'success');
+        await refreshRoomDropdown();
+        if (typeof refreshQrRoomDropdown === 'function') await refreshQrRoomDropdown();
+    } catch (e) {
+        showToast('Delete failed: ' + e.message, 'danger');
+    }
+}
+
+async function refreshRoomDropdown() {
+    const sel = document.getElementById('roomSelect');
+    if (!sel) return;
+    const rooms = await loadRoomList();
+    sel.innerHTML = '';
+    rooms.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.room_id;
+        opt.textContent = (r.display_name || r.room_id) + ' (' + (r.listeners || 0) + ')';
+        if (r.room_id === window.CURRENT_ROOM_ID) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+// ── Glossary CRUD ────────────────────────────────────────────────
+async function loadGlossary() {
+    const roomParam = window.CURRENT_ROOM_ID && window.CURRENT_ROOM_ID !== 'main'
+        ? '?room=' + encodeURIComponent(window.CURRENT_ROOM_ID)
+        : '';
+    try {
+        const data = await _adminFetch('/api/glossary' + roomParam);
+        return data.entries || [];
+    } catch (e) {
+        console.warn('loadGlossary failed:', e);
+        return [];
+    }
+}
+
+async function renderGlossaryTable() {
+    const tbody = document.getElementById('glossaryTableBody');
+    if (!tbody) return;
+    const entries = await loadGlossary();
+    tbody.innerHTML = '';
+    if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">No glossary entries</td></tr>';
+        return;
+    }
+    entries.forEach(e => {
+        const tr = document.createElement('tr');
+        const scope = e.room_id ? e.room_id : '(global)';
+        tr.innerHTML = `
+            <td>${escapeHTML(scope)}</td>
+            <td>${escapeHTML(e.source_term)}</td>
+            <td>${escapeHTML(e.target_lang)}</td>
+            <td>${escapeHTML(e.translation)}</td>
+            <td>${e.case_sensitive ? '✓' : ''} ${e.enabled ? '' : '<span class="badge bg-secondary">off</span>'}</td>
+            <td>
+                <button style="padding:2px 8px;border:1px solid #c9190b;border-radius:4px;background:transparent;color:#c9190b;cursor:pointer;font-size:13px;" data-id="${Number(e.id)}" onclick="removeGlossaryEntry(${Number(e.id)})">×</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function escapeHTML(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function addGlossaryEntry() {
+    const src = (document.getElementById('glossarySource').value || '').trim();
+    const lang = (document.getElementById('glossaryLang').value || '').trim();
+    const tgt = (document.getElementById('glossaryTranslation').value || '').trim();
+    const caseSensitive = document.getElementById('glossaryCaseSensitive').checked;
+    const scope = document.getElementById('glossaryScope').value;  // '' = global, else room id
+    if (!src || !lang || !tgt) {
+        showToast('All fields required', 'warning');
+        return;
+    }
+    try {
+        await _adminFetch('/api/glossary', {
+            method: 'POST',
+            body: JSON.stringify({
+                source_term: src, target_lang: lang, translation: tgt,
+                case_sensitive: caseSensitive,
+                room: scope || null,
+            })
+        });
+        document.getElementById('glossarySource').value = '';
+        document.getElementById('glossaryTranslation').value = '';
+        showToast('Glossary entry added', 'success');
+        await renderGlossaryTable();
+    } catch (e) {
+        showToast('Add failed: ' + e.message, 'danger');
+    }
+}
+
+async function removeGlossaryEntry(id) {
+    if (!confirm('Delete glossary entry?')) return;
+    try {
+        await _adminFetch('/api/glossary/' + id, { method: 'DELETE' });
+        showToast('Deleted', 'success');
+        await renderGlossaryTable();
+    } catch (e) {
+        showToast('Delete failed: ' + e.message, 'danger');
+    }
+}
+
+// Expose handlers for inline onclick attributes
+window.createRoom = createRoom;
+window.deleteRoom = deleteRoom;
+window.switchRoom = switchRoom;
+window.refreshRoomDropdown = refreshRoomDropdown;
+window.renderGlossaryTable = renderGlossaryTable;
+window.addGlossaryEntry = addGlossaryEntry;
+window.removeGlossaryEntry = removeGlossaryEntry;
+
+// ──────────────────────────────────────────
+// Recording lock (per-room) + Config editor
+// ──────────────────────────────────────────
+
+// Browser-side SHA-256 with SubtleCrypto + pure-JS fallback
+async function _adminSha256Hex(str) {
+    try {
+        if (window.crypto && window.crypto.subtle) {
+            const buf = new TextEncoder().encode(str);
+            const hashBuf = await window.crypto.subtle.digest('SHA-256', buf);
+            return Array.from(new Uint8Array(hashBuf))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+    } catch (_) { /* fall through */ }
+    // Pure-JS fallback
+    function rr(n, x) { return (x >>> n) | (x << (32 - n)); }
+    const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+        0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+        0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+        0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+        0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+        0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+        0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+        0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    const bytes = new TextEncoder().encode(str);
+    const len = bytes.length;
+    const blocks = Math.ceil((len + 9) / 64);
+    const padded = new Uint8Array(blocks * 64);
+    padded.set(bytes);
+    padded[len] = 0x80;
+    const dv = new DataView(padded.buffer);
+    dv.setUint32(padded.length - 4, (len * 8) & 0xffffffff, false);
+    for (let i = 0; i < blocks; i++) {
+        const W = new Array(64);
+        for (let j = 0; j < 16; j++) W[j] = dv.getUint32(i * 64 + j * 4, false);
+        for (let j = 16; j < 64; j++) {
+            const s0 = rr(7,W[j-15]) ^ rr(18,W[j-15]) ^ (W[j-15]>>>3);
+            const s1 = rr(17,W[j-2])  ^ rr(19,W[j-2])  ^ (W[j-2]>>>10);
+            W[j] = (W[j-16] + s0 + W[j-7] + s1) >>> 0;
+        }
+        let [a,b,c,d,e,f,g,h] = H;
+        for (let j = 0; j < 64; j++) {
+            const S1 = rr(6,e)^rr(11,e)^rr(25,e);
+            const ch = (e&f)^(~e&g);
+            const t1 = (h+S1+ch+K[j]+W[j]) >>> 0;
+            const S0 = rr(2,a)^rr(13,a)^rr(22,a);
+            const maj = (a&b)^(a&c)^(b&c);
+            const t2 = (S0+maj) >>> 0;
+            h=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+        }
+        H = H.map((v,idx)=>([a,b,c,d,e,f,g,h][idx]+v)>>>0);
+    }
+    return H.map(v => v.toString(16).padStart(8,'0')).join('');
+}
+
+// Returns the current room id (matches multi-room module helper).
+function _currentRoomId() {
+    return (typeof window !== 'undefined' && window.CURRENT_ROOM_ID) || 'main';
+}
+
+// Raw fetch variant — returns {ok, status, data} instead of throwing on 4xx.
+async function _adminFetchRaw(url, opts = {}) {
+    opts.headers = Object.assign(
+        { 'Content-Type': 'application/json' },
+        opts.headers || {},
+        (typeof authToken !== 'undefined' && authToken) ? { 'Authorization': 'Bearer ' + authToken } : {}
+    );
+    const resp = await fetch(url, opts);
+    let data = {};
+    try { data = await resp.json(); } catch (_) { /* noop */ }
+    return { ok: resp.ok, status: resp.status, data };
+}
+
+// Try to acquire the recording lock. If locked by another admin, open the
+// takeover modal so the user can enter a password.
+async function _tryAcquireRecording(force, passwordHash) {
+    const body = { room: _currentRoomId() };
+    if (force) body.force = true;
+    if (passwordHash) body.password_hash = passwordHash;
+    if (typeof socket !== 'undefined' && socket && socket.id) body.sid = socket.id;
+    return await _adminFetchRaw('/api/recording/acquire', {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+}
+
+function _openRecordingLockModal(ownerName) {
+    const modal = document.getElementById('recordingLockModal');
+    if (!modal) return;
+    const lbl = document.getElementById('recordingLockOwner');
+    if (lbl) lbl.textContent = ownerName || 'Another admin';
+    const pw = document.getElementById('recordingLockPassword');
+    if (pw) { pw.value = ''; setTimeout(() => pw.focus(), 50); }
+    modal.classList.add('modal-overlay--open');
+}
+
+async function confirmForceRecording() {
+    const pw = document.getElementById('recordingLockPassword');
+    const pwd = pw ? pw.value : '';
+    if (!pwd) {
+        if (typeof showToast === 'function') showToast('Enter admin password', 'warning');
+        return;
+    }
+    let hash;
+    try { hash = await _adminSha256Hex(pwd); }
+    catch (e) {
+        if (typeof showToast === 'function') showToast('Hash failed: ' + e.message, 'danger');
+        return;
+    }
+    const res = await _tryAcquireRecording(true, hash);
+    if (res.ok && res.data.success) {
+        window.closeRecordingLock && window.closeRecordingLock();
+        if (typeof showToast === 'function') showToast('🔓 Took over recording. Starting…', 'success');
+        // Resume normal recording start
+        await _startRecognitionAfterLock();
+    } else if (res.status === 401) {
+        if (typeof showToast === 'function') showToast('❌ Wrong password', 'danger');
+    } else {
+        if (typeof showToast === 'function')
+            showToast('Force-stop failed: ' + (res.data.error || res.status), 'danger');
+    }
+}
+window.confirmForceRecording = confirmForceRecording;
+
+// Actually start the SpeechRecognition session (after lock acquired).
+async function _startRecognitionAfterLock() {
+    if (typeof recognition === 'undefined' || !recognition) return;
+    try {
+        isRecording = true;
+        if (typeof recognitionAttempts !== 'undefined') recognitionAttempts = 0;
+        finalTranscript = '';
+        recognition.lang = recognitionLanguage;
+        updateRecordButton();
+        recognition.start();
+        if (typeof lastSpeechTimestamp !== 'undefined') lastSpeechTimestamp = Date.now();
+        console.log('🎤 Recognition started (lock acquired)');
+    } catch (error) {
+        console.error('❌ Start failed:', error);
+        isRecording = false;
+        updateRecordButton();
+        if (typeof showToast === 'function')
+            showToast('Failed to start recording: ' + error.message, 'danger');
+        // Release the server-side lock we just acquired
+        _releaseRecording();
+    }
+}
+
+async function _releaseRecording() {
+    try {
+        await _adminFetchRaw('/api/recording/release', {
+            method: 'POST',
+            body: JSON.stringify({ room: _currentRoomId() }),
+        });
+    } catch (_) { /* best-effort */ }
+}
+
+// Override toggleRecording with a lock-aware wrapper.
+const _origToggleRecording = (typeof toggleRecording !== 'undefined') ? toggleRecording : null;
+const _origStopRecording = (typeof stopRecording !== 'undefined') ? stopRecording : null;
+
+window.toggleRecording = async function () {
+    if (typeof recognition === 'undefined' || !recognition) {
+        if (typeof showToast === 'function')
+            showToast('Speech Recognition not initialized. Please refresh.', 'warning');
+        return;
+    }
+    if (isRecording) {
+        // Stop path — release lock first
+        if (_origStopRecording) _origStopRecording();
+        await _releaseRecording();
+        return;
+    }
+    // Start path — try to acquire lock
+    const res = await _tryAcquireRecording(false);
+    if (res.ok && res.data.success) {
+        await _startRecognitionAfterLock();
+        return;
+    }
+    if (res.status === 423) {
+        const ownerName = (res.data.owner && res.data.owner.username) || 'Another admin';
+        _openRecordingLockModal(ownerName);
+        return;
+    }
+    if (typeof showToast === 'function')
+        showToast('Could not start recording: ' + (res.data.error || res.status), 'danger');
+};
+
+// Also wrap stopRecording so manual stop calls release the lock.
+window.stopRecording = function () {
+    if (_origStopRecording) _origStopRecording();
+    _releaseRecording();
+};
+
+// Handle force-stopped notification (admin was kicked by another admin).
+if (typeof socket !== 'undefined' && socket && socket.on) {
+    socket.on('recording_force_stopped', function (data) {
+        if (!data || data.room_id !== _currentRoomId()) return;
+        if (isRecording && _origStopRecording) _origStopRecording();
+        if (typeof showToast === 'function')
+            showToast('⚠️ Your recording was stopped by ' + (data.by || 'another admin'), 'warning');
+    });
+}
+
+// ── Config editor ────────────────────────────────────────────────────
+function _jwtUsername() {
+    try {
+        const payload = JSON.parse(atob(
+            authToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+        ));
+        return payload.username || 'admin';
+    } catch (_) { return 'admin'; }
+}
+
+async function confirmConfigPassword() {
+    const inp = document.getElementById('configPasswordInput');
+    const pwd = inp ? inp.value : '';
+    if (!pwd) {
+        if (typeof showToast === 'function') showToast('Enter password', 'warning');
+        return;
+    }
+    let hash;
+    try { hash = await _adminSha256Hex(pwd); }
+    catch (e) {
+        if (typeof showToast === 'function') showToast('Hash failed: ' + e.message, 'danger');
+        return;
+    }
+    try {
+        const resp = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: _jwtUsername(), password_hash: hash }),
+        });
+        if (resp.ok) {
+            window.closeConfigPasswordGate && window.closeConfigPasswordGate();
+            window.openConfigEditor && window.openConfigEditor();
+        } else {
+            if (typeof showToast === 'function') showToast('❌ Wrong password', 'danger');
+            if (inp) { inp.value = ''; inp.focus(); }
+        }
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Request failed: ' + e.message, 'danger');
+    }
+}
+window.confirmConfigPassword = confirmConfigPassword;
+
+async function loadConfigEditor() {
+    const ta = document.getElementById('configEditorTextarea');
+    if (!ta) return;
+    ta.value = 'Loading…';
+    try {
+        const data = await _adminFetch('/api/config/raw');
+        ta.value = data.yaml || '';
+    } catch (e) {
+        ta.value = '# Failed to load: ' + e.message;
+        if (typeof showToast === 'function') showToast('Load failed: ' + e.message, 'danger');
+    }
+}
+
+async function saveConfigEditor() {
+    const ta = document.getElementById('configEditorTextarea');
+    if (!ta) return;
+    try {
+        const data = await _adminFetch('/api/config/raw', {
+            method: 'POST',
+            body: JSON.stringify({ yaml: ta.value }),
+        });
+        if (typeof showToast === 'function')
+            showToast(data.message || 'Saved. Restart server to apply.', 'success');
+        window.closeConfigEditor && window.closeConfigEditor();
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Save failed: ' + e.message, 'danger');
+    }
+}
+window.loadConfigEditor = loadConfigEditor;
+window.saveConfigEditor = saveConfigEditor;

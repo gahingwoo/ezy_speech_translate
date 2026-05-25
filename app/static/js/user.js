@@ -3,6 +3,18 @@ let socket = null;
 let socketRetryCount = 0;
 let socketListenersSetup = false;
 
+// Multi-room support: derive room from URL ?room=xxx, default to 'main'
+function getRoomId() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const r = (params.get('room') || '').trim();
+        if (/^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$/.test(r)) return r;
+    } catch (e) { /* noop */ }
+    return 'main';
+}
+window.CURRENT_ROOM_ID = getRoomId();
+console.log('✓ Joining room:', window.CURRENT_ROOM_ID);
+
 // Generate or retrieve persistent client ID (stored in localStorage)
 function getOrCreateClientId() {
     let clientId = localStorage.getItem('_client_id');
@@ -40,7 +52,8 @@ function initSocket() {
         forceNew: false,  // Reuse existing connection if possible
         query: {
             client_id: clientId,  // Send persistent client ID to server
-            type: 'user'  // Identify as user client (not admin)
+            type: 'user',  // Identify as user client (not admin)
+            room: window.CURRENT_ROOM_ID || 'main'  // Multi-room scope
         }
     });
 
@@ -128,7 +141,7 @@ let _translationsLoadSeq = 0;
 // ── Client-side translation cache ────────────────────────────────────────────
 // Restore up to 50 most-recent translations from localStorage so the user
 // sees their data immediately on page load — even if the server just restarted.
-const _CACHE_KEY = '_txCache_v1';
+const _CACHE_KEY = '_txCache_v1_' + (window.CURRENT_ROOM_ID || 'main');
 const _CACHE_LIMIT = 50;
 try {
     const _raw = localStorage.getItem(_CACHE_KEY);
@@ -2344,7 +2357,7 @@ async function translateViaApi(text, targetLang) {
         const response = await fetch('/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text, target_lang: targetLang }),
+            body: JSON.stringify({ text: text, target_lang: targetLang, room: window.CURRENT_ROOM_ID || 'main' }),
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -3163,7 +3176,9 @@ async function loadInitialTranslations() {
     try {
         translationsOffset = 0;
         const response = await fetch(
-            '/api/translations?offset=0&limit=' + translationsLimit + '&api_token=' + encodeURIComponent(apiSessionToken)
+            '/api/translations?offset=0&limit=' + translationsLimit
+            + '&api_token=' + encodeURIComponent(apiSessionToken)
+            + '&room=' + encodeURIComponent(window.CURRENT_ROOM_ID || 'main')
         );
 
         if (mySeq !== _translationsLoadSeq) return; // a newer call already won
@@ -3211,7 +3226,9 @@ async function loadMoreTranslations() {
     
     try {
         const response = await fetch(
-            '/api/translations?offset=' + translationsOffset + '&limit=' + translationsLimit + '&api_token=' + encodeURIComponent(apiSessionToken)
+            '/api/translations?offset=' + translationsOffset + '&limit=' + translationsLimit
+            + '&api_token=' + encodeURIComponent(apiSessionToken)
+            + '&room=' + encodeURIComponent(window.CURRENT_ROOM_ID || 'main')
         );
         
         if (response.ok) {
@@ -3796,7 +3813,7 @@ async function translateInBackground(item, itemId, textEl) {
 
         // Fire-and-forget: cache translation on server so future clients skip this call
         if (translated && item.id != null) {
-            fetch('/api/translations/' + item.id + '/translated?api_token=' + encodeURIComponent(apiSessionToken), {
+            fetch('/api/translations/' + item.id + '/translated?api_token=' + encodeURIComponent(apiSessionToken) + '&room=' + encodeURIComponent(window.CURRENT_ROOM_ID || 'main'), {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ translated: translated, lang: lang })

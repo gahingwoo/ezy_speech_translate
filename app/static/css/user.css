@@ -1818,3 +1818,52 @@ body[data-ui-mode="elderly"] .about-content {
 [data-landscape="true"] .translation-text,
 [data-landscape="true"] .source-text           { font-size: 1.6rem !important; line-height: 1.35; }
 [data-landscape="true"] .transcription-card    { padding: 0.6rem 1rem; margin-bottom: 0.4rem; }
+
+/* ── Room picker overlay (shown when multiple sessions exist) ─────── */
+.room-picker-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.55);
+    align-items: center;
+    justify-content: center;
+}
+.room-picker-overlay--open { display: flex; }
+.room-picker-overlay__panel {
+    background: var(--surface, #fff);
+    color: var(--text, #222);
+    padding: 24px;
+    border-radius: 10px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.room-picker-overlay__title { margin-top: 0; }
+.room-picker-overlay__hint { font-size: 14px; color: #555; }
+.room-picker-overlay__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow: auto;
+}
+.room-picker-overlay__item {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #f8f9fa;
+    cursor: pointer;
+    text-align: left;
+    font-size: 14px;
+}
+.room-picker-overlay__item:hover { background: #eef2f7; }
+.room-picker-overlay__item-count { float: right; color: #888; font-size: 12px; }
+
+/* ── Room switcher sidebar section ───────────────────────────────── */
+/* Use native sidebar/select styling — no overrides, only icon alignment */
+.user-room-switcher-section .sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}

@@ -10,10 +10,13 @@ Features:
 - Support for multiple translation engines
 """
 
+from __future__ import annotations
+
 import requests
 import time
 import hashlib
 import logging
+import re
 from functools import lru_cache
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
@@ -198,64 +201,150 @@ class GoogleTranslateService:
         self.retry_attempts = 3
         self.retry_backoff = 2  # Exponential backoff factor
     
-    def translate(self, text: str, target_lang: str) -> Tuple[bool, str, bool]:
+    def translate(self, text: str, target_lang: str,
+                  glossary: list | None = None) -> Tuple[bool, str, bool]:
         """
         Translate text to target language
-        
+
         Args:
             text: Text to translate
             target_lang: Target language code
-        
+            glossary: Optional list of dicts with keys:
+                source_term, translation, case_sensitive (bool)
+                Terms are protected with placeholders during translation
+                and substituted back afterwards. Only entries whose
+                target_lang matches (or is '*') should be supplied here.
+
         Returns:
             (success, result, from_cache) - Tuple of (success bool, translated text, from_cache bool)
         """
         if not text or not text.strip():
             return True, text, False
-        
+
+        # Build cache key including a glossary fingerprint so a glossary change
+        # invalidates cached results for the same text+lang.
+        glossary_sig = ""
+        applicable_terms: list = []
+        if glossary:
+            for g in glossary:
+                term = (g.get("source_term") or "").strip()
+                trans = (g.get("translation") or "").strip()
+                if not term or not trans:
+                    continue
+                applicable_terms.append({
+                    "term": term, "translation": trans,
+                    "case_sensitive": bool(g.get("case_sensitive")),
+                })
+            if applicable_terms:
+                # Stable signature for cache invalidation
+                sig_src = "|".join(
+                    f"{t['term']}={t['translation']}:{int(t['case_sensitive'])}"
+                    for t in sorted(applicable_terms, key=lambda x: x["term"])
+                )
+                glossary_sig = hashlib.md5(sig_src.encode("utf-8")).hexdigest()[:8]
+
+        cache_lang_key = target_lang + (f"#{glossary_sig}" if glossary_sig else "")
+
         # Check cache first
-        cached = self.cache.get(text, target_lang)
+        cached = self.cache.get(text, cache_lang_key)
         if cached:
             logger.debug(f"📦 Cache hit for {target_lang}: {text[:30]}...")
-            return True, cached, True  # Return True for from_cache flag
-        
+            return True, cached, True
+
         # Normalize language code
-        target_lang = self.LANG_MAP.get(target_lang, target_lang)
-        
+        target_lang_norm = self.LANG_MAP.get(target_lang, target_lang)
+
+        # Protect glossary terms with placeholders before translation
+        protected_text, placeholders = self._apply_glossary_protect(
+            text, applicable_terms
+        )
+
         # Attempt translation with retries
         for attempt in range(self.retry_attempts):
             try:
-                result = self._translate_with_timeout(text, target_lang)
+                result = self._translate_with_timeout(protected_text, target_lang_norm)
                 if result:
+                    # Restore placeholders with their forced translations
+                    final = self._apply_glossary_restore(result, placeholders)
                     # Cache successful translation
-                    self.cache.set(text, target_lang, result)
-                    logger.info(f"✅ Translated to {target_lang}: {text[:50]}... → {result[:50]}...")
-                    return True, result, False  # Return False for from_cache (just created cache)
-            
+                    self.cache.set(text, cache_lang_key, final)
+                    logger.info(f"✅ Translated to {target_lang}: {text[:50]}... → {final[:50]}...")
+                    return True, final, False
+
             except requests.exceptions.Timeout:
                 logger.warning(f"⏱️ Request timeout (attempt {attempt + 1}/{self.retry_attempts})")
-                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                wait_time = 2 ** attempt
                 if attempt < self.retry_attempts - 1:
                     time.sleep(wait_time)
-            
+
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 429:  # Rate limited
+                if e.response.status_code == 429:
                     logger.warning(f"⚠️ Rate limited (attempt {attempt + 1}/{self.retry_attempts})")
-                    wait_time = (2 ** attempt) * 10  # Longer wait: 10s, 20s, 40s
+                    wait_time = (2 ** attempt) * 10
                     if attempt < self.retry_attempts - 1:
                         logger.info(f"⏳ Waiting {wait_time}s before retry...")
                         time.sleep(wait_time)
                 else:
                     raise
-            
+
             except Exception as e:
                 logger.error(f"❌ Translation error (attempt {attempt + 1}): {e}")
                 if attempt < self.retry_attempts - 1:
                     wait_time = 2 ** attempt
                     time.sleep(wait_time)
-        
+
         # All retries failed, return original text
         logger.error(f"❌ Translation failed after {self.retry_attempts} attempts")
         return False, text, False
+
+    # ── Glossary helpers ──────────────────────────────────────────────────
+    # Placeholder format: zero-width-safe ASCII token that survives Google
+    # Translate without alteration. Tested against zh/ja/ko/es/fr/de.
+    _PH_PREFIX = "ZQX"
+    _PH_SUFFIX = "QZ"
+
+    def _apply_glossary_protect(self, text: str, terms: list) -> Tuple[str, dict]:
+        """Replace glossary source terms with placeholders.
+
+        Returns (modified_text, {placeholder -> target_translation}).
+        Longer terms are matched first to avoid partial overlaps.
+        If the source text already contains our placeholder pattern, we skip
+        protection entirely to avoid corruption — translation proceeds without
+        glossary substitution for this call.
+        """
+        if not terms:
+            return text, {}
+        # Collision check: if source already contains our placeholder pattern,
+        # bail out rather than risk silently corrupting the user's text.
+        if re.search(rf"{self._PH_PREFIX}\d{{3}}{self._PH_SUFFIX}", text):
+            logger.warning("Glossary placeholder collision detected in source; skipping glossary")
+            return text, {}
+        placeholders: dict = {}
+        # Sort by source term length descending so "Jesus Christ" wins over "Jesus"
+        sorted_terms = sorted(terms, key=lambda t: len(t["term"]), reverse=True)
+        result = text
+        for idx, t in enumerate(sorted_terms):
+            ph = f"{self._PH_PREFIX}{idx:03d}{self._PH_SUFFIX}"
+            pattern = re.escape(t["term"])
+            flags = 0 if t["case_sensitive"] else re.IGNORECASE
+            new_result, n = re.subn(pattern, ph, result, flags=flags)
+            if n > 0:
+                result = new_result
+                placeholders[ph] = t["translation"]
+        return result, placeholders
+
+    def _apply_glossary_restore(self, text: str, placeholders: dict) -> str:
+        """Substitute placeholders back with their forced translations."""
+        if not placeholders:
+            return text
+        result = text
+        for ph, trans in placeholders.items():
+            # Translation engines sometimes uppercase or add spaces; be lenient
+            result = re.sub(
+                re.escape(ph), trans.replace("\\", r"\\"),
+                result, flags=re.IGNORECASE,
+            )
+        return result
     
     def _translate_with_timeout(self, text: str, target_lang: str, timeout: int = 10) -> Optional[str]:
         """Make translation request with timeout"""

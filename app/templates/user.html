@@ -25,6 +25,80 @@
     <!-- Skip-to-main link (additive, accessibility) -->
     <a class="skip-link" href="#mainTitle" data-i18n="skipToMain">Skip to translations</a>
 
+    <!-- Room picker overlay (shown only when multiple active rooms exist and ?room= is not set) -->
+    <div id="roomPickerOverlay" class="room-picker-overlay">
+        <div class="room-picker-overlay__panel">
+            <h3 class="room-picker-overlay__title">🚪 Choose a session</h3>
+            <p class="room-picker-overlay__hint">Multiple translation sessions are active. Pick one to join.</p>
+            <div id="roomPickerList" class="room-picker-overlay__list"></div>
+        </div>
+    </div>
+    <script>
+        // Persistent room switcher: navigates by reloading with ?room=
+        window.userSwitchRoom = function (roomId) {
+            if (!roomId || !/^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$/.test(roomId)) return;
+            const cur = (window.CURRENT_ROOM_ID || 'main');
+            if (roomId === cur) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', roomId);
+            window.location.href = url.toString();
+        };
+
+        (async function () {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const explicitRoom = params.get('room');
+                const resp = await fetch('/api/rooms');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const rooms = (data && data.rooms) || [];
+
+                // ── Populate sidebar room switcher (always when >1 room) ──
+                if (rooms.length > 1) {
+                    const sw = document.getElementById('userRoomSwitcherSection');
+                    const sel = document.getElementById('userRoomSelect');
+                    if (sw && sel) {
+                        sel.innerHTML = '';
+                        const currentRoom = explicitRoom || (window.CURRENT_ROOM_ID || 'main');
+                        rooms.forEach(r => {
+                            const opt = document.createElement('option');
+                            opt.value = r.room_id;
+                            opt.textContent = (r.display_name || r.room_id) +
+                                ' (' + (r.listeners || 0) + ')';
+                            if (r.room_id === currentRoom) opt.selected = true;
+                            sel.appendChild(opt);
+                        });
+                        sw.style.display = '';
+                    }
+                }
+
+                // ── First-load picker overlay (only when no explicit room) ──
+                if (explicitRoom) return;
+                if (rooms.length <= 1) return;
+                const overlay = document.getElementById('roomPickerOverlay');
+                const list = document.getElementById('roomPickerList');
+                rooms.forEach(r => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'room-picker-overlay__item';
+                    const nameEl = document.createElement('strong');
+                    nameEl.textContent = r.display_name || r.room_id;
+                    const countEl = document.createElement('span');
+                    countEl.className = 'room-picker-overlay__item-count';
+                    countEl.textContent = (r.listeners || 0) + ' listening';
+                    btn.appendChild(nameEl);
+                    btn.appendChild(countEl);
+                    btn.onclick = () => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('room', r.room_id);
+                        window.location.href = url.toString();
+                    };
+                    list.appendChild(btn);
+                });
+                overlay.classList.add('room-picker-overlay--open');
+            } catch (e) { console.warn('Room picker init failed:', e); }
+        })();
+    </script>
     <!-- Sync Notification Indicator -->
     <div aria-live="polite" class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated">
         🔄 Translations Updated
@@ -88,6 +162,19 @@
     <div class="pf-c-page__main">
         <!-- Sidebar -->
         <aside aria-label="Settings and controls" class="pf-c-page__sidebar" id="sidebar" role="complementary">
+
+            <!-- Room switcher (hidden unless >1 room exists) -->
+            <section class="sidebar-section user-room-switcher-section" id="userRoomSwitcherSection" style="display:none;">
+                <h3 class="sidebar-title">
+                    <span aria-hidden="true">🚪</span>
+                    <span data-i18n="room">Room</span>
+                </h3>
+                <div class="control-group">
+                    <label class="control-label" for="userRoomSelect" data-i18n="currentRoom">Current room</label>
+                    <select aria-label="Switch room" id="userRoomSelect"
+                            onchange="window.userSwitchRoom && window.userSwitchRoom(this.value)"></select>
+                </div>
+            </section>
 
             <!-- Translation Settings Section -->
             <section class="sidebar-section">
