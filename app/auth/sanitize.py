@@ -24,8 +24,12 @@ DANGEROUS_PATTERNS = [
 
 _CTRL_CHARS = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
-# HTML escape map (used by admin server)
+# HTML escape map (used by admin server).
+# IMPORTANT: '&' MUST be first so it is replaced before the other entries
+# whose replacements contain '&' (e.g. '<' → '&lt;').  If '&' were
+# processed last, pre-existing '&' characters would be double-encoded.
 _HTML_ESCAPES = {
+    "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",

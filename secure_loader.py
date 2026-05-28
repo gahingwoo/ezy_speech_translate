@@ -27,13 +27,13 @@ class MachineBoundEncryption:
             key = MachineBoundEncryption.get_machine_derived_key()
             encrypted_bytes = base64.b64decode(ciphertext.encode())
             decrypted_bytes = []
-            
+
             for i, byte in enumerate(encrypted_bytes):
                 key_char = key[i % len(key)]
                 decrypted_bytes.append(byte ^ key_char)
-            
+
             return bytes(decrypted_bytes).decode()
-        except:
+        except Exception:
             return None
 
 

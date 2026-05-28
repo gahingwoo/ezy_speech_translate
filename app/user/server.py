@@ -702,45 +702,47 @@ def before_request():
 
 @app.after_request
 def after_request(response):
-    """Add security headers and set client ID cookie"""
+    """Add security headers and set client ID cookie.
+
+    CSP is only injected when Talisman has not already set it (HTTPS mode).
+    This prevents the dynamically-built CSP from silently overwriting the
+    stricter policy that Talisman configures for HTTPS deployments.
+    """
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-    
-    # ✅ Content Security Policy - dynamically include external URL if configured
-    external_url = get_config('server', 'external_url', default='')
-    
-    # Build connect-src with local and external URLs
-    connect_src_list = ["'self'", "http://localhost:*", "http://127.0.0.1:*", 
-                       "ws://localhost:*", "ws://127.0.0.1:*",
-                       "https://cdnjs.cloudflare.com", "https://translate.googleapis.com", 
-                       "https://fonts.googleapis.com", "https://fonts.gstatic.com"]
-    
-    # Add external URL if configured (for CF Tunnel or reverse proxy)
-    if external_url:
-        # Add both https:// and wss:// versions
-        if external_url.startswith('https://'):
-            external_host = external_url.replace('https://', '').rstrip('/')
-            connect_src_list.append(f"https://{external_host}")
-            connect_src_list.append(f"wss://{external_host}")
-        elif external_url.startswith('http://'):
-            external_host = external_url.replace('http://', '').rstrip('/')
-            connect_src_list.append(f"http://{external_host}")
-            connect_src_list.append(f"ws://{external_host}")
-    
-    connect_src = ' '.join(connect_src_list)
-    
-    response.headers['Content-Security-Policy'] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
-        "media-src 'self' blob:; "
-        f"connect-src {connect_src}; "
-        "img-src 'self' data:; "
-        "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
-    )
+
+    # Only set a dynamic CSP if one hasn't been set yet (e.g. by Talisman for HTTPS).
+    if 'Content-Security-Policy' not in response.headers:
+        external_url = get_config('server', 'external_url', default='')
+
+        connect_src_list = ["'self'", "http://localhost:*", "http://127.0.0.1:*",
+                            "ws://localhost:*", "ws://127.0.0.1:*",
+                            "https://cdnjs.cloudflare.com", "https://translate.googleapis.com",
+                            "https://fonts.googleapis.com", "https://fonts.gstatic.com"]
+
+        if external_url:
+            if external_url.startswith('https://'):
+                external_host = external_url.replace('https://', '').rstrip('/')
+                connect_src_list.append(f"https://{external_host}")
+                connect_src_list.append(f"wss://{external_host}")
+            elif external_url.startswith('http://'):
+                external_host = external_url.replace('http://', '').rstrip('/')
+                connect_src_list.append(f"http://{external_host}")
+                connect_src_list.append(f"ws://{external_host}")
+
+        connect_src = ' '.join(connect_src_list)
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+            "media-src 'self' blob:; "
+            f"connect-src {connect_src}; "
+            "img-src 'self' data:; "
+            "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
+        )
 
     # Set persistent client ID cookie if we generated a new one
     if hasattr(request, 'client_id') and not request.cookies.get('_client_id'):
@@ -824,6 +826,10 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not get_config('authentication', 'enabled', default=True):
+            # Auth disabled: provide an empty user dict so routes that call
+            # request.user.get(...) do not raise AttributeError.
+            if not hasattr(request, 'user'):
+                request.user = {}
             return f(*args, **kwargs)
 
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
@@ -847,6 +853,10 @@ def require_admin_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not get_config('authentication', 'enabled', default=True):
+            # Auth disabled: provide an empty user dict so routes that call
+            # request.user.get(...) do not raise AttributeError.
+            if not hasattr(request, 'user'):
+                request.user = {}
             return f(*args, **kwargs)
 
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
@@ -1193,31 +1203,22 @@ def bible_languages():
     return jsonify(_bible_languages_cache)
 
 
-@app.route('/api/bible/source-translation', methods=['GET', 'POST'])
+@app.route('/api/bible/source-translation', methods=['GET'])
 @limiter.limit("30 per minute")
-def bible_source_translation_endpoint():
-    """GET: return the admin-configured source translation.
-    POST (admin auth required): update the source translation live.
+def bible_source_translation_get():
+    """Return the currently configured Bible source translation."""
+    return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION})
+
+
+@app.route('/api/bible/source-translation', methods=['POST'])
+@limiter.limit("30 per minute")
+@require_admin_auth
+def bible_source_translation_post():
+    """Update the Bible source translation live (admin only).
 
     POST body: {"source_translation": "KJV"}
     """
     global BIBLE_SOURCE_TRANSLATION
-    if request.method == 'GET':
-        return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION})
-
-    # POST — require admin token
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return jsonify({'error': 'Unauthorized'}), 401
-    token = auth_header.split(' ', 1)[1]
-    try:
-        import jwt as _jwt
-        decoded = _jwt.decode(token, get_config('authentication', 'jwt_secret', default=''), algorithms=['HS256'])
-        admin_username = get_config('authentication', 'admin_username', default='admin')
-        if decoded.get('username') != admin_username:
-            return jsonify({'error': 'Admin access required'}), 403
-    except Exception:
-        return jsonify({'error': 'Invalid token'}), 401
 
     payload = request.get_json(silent=True) or {}
     new_src = str(payload.get('source_translation') or '')[:20].strip()
@@ -1230,7 +1231,8 @@ def bible_source_translation_endpoint():
             source_translation=BIBLE_SOURCE_TRANSLATION,
             target_translation=BIBLE_TARGET_TRANSLATION,
         )
-    logger.info("📖 Admin updated source translation to: %s", BIBLE_SOURCE_TRANSLATION)
+    username = (request.user.get('username') if hasattr(request, 'user') else None) or 'admin'
+    logger.info("📖 %s updated source translation to: %s", username, BIBLE_SOURCE_TRANSLATION)
     return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION, 'updated': True})
 
 
@@ -1577,6 +1579,10 @@ if 'EDGE_TTS_VOICES_CACHE' not in globals():
 if 'EDGE_TTS_VOICES_CACHE_TIME' not in globals():
     EDGE_TTS_VOICES_CACHE_TIME = None
 
+# Lock that guards the one-time background fetch of Edge TTS voices.
+# Prevents concurrent requests from all spawning separate fetch threads.
+_VOICES_FETCH_LOCK = threading.Lock()
+
 logger.info(f"🔍 Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(tts_cache)} items")
 
 @app.route('/api/translate', methods=['POST'])
@@ -1847,27 +1853,40 @@ def fetch_edge_tts_voices_in_thread():
 
 
 def get_cached_edge_tts_voices():
-    """Get voices from cache, trigger background fetch if needed"""
+    """Get voices from cache, trigger background fetch if needed.
+
+    Thread-safe: uses _VOICES_FETCH_LOCK so only one background thread is
+    spawned even under concurrent requests.  Also fixes the .seconds bug
+    (timedelta.seconds wraps at 86 400) by using .total_seconds() instead.
+    """
     global EDGE_TTS_VOICES_CACHE, EDGE_TTS_VOICES_CACHE_TIME
 
     if not EDGE_TTS_AVAILABLE:
         return []
 
-    # 有缓存且未过期（1小时）
-    if EDGE_TTS_VOICES_CACHE is not None:
-        if EDGE_TTS_VOICES_CACHE_TIME and (datetime.now() - EDGE_TTS_VOICES_CACHE_TIME).seconds < 3600:
+    # Cache hit: populated and not older than 1 hour
+    if EDGE_TTS_VOICES_CACHE is not None and EDGE_TTS_VOICES_CACHE_TIME is not None:
+        age_seconds = (datetime.now() - EDGE_TTS_VOICES_CACHE_TIME).total_seconds()
+        if age_seconds < 3600:
             return EDGE_TTS_VOICES_CACHE
 
-    # 首次：设占位时间防止并发重复触发，然后后台拉取
-    if EDGE_TTS_VOICES_CACHE_TIME is None:
-        EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
-        logger.info("📥 Fetching Edge TTS voices in background OS thread...")
-        import threading
-        threading.Thread(
-            target=fetch_edge_tts_voices_in_thread,
-            daemon=True,
-            name="tts-voice-fetch"
-        ).start()
+    # Only spawn one fetch thread even when multiple requests arrive simultaneously
+    with _VOICES_FETCH_LOCK:
+        # Re-check inside the lock in case another thread just populated the cache
+        if EDGE_TTS_VOICES_CACHE is not None and EDGE_TTS_VOICES_CACHE_TIME is not None:
+            age_seconds = (datetime.now() - EDGE_TTS_VOICES_CACHE_TIME).total_seconds()
+            if age_seconds < 3600:
+                return EDGE_TTS_VOICES_CACHE
+
+        if EDGE_TTS_VOICES_CACHE_TIME is None:
+            # Set placeholder timestamp before spawning to prevent duplicate threads
+            EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
+            logger.info("📥 Fetching Edge TTS voices in background OS thread...")
+            threading.Thread(
+                target=fetch_edge_tts_voices_in_thread,
+                daemon=True,
+                name="tts-voice-fetch"
+            ).start()
 
     return EDGE_TTS_VOICES_CACHE or []
 

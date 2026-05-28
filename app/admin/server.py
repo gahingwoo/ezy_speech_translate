@@ -85,17 +85,19 @@ ADMIN_PASSWORD = get_config("authentication", "admin_password", default="admin12
 JWT_SECRET = get_config("authentication", "jwt_secret", default="change-this-secret")
 SESSION_TIMEOUT = get_config("authentication", "session_timeout", default=7200)
 
-# Debug: Log password loading status
-logger.info(f"='='='= INITIALIZATION START ='='='=")
+logger.info("='='='= INITIALIZATION START ='='='=")
 logger.info(f"✓ AUTH_ENABLED: {AUTH_ENABLED}")
-logger.info(f"✓ ADMIN_USERNAME: {ADMIN_USERNAME}")
-logger.info(f"✓ ADMIN_PASSWORD type: {type(ADMIN_PASSWORD)}, loaded: {bool(ADMIN_PASSWORD)}, length: {len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0}")
-logger.info(f"✓ JWT_SECRET type: {type(JWT_SECRET)}, loaded: {bool(JWT_SECRET)}, length: {len(JWT_SECRET) if JWT_SECRET else 0}")
+logger.debug(f"✓ ADMIN_USERNAME: {ADMIN_USERNAME}")
+# NOTE: Do NOT log password values, lengths, or secrets at any level above DEBUG.
+logger.debug("✓ Admin credentials loaded: %s", "yes" if ADMIN_PASSWORD else "NO")
 
 # Verify password is not None or empty string
 if not ADMIN_PASSWORD:
-    logger.critical(f"✗✗✗ CRITICAL: ADMIN_PASSWORD is empty or None! Login will fail! ✗✗✗")
+    logger.critical("ADMIN_PASSWORD is empty or None — login will fail. Set it in secrets.key.")
     ADMIN_PASSWORD = "admin123"  # Fallback to default
+
+if JWT_SECRET in ("change-this-secret", "", None):
+    logger.critical("JWT_SECRET is using an insecure default value — tokens can be forged!")
 
 # Protocol configuration (HTTP/HTTPS)
 USE_HTTPS = get_config("admin_server", "use_https", default=True)
@@ -123,7 +125,8 @@ try:
 except Exception as e:
     logger.warning(f"⚠ OEM configuration initialization failed: {e}")
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+_admin_cors_origins = get_config("advanced", "security", "cors_origins", default="*")
+socketio = SocketIO(app, cors_allowed_origins=_admin_cors_origins)
 
 # ──────────────────────────────────────────
 # Server Settings
@@ -176,17 +179,26 @@ def block_ip(ip, duration=LOCKOUT_DURATION):
     security_logger.warning(f"IP blocked: {ip} for {duration}s")
 
 def check_login_attempts(ip):
-    """Check and update login attempts for IP"""
-    current_time = time.time()
+    """Record a FAILED login attempt and check if the IP should be blocked.
 
-    # Reset counter if more than 1 minute has passed
-    if current_time - login_attempts[ip]["timestamp"] > 60:
+    Uses a sliding window keyed on the timestamp of the *first* attempt in the
+    current window (not the last), so slow brute-force attacks cannot reset the
+    counter by simply waiting between batches.
+    Only call this for failed logins — successes reset the counter instead.
+    """
+    current_time = time.time()
+    data = login_attempts[ip]
+
+    # If more than 60 s have elapsed since the FIRST attempt in the window,
+    # start a fresh window.  Do NOT update timestamp on every attempt.
+    if current_time - data["timestamp"] > 60:
         login_attempts[ip] = {"count": 0, "timestamp": current_time}
 
     login_attempts[ip]["count"] += 1
-    login_attempts[ip]["timestamp"] = current_time
+    # Intentionally omit: login_attempts[ip]["timestamp"] = current_time
+    # Keeping timestamp at window-start prevents the sliding-window bypass.
 
-    # Block if exceeded max attempts
+    # Block if exceeded max attempts within the window
     if login_attempts[ip]["count"] >= MAX_LOGIN_ATTEMPTS:
         block_ip(ip)
         return False
@@ -377,11 +389,6 @@ def login():
         security_logger.warning(f"Login attempt from blocked IP: {ip}")
         return jsonify({"error": "Too many failed attempts. Try again later."}), 403
 
-    # Check login rate limit
-    if not check_login_attempts(ip):
-        security_logger.warning(f"Too many login attempts from IP: {ip}")
-        return jsonify({"error": "Too many login attempts. IP blocked for 30 minutes."}), 403
-
     # Get request data
     try:
         data = request.get_json()
@@ -400,10 +407,13 @@ def login():
 
     if not username or not password_hash or len(password_hash) != 64:
         security_logger.warning(f"Login attempt with missing or malformed credentials from {ip}")
+        # Count malformed requests as failed attempts
+        if not check_login_attempts(ip):
+            return jsonify({"error": "Too many failed attempts. Try again later."}), 403
         return jsonify({"error": "Invalid credentials"}), 401
 
-    security_logger.debug(f"Login attempt - username: {username}")
-    
+    security_logger.debug("Login attempt - username received")
+
     # Verify credentials — client sends sha256(password), server stores plaintext
     # so expected hash = sha256(ADMIN_PASSWORD); compare directly (no double-hash)
     expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else ""
@@ -412,33 +422,27 @@ def login():
         # Reset login attempts on successful login
         if ip in login_attempts:
             del login_attempts[ip]
-        
+
         # Generate JWT token
-        token = jwt.encode(
-            {
-                "username": username,
-                "exp": datetime.utcnow() + timedelta(seconds=SESSION_TIMEOUT),
-                "iat": datetime.utcnow()
-            },
-            JWT_SECRET,
-            algorithm="HS256"
-        )
-        
-        # ⭐ Set session to mark as authenticated
+        token = generate_token(username)
+
+        # Set session to mark as authenticated
         session['authenticated'] = True
         session['username'] = username
         session['token'] = token
         session.permanent = True
-        
-        security_logger.info(f"✓ Successful login: {username} from {ip}")
+
+        security_logger.info(f"Successful login: {username} from {ip}")
         return jsonify({
             "success": True,
             "token": token,
             "username": username
         })
-    
-    # Failed login
-    security_logger.warning(f"✗ Failed login attempt: {username} from {ip}")
+
+    # Failed login — record the attempt AFTER verifying it failed
+    security_logger.warning(f"Failed login attempt for user '{username}' from {ip}")
+    if not check_login_attempts(ip):
+        return jsonify({"error": "Too many failed attempts. Try again later."}), 403
     return jsonify({"error": "Invalid credentials"}), 401
 
 @app.route("/api/logout", methods=["POST"])
@@ -448,28 +452,25 @@ def logout():
     return jsonify({"success": True})
 
 @app.route("/api/debug/config", methods=["GET"])
+@require_admin_auth
 def debug_config():
-    """Debug endpoint to check configuration loading (REMOVE IN PRODUCTION)"""
+    """Debug endpoint — requires admin authentication."""
     return jsonify({
         "admin_username": ADMIN_USERNAME,
         "admin_password_loaded": bool(ADMIN_PASSWORD),
-        "admin_password_length": len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0,
         "jwt_secret_loaded": bool(JWT_SECRET),
-        "jwt_secret_length": len(JWT_SECRET) if JWT_SECRET else 0,
         "auth_enabled": AUTH_ENABLED,
         "config_source": "secure_loader"
     })
 
 @app.route("/api/debug/login-info")
+@require_admin_auth
 def debug_login_info():
-    """Debug endpoint to check login configuration"""
+    """Debug endpoint — requires admin authentication."""
     return jsonify({
         "status": "ok",
-        "admin_username": ADMIN_USERNAME,
         "admin_password_configured": bool(ADMIN_PASSWORD),
-        "admin_password_length": len(ADMIN_PASSWORD) if ADMIN_PASSWORD else 0,
         "auth_enabled": AUTH_ENABLED,
-        "message": f"Admin login is configured. Use username: '{ADMIN_USERNAME}' with password from config"
     })
 
 @app.route("/api/config")
@@ -812,15 +813,18 @@ def handle_disconnect():
 # ──────────────────────────────────────────
 @app.before_request
 def log_request():
-    """Log all requests for security monitoring"""
+    """Log suspicious request patterns for security monitoring.
+    Only inspects path and query string — NOT the body — to avoid consuming
+    the stream before the route handler can read it.
+    """
     ip = get_client_ip()
 
-    # Log suspicious patterns
-    suspicious_patterns = ['..', '<script>', 'DROP TABLE', 'SELECT *', 'UNION SELECT']
-    request_str = str(request.path) + str(request.args) + str(request.get_data())
+    suspicious_patterns = ['..', '<script>', 'drop table', 'select *', 'union select']
+    # Inspect only URL-visible parts; do NOT call request.get_data()
+    request_str = (request.path + '?' + request.query_string.decode('utf-8', 'replace')).lower()
 
     for pattern in suspicious_patterns:
-        if pattern.lower() in request_str.lower():
+        if pattern in request_str:
             security_logger.warning(
                 f"Suspicious request from {ip}: {request.method} {request.path}"
             )
