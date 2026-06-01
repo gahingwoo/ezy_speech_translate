@@ -2736,6 +2736,11 @@ def handle_connect():
             f"SID: {request.sid}, Room listeners: {len(room_state['listeners'])}, "
             f"Total listeners: {_all_listener_count()})"
         )
+    elif client_type == 'caption':
+        # Caption overlay clients join the room so they receive broadcasts
+        _join_room(f'room:{room_id}')
+        logger.info(f"Caption client connected: {client_ip} (Client: {client_id}, Room: {room_id}, SID: {request.sid})")
+
     elif client_type == 'admin':
         # Admin clients still need to be tracked, but not as listeners
         client_id_full = f"{client_key}:{request.sid}"
