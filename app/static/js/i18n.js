@@ -54,6 +54,13 @@ window.sharedI18n = {
         "corrected": "Corrected",
         "close": "Close",
         "logout": "Logout",
+        "startRecording": "🎙️ Start Recording",
+        "stopRecording": "⏹️ Stop Recording",
+        "autoRestartEnabled": "Auto-restart enabled",
+        "waitingForSpeech": "Waiting for speech...",
+        "noTranscriptionsYet": "No transcriptions yet",
+        "signIn": "Sign In",
+        "loginSubtitle": "Sign in to access the admin panel",
         "username": "Username",
         "password": "Password",
 
@@ -471,7 +478,14 @@ window.sharedI18n = {
         "tour_s7_title": "快捷鍵",
         "tour_s7_body": "隨時按 \"?\" 查看快捷鍵。\"/\" 聚焦搜尋，\"g\" 返回頂部，\"Esc\" 關閉彈窗。",
         "adminShortcut_record": "切換錄音",
-        "adminShortcut_save": "保存更正"
+        "adminShortcut_save": "保存更正",
+        "addManualTitle": "新增轉錄",
+        "addManualLabel": "輸入轉錄文字：",
+        "ok": "確定",
+        "exportChoose": "揀選格式：",
+        "exportTxtDesc": "純文字",
+        "exportJsonDesc": "結構化資料",
+        "exportSrtDesc": "字幕檔案"
         },
 
 // Traditional Chinese (Taiwan)
@@ -484,12 +498,156 @@ window.sharedI18n = {
 
 
 
-        "addManualTitle": "添加轉錄",
-        "addManualLabel": "輸入轉錄文本：",
+        "waiting": "等待中",
+        "online": "線上",
+        "offline": "離線",
+        "search": "搜尋…",
+        "toggleMenu": "切換行動選單",
+        "toggleSearch": "切換搜尋",
+        "skipToMain": "跳至翻譯區",
+
+        "displaySettings": "顯示設定",
+        "displayMode": "顯示模式",
+        "translation": "翻譯",
+        "transcriptionOnly": "僅顯示轉錄",
+        "targetLanguage": "目標語言",
+        "textToSpeech": "文字轉語音",
+        "enableTTS": "啟用 TTS",
+        "voice": "語音",
+        "speed": "速度",
+        "volume": "音量",
+        "export": "匯出",
+        "format": "格式",
+        "download": "下載",
+        "clearDisplay": "清除顯示",
+        "settings": "設定",
+        "fontSize": "字型大小",
+        "darkMode": "深色模式",
+        "lightMode": "淺色模式",
+        "resetSettings": "重設設定",
+        "about": "關於",
+        "displayLanguage": "介面語言",
+
+        "liveTranslations": "即時翻譯",
+        "liveTranscriptions": "即時轉錄",
+        "waitingTranslations": "等待翻譯…",
+        "waitingTranscriptions": "等待轉錄…",
+        "waitingDesc": "翻譯內容將即時顯示於此",
+
+        "aboutTitle": "EzySpeech",
+        "tagline": "讓語言不再成為溝通的障礙",
+        "madeBy": "用 ❤️ 製作，作者：",
+        "author": "Ga Hing Woo",
+        "github": "GitHub",
+        "feedback": "問題回饋",
+        "version": "v3.3.0 • 開放原始碼 • MIT 授權",
+
+        "copy": "複製",
+        "speak": "朗讀",
+        "corrected": "已修正",
+        "close": "關閉",
+        "logout": "登出",
+        "startRecording": "🎙️ 開始錄音",
+        "stopRecording": "⏹️ 停止錄音",
+        "autoRestartEnabled": "已啟用自動重新開始",
+        "waitingForSpeech": "等待語音…",
+        "noTranscriptionsYet": "尚無轉錄內容",
+        "signIn": "登入",
+        "username": "使用者名稱",
+        "password": "密碼",
+
+        "confirmReset": "確定要將所有設定重設為預設值嗎？\n\n這將會：\n• 將顯示模式重設為翻譯\n• 將語言重設為自動偵測\n• 將主題重設為淺色\n• 將字型大小重設為 18px\n• 重設 TTS 設定\n• 保留您的翻譯內容",
+        "confirmClear": "確定要清除顯示中的所有翻譯嗎？\n\n注意：此操作僅會清除您本機的畫面。",
+
+        "exportTitle": "匯出轉錄",
+        "generated": "已產生",
+        "totalEntries": "項目總數",
+        "endOfExport": "匯出結束",
+
+        "searchTranslations": "搜尋翻譯",
+        "translationsUpdated": "翻譯已更新",
+
+        "audioControls": "音訊控制",
+        "sourceLanguage": "來源語言",
+        "audioDevice": "音訊裝置",
+        "loading": "載入中…",
+        "recognizing": "辨識中…",
+        "startRecordingHelp": "開始錄音即可查看轉錄",
+        "actions": "操作",
+        "add": "新增",
+        "edit": "編輯",
+        "delete": "刪除",
+        "clearAll": "全部清除",
+        "editAndCorrect": "編輯與修正",
+        "original": "原文",
+        "correctedLabel": "已修正（於此編輯）",
+        "selectItemToEdit": "請選擇要編輯的項目…",
+        "save": "儲存",
+        "cancel": "取消",
+        "dragToReorder": "拖曳以重新排序",
+        "systemInfo": "系統資訊",
+        "loadingShort": "載入中",
+
+        "toast_copied": "已複製到剪貼簿",
+        "toast_copyFailed": "複製到剪貼簿失敗",
+        "toast_ttsUnsupported": "您的瀏覽器不支援語音合成",
+        "toast_ttsError": "語音播放發生錯誤",
+        "toast_exportEmpty": "沒有可匯出的翻譯",
+        "toast_offline": "連線中斷，重新連線中…",
+        "toast_reconnected": "已重新連線",
+        "toast_reconnectFailed": "無法重新連線，請重新整理頁面。",
+
+        "cacheHit": "⚡",
+        "cacheHitTooltip": "從快取即時提供",
+
+        "shortcuts_title": "鍵盤快速鍵",
+        "shortcuts_help": "顯示此說明",
+        "shortcuts_search": "聚焦搜尋框",
+        "shortcuts_top": "捲動至頂部",
+        "shortcuts_close": "關閉對話框 / 選單",
+
+        "welcome_title": "歡迎使用 EzySpeech",
+        "welcome_intro": "主講者說話時，即時翻譯將顯示於此。",
+        "welcome_tip_lang": "在側邊欄選擇您的介面語言。",
+        "welcome_tip_tts": "啟用語音合成即可聽到翻譯。",
+        "welcome_tip_copy": "點選卡片即可複製或重新播放。",
+        "welcome_tip_keys": "隨時按",
+        "welcome_tip_keys_after": "即可查看快速鍵。",
+        "welcome_gotIt": "我知道了",
+
+        "uiMode": "檢視模式",
+        "uiMode_standard": "🎯 標準",
+        "uiMode_accessibility": "♿ 無障礙",
+        "uiMode_elderly": "👵 長者模式",
+
+        "userGuide": "使用指南",
+        "welcome_takeTour": "快速導覽",
+        "tour_prev": "上一步",
+        "tour_next": "下一步",
+        "tour_done": "完成",
+        "tour_s1_title": "即時翻譯",
+        "tour_s1_body": "主講者說話時，轉錄與翻譯會即時顯示於此，最新的卡片會置於頂部。",
+        "tour_s2_title": "選擇您的語言",
+        "tour_s2_body": "在側邊欄使用「介面語言」切換介面，使用「目標語言」控制翻譯輸出。",
+        "tour_s3_title": "透過 TTS 聆聽",
+        "tour_s3_body": "啟用語音合成後，翻譯會自動朗讀。可於側邊欄調整語音、語速與音量。",
+        "tour_s4_title": "卡片與操作",
+        "tour_s4_body": "每張卡片都有複製與重新播放按鈕。⚡ 標記代表該結果是從快取即時提供的。",
+        "tour_s5_title": "搜尋與匯出",
+        "tour_s5_body": "使用搜尋框篩選顯示清單。匯出可將完整紀錄儲存為 TXT、JSON、CSV 或 SRT 字幕。",
+        "tour_s6_title": "檢視模式",
+        "tour_s6_body": "可於設定中切換標準、無障礙（更強焦點、更大點擊區域）與長者模式（超大文字與按鈕）。",
+        "tour_s7_title": "快速鍵",
+        "tour_s7_body": "隨時按 \"?\" 查看快速鍵。\"/\" 聚焦搜尋，\"g\" 回到頂部，\"Esc\" 關閉對話框。",
+        "adminShortcut_record": "切換錄音",
+        "adminShortcut_save": "儲存修正",
+
+        "addManualTitle": "新增轉錄",
+        "addManualLabel": "請輸入轉錄文字：",
         "ok": "確定",
-        "exportChoose": "選擇格式：",
-        "exportTxtDesc": "純文本",
-        "exportJsonDesc": "結構化數據",
+        "exportChoose": "請選擇格式：",
+        "exportTxtDesc": "純文字",
+        "exportJsonDesc": "結構化資料",
         "exportSrtDesc": "字幕檔"
     },
     es: {
@@ -622,7 +780,14 @@ window.sharedI18n = {
         "tour_s7_title": "Atajos",
         "tour_s7_body": "Pulsa \"?\" para ver atajos. \"/\" enfoca búsqueda, \"g\" sube, \"Esc\" cierra.",
         "adminShortcut_record": "Alternar grabación",
-        "adminShortcut_save": "Guardar corrección"
+        "adminShortcut_save": "Guardar corrección",
+        "addManualTitle": "Añadir transcripción",
+        "addManualLabel": "Introduce el texto de la transcripción:",
+        "ok": "Aceptar",
+        "exportChoose": "Elige un formato:",
+        "exportTxtDesc": "Texto sin formato",
+        "exportJsonDesc": "Datos estructurados",
+        "exportSrtDesc": "Archivo de subtítulos"
         },
     // French
     fr: {
@@ -2948,7 +3113,64 @@ window.sharedI18n = {
         "cancel": "ரத்து செய்",
         "dragToReorder": "மறுகட்டமைக்க இழுத்து விடுங்கள்",
         "systemInfo": "கணினி தகவல்",
-        "loadingShort": "பதிவிறக்கம்..."
+        "loadingShort": "பதிவிறக்கம்...",
+        "skipToMain": "மொழிபெயர்ப்புகளுக்குச் செல்",
+        "lightMode": "ஒளி முகப்பு",
+        "toast_copied": "கிளிப்போர்டுக்கு நகலெடுக்கப்பட்டது",
+        "toast_copyFailed": "கிளிப்போர்டுக்கு நகலெடுக்க முடியவில்லை",
+        "toast_ttsUnsupported": "உங்கள் உலாவி உரை-க்கு-பேச்சை ஆதரிக்கவில்லை",
+        "toast_ttsError": "உரை-க்கு-பேச்சு பிழை",
+        "toast_exportEmpty": "ஏற்றுமதி செய்ய மொழிபெயர்ப்புகள் இல்லை",
+        "toast_offline": "இணைப்பு துண்டிக்கப்பட்டது. மீண்டும் இணைக்கிறது…",
+        "toast_reconnected": "மீண்டும் ஆன்லைனில்",
+        "toast_reconnectFailed": "மீண்டும் இணைக்க முடியவில்லை. பக்கத்தைப் புதுப்பிக்கவும்.",
+        "cacheHit": "⚡",
+        "cacheHitTooltip": "தற்காலிக சேமிப்பிலிருந்து உடனடியாக வழங்கப்பட்டது",
+        "shortcuts_title": "விசைப்பலகை குறுக்குவழிகள்",
+        "shortcuts_help": "இந்த உதவியைக் காட்டு",
+        "shortcuts_search": "தேடலில் கவனம் செலுத்து",
+        "shortcuts_top": "மேலே செல்",
+        "shortcuts_close": "உரையாடல் / மெனுவை மூடு",
+        "welcome_title": "EzySpeech-க்கு வரவேற்கிறோம்",
+        "welcome_intro": "தொகுப்பாளர் பேசும்போது நேரடி மொழிபெயர்ப்புகள் இங்கே தோன்றும்.",
+        "welcome_tip_lang": "பக்கப்பட்டியில் உங்கள் காட்சி மொழியைத் தேர்வு செய்யவும்.",
+        "welcome_tip_tts": "மொழிபெயர்ப்புகளைக் கேட்க உரை-க்கு-பேச்சை இயக்கவும்.",
+        "welcome_tip_copy": "நகலெடுக்க அல்லது மீண்டும் இயக்க அட்டையைத் தட்டவும்.",
+        "welcome_tip_keys": "அழுத்தவும்",
+        "welcome_tip_keys_after": "குறுக்குவழிகளுக்கு எப்போது வேண்டுமானாலும்.",
+        "welcome_gotIt": "புரிந்தது",
+        "uiMode": "காட்சி முறை",
+        "uiMode_standard": "🎯 நிலையானது",
+        "uiMode_accessibility": "♿ அணுகல்தன்மை",
+        "uiMode_elderly": "👵 முதியோர்",
+        "userGuide": "பயனர் வழிகாட்டி",
+        "welcome_takeTour": "விரைவான சுற்றுப்பயணம்",
+        "tour_prev": "பின்",
+        "tour_next": "அடுத்து",
+        "tour_done": "முடிந்தது",
+        "tour_s1_title": "நேரடி மொழிபெயர்ப்பு",
+        "tour_s1_body": "தொகுப்பாளர் பேசும்போது, படியெடுப்புகளும் மொழிபெயர்ப்புகளும் இங்கே நேரலையில் தோன்றும். புதிய அட்டைகள் மேலே அடுக்கப்படும்.",
+        "tour_s2_title": "உங்கள் மொழியைத் தேர்வு செய்யவும்",
+        "tour_s2_body": "இடைமுகத்தை மாற்ற பக்கப்பட்டியில் உள்ள “காட்சி மொழி”யையும், மொழிபெயர்ப்பு வெளியீட்டைக் கட்டுப்படுத்த “இலக்கு மொழி”யையும் பயன்படுத்தவும்.",
+        "tour_s3_title": "TTS மூலம் கேளுங்கள்",
+        "tour_s3_body": "மொழிபெயர்ப்புகளைத் தானாக ஒலிக்க உரை-க்கு-பேச்சை இயக்கவும். குரல், வேகம், ஒலியளவை பக்கப்பட்டியில் சரிசெய்யவும்.",
+        "tour_s4_title": "அட்டைகளும் செயல்களும்",
+        "tour_s4_body": "ஒவ்வொரு அட்டையிலும் நகல் மற்றும் மீண்டும் இயக்கும் பொத்தான் உள்ளது. ⚡ குறி, முடிவு தற்காலிக சேமிப்பிலிருந்து உடனடியாக வழங்கப்பட்டதைக் குறிக்கிறது.",
+        "tour_s5_title": "தேடலும் ஏற்றுமதியும்",
+        "tour_s5_body": "காணும் பட்டியலை வடிகட்ட தேடல் பட்டியைப் பயன்படுத்தவும். ஏற்றுமதி உங்கள் முழு வரலாற்றையும் TXT, JSON, CSV அல்லது SRT வசன வடிவில் சேமிக்கும்.",
+        "tour_s6_title": "காட்சி முறைகள்",
+        "tour_s6_body": "அமைப்புகளில் நிலையானது, அணுகல்தன்மை (பெரிய கவனம், பெரிய தொடு பகுதிகள்) மற்றும் முதியோர் (பெரிய உரை மற்றும் பொத்தான்கள்) ஆகியவற்றுக்கு இடையே மாறவும்.",
+        "tour_s7_title": "குறுக்குவழிகள்",
+        "tour_s7_body": "குறுக்குவழிகளைக் காண எப்போது வேண்டுமானாலும் \"?\" அழுத்தவும். தேடலில் கவனம் செலுத்த \"/\", மேலே செல்ல \"g\", உரையாடல்களை மூட \"Esc\".",
+        "adminShortcut_record": "பதிவை மாற்று",
+        "adminShortcut_save": "திருத்தத்தைச் சேமி",
+        "addManualTitle": "படியெடுப்பைச் சேர்",
+        "addManualLabel": "படியெடுப்பு உரையை உள்ளிடவும்:",
+        "ok": "சரி",
+        "exportChoose": "ஒரு வடிவத்தைத் தேர்வு செய்யவும்:",
+        "exportTxtDesc": "எளிய உரை",
+        "exportJsonDesc": "கட்டமைக்கப்பட்ட தரவு",
+        "exportSrtDesc": "வசன கோப்பு"
     }
 };
 
@@ -3874,6 +4096,163 @@ window.sharedAiStatusLibrary = {
         if (!map[k].brand_admin) {
             if (k === 'zh' || k === 'yue' || k === 'zh-tw') map[k].brand_admin = map[k].brand || 'EzySpeech 管理控制台';
             else map[k].brand_admin = map.en.brand_admin || 'EzySpeech Admin Controls';
+        }
+    });
+})();
+
+// Room switcher + Bible verses + admin labels added after the inline blocks above.
+// Merged here (without overwriting existing keys) so every language stays in sync.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { room: "Room", currentRoom: "Current room", bibleVerses: "Bible Verses", bibleVerseShow: "Show Bible Verses", bibleVerseHide: "Hide Bible Verses", yourBible: "Your Bible", bibleAutoMatched: "Auto-matched to your language. Choose any Bible below.", bibleLoading: "— Loading... —", language: "Language", clients: "Clients", manage_rooms: "Manage", ttsEngine: "TTS Engine", import: "Import", recording: "Recording", stopped: "Stopped", transcriptions: "Transcripts", englishUS: "English (US)", englishUK: "English (UK)", chineseMandarin: "Chinese (Mandarin)" },
+        zh: { room: "房间", currentRoom: "当前房间", bibleVerses: "圣经经文", bibleVerseShow: "显示圣经经文", bibleVerseHide: "隐藏圣经经文", yourBible: "你的圣经", bibleAutoMatched: "已根据你的语言自动匹配。可在下方选择任意圣经版本。", bibleLoading: "— 加载中… —", language: "语言", clients: "客户端", manage_rooms: "管理", ttsEngine: "TTS 引擎", import: "导入", recording: "录音中", stopped: "已停止", transcriptions: "转录", englishUS: "英语（美国）", englishUK: "英语（英国）", chineseMandarin: "中文（普通话）" },
+        "zh-tw": { room: "房間", currentRoom: "目前房間", bibleVerses: "聖經經文", bibleVerseShow: "顯示聖經經文", bibleVerseHide: "隱藏聖經經文", yourBible: "您的聖經", bibleAutoMatched: "已依您的語言自動配對。可於下方選擇任一聖經版本。", bibleLoading: "— 載入中… —", language: "語言", clients: "用戶端", manage_rooms: "管理", ttsEngine: "TTS 引擎", import: "匯入", recording: "錄音中", stopped: "已停止", transcriptions: "轉錄", englishUS: "英文（美國）", englishUK: "英文（英國）", chineseMandarin: "中文（普通話）" },
+        yue: { room: "房間", currentRoom: "目前房間", bibleVerses: "聖經經文", bibleVerseShow: "顯示聖經經文", bibleVerseHide: "隱藏聖經經文", yourBible: "你嘅聖經", bibleAutoMatched: "已根據你嘅語言自動配對。可喺下面揀任何聖經版本。", bibleLoading: "— 載入中… —", language: "語言", clients: "用戶端", manage_rooms: "管理", ttsEngine: "TTS 引擎", import: "匯入", recording: "錄音中", stopped: "已停止", transcriptions: "轉錄", englishUS: "英文（美國）", englishUK: "英文（英國）", chineseMandarin: "中文（普通話）" },
+        es: { room: "Sala", currentRoom: "Sala actual", bibleVerses: "Versículos bíblicos", bibleVerseShow: "Mostrar versículos", bibleVerseHide: "Ocultar versículos", yourBible: "Tu Biblia", bibleAutoMatched: "Adaptado automáticamente a tu idioma. Elige cualquier Biblia abajo.", bibleLoading: "— Cargando… —", language: "Idioma", clients: "Clientes", manage_rooms: "Gestionar", ttsEngine: "Motor TTS", import: "Importar", recording: "Grabando", stopped: "Detenido", transcriptions: "Transcripciones", englishUS: "Inglés (EE. UU.)", englishUK: "Inglés (Reino Unido)", chineseMandarin: "Chino (mandarín)" },
+        fr: { room: "Salle", currentRoom: "Salle actuelle", bibleVerses: "Versets bibliques", bibleVerseShow: "Afficher les versets", bibleVerseHide: "Masquer les versets", yourBible: "Votre Bible", bibleAutoMatched: "Adapté automatiquement à votre langue. Choisissez une Bible ci-dessous.", bibleLoading: "— Chargement… —", language: "Langue", clients: "Clients", manage_rooms: "Gérer", ttsEngine: "Moteur TTS", import: "Importer", recording: "Enregistrement", stopped: "Arrêté", transcriptions: "Transcriptions", englishUS: "Anglais (États-Unis)", englishUK: "Anglais (Royaume-Uni)", chineseMandarin: "Chinois (mandarin)" },
+        de: { room: "Raum", currentRoom: "Aktueller Raum", bibleVerses: "Bibelverse", bibleVerseShow: "Bibelverse anzeigen", bibleVerseHide: "Bibelverse ausblenden", yourBible: "Deine Bibel", bibleAutoMatched: "Automatisch an deine Sprache angepasst. Wähle unten eine beliebige Bibel.", bibleLoading: "— Lädt… —", language: "Sprache", clients: "Clients", manage_rooms: "Verwalten", ttsEngine: "TTS-Engine", import: "Importieren", recording: "Aufnahme", stopped: "Gestoppt", transcriptions: "Transkripte", englishUS: "Englisch (USA)", englishUK: "Englisch (GB)", chineseMandarin: "Chinesisch (Mandarin)" },
+        ru: { room: "Комната", currentRoom: "Текущая комната", bibleVerses: "Библейские стихи", bibleVerseShow: "Показать стихи", bibleVerseHide: "Скрыть стихи", yourBible: "Ваша Библия", bibleAutoMatched: "Автоматически подобрано под ваш язык. Выберите любую Библию ниже.", bibleLoading: "— Загрузка… —", language: "Язык", clients: "Клиенты", manage_rooms: "Управление", ttsEngine: "Движок TTS", import: "Импорт", recording: "Запись", stopped: "Остановлено", transcriptions: "Транскрипты", englishUS: "Английский (США)", englishUK: "Английский (Великобритания)", chineseMandarin: "Китайский (мандарин)" },
+        pl: { room: "Pokój", currentRoom: "Bieżący pokój", bibleVerses: "Wersety biblijne", bibleVerseShow: "Pokaż wersety", bibleVerseHide: "Ukryj wersety", yourBible: "Twoja Biblia", bibleAutoMatched: "Automatycznie dopasowano do Twojego języka. Wybierz dowolną Biblię poniżej.", bibleLoading: "— Ładowanie… —", language: "Język", clients: "Klienci", manage_rooms: "Zarządzaj", ttsEngine: "Silnik TTS", import: "Importuj", recording: "Nagrywanie", stopped: "Zatrzymano", transcriptions: "Transkrypcje", englishUS: "Angielski (USA)", englishUK: "Angielski (Wielka Brytania)", chineseMandarin: "Chiński (mandaryński)" },
+        tr: { room: "Oda", currentRoom: "Geçerli oda", bibleVerses: "İncil Ayetleri", bibleVerseShow: "Ayetleri göster", bibleVerseHide: "Ayetleri gizle", yourBible: "İncil'iniz", bibleAutoMatched: "Diliniz için otomatik eşleştirildi. Aşağıdan herhangi bir İncil seçin.", bibleLoading: "— Yükleniyor… —", language: "Dil", clients: "İstemciler", manage_rooms: "Yönet", ttsEngine: "TTS Motoru", import: "İçe aktar", recording: "Kaydediliyor", stopped: "Durduruldu", transcriptions: "Transkriptler", englishUS: "İngilizce (ABD)", englishUK: "İngilizce (BK)", chineseMandarin: "Çince (Mandarin)" },
+        ja: { room: "ルーム", currentRoom: "現在のルーム", bibleVerses: "聖書の節", bibleVerseShow: "聖書の節を表示", bibleVerseHide: "聖書の節を非表示", yourBible: "あなたの聖書", bibleAutoMatched: "あなたの言語に自動でマッチしました。下から任意の聖書を選べます。", bibleLoading: "— 読み込み中… —", language: "言語", clients: "クライアント", manage_rooms: "管理", ttsEngine: "TTS エンジン", import: "インポート", recording: "録音中", stopped: "停止", transcriptions: "文字起こし", englishUS: "英語（米国）", englishUK: "英語（英国）", chineseMandarin: "中国語（標準語）" },
+        ko: { room: "방", currentRoom: "현재 방", bibleVerses: "성경 구절", bibleVerseShow: "성경 구절 표시", bibleVerseHide: "성경 구절 숨기기", yourBible: "내 성경", bibleAutoMatched: "사용 언어에 맞게 자동 매칭되었습니다. 아래에서 원하는 성경을 선택하세요.", bibleLoading: "— 불러오는 중… —", language: "언어", clients: "클라이언트", manage_rooms: "관리", ttsEngine: "TTS 엔진", import: "가져오기", recording: "녹음 중", stopped: "중지됨", transcriptions: "전사", englishUS: "영어(미국)", englishUK: "영어(영국)", chineseMandarin: "중국어(표준어)" },
+        vi: { room: "Phòng", currentRoom: "Phòng hiện tại", bibleVerses: "Câu Kinh Thánh", bibleVerseShow: "Hiện câu Kinh Thánh", bibleVerseHide: "Ẩn câu Kinh Thánh", yourBible: "Kinh Thánh của bạn", bibleAutoMatched: "Đã tự động khớp với ngôn ngữ của bạn. Chọn bất kỳ Kinh Thánh nào bên dưới.", bibleLoading: "— Đang tải… —", language: "Ngôn ngữ", clients: "Máy khách", manage_rooms: "Quản lý", ttsEngine: "Bộ máy TTS", import: "Nhập", recording: "Đang ghi", stopped: "Đã dừng", transcriptions: "Bản ghi", englishUS: "Tiếng Anh (Mỹ)", englishUK: "Tiếng Anh (Anh)", chineseMandarin: "Tiếng Trung (Quan Thoại)" },
+        th: { room: "ห้อง", currentRoom: "ห้องปัจจุบัน", bibleVerses: "ข้อพระคัมภีร์", bibleVerseShow: "แสดงข้อพระคัมภีร์", bibleVerseHide: "ซ่อนข้อพระคัมภีร์", yourBible: "พระคัมภีร์ของคุณ", bibleAutoMatched: "จับคู่กับภาษาของคุณโดยอัตโนมัติ เลือกพระคัมภีร์ใดก็ได้ด้านล่าง", bibleLoading: "— กำลังโหลด… —", language: "ภาษา", clients: "ไคลเอนต์", manage_rooms: "จัดการ", ttsEngine: "เครื่องมือ TTS", import: "นำเข้า", recording: "กำลังบันทึก", stopped: "หยุดแล้ว", transcriptions: "ถอดเสียง", englishUS: "อังกฤษ (สหรัฐฯ)", englishUK: "อังกฤษ (สหราชอาณาจักร)", chineseMandarin: "จีน (กลาง)" },
+        id: { room: "Ruang", currentRoom: "Ruang saat ini", bibleVerses: "Ayat Alkitab", bibleVerseShow: "Tampilkan ayat Alkitab", bibleVerseHide: "Sembunyikan ayat Alkitab", yourBible: "Alkitab Anda", bibleAutoMatched: "Otomatis dicocokkan dengan bahasa Anda. Pilih Alkitab mana pun di bawah.", bibleLoading: "— Memuat… —", language: "Bahasa", clients: "Klien", manage_rooms: "Kelola", ttsEngine: "Mesin TTS", import: "Impor", recording: "Merekam", stopped: "Dihentikan", transcriptions: "Transkrip", englishUS: "Inggris (AS)", englishUK: "Inggris (Britania)", chineseMandarin: "Mandarin" },
+        ms: { room: "Bilik", currentRoom: "Bilik semasa", bibleVerses: "Ayat Bible", bibleVerseShow: "Tunjukkan ayat Bible", bibleVerseHide: "Sembunyikan ayat Bible", yourBible: "Bible anda", bibleAutoMatched: "Dipadankan secara automatik dengan bahasa anda. Pilih mana-mana Bible di bawah.", bibleLoading: "— Memuatkan… —", language: "Bahasa", clients: "Klien", manage_rooms: "Urus", ttsEngine: "Enjin TTS", import: "Import", recording: "Merakam", stopped: "Dihentikan", transcriptions: "Transkrip", englishUS: "Inggeris (AS)", englishUK: "Inggeris (UK)", chineseMandarin: "Cina (Mandarin)" },
+        hi: { room: "कक्ष", currentRoom: "वर्तमान कक्ष", bibleVerses: "बाइबल के अंश", bibleVerseShow: "बाइबल अंश दिखाएँ", bibleVerseHide: "बाइबल अंश छिपाएँ", yourBible: "आपकी बाइबल", bibleAutoMatched: "आपकी भाषा के अनुसार स्वतः मिलान किया गया। नीचे कोई भी बाइबल चुनें।", bibleLoading: "— लोड हो रहा है… —", language: "भाषा", clients: "क्लाइंट", manage_rooms: "प्रबंधित करें", ttsEngine: "TTS इंजन", import: "आयात करें", recording: "रिकॉर्डिंग", stopped: "रुका हुआ", transcriptions: "प्रतिलेख", englishUS: "अंग्रेज़ी (अमेरिका)", englishUK: "अंग्रेज़ी (यूके)", chineseMandarin: "चीनी (मंदारिन)" },
+        ar: { room: "الغرفة", currentRoom: "الغرفة الحالية", bibleVerses: "آيات الكتاب المقدس", bibleVerseShow: "إظهار الآيات", bibleVerseHide: "إخفاء الآيات", yourBible: "كتابك المقدس", bibleAutoMatched: "تمت المطابقة تلقائيًا مع لغتك. اختر أي نسخة أدناه.", bibleLoading: "— جارٍ التحميل… —", language: "اللغة", clients: "العملاء", manage_rooms: "إدارة", ttsEngine: "محرك TTS", import: "استيراد", recording: "جارٍ التسجيل", stopped: "متوقف", transcriptions: "النصوص", englishUS: "الإنجليزية (الولايات المتحدة)", englishUK: "الإنجليزية (المملكة المتحدة)", chineseMandarin: "الصينية (الماندرين)" },
+        pt: { room: "Sala", currentRoom: "Sala atual", bibleVerses: "Versículos bíblicos", bibleVerseShow: "Mostrar versículos", bibleVerseHide: "Ocultar versículos", yourBible: "A sua Bíblia", bibleAutoMatched: "Correspondência automática ao seu idioma. Escolha qualquer Bíblia abaixo.", bibleLoading: "— A carregar… —", language: "Idioma", clients: "Clientes", manage_rooms: "Gerir", ttsEngine: "Motor TTS", import: "Importar", recording: "A gravar", stopped: "Parado", transcriptions: "Transcrições", englishUS: "Inglês (EUA)", englishUK: "Inglês (Reino Unido)", chineseMandarin: "Chinês (mandarim)" },
+        it: { room: "Sala", currentRoom: "Sala attuale", bibleVerses: "Versetti biblici", bibleVerseShow: "Mostra versetti", bibleVerseHide: "Nascondi versetti", yourBible: "La tua Bibbia", bibleAutoMatched: "Abbinata automaticamente alla tua lingua. Scegli una Bibbia qui sotto.", bibleLoading: "— Caricamento… —", language: "Lingua", clients: "Client", manage_rooms: "Gestisci", ttsEngine: "Motore TTS", import: "Importa", recording: "Registrazione", stopped: "Fermato", transcriptions: "Trascrizioni", englishUS: "Inglese (USA)", englishUK: "Inglese (Regno Unito)", chineseMandarin: "Cinese (mandarino)" },
+        nl: { room: "Ruimte", currentRoom: "Huidige ruimte", bibleVerses: "Bijbelverzen", bibleVerseShow: "Bijbelverzen tonen", bibleVerseHide: "Bijbelverzen verbergen", yourBible: "Jouw Bijbel", bibleAutoMatched: "Automatisch afgestemd op je taal. Kies hieronder een Bijbel.", bibleLoading: "— Laden… —", language: "Taal", clients: "Clients", manage_rooms: "Beheren", ttsEngine: "TTS-engine", import: "Importeren", recording: "Opnemen", stopped: "Gestopt", transcriptions: "Transcripties", englishUS: "Engels (VS)", englishUK: "Engels (VK)", chineseMandarin: "Chinees (Mandarijn)" },
+        ta: { room: "அறை", currentRoom: "தற்போதைய அறை", bibleVerses: "பைபிள் வசனங்கள்", bibleVerseShow: "பைபிள் வசனங்களைக் காட்டு", bibleVerseHide: "பைபிள் வசனங்களை மறை", yourBible: "உங்கள் பைபிள்", bibleAutoMatched: "உங்கள் மொழிக்கு ஏற்ப தானாகப் பொருந்தியது. கீழே எந்த பைபிளையும் தேர்வு செய்யவும்.", bibleLoading: "— ஏற்றுகிறது… —", language: "மொழி", clients: "கிளையன்ட்கள்", manage_rooms: "நிர்வகி", ttsEngine: "TTS இயந்திரம்", import: "இறக்குமதி", recording: "பதிவு செய்கிறது", stopped: "நிறுத்தப்பட்டது", transcriptions: "படியெடுப்புகள்", englishUS: "ஆங்கிலம் (அமெரிக்கா)", englishUK: "ஆங்கிலம் (இங்கிலாந்து)", chineseMandarin: "சீனம் (மாண்டரின்)" }
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        const src = extra[lang];
+        Object.keys(src).forEach(function (k) {
+            if (map[lang][k] === undefined) map[lang][k] = src[k];
+        });
+    });
+    // Any language without its own entry falls back to the English additions.
+    Object.keys(map).forEach(function (lang) {
+        Object.keys(extra.en).forEach(function (k) {
+            if (map[lang][k] === undefined) map[lang][k] = extra.en[k];
+        });
+    });
+})();
+
+// Login page labels (admin-only). Merged without overwriting existing keys.
+(function () {
+    const map = window.sharedI18n || {};
+    const login = {
+        en: { adminLogin: "Admin Login", loginSubtitle: "Sign in to access the admin panel" },
+        zh: { adminLogin: "管理员登录", loginSubtitle: "登录以访问管理面板" },
+        "zh-tw": { adminLogin: "管理員登入", loginSubtitle: "登入以存取管理面板" },
+        yue: { adminLogin: "管理員登入", loginSubtitle: "登入以存取管理面板" },
+        es: { adminLogin: "Acceso de administrador", loginSubtitle: "Inicia sesión para acceder al panel de administración" },
+        fr: { adminLogin: "Connexion administrateur", loginSubtitle: "Connectez-vous pour accéder au panneau d'administration" },
+        de: { adminLogin: "Administrator-Anmeldung", loginSubtitle: "Melde dich an, um auf das Admin-Panel zuzugreifen" },
+        ru: { adminLogin: "Вход администратора", loginSubtitle: "Войдите, чтобы открыть панель администратора" },
+        pl: { adminLogin: "Logowanie administratora", loginSubtitle: "Zaloguj się, aby uzyskać dostęp do panelu administracyjnego" },
+        tr: { adminLogin: "Yönetici Girişi", loginSubtitle: "Yönetim paneline erişmek için giriş yapın" },
+        ja: { adminLogin: "管理者ログイン", loginSubtitle: "管理パネルにアクセスするにはログインしてください" },
+        ko: { adminLogin: "관리자 로그인", loginSubtitle: "관리자 패널에 접속하려면 로그인하세요" },
+        vi: { adminLogin: "Đăng nhập quản trị", loginSubtitle: "Đăng nhập để truy cập bảng quản trị" },
+        th: { adminLogin: "เข้าสู่ระบบผู้ดูแล", loginSubtitle: "เข้าสู่ระบบเพื่อเข้าถึงแผงผู้ดูแล" },
+        id: { adminLogin: "Login Admin", loginSubtitle: "Masuk untuk mengakses panel admin" },
+        ms: { adminLogin: "Log Masuk Admin", loginSubtitle: "Log masuk untuk mengakses panel admin" },
+        hi: { adminLogin: "एडमिन लॉगिन", loginSubtitle: "एडमिन पैनल तक पहुँचने के लिए साइन इन करें" },
+        ar: { adminLogin: "تسجيل دخول المسؤول", loginSubtitle: "سجّل الدخول للوصول إلى لوحة الإدارة" },
+        pt: { adminLogin: "Login de administrador", loginSubtitle: "Inicie sessão para aceder ao painel de administração" },
+        it: { adminLogin: "Accesso amministratore", loginSubtitle: "Accedi per entrare nel pannello di amministrazione" },
+        nl: { adminLogin: "Beheerderslogin", loginSubtitle: "Log in om toegang te krijgen tot het beheerpaneel" },
+        ta: { adminLogin: "நிர்வாக உள்நுழைவு", loginSubtitle: "நிர்வாகப் பலகத்தை அணுக உள்நுழையவும்" }
+    };
+    Object.keys(login).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(login[lang]).forEach(function (k) {
+            if (map[lang][k] === undefined) map[lang][k] = login[lang][k];
+        });
+    });
+    Object.keys(map).forEach(function (lang) {
+        Object.keys(login.en).forEach(function (k) {
+            if (map[lang][k] === undefined) map[lang][k] = login.en[k];
+        });
+    });
+})();
+
+// Session picker + AI sermon summary labels. Merged without overwriting existing keys.
+(function () {
+    const map = window.sharedI18n || {};
+    const x = {
+        en: { chooseSession: "Choose a session", chooseSessionHint: "Multiple translation sessions are active. Pick one to join.", listenersCount: "{n} listening", aiSermonSummary: "AI Sermon Summary", aiSermonHint: "Opens ChatGPT with sermon already loaded" },
+        zh: { chooseSession: "选择会话", chooseSessionHint: "目前有多个翻译会话进行中，请选择一个加入。", listenersCount: "{n} 人收听", aiSermonSummary: "AI 讲道摘要", aiSermonHint: "打开 ChatGPT 并已载入讲道内容" },
+        "zh-tw": { chooseSession: "選擇場次", chooseSessionHint: "目前有多個翻譯場次進行中，請選擇一個加入。", listenersCount: "{n} 人收聽", aiSermonSummary: "AI 講道摘要", aiSermonHint: "開啟 ChatGPT 並已載入講道內容" },
+        yue: { chooseSession: "揀選場次", chooseSessionHint: "而家有多個翻譯場次進行緊，請揀一個加入。", listenersCount: "{n} 人收聽", aiSermonSummary: "AI 講道摘要", aiSermonHint: "開啟 ChatGPT 並已載入講道內容" },
+        es: { chooseSession: "Elige una sesión", chooseSessionHint: "Hay varias sesiones de traducción activas. Elige una para unirte.", listenersCount: "{n} escuchando", aiSermonSummary: "Resumen del sermón con IA", aiSermonHint: "Abre ChatGPT con el sermón ya cargado" },
+        fr: { chooseSession: "Choisir une session", chooseSessionHint: "Plusieurs sessions de traduction sont actives. Choisissez-en une pour rejoindre.", listenersCount: "{n} à l'écoute", aiSermonSummary: "Résumé du sermon par IA", aiSermonHint: "Ouvre ChatGPT avec le sermon déjà chargé" },
+        de: { chooseSession: "Sitzung auswählen", chooseSessionHint: "Mehrere Übersetzungssitzungen sind aktiv. Wähle eine zum Beitreten.", listenersCount: "{n} hören zu", aiSermonSummary: "KI-Predigtzusammenfassung", aiSermonHint: "Öffnet ChatGPT mit bereits geladener Predigt" },
+        ru: { chooseSession: "Выберите сессию", chooseSessionHint: "Активно несколько сессий перевода. Выберите одну, чтобы присоединиться.", listenersCount: "{n} слушают", aiSermonSummary: "ИИ-конспект проповеди", aiSermonHint: "Открывает ChatGPT с уже загруженной проповедью" },
+        pl: { chooseSession: "Wybierz sesję", chooseSessionHint: "Aktywnych jest kilka sesji tłumaczenia. Wybierz jedną, aby dołączyć.", listenersCount: "{n} słucha", aiSermonSummary: "Podsumowanie kazania AI", aiSermonHint: "Otwiera ChatGPT z załadowanym kazaniem" },
+        tr: { chooseSession: "Bir oturum seçin", chooseSessionHint: "Birden fazla çeviri oturumu etkin. Katılmak için birini seçin.", listenersCount: "{n} dinliyor", aiSermonSummary: "Yapay Zeka Vaaz Özeti", aiSermonHint: "Vaaz yüklenmiş şekilde ChatGPT'yi açar" },
+        ja: { chooseSession: "セッションを選択", chooseSessionHint: "複数の翻訳セッションが進行中です。参加するものを選んでください。", listenersCount: "{n} 人が視聴中", aiSermonSummary: "AI 説教まとめ", aiSermonHint: "説教を読み込んだ状態で ChatGPT を開きます" },
+        ko: { chooseSession: "세션 선택", chooseSessionHint: "여러 번역 세션이 진행 중입니다. 참여할 세션을 선택하세요.", listenersCount: "{n}명 청취 중", aiSermonSummary: "AI 설교 요약", aiSermonHint: "설교가 로드된 상태로 ChatGPT를 엽니다" },
+        vi: { chooseSession: "Chọn một phiên", chooseSessionHint: "Có nhiều phiên dịch đang hoạt động. Chọn một phiên để tham gia.", listenersCount: "{n} đang nghe", aiSermonSummary: "Tóm tắt bài giảng bằng AI", aiSermonHint: "Mở ChatGPT với bài giảng đã được tải sẵn" },
+        th: { chooseSession: "เลือกเซสชัน", chooseSessionHint: "มีเซสชันการแปลหลายรายการที่กำลังทำงาน เลือกหนึ่งรายการเพื่อเข้าร่วม", listenersCount: "{n} กำลังฟัง", aiSermonSummary: "สรุปคำเทศนาด้วย AI", aiSermonHint: "เปิด ChatGPT พร้อมโหลดคำเทศนาไว้แล้ว" },
+        id: { chooseSession: "Pilih sesi", chooseSessionHint: "Beberapa sesi terjemahan sedang aktif. Pilih satu untuk bergabung.", listenersCount: "{n} mendengarkan", aiSermonSummary: "Ringkasan Khotbah AI", aiSermonHint: "Membuka ChatGPT dengan khotbah sudah dimuat" },
+        ms: { chooseSession: "Pilih sesi", chooseSessionHint: "Beberapa sesi terjemahan sedang aktif. Pilih satu untuk menyertai.", listenersCount: "{n} mendengar", aiSermonSummary: "Ringkasan Khutbah AI", aiSermonHint: "Membuka ChatGPT dengan khutbah sudah dimuatkan" },
+        hi: { chooseSession: "एक सत्र चुनें", chooseSessionHint: "कई अनुवाद सत्र सक्रिय हैं। शामिल होने के लिए एक चुनें।", listenersCount: "{n} सुन रहे हैं", aiSermonSummary: "AI उपदेश सारांश", aiSermonHint: "उपदेश पहले से लोड करके ChatGPT खोलता है" },
+        ar: { chooseSession: "اختر جلسة", chooseSessionHint: "هناك عدة جلسات ترجمة نشطة. اختر واحدة للانضمام.", listenersCount: "{n} يستمعون", aiSermonSummary: "ملخص العظة بالذكاء الاصطناعي", aiSermonHint: "يفتح ChatGPT مع تحميل العظة مسبقًا" },
+        pt: { chooseSession: "Escolha uma sessão", chooseSessionHint: "Há várias sessões de tradução ativas. Escolha uma para participar.", listenersCount: "{n} a ouvir", aiSermonSummary: "Resumo do sermão com IA", aiSermonHint: "Abre o ChatGPT com o sermão já carregado" },
+        it: { chooseSession: "Scegli una sessione", chooseSessionHint: "Sono attive più sessioni di traduzione. Scegline una per partecipare.", listenersCount: "{n} in ascolto", aiSermonSummary: "Riassunto del sermone con IA", aiSermonHint: "Apre ChatGPT con il sermone già caricato" },
+        nl: { chooseSession: "Kies een sessie", chooseSessionHint: "Er zijn meerdere vertaalsessies actief. Kies er een om deel te nemen.", listenersCount: "{n} luisteren", aiSermonSummary: "AI-preeksamenvatting", aiSermonHint: "Opent ChatGPT met de preek al geladen" },
+        ta: { chooseSession: "ஒரு அமர்வைத் தேர்வுசெய்க", chooseSessionHint: "பல மொழிபெயர்ப்பு அமர்வுகள் இயங்குகின்றன. இணைய ஒன்றைத் தேர்வுசெய்க.", listenersCount: "{n} கேட்கிறார்கள்", aiSermonSummary: "AI பிரசங்க சுருக்கம்", aiSermonHint: "பிரசங்கத்தை ஏற்றிய நிலையில் ChatGPT-ஐ திறக்கிறது" }
+    };
+    Object.keys(x).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(x[lang]).forEach(function (k) {
+            if (map[lang][k] === undefined) map[lang][k] = x[lang][k];
+        });
+    });
+    Object.keys(map).forEach(function (lang) {
+        Object.keys(x.en).forEach(function (k) {
+            if (map[lang][k] === undefined) map[lang][k] = x.en[k];
+        });
+    });
+})();
+
+// AI summary clipboard-fallback toast. Merged without overwriting existing keys.
+(function () {
+    const map = window.sharedI18n || {};
+    const x = {
+        en: "Sermon copied — if the AI page asks you to sign in, just paste it.",
+        zh: "讲道内容已复制——如果 AI 页面要求登录，直接粘贴即可。",
+        "zh-tw": "講道內容已複製——如果 AI 頁面要求登入，直接貼上即可。",
+        yue: "講道內容已複製——如果 AI 頁面要求登入，直接貼上就得。",
+        es: "Sermón copiado: si la página de IA te pide iniciar sesión, solo pégalo.",
+        fr: "Sermon copié — si la page IA vous demande de vous connecter, collez-le simplement.",
+        de: "Predigt kopiert – falls die KI-Seite eine Anmeldung verlangt, einfach einfügen.",
+        ru: "Проповедь скопирована — если ИИ-страница попросит войти, просто вставьте текст.",
+        pl: "Kazanie skopiowane — jeśli strona AI poprosi o logowanie, po prostu je wklej.",
+        tr: "Vaaz kopyalandı — yapay zeka sayfası giriş isterse yapıştırmanız yeterli.",
+        ja: "説教をコピーしました。AI ページでログインを求められたら貼り付けてください。",
+        ko: "설교가 복사되었습니다 — AI 페이지에서 로그인을 요구하면 붙여넣기만 하세요.",
+        vi: "Đã sao chép bài giảng — nếu trang AI yêu cầu đăng nhập, chỉ cần dán vào.",
+        th: "คัดลอกคำเทศนาแล้ว — หากหน้า AI ขอให้เข้าสู่ระบบ เพียงวางข้อความ",
+        id: "Khotbah disalin — jika halaman AI meminta masuk, cukup tempel.",
+        ms: "Khutbah disalin — jika halaman AI meminta log masuk, tampal sahaja.",
+        hi: "उपदेश कॉपी हो गया — अगर AI पेज साइन इन माँगे, तो बस पेस्ट कर दें।",
+        ar: "تم نسخ العظة — إذا طلبت صفحة الذكاء الاصطناعي تسجيل الدخول، فقط الصقها.",
+        pt: "Sermão copiado — se a página de IA pedir login, basta colar.",
+        it: "Sermone copiato — se la pagina IA chiede l'accesso, incollalo e basta.",
+        nl: "Preek gekopieerd — als de AI-pagina om aanmelden vraagt, plak je het gewoon.",
+        ta: "பிரசங்கம் நகலெடுக்கப்பட்டது — AI பக்கம் உள்நுழையச் சொன்னால், ஒட்டினால் போதும்."
+    };
+    Object.keys(map).forEach(function (lang) {
+        if (map[lang] && map[lang].aiSummaryCopied === undefined) {
+            map[lang].aiSummaryCopied = x[lang] || x.en;
         }
     });
 })();

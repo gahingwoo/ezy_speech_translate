@@ -127,7 +127,10 @@ const visibleTranslationIds = new Set();
 
 // Virtual Scrolling / Pagination
 let translationsOffset = 0;          // Current offset in pagination
-let translationsLimit = 13;          // Items per load (10 visible + 3 preload)
+let translationsLimit = 30;          // Items per load — large enough to fill the
+                                     // viewport in one request so the scroll
+                                     // sentinel doesn't trigger a cascade of
+                                     // sequential loads on first connect.
 let translationsTotal = 0;           // Total items on server
 let isLoadingMore = false;           // Prevent duplicate requests
 let hasMoreTranslations = false;     // More items available on server
@@ -158,6 +161,11 @@ try {
 // Virtual Scrolling Optimization - PERFORMANCE FIX
 let renderedCount = 0;               // How many items currently rendered in DOM
 let renderBatchSize = 30;            // Render this many items at once (was rendering all!)
+// Hard cap on the number of cards kept in the DOM. New translations stream in at
+// the top during a live service; without a cap the DOM grows unbounded and the
+// page becomes laggy past ~1000 cards. The full set stays in the `translations`
+// array, so trimmed (older) cards are re-rendered from memory when scrolled to.
+const MAX_RENDERED_CARDS = 250;
 let scrollObserver = null;           // IntersectionObserver for virtual scrolling
 let isRenderingMore = false;         // Prevent duplicate render operations
 
@@ -358,7 +366,7 @@ let bibleTargetTrans = localStorage.getItem('bibleTargetTrans') || '';
 // preferred default translation code for that language.
 const _LANG_BIBLE = {
     en:      { pp: 'English',             def: 'KJV'    },
-    zh:      { pp: 'Chinese',             def: 'CUNP',   script: 'simplified' },  // simplified → new punct
+    zh:      { pp: 'Chinese',             def: 'CUNPS',  script: 'simplified' },  // simplified → new punct (simplified edition)
     'zh-tw': { pp: 'Chinese',             def: 'CUV',    script: 'traditional' },  // traditional
     yue:     { pp: 'Chinese',             def: 'CUV',    script: 'traditional' },  // Cantonese → traditional
     ja:      { pp: 'Japanese',            def: null     },  // first available
@@ -394,6 +402,26 @@ async function _loadBibleLanguages() {
     return _bibleLanguageData || [];
 }
 
+// Classify a Chinese Bible translation as 'simplified' or 'traditional'.
+// The bolls.life "Chinese" group mixes both scripts, so we inspect the name:
+// explicit English markers first, then simplified/traditional-only characters.
+const _ZH_TRAD_CHARS = '聖標點經傳啟後羅馬譯證書現體國語當達靈際東與聞約詩';
+const _ZH_SIMP_CHARS = '圣标点经传启后罗马译证书现体国语当达灵际东与闻约诗';
+function _zhScriptOf(t) {
+    const name = `${(t && t.full_name) || ''} ${(t && t.short_name) || ''}`;
+    if (/simplified/i.test(name)) return 'simplified';
+    if (/traditional/i.test(name)) return 'traditional';
+    let s = 0, tr = 0;
+    for (const ch of name) {
+        if (_ZH_SIMP_CHARS.includes(ch)) s++;
+        else if (_ZH_TRAD_CHARS.includes(ch)) tr++;
+    }
+    if (s > tr) return 'simplified';
+    if (tr > s) return 'traditional';
+    // Fallback: an "…S" short name is usually the simplified sibling.
+    return /S$/.test((t && t.short_name) || '') ? 'simplified' : 'traditional';
+}
+
 /**
  * Populate the target translation <select> with all options from PrayerPulse,
  * putting the user's matched language group first, then everything else.
@@ -421,18 +449,13 @@ async function loadBibleTranslationOptions(langCode) {
         ppLangName && g.language.toLowerCase().startsWith(ppLangName.toLowerCase())
     );
 
-    // Build options for matched group only (flat list, no optgroup header needed)
+    // Build options for the matched language group.
     const allMatchedCodes = [];
-    matched.forEach(group => {
-        let label = group.language;
-        if (ppLangName === 'Chinese' && info.script) {
-            label = info.script === 'simplified'
-                ? '中文 — 简体 (Simplified)'
-                : '中文 — 繁体 (Traditional)';
-        }
+    const addOptgroup = (label, translations) => {
+        if (!translations.length) return;
         const og = document.createElement('optgroup');
         og.label = label;
-        (group.translations || []).forEach(t => {
+        translations.forEach(t => {
             const o = document.createElement('option');
             o.value = t.short_name;
             o.textContent = `${t.short_name} — ${t.full_name}`;
@@ -440,6 +463,21 @@ async function loadBibleTranslationOptions(langCode) {
             allMatchedCodes.push(t.short_name);
         });
         sel.appendChild(og);
+    };
+    matched.forEach(group => {
+        const translations = group.translations || [];
+        if (ppLangName === 'Chinese') {
+            // bolls.life returns one mixed "Chinese" group — split by script so
+            // Simplified and Traditional editions land under the right header.
+            const simp = [], trad = [];
+            translations.forEach(t => (_zhScriptOf(t) === 'simplified' ? simp : trad).push(t));
+            const order = info.script === 'traditional'
+                ? [['中文 — 繁體 (Traditional)', trad], ['中文 — 简体 (Simplified)', simp]]
+                : [['中文 — 简体 (Simplified)', simp], ['中文 — 繁體 (Traditional)', trad]];
+            order.forEach(([label, list]) => addOptgroup(label, list));
+        } else {
+            addOptgroup(group.language, translations);
+        }
     });
 
     // If no match (language not in PrayerPulse), show English as fallback
@@ -593,8 +631,8 @@ function toggleBibleVerse() {
 function updateBibleToggleUI() {
     const textSpan = document.getElementById('bibleVerseText');
     if (!textSpan) return;
-    const onText = (window.i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseHide) || 'Hide Bible Verses';
-    const offText = (window.i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseShow) || 'Show Bible Verses';
+    const onText = (i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseHide) || (i18n && i18n.en && i18n.en.bibleVerseHide) || 'Hide Bible Verses';
+    const offText = (i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseShow) || (i18n && i18n.en && i18n.en.bibleVerseShow) || 'Show Bible Verses';
     textSpan.textContent = showBibleVerse ? onText : offText;
 }
 
@@ -1193,6 +1231,8 @@ async function changeDisplayLanguageLocal() {
     await renderTranslations();
     // Re-apply display mode to update mode-specific text
     updateDisplayMode();
+    // Update Bible toggle button label for the new language
+    updateBibleToggleUI();
     // Auto-match Bible target translation to the new display language
     if (bibleFeatureAvailable) {
         loadBibleTranslationOptions(newLang);
@@ -1884,8 +1924,8 @@ function showToast(message, type, duration) {
     }, duration);
 }
 function t(key, fallback) {
-    return (window.i18n && i18n[displayLanguage] && i18n[displayLanguage][key])
-        || (window.i18n && i18n.en && i18n.en[key])
+    return (i18n && i18n[displayLanguage] && i18n[displayLanguage][key])
+        || (i18n && i18n.en && i18n.en[key])
         || fallback;
 }
 
@@ -3261,6 +3301,37 @@ async function loadMoreTranslations() {
     }
 }
 
+// Keep the DOM bounded: remove the oldest (bottom) cards once we exceed the cap.
+// Only trims while the user is near the top reading the newest items, so it never
+// yanks away a card someone has scrolled down to read. The trimmed items remain in
+// the `translations` array and are re-rendered from memory on scroll-down via the
+// virtual-scroll sentinel.
+function trimRenderedCards() {
+    const list = document.getElementById('translationsList');
+    if (!list) return;
+    const mainSection = document.querySelector('.pf-c-page__main-section');
+    if (mainSection && mainSection.scrollTop > 1200) return;
+
+    const cards = list.getElementsByClassName('translation-card'); // live collection
+    if (cards.length <= MAX_RENDERED_CARDS) return;
+    while (cards.length > MAX_RENDERED_CARDS) {
+        cards[cards.length - 1].remove();
+        if (renderedCount > 0) renderedCount--;
+    }
+
+    // Re-arm the sentinel so scrolling down re-renders the trimmed older items.
+    if (renderedCount < translations.length || hasMoreTranslations) {
+        let sentinel = document.getElementById('virtualScrollSentinel');
+        if (!sentinel) {
+            sentinel = document.createElement('div');
+            sentinel.id = 'virtualScrollSentinel';
+            sentinel.style.height = '1px';
+        }
+        list.appendChild(sentinel);
+        if (scrollObserver) scrollObserver.observe(sentinel);
+    }
+}
+
 async function addTranslation(data) {
     const list = document.getElementById('translationsList');
     const emptyState = list.querySelector('.empty-state');
@@ -3293,6 +3364,9 @@ async function addTranslation(data) {
     // Update count to show server total
     const itemCount = document.getElementById('itemCount');
     if (itemCount) itemCount.textContent = translationsTotal;
+
+    // Bound the DOM so a long live session doesn't accumulate thousands of cards.
+    trimRenderedCards();
 
     // Load Bible verse panel (async fetch from /api/bible/lookup)
     if (showBibleVerse && bibleFeatureAvailable && data.bible_refs && data.bible_refs.length) {
@@ -4121,13 +4195,25 @@ async function shareForAI(service) {
     };
     const baseUrl = AI_URLS[service] || AI_URLS.chatgpt;
 
-    // Always navigate with prompt pre-loaded — no clipboard fallback needed
+    // Copy the prompt to the clipboard as a fallback. ChatGPT (and others) may
+    // redirect logged-out browsers to a sign-in page instead of auto-loading the
+    // `?q=` prompt — that gate is OpenAI's, not ours. Copying first means the user
+    // can simply paste the sermon after signing in (or into a temporary chat).
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(prompt).catch(() => {});
+        }
+    } catch (e) { /* clipboard unavailable — non-fatal */ }
+
     const target = baseUrl + encodeURIComponent(prompt);
     if (aiTab) {
         aiTab.location.href = target;
     } else {
         window.open(target, '_blank');
     }
+
+    // Let the user know the prompt is on the clipboard in case they hit a login wall.
+    showToast(t('aiSummaryCopied', 'Sermon copied — if the AI page asks you to sign in, just paste it.'), 'info', 6000);
 }
 
 function clearLocal() {

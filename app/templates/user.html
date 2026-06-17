@@ -28,8 +28,8 @@
     <!-- Room picker overlay (shown only when multiple active rooms exist and ?room= is not set) -->
     <div id="roomPickerOverlay" class="room-picker-overlay">
         <div class="room-picker-overlay__panel">
-            <h3 class="room-picker-overlay__title">🚪 Choose a session</h3>
-            <p class="room-picker-overlay__hint">Multiple translation sessions are active. Pick one to join.</p>
+            <h3 class="room-picker-overlay__title"><span aria-hidden="true">🚪</span> <span data-i18n="chooseSession">Choose a session</span></h3>
+            <p class="room-picker-overlay__hint" data-i18n="chooseSessionHint">Multiple translation sessions are active. Pick one to join.</p>
             <div id="roomPickerList" class="room-picker-overlay__list"></div>
         </div>
     </div>
@@ -46,6 +46,12 @@
 
         (async function () {
             try {
+                // Translate JS-generated room labels using the shared catalog
+                const _i18n = window.sharedI18n || {};
+                const _lang = window.resolveDisplayLang
+                    ? window.resolveDisplayLang(localStorage.getItem('displayLanguage'))
+                    : 'en';
+                const _t = (k, fb) => (_i18n[_lang] && _i18n[_lang][k]) || (_i18n.en && _i18n.en[k]) || fb;
                 const params = new URLSearchParams(window.location.search);
                 const explicitRoom = params.get('room');
                 const resp = await fetch('/api/rooms');
@@ -85,7 +91,7 @@
                     nameEl.textContent = r.display_name || r.room_id;
                     const countEl = document.createElement('span');
                     countEl.className = 'room-picker-overlay__item-count';
-                    countEl.textContent = (r.listeners || 0) + ' listening';
+                    countEl.textContent = _t('listenersCount', '{n} listening').replace('{n}', (r.listeners || 0));
                     btn.appendChild(nameEl);
                     btn.appendChild(countEl);
                     btn.onclick = () => {
@@ -166,7 +172,6 @@
             <!-- Room switcher (hidden unless >1 room exists) -->
             <section class="sidebar-section user-room-switcher-section" id="userRoomSwitcherSection" style="display:none;">
                 <h3 class="sidebar-title">
-                    <span aria-hidden="true">🚪</span>
                     <span data-i18n="room">Room</span>
                 </h3>
                 <div class="control-group">
@@ -319,9 +324,10 @@
                 <div class="control-group">
                     <button id="ai-summary-btn" class="pf-c-button pf-c-button--secondary" style="width:100%"
                         onclick="shareForAI('chatgpt')">
-                        <span aria-hidden="true">✨</span> AI Sermon Summary
+                        <span aria-hidden="true">✨</span> <span data-i18n="aiSermonSummary">AI Sermon Summary</span>
                     </button>
-                    <p style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.35rem;line-height:1.4;">
+                    <p style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.35rem;line-height:1.4;"
+                       data-i18n="aiSermonHint">
                         Opens ChatGPT with sermon already loaded</p>
                 </div>
 
@@ -402,27 +408,27 @@
             {% if bible_detection_enabled %}
             <!-- Bible Verses — standalone section, separate from Settings -->
             <section class="sidebar-section" id="bibleSidebarSection" aria-label="Bible Verses">
-                <h3 class="sidebar-title">📖 Bible Verses</h3>
+                <h3 class="sidebar-title"><span data-i18n="bibleVerses">Bible Verses</span></h3>
 
                 <div class="control-group">
                     <button aria-label="Toggle Bible verse display" aria-pressed="false"
                             class="sidebar-menu-item" id="bibleVerseToggle"
                             onclick="toggleBibleVerse()">
                         <span aria-hidden="true">📖</span>
-                        <span id="bibleVerseText">Show Bible Verses</span>
+                        <span id="bibleVerseText" data-i18n="bibleVerseShow">Show Bible Verses</span>
                     </button>
                 </div>
 
                 <div class="control-group" id="bibleVerseToggleWrap">
-                    <label class="control-label" for="bibleTargetTranslation">Your Bible</label>
+                    <label class="control-label" for="bibleTargetTranslation" data-i18n="yourBible">Your Bible</label>
                     <select aria-label="Select Bible translation for your language"
                             id="bibleTargetTranslation"
                             onchange="onBibleTranslationChange()">
-                        <option value="">— Loading... —</option>
+                        <option value="" data-i18n="bibleLoading">— Loading... —</option>
                     </select>
                     <div id="bibleTransLoadingHint"
                          style="font-size:11px; color:var(--text-secondary,#888); margin-top:4px; display:none;">
-                        Auto-matched to your language. Choose any Bible below.
+                        <span data-i18n="bibleAutoMatched">Auto-matched to your language. Choose any Bible below.</span>
                     </div>
                 </div>
             </section>
