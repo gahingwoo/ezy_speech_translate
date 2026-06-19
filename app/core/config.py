@@ -53,7 +53,7 @@ def _build_loader():
     try:
         from secure_loader import SecureConfig  # type: ignore
         loader = SecureConfig(_CONFIG_PATH)
-        _log.info("✓ Loaded encrypted configuration via secure_loader")
+        _log.info("Loaded encrypted configuration via secure_loader")
         return loader
     except Exception as exc:  # pragma: no cover - depends on deploy state
         _log.warning("Secure loader unavailable (%s); using YAML fallback", exc)
@@ -68,4 +68,38 @@ def get_config(*keys: str, default: Any = None) -> Any:
     return config_loader.get(*keys, default=default)
 
 
-__all__ = ["get_config", "config_loader"]
+def ensure_runtime_secret(secrets_field: str, config_keys: tuple[str, ...]) -> str:
+    """Return a strong secret for `config_keys`, generating+persisting if needed.
+
+    Delegates to SecureConfig.ensure_secret (which persists into secrets.key)
+    when the encrypted loader is active. If only the plain-YAML fallback is
+    available (secure_loader unavailable), a strong per-process secret is
+    generated and injected so the server never runs on a forgeable default.
+    """
+    loader = config_loader
+    if hasattr(loader, "ensure_secret"):
+        try:
+            return loader.ensure_secret(secrets_field, tuple(config_keys))
+        except Exception as exc:  # pragma: no cover - defensive
+            _log.warning("ensure_secret(%s) failed (%s); using ephemeral secret",
+                         secrets_field, exc)
+
+    import secrets as _secrets
+    value = _secrets.token_urlsafe(48)
+    try:
+        node = loader.data  # type: ignore[attr-defined]
+        for k in config_keys[:-1]:
+            nxt = node.get(k)
+            if not isinstance(nxt, dict):
+                nxt = {}
+                node[k] = nxt
+            node = nxt
+        node[config_keys[-1]] = value
+    except Exception:
+        pass
+    _log.warning("Persistent secret store unavailable; '%s' is ephemeral for this process",
+                 secrets_field)
+    return value
+
+
+__all__ = ["get_config", "config_loader", "ensure_runtime_secret"]

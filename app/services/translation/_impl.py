@@ -48,7 +48,7 @@ class TranslationCache:
                 cached_text, timestamp = self.cache[key]
                 # Check if expired
                 if datetime.now() - timestamp < self.ttl:
-                    logger.info(f"📦 Cache hit for {target_lang}: {text[:50]}...")
+                    logger.info(f"Cache hit for {target_lang}: {text[:50]}...")
                     return cached_text
                 else:
                     # Remove expired entry
@@ -104,7 +104,7 @@ class TranslationQueue:
             
             if elapsed < self.min_delay:
                 wait_time = self.min_delay - elapsed
-                logger.debug(f"⏳ Rate limiting: waiting {wait_time:.2f}s for {target_lang}")
+                logger.debug(f"Rate limiting: waiting {wait_time:.2f}s for {target_lang}")
                 time.sleep(wait_time)
             
             self.last_request_time[target_lang] = time.time()
@@ -140,7 +140,7 @@ class TranslationQueue:
                     callback(result, None)  # Success
                     
                 except Exception as e:
-                    logger.error(f"❌ Translation failed: {e}")
+                    logger.error(f"Translation failed: {e}")
                     callback(None, str(e))  # Error
                 
                 finally:
@@ -248,7 +248,7 @@ class GoogleTranslateService:
         # Check cache first
         cached = self.cache.get(text, cache_lang_key)
         if cached:
-            logger.debug(f"📦 Cache hit for {target_lang}: {text[:30]}...")
+            logger.debug(f"Cache hit for {target_lang}: {text[:30]}...")
             return True, cached, True
 
         # Normalize language code
@@ -268,33 +268,33 @@ class GoogleTranslateService:
                     final = self._apply_glossary_restore(result, placeholders)
                     # Cache successful translation
                     self.cache.set(text, cache_lang_key, final)
-                    logger.info(f"✅ Translated to {target_lang}: {text[:50]}... → {final[:50]}...")
+                    logger.info(f"Translated to {target_lang}: {text[:50]}...{final[:50]}...")
                     return True, final, False
 
             except requests.exceptions.Timeout:
-                logger.warning(f"⏱️ Request timeout (attempt {attempt + 1}/{self.retry_attempts})")
+                logger.warning(f"Request timeout (attempt {attempt + 1}/{self.retry_attempts})")
                 wait_time = 2 ** attempt
                 if attempt < self.retry_attempts - 1:
                     time.sleep(wait_time)
 
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code == 429:
-                    logger.warning(f"⚠️ Rate limited (attempt {attempt + 1}/{self.retry_attempts})")
+                    logger.warning(f"Rate limited (attempt {attempt + 1}/{self.retry_attempts})")
                     wait_time = (2 ** attempt) * 10
                     if attempt < self.retry_attempts - 1:
-                        logger.info(f"⏳ Waiting {wait_time}s before retry...")
+                        logger.info(f"Waiting {wait_time}s before retry...")
                         time.sleep(wait_time)
                 else:
                     raise
 
             except Exception as e:
-                logger.error(f"❌ Translation error (attempt {attempt + 1}): {e}")
+                logger.error(f"Translation error (attempt {attempt + 1}): {e}")
                 if attempt < self.retry_attempts - 1:
                     wait_time = 2 ** attempt
                     time.sleep(wait_time)
 
         # All retries failed, return original text
-        logger.error(f"❌ Translation failed after {self.retry_attempts} attempts")
+        logger.error(f"Translation failed after {self.retry_attempts} attempts")
         return False, text, False
 
     # ── Glossary helpers ──────────────────────────────────────────────────
@@ -387,7 +387,7 @@ class GoogleTranslateService:
     def clear_cache(self):
         """Clear translation cache"""
         self.cache.clear()
-        logger.info("🗑️ Translation cache cleared")
+        logger.info("Translation cache cleared")
 
 
 # Global instance

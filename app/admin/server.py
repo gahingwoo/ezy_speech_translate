@@ -8,6 +8,7 @@ import sys
 import yaml
 import logging
 import hashlib
+import hmac
 import jwt
 import time
 import requests
@@ -74,7 +75,7 @@ security_logger.setLevel(logging.INFO)
 # Configuration (shared loader)
 # ──────────────────────────────────────────
 sys.path.insert(0, BASE_DIR)
-from app.core.config import get_config, config_loader  # noqa: E402
+from app.core.config import get_config, config_loader, ensure_runtime_secret  # noqa: E402
 
 # ──────────────────────────────────────────
 # Security Configuration
@@ -82,14 +83,17 @@ from app.core.config import get_config, config_loader  # noqa: E402
 AUTH_ENABLED = get_config("authentication", "enabled", default=True)
 ADMIN_USERNAME = get_config("authentication", "admin_username", default="admin")
 ADMIN_PASSWORD = get_config("authentication", "admin_password", default="admin123")
-JWT_SECRET = get_config("authentication", "jwt_secret", default="change-this-secret")
+# Resolve the JWT secret: if missing or a known insecure default, a strong
+# secret is generated and persisted to secrets.key (shared with the user
+# server). Existing configured secrets are used unchanged.
+JWT_SECRET = ensure_runtime_secret("jwt_secret", ("authentication", "jwt_secret"))
 SESSION_TIMEOUT = get_config("authentication", "session_timeout", default=7200)
 
 logger.info("='='='= INITIALIZATION START ='='='=")
-logger.info(f"✓ AUTH_ENABLED: {AUTH_ENABLED}")
-logger.debug(f"✓ ADMIN_USERNAME: {ADMIN_USERNAME}")
+logger.info(f"AUTH_ENABLED: {AUTH_ENABLED}")
+logger.debug(f"ADMIN_USERNAME: {ADMIN_USERNAME}")
 # NOTE: Do NOT log password values, lengths, or secrets at any level above DEBUG.
-logger.debug("✓ Admin credentials loaded: %s", "yes" if ADMIN_PASSWORD else "NO")
+logger.debug("Admin credentials loaded: %s", "yes" if ADMIN_PASSWORD else "NO")
 
 # Verify password is not None or empty string
 if not ADMIN_PASSWORD:
@@ -98,6 +102,8 @@ if not ADMIN_PASSWORD:
 
 if JWT_SECRET in ("change-this-secret", "", None):
     logger.critical("JWT_SECRET is using an insecure default value — tokens can be forged!")
+else:
+    logger.info("JWT_SECRET resolved (configured or auto-generated)")
 
 # Protocol configuration (HTTP/HTTPS)
 USE_HTTPS = get_config("admin_server", "use_https", default=True)
@@ -114,16 +120,16 @@ websocket_connections = defaultdict(int)
 # Flask App
 # ──────────────────────────────────────────
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=TEMPLATE_DIR)
-app.config['SECRET_KEY'] = get_config("server", "secret_key", default="change-this-secret-key")
+app.config['SECRET_KEY'] = ensure_runtime_secret("server_secret_key", ("server", "secret_key"))
 
 CORS(app, origins=get_config("advanced", "security", "cors_origins", default="*"))
 
 # Initialize OEM Configuration
 try:
     init_oem_config(app, get_config)
-    logger.info("✓ OEM configuration initialized successfully")
+    logger.info("OEM configuration initialized successfully")
 except Exception as e:
-    logger.warning(f"⚠ OEM configuration initialization failed: {e}")
+    logger.warning(f"OEM configuration initialization failed: {e}")
 
 _admin_cors_origins = get_config("advanced", "security", "cors_origins", default="*")
 socketio = SocketIO(app, cors_allowed_origins=_admin_cors_origins)
@@ -249,7 +255,11 @@ def require_auth(f):
         if token and token.startswith('Bearer '):
             token = token[7:]
             payload = verify_token(token)
-            if payload:
+            # A valid signature is not enough: the token must belong to the
+            # admin account. Both servers share the JWT secret, so without this
+            # check a non-admin token issued by the user server would be
+            # accepted here.
+            if payload and payload.get('username') == ADMIN_USERNAME:
                 return f(*args, **kwargs)
 
         # Check session
@@ -418,7 +428,9 @@ def login():
     # so expected hash = sha256(ADMIN_PASSWORD); compare directly (no double-hash)
     expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else ""
 
-    if username == ADMIN_USERNAME and password_hash == expected_hash:
+    username_ok = hmac.compare_digest(str(username), str(ADMIN_USERNAME))
+    password_ok = bool(expected_hash) and hmac.compare_digest(str(password_hash), str(expected_hash))
+    if username_ok and password_ok:
         # Reset login attempts on successful login
         if ip in login_attempts:
             del login_attempts[ip]
@@ -538,7 +550,7 @@ def get_tts_cache_stats():
         
         if response.status_code == 200:
             data = response.json()
-            logger.debug(f"✅ TTS cache stats retrieved: {data}")
+            logger.debug(f"TTS cache stats retrieved: {data}")
             return jsonify({
                 'success': True,
                 'cache_items': data.get('cache_items', 0),
@@ -555,14 +567,14 @@ def get_tts_cache_stats():
                 error_msg = error_data.get('error', error_msg)
             except:
                 pass
-            logger.warning(f"⚠️ {error_msg}")
+            logger.warning(f"{error_msg}")
             return jsonify({
                 'success': False,
                 'error': error_msg
             }), response.status_code
     
     except Exception as e:
-        logger.error(f"❌ Error fetching TTS cache stats: {e}", exc_info=True)
+        logger.error(f"Error fetching TTS cache stats: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
@@ -606,8 +618,8 @@ def clear_tts_cache():
             client_ip = get_client_ip()
             
             # Detailed security audit log
-            security_logger.info(f"🗑️ ADMIN_ACTION: TTS cache cleared | Admin: {admin_session_user} | IP: {client_ip} | Items: {cleared_items} | Freed: {freed_mb}MB")
-            logger.info(f"✅ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by admin {admin_session_user}")
+            security_logger.info(f"ADMIN_ACTION: TTS cache cleared | Admin: {admin_session_user} | IP: {client_ip} | Items: {cleared_items} | Freed: {freed_mb}MB")
+            logger.info(f"TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by admin {admin_session_user}")
             
             return jsonify({
                 'success': True,
@@ -622,14 +634,14 @@ def clear_tts_cache():
                 error_msg = error_data.get('error', error_msg)
             except:
                 pass
-            logger.warning(f"⚠️ {error_msg}")
+            logger.warning(f"{error_msg}")
             return jsonify({
                 'success': False,
                 'error': error_msg
             }), response.status_code
     
     except Exception as e:
-        logger.error(f"❌ Error clearing TTS cache: {e}", exc_info=True)
+        logger.error(f"Error clearing TTS cache: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
@@ -846,7 +858,7 @@ if __name__ == "__main__":
     external_url = get_config("server", "external_url", default=None)
     if external_url:
         logger.info(f"User Server (external): {external_url}")
-        logger.info("ℹ️  Using CF Tunnel or reverse proxy configuration")
+        logger.info("Using CF Tunnel or reverse proxy configuration")
     else:
         logger.info(f"User Client expected at: {protocol}://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 

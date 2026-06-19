@@ -3,10 +3,52 @@ import yaml
 import json
 import hashlib
 import base64
+import secrets as _secrets
+import tempfile
 from cryptography.fernet import Fernet, InvalidToken
 import socket
 import getpass
 from pathlib import Path
+
+# Values that must never be accepted as real secrets. Deployments that still
+# carry any of these (older installs, untouched sample config) are silently
+# upgraded to a generated secret — see SecureConfig.ensure_secret().
+INSECURE_SECRET_VALUES = {
+    "", "secret", "changeme", "change-this-secret",
+    "change-this-secret-key", "admin123", "your-secret-key",
+}
+
+
+def _is_strong_secret(value) -> bool:
+    """True if `value` looks like a real, non-default secret."""
+    if not value:
+        return False
+    s = str(value).strip()
+    return s.lower() not in INSECURE_SECRET_VALUES and len(s) >= 16
+
+
+def _atomic_write_0600(path: Path, text: str) -> None:
+    """Write `text` to `path` atomically with owner-only (0600) permissions."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".secrets-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        try:
+            os.chmod(tmp, 0o600)
+        except Exception:
+            pass
+        os.replace(tmp, str(path))
+        try:
+            os.chmod(path, 0o600)
+        except Exception:
+            pass
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except Exception:
+            pass
+        raise
 
 
 class MachineBoundEncryption:
@@ -162,7 +204,7 @@ class SecureConfig:
                     return None
                 try:
                     result = f.decrypt(token.encode()).decode()
-                    print(f"✓ Successfully decrypted '{field}' from secrets.key")
+                    print(f"Successfully decrypted '{field}' from secrets.key")
                     return result
                 except Exception as e:
                     print(f"Error: Failed to decrypt '{field}' from secrets.key: {e}")
@@ -177,19 +219,19 @@ class SecureConfig:
                 if 'authentication' not in self.data:
                     self.data['authentication'] = {}
                 self.data['authentication']['admin_password'] = admin_password
-                print(f"✓ Injected decrypted admin_password into config")
+                print(f"Injected decrypted admin_password into config")
 
             if jwt_secret:
                 if 'authentication' not in self.data:
                     self.data['authentication'] = {}
                 self.data['authentication']['jwt_secret'] = jwt_secret
-                print(f"✓ Injected decrypted jwt_secret into config")
+                print(f"Injected decrypted jwt_secret into config")
 
             if server_secret_key:
                 if 'server' not in self.data:
                     self.data['server'] = {}
                 self.data['server']['secret_key'] = server_secret_key
-                print(f"✓ Injected decrypted server_secret_key into config")
+                print(f"Injected decrypted server_secret_key into config")
             
         except Exception as e:
             print(f"Warning: Failed to load secrets: {e}")
@@ -205,3 +247,84 @@ class SecureConfig:
             else:
                 return default
         return val if val is not None else default
+
+    def _inject(self, config_keys, value):
+        """Set a (possibly nested) value into the in-memory config."""
+        node = self.data
+        for k in config_keys[:-1]:
+            nxt = node.get(k)
+            if not isinstance(nxt, dict):
+                nxt = {}
+                node[k] = nxt
+            node = nxt
+        node[config_keys[-1]] = value
+
+    def ensure_secret(self, secrets_field, config_keys):
+        """Guarantee a strong secret for `secrets_field`, persisting it.
+
+        Backward-compatible upgrade path (no conflicts with old installs):
+
+        * If a strong secret is already present in the live config — whether it
+          came from `secrets.key` or directly from `config.yaml` — it is
+          returned unchanged and **nothing is written**.
+        * Otherwise (missing, empty, or a known insecure default) a fresh
+          random secret is generated, encrypted into `secrets.key`
+          (Fernet, 0600) and injected into the running config. The value
+          persists across restarts and is shared by both servers because they
+          read the same `secrets.key`, so existing tokens/sessions keep working
+          after the first upgrade start.
+
+        `config_keys` is the tuple path inside config (e.g.
+        ("authentication", "jwt_secret")); `secrets_field` is the JSON key used
+        inside `secrets.key` (e.g. "jwt_secret").
+        """
+        current = self.get(*config_keys)
+        if _is_strong_secret(current):
+            return current
+
+        key_path = self.secrets_key_path
+
+        # Load (or start) the secrets.key JSON, preserving any existing fields.
+        raw = {}
+        if key_path.exists():
+            try:
+                raw = json.loads(key_path.read_text(encoding="utf-8")) or {}
+            except Exception:
+                raw = {}
+
+        fernet_key = raw.get("fernet_key")
+        f = None
+        if fernet_key:
+            try:
+                f = Fernet(fernet_key.encode())
+            except Exception:
+                f = None
+        if f is None:
+            fernet_key = Fernet.generate_key().decode()
+            raw["fernet_key"] = fernet_key
+            f = Fernet(fernet_key.encode())
+
+        # Another process may already have persisted a strong value — reuse it
+        # so both servers converge on the same secret.
+        token = raw.get(secrets_field, "")
+        value = None
+        if token:
+            try:
+                dec = f.decrypt(token.encode()).decode()
+                if _is_strong_secret(dec):
+                    value = dec
+            except Exception:
+                value = None
+
+        if value is None:
+            value = _secrets.token_urlsafe(48)
+            raw[secrets_field] = f.encrypt(value.encode()).decode()
+            try:
+                _atomic_write_0600(key_path, json.dumps(raw, indent=2))
+                print(f"Info: generated and persisted a secure '{secrets_field}' in secrets.key")
+            except Exception as e:
+                # Read-only deploy: keep the value in-memory for this process.
+                print(f"Warning: could not persist generated '{secrets_field}' ({e}); using in-memory value")
+
+        self._inject(config_keys, value)
+        return value

@@ -213,4 +213,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-console.log('✅ Login page ready');
+console.log('Login page ready');

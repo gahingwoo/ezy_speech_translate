@@ -60,29 +60,29 @@ class I18n:
         'zh': {
             # 系统消息 (System Messages)
             'installing_packages': '正在安装系统包...',
-            'install_packages_success': '✓ 系统包安装成功',
+            'install_packages_success': '系统包安装成功',
             'package_install_failed': '包安装失败: {}',
-            'user_exists': "⚠ 用户 '{}' 已存在",
+            'user_exists': "用户 '{}' 已存在",
             'creating_service_user': "创建服务用户 '{}' ...",
-            'service_user_created': "✓ 服务用户 '{}' 创建成功",
+            'service_user_created': "服务用户 '{}' 创建成功",
             'user_create_failed': '创建用户失败: {}',
             'copying_application': '复制应用文件到 {}...',
-            'copy_success': '✓ 应用文件复制成功',
+            'copy_success': '应用文件复制成功',
             'copy_failed': '文件复制失败: {}',
             'setting_permissions': '设置文件权限...',
-            'permissions_set': '✓ 文件权限设置成功',
+            'permissions_set': '文件权限设置成功',
             'permission_failed': '权限设置失败: {}',
             'creating_venv': '创建Python虚拟环境...',
             'installing_deps': '安装Python依赖...',
-            'venv_success': '✓ 虚拟环境创建成功',
+            'venv_success': '虚拟环境创建成功',
             'venv_failed': '虚拟环境创建失败: {}',
             'configuring_selinux': '配置SELinux...',
-            'selinux_success': '✓ SELinux配置成功',
-            'selinux_incomplete': '⚠ SELinux配置不完整: {}',
-            'selinux_not_found': '⚠ SELinux管理工具未找到，跳过配置',
+            'selinux_success': 'SELinux配置成功',
+            'selinux_incomplete': 'SELinux配置不完整: {}',
+            'selinux_not_found': 'SELinux管理工具未找到，跳过配置',
             'installing_services': '安装systemd服务...',
-            'service_installed': '✓ {} 安装成功',
-            'services_success': '✓ Systemd服务安装成功',
+            'service_installed': '{} 安装成功',
+            'services_success': 'Systemd服务安装成功',
             'service_install_failed': '服务安装失败: {}',
             'restart_failed': '服务重启失败: {}',
             'reload_failed': '服务重载失败: {}',
@@ -98,10 +98,10 @@ class I18n:
             
             # 验证过程 (Validation Process)
             'requires_root': "此脚本需要root权限。请使用 'sudo' 运行。",
-            'root_ok': '✓ 已获得root权限',
-            'detected': '✓ 检测到: {} {}',
-            'selinux_status': '✓ SELinux: {}',
-            'selinux_enforcing': '⚠ SELinux是在Enforcing模式 - 将配置context',
+            'root_ok': '已获得root权限',
+            'detected': '检测到: {} {}',
+            'selinux_status': 'SELinux: {}',
+            'selinux_enforcing': 'SELinux是在Enforcing模式 - 将配置context',
             
             # 安装完成 (Installation Complete)
             'install_complete': '安装完成！',
@@ -111,55 +111,55 @@ class I18n:
             'logs_dir': '  • 日志目录: {}',
             'config_file': '  • 配置文件: {}',
             'next_steps': '下一步:',
-            'install_success': '✓ 安装成功！',
-            'install_failed': '✗ 安装失败:',
-            'unexpected_error': '✗ 异常错误:',
+            'install_success': '安装成功！',
+            'install_failed': '安装失败:',
+            'unexpected_error': '异常错误:',
             
             # 服务管理 (Service Management)
             'starting_services': '正在启动服务...',
-            'services_started': '✓ 服务启动成功',
-            'services_start_failed': '✗ 服务启动失败: {}',
+            'services_started': '服务启动成功',
+            'services_start_failed': '服务启动失败: {}',
             'stopping_services': '正在停止服务...',
-            'services_stopped': '✓ 服务停止成功',
-            'services_stop_failed': '✗ 服务停止失败: {}',
+            'services_stopped': '服务停止成功',
+            'services_stop_failed': '服务停止失败: {}',
             'restarting_services': '正在重启服务...',
-            'services_restarted': '✓ 服务重启成功',
-            'services_restart_failed': '✗ 服务重启失败: {}',
+            'services_restarted': '服务重启成功',
+            'services_restart_failed': '服务重启失败: {}',
             'reloading_services': '正在重载服务...',
-            'services_reloaded': '✓ 服务重载成功',
+            'services_reloaded': '服务重载成功',
             'enabling_services': '正在启用开机自启...',
-            'services_enabled': '✓ 开机自启启用成功',
-            'services_enable_failed': '✗ 启用失败: {}',
+            'services_enabled': '开机自启启用成功',
+            'services_enable_failed': '启用失败: {}',
             'disabling_services': '正在禁用开机自启...',
-            'services_disabled': '✓ 开机自启禁用成功',
-            'services_disable_failed': '✗ 禁用失败: {}',
+            'services_disabled': '开机自启禁用成功',
+            'services_disable_failed': '禁用失败: {}',
             'requires_sudo': "错误: 此命令需要root权限。使用 'sudo'.",
             'service_status': '服务状态:',
             
             # 配置 (Configuration)
             'setting_config': '===== 应用配置设置 =====',
-            'config_exists': '⚠ 配置文件已存在: {}',
+            'config_exists': '配置文件已存在: {}',
             'overwrite_config': '是否覆盖配置文件? [y/N]: ',
-            'keep_config': '✓ 保留现有配置',
+            'keep_config': '保留现有配置',
             'generating_config': '生成默认配置文件...',
-            'config_generated': '✓ 配置文件生成成功',
+            'config_generated': '配置文件生成成功',
             'config_location': '  位置: {}',
-            'config_failed': '✗ 配置生成失败: {}',
+            'config_failed': '配置生成失败: {}',
             
             # 卸载 (Uninstall)
             'uninstall_title': '===== 卸载 EzySpeechTranslate =====',
-            'uninstall_warning': '⚠ 警告: 这将删除应用和systemd服务!',
+            'uninstall_warning': '警告: 这将删除应用和systemd服务!',
             'confirm_uninstall': "确认卸载? (type 'yes' to confirm): ",
-            'uninstall_cancelled': '✓ 卸载已取消',
+            'uninstall_cancelled': '卸载已取消',
             'stopping_uninstall': '停止服务...',
-            'services_stopped_uninstall': '✓ 服务已停止',
+            'services_stopped_uninstall': '服务已停止',
             'deleting_services': '删除systemd服务文件...',
-            'services_deleted': '✓ 服务文件已删除',
+            'services_deleted': '服务文件已删除',
             'deleting_app': '删除应用目录...',
-            'app_deleted': '✓ 应用目录已删除',
+            'app_deleted': '应用目录已删除',
             'deleting_user': '删除服务用户...',
-            'user_deleted': '✓ 服务用户已删除',
-            'uninstall_complete': '✓ 卸载完成!',
+            'user_deleted': '服务用户已删除',
+            'uninstall_complete': '卸载完成!',
             
             # 错误 (Errors)
             'linux_only': '错误: 仅支持Linux系统。',
@@ -171,29 +171,29 @@ class I18n:
         'en': {
             # 系统消息 (System Messages)
             'installing_packages': 'Installing system packages...',
-            'install_packages_success': '✓ System packages installed successfully',
+            'install_packages_success': 'System packages installed successfully',
             'package_install_failed': 'Package installation failed: {}',
-            'user_exists': "⚠ User '{}' already exists",
+            'user_exists': "User '{}' already exists",
             'creating_service_user': "Creating service user '{}' ...",
-            'service_user_created': "✓ Service user '{}' created successfully",
+            'service_user_created': "Service user '{}' created successfully",
             'user_create_failed': 'Failed to create user: {}',
             'copying_application': 'Copying application files to {}...',
-            'copy_success': '✓ Application files copied successfully',
+            'copy_success': 'Application files copied successfully',
             'copy_failed': 'Failed to copy application: {}',
             'setting_permissions': 'Setting file permissions...',
-            'permissions_set': '✓ File permissions set correctly',
+            'permissions_set': 'File permissions set correctly',
             'permission_failed': 'Failed to set permissions: {}',
             'creating_venv': 'Creating Python virtual environment...',
             'installing_deps': 'Installing Python dependencies...',
-            'venv_success': '✓ Virtual environment created successfully',
+            'venv_success': 'Virtual environment created successfully',
             'venv_failed': 'Failed to create virtual environment: {}',
             'configuring_selinux': 'Configuring SELinux...',
-            'selinux_success': '✓ SELinux configuration applied',
-            'selinux_incomplete': '⚠ SELinux configuration incomplete: {}',
-            'selinux_not_found': '⚠ SELinux management tools not found, skipping configuration',
+            'selinux_success': 'SELinux configuration applied',
+            'selinux_incomplete': 'SELinux configuration incomplete: {}',
+            'selinux_not_found': 'SELinux management tools not found, skipping configuration',
             'installing_services': 'Installing systemd services...',
-            'service_installed': '✓ {} installed',
-            'services_success': '✓ Systemd services installed successfully',
+            'service_installed': '{} installed',
+            'services_success': 'Systemd services installed successfully',
             'service_install_failed': 'Failed to install systemd services: {}',
             'restart_failed': 'Failed to restart services: {}',
             'reload_failed': 'Failed to reload services: {}',
@@ -209,10 +209,10 @@ class I18n:
             
             # 验证过程 (Validation Process)
             'requires_root': "This script requires root privileges. Please run with 'sudo'.",
-            'root_ok': '✓ Running with root privileges',
-            'detected': '✓ Detected: {} {}',
-            'selinux_status': '✓ SELinux: {}',
-            'selinux_enforcing': '⚠ SELinux is in Enforcing mode - will configure context',
+            'root_ok': 'Running with root privileges',
+            'detected': 'Detected: {} {}',
+            'selinux_status': 'SELinux: {}',
+            'selinux_enforcing': 'SELinux is in Enforcing mode - will configure context',
             
             # 安装完成 (Installation Complete)
             'install_complete': 'Installation Complete!',
@@ -222,55 +222,55 @@ class I18n:
             'logs_dir': '  • Logs Directory: {}',
             'config_file': '  • Configuration File: {}',
             'next_steps': 'Next Steps:',
-            'install_success': '✓ Installation successful!',
-            'install_failed': '✗ Installation failed:',
-            'unexpected_error': '✗ Unexpected error:',
+            'install_success': 'Installation successful!',
+            'install_failed': 'Installation failed:',
+            'unexpected_error': 'Unexpected error:',
             
             # 服务管理 (Service Management)
             'starting_services': 'Starting services...',
-            'services_started': '✓ Services started successfully',
-            'services_start_failed': '✗ Failed to start services: {}',
+            'services_started': 'Services started successfully',
+            'services_start_failed': 'Failed to start services: {}',
             'stopping_services': 'Stopping services...',
-            'services_stopped': '✓ Services stopped successfully',
-            'services_stop_failed': '✗ Failed to stop services: {}',
+            'services_stopped': 'Services stopped successfully',
+            'services_stop_failed': 'Failed to stop services: {}',
             'restarting_services': 'Restarting services...',
-            'services_restarted': '✓ Services restarted successfully',
-            'services_restart_failed': '✗ Failed to restart services: {}',
+            'services_restarted': 'Services restarted successfully',
+            'services_restart_failed': 'Failed to restart services: {}',
             'reloading_services': 'Reloading service configuration...',
-            'services_reloaded': '✓ Services reloaded successfully',
+            'services_reloaded': 'Services reloaded successfully',
             'enabling_services': 'Enabling services on boot...',
-            'services_enabled': '✓ Services enabled successfully',
-            'services_enable_failed': '✗ Failed to enable services: {}',
+            'services_enabled': 'Services enabled successfully',
+            'services_enable_failed': 'Failed to enable services: {}',
             'disabling_services': 'Disabling services from boot...',
-            'services_disabled': '✓ Services disabled successfully',
-            'services_disable_failed': '✗ Failed to disable services: {}',
+            'services_disabled': 'Services disabled successfully',
+            'services_disable_failed': 'Failed to disable services: {}',
             'requires_sudo': "Error: This command requires root privileges. Use 'sudo'.",
             'service_status': 'Service Status:',
             
             # 配置 (Configuration)
             'setting_config': '===== Application Configuration Setup =====',
-            'config_exists': '⚠ Configuration file already exists: {}',
+            'config_exists': 'Configuration file already exists: {}',
             'overwrite_config': 'Overwrite configuration file? [y/N]: ',
-            'keep_config': '✓ Keep existing configuration',
+            'keep_config': 'Keep existing configuration',
             'generating_config': 'Generating default configuration file...',
-            'config_generated': '✓ Configuration file generated successfully',
+            'config_generated': 'Configuration file generated successfully',
             'config_location': '  Location: {}',
-            'config_failed': '✗ Configuration generation failed: {}',
+            'config_failed': 'Configuration generation failed: {}',
             
             # 卸载 (Uninstall)
             'uninstall_title': '===== Uninstall EzySpeechTranslate =====',
-            'uninstall_warning': '⚠ Warning: This will delete the application and systemd services!',
+            'uninstall_warning': 'Warning: This will delete the application and systemd services!',
             'confirm_uninstall': "Confirm uninstall? (type 'yes' to confirm): ",
-            'uninstall_cancelled': '✓ Uninstall cancelled',
+            'uninstall_cancelled': 'Uninstall cancelled',
             'stopping_uninstall': 'Stopping services...',
-            'services_stopped_uninstall': '✓ Services stopped',
+            'services_stopped_uninstall': 'Services stopped',
             'deleting_services': 'Deleting systemd service files...',
-            'services_deleted': '✓ Service files deleted',
+            'services_deleted': 'Service files deleted',
             'deleting_app': 'Deleting application directory...',
-            'app_deleted': '✓ Application directory deleted',
+            'app_deleted': 'Application directory deleted',
             'deleting_user': 'Deleting service user...',
-            'user_deleted': '✓ Service user deleted',
-            'uninstall_complete': '✓ Uninstall complete!',
+            'user_deleted': 'Service user deleted',
+            'uninstall_complete': 'Uninstall complete!',
             
             # 错误 (Errors)
             'linux_only': 'Error: This script only supports Linux systems.',
@@ -395,8 +395,8 @@ class PackageManager:
             if result.returncode != 0:
                 # Show warnings but don't fail - some packages might already be installed
                 if 'already installed' not in result.stdout and 'Nothing to do' not in result.stdout:
-                    print(f"{Colors.WARNING}⚠ Package installation notes: {result.stdout}{Colors.ENDC}")
-            print(f"{Colors.OKGREEN}✓ {I18n.t('install_packages_success')}{Colors.ENDC}")
+                    print(f"{Colors.WARNING}Package installation notes: {result.stdout}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('install_packages_success')}{Colors.ENDC}")
         except Exception as e:
             raise ManagerException(I18n.t('package_install_failed', str(e)))
 
@@ -417,7 +417,7 @@ class UserManager:
     def create_service_user(username: str, home_dir: str) -> None:
         """创建服务用户"""
         if UserManager.user_exists(username):
-            print(f"{Colors.WARNING}⚠ {I18n.t('user_exists', username)}{Colors.ENDC}")
+            print(f"{Colors.WARNING}{I18n.t('user_exists', username)}{Colors.ENDC}")
             return
         
         print(f"{Colors.OKBLUE}{I18n.t('creating_service_user', username)}{Colors.ENDC}")
@@ -428,7 +428,7 @@ class UserManager:
                 '--home-dir', home_dir, '--shell', '/usr/sbin/nologin',
                 username
             ], check=True, capture_output=True)
-            print(f"{Colors.OKGREEN}✓ {I18n.t('service_user_created', username)}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('service_user_created', username)}{Colors.ENDC}")
         except subprocess.CalledProcessError as e:
             raise ManagerException(I18n.t('user_create_failed', str(e)))
 
@@ -461,7 +461,7 @@ class FileManager:
                         shutil.copy2(src_file, dest_path / src_file.name)
             
             FileManager.set_permissions(dest_dir, username)
-            print(f"{Colors.OKGREEN}✓ {I18n.t('copy_success')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('copy_success')}{Colors.ENDC}")
             
         except Exception as e:
             raise ManagerException(I18n.t('copy_failed', str(e)))
@@ -480,7 +480,7 @@ class FileManager:
                          check=True, capture_output=True)
             subprocess.run(['find', app_dir, '-type', 'f', '-name', '*.py', '-exec', 'chmod', '755', '{}', '+'],
                          check=True, capture_output=True)
-            print(f"{Colors.OKGREEN}✓ {I18n.t('permissions_set')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('permissions_set')}{Colors.ENDC}")
         except subprocess.CalledProcessError as e:
             raise ManagerException(I18n.t('permission_failed', str(e)))
     
@@ -522,7 +522,7 @@ class VirtualEnvironmentManager:
             result = subprocess.run([pip_exe, 'install', '--upgrade', 'pip', 'setuptools', 'wheel'],
                          check=True, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"{Colors.WARNING}⚠ Warning upgrading pip tools: {result.stderr}{Colors.ENDC}")
+                print(f"{Colors.WARNING}Warning upgrading pip tools: {result.stderr}{Colors.ENDC}")
             
             requirements_file = os.path.join(app_dir, 'requirements.txt')
             if os.path.exists(requirements_file):
@@ -534,7 +534,7 @@ class VirtualEnvironmentManager:
                 if result.returncode != 0:
                     # 显示详细的错误信息
                     error_msg = result.stderr if result.stderr else result.stdout
-                    print(f"{Colors.WARNING}⚠ Pip installation output:{Colors.ENDC}")
+                    print(f"{Colors.WARNING}Pip installation output:{Colors.ENDC}")
                     print(error_msg)
                     
                     # 尝试安装，忽略某些可选的依赖问题
@@ -552,12 +552,12 @@ class VirtualEnvironmentManager:
                                  check=False, capture_output=True, text=True)
                 
                 if result.returncode == 0:
-                    print(f"{Colors.OKGREEN}✓ Dependencies installed{Colors.ENDC}")
+                    print(f"{Colors.OKGREEN}Dependencies installed{Colors.ENDC}")
             
             subprocess.run(['chown', '-R', f'{username}:{username}', venv_dir],
                          check=True, capture_output=True)
             
-            print(f"{Colors.OKGREEN}✓ {I18n.t('venv_success')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('venv_success')}{Colors.ENDC}")
             return venv_dir
             
         except subprocess.CalledProcessError as e:
@@ -571,7 +571,7 @@ class SELinuxManager:
     def configure_selinux(app_dir: str) -> None:
         """配置SELinux"""
         if not os.path.exists('/usr/sbin/semanage'):
-            print(f"{Colors.WARNING}⚠ {I18n.t('selinux_not_found')}{Colors.ENDC}")
+            print(f"{Colors.WARNING}{I18n.t('selinux_not_found')}{Colors.ENDC}")
             return
         
         print(f"{Colors.OKBLUE}{I18n.t('configuring_selinux')}{Colors.ENDC}")
@@ -589,9 +589,9 @@ class SELinuxManager:
                                  capture_output=True)
             
             subprocess.run(['restorecon', '-Rv', app_dir], capture_output=True)
-            print(f"{Colors.OKGREEN}✓ {I18n.t('selinux_success')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('selinux_success')}{Colors.ENDC}")
         except subprocess.CalledProcessError as e:
-            print(f"{Colors.WARNING}⚠ {I18n.t('selinux_incomplete', str(e))}{Colors.ENDC}")
+            print(f"{Colors.WARNING}{I18n.t('selinux_incomplete', str(e))}{Colors.ENDC}")
 
 
 class SystemdServiceManager:
@@ -664,10 +664,10 @@ WantedBy=multi-user.target
                 with open(service_path, 'w') as f:
                     f.write(service_content)
                 subprocess.run(['chmod', '644', service_path], check=True, capture_output=True)
-                print(f"{Colors.OKGREEN}✓ {I18n.t('service_installed', service_name)}{Colors.ENDC}")
+                print(f"{Colors.OKGREEN}{I18n.t('service_installed', service_name)}{Colors.ENDC}")
             
             subprocess.run(['systemctl', 'daemon-reload'], check=True, capture_output=True)
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_success')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_success')}{Colors.ENDC}")
         except subprocess.CalledProcessError as e:
             raise ManagerException(I18n.t('service_install_failed', str(e)))
 
@@ -687,14 +687,14 @@ class Installer:
         
         if not SystemDetector.is_root():
             raise ManagerException(I18n.t('requires_root'))
-        print(f"{Colors.OKGREEN}✓ {I18n.t('root_ok')}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}{I18n.t('root_ok')}{Colors.ENDC}")
         
         distro_name, distro_version, is_rhel = SystemDetector.get_distro_info()
-        print(f"{Colors.OKGREEN}✓ {I18n.t('detected', distro_name, distro_version)}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}{I18n.t('detected', distro_name, distro_version)}{Colors.ENDC}")
         
         if is_rhel:
             is_enforcing, mode = SystemDetector.get_selinux_status()
-            print(f"{Colors.OKGREEN}✓ {I18n.t('selinux_status', mode)}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('selinux_status', mode)}{Colors.ENDC}")
             if is_enforcing:
                 print(f"{Colors.WARNING}{I18n.t('selinux_enforcing')}{Colors.ENDC}")
         
@@ -747,7 +747,7 @@ class Installer:
 
         if dest.exists() and any(dest.iterdir()):
             # 目录已存在且非空，跳过 clone，update.py 负责更新
-            print(f"{Colors.WARNING}⚠ {self.app_dir} already exists, skipping clone{Colors.ENDC}")
+            print(f"{Colors.WARNING}{self.app_dir} already exists, skipping clone{Colors.ENDC}")
         else:
             dest.mkdir(parents=True, exist_ok=True)
             print(f"{Colors.OKBLUE}Cloning from {REMOTE_URL} ...{Colors.ENDC}")
@@ -757,7 +757,7 @@ class Installer:
             )
             if result.returncode != 0:
                 raise ManagerException(f"git clone failed: {result.stderr.strip()}")
-            print(f"{Colors.OKGREEN}✓ Repository cloned to {self.app_dir}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}Repository cloned to {self.app_dir}{Colors.ENDC}")
 
         FileManager.set_permissions(self.app_dir, self.service_user)
         FileManager.create_logs_dir(self.app_dir, self.service_user)
@@ -822,14 +822,14 @@ class Installer:
             self.install_services(venv_dir)
             self.print_summary()
             
-            print(f"{Colors.OKGREEN}{Colors.BOLD}✓ {I18n.t('install_success')}{Colors.ENDC}\n")
+            print(f"{Colors.OKGREEN}{Colors.BOLD}{I18n.t('install_success')}{Colors.ENDC}\n")
             
         except ManagerException as e:
-            print(f"\n{Colors.FAIL}{Colors.BOLD}✗ {I18n.t('install_failed')}{Colors.ENDC}")
+            print(f"\n{Colors.FAIL}{Colors.BOLD}{I18n.t('install_failed')}{Colors.ENDC}")
             print(f"{Colors.FAIL}{str(e)}{Colors.ENDC}\n")
             sys.exit(1)
         except Exception as e:
-            print(f"\n{Colors.FAIL}{Colors.BOLD}✗ {I18n.t('unexpected_error')}{Colors.ENDC}")
+            print(f"\n{Colors.FAIL}{Colors.BOLD}{I18n.t('unexpected_error')}{Colors.ENDC}")
             print(f"{Colors.FAIL}{str(e)}{Colors.ENDC}\n")
             sys.exit(1)
 
@@ -873,9 +873,9 @@ class ServiceManager:
         cmd = ['systemctl', 'start'] + ServiceManager.SERVICES
         ret, _, stderr = ServiceManager.run_command(cmd)
         if ret == 0:
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_started')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_started')}{Colors.ENDC}")
         else:
-            print(f"{Colors.FAIL}✗ {I18n.t('services_start_failed', stderr)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}{I18n.t('services_start_failed', stderr)}{Colors.ENDC}")
             sys.exit(1)
     
     @staticmethod
@@ -886,9 +886,9 @@ class ServiceManager:
         cmd = ['systemctl', 'stop'] + ServiceManager.SERVICES
         ret, _, stderr = ServiceManager.run_command(cmd)
         if ret == 0:
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_stopped')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_stopped')}{Colors.ENDC}")
         else:
-            print(f"{Colors.FAIL}✗ {I18n.t('services_stop_failed', stderr)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}{I18n.t('services_stop_failed', stderr)}{Colors.ENDC}")
             sys.exit(1)
     
     @staticmethod
@@ -899,9 +899,9 @@ class ServiceManager:
         cmd = ['systemctl', 'restart'] + ServiceManager.SERVICES
         ret, _, stderr = ServiceManager.run_command(cmd)
         if ret == 0:
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_restarted')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_restarted')}{Colors.ENDC}")
         else:
-            print(f"{Colors.FAIL}✗ {I18n.t('services_restart_failed', stderr)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}{I18n.t('services_restart_failed', stderr)}{Colors.ENDC}")
             sys.exit(1)
     
     @staticmethod
@@ -912,9 +912,9 @@ class ServiceManager:
         cmd = ['systemctl', 'reload'] + ServiceManager.SERVICES
         ret, _, stderr = ServiceManager.run_command(cmd)
         if ret == 0:
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_reloaded')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_reloaded')}{Colors.ENDC}")
         else:
-            print(f"{Colors.WARNING}⚠ {I18n.t('reload_failed')}{Colors.ENDC}")
+            print(f"{Colors.WARNING}{I18n.t('reload_failed')}{Colors.ENDC}")
     
     @staticmethod
     def enable_services():
@@ -924,9 +924,9 @@ class ServiceManager:
         cmd = ['systemctl', 'enable'] + ServiceManager.SERVICES
         ret, _, stderr = ServiceManager.run_command(cmd)
         if ret == 0:
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_enabled')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_enabled')}{Colors.ENDC}")
         else:
-            print(f"{Colors.FAIL}✗ {I18n.t('services_enable_failed', stderr)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}{I18n.t('services_enable_failed', stderr)}{Colors.ENDC}")
             sys.exit(1)
     
     @staticmethod
@@ -937,9 +937,9 @@ class ServiceManager:
         cmd = ['systemctl', 'disable'] + ServiceManager.SERVICES
         ret, _, stderr = ServiceManager.run_command(cmd)
         if ret == 0:
-            print(f"{Colors.OKGREEN}✓ {I18n.t('services_disabled')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('services_disabled')}{Colors.ENDC}")
         else:
-            print(f"{Colors.FAIL}✗ {I18n.t('services_disable_failed', stderr)}{Colors.ENDC}")
+            print(f"{Colors.FAIL}{I18n.t('services_disable_failed', stderr)}{Colors.ENDC}")
             sys.exit(1)
     
     @staticmethod
@@ -996,10 +996,10 @@ class ConfigurationManager:
         config_file = '/opt/ezy_speech_translate/config/config.yaml'
         
         if os.path.exists(config_file):
-            print(f"{Colors.WARNING}⚠ {I18n.t('config_exists', config_file)}{Colors.ENDC}")
+            print(f"{Colors.WARNING}{I18n.t('config_exists', config_file)}{Colors.ENDC}")
             choice = input(f"\n{I18n.t('overwrite_config')}").strip().lower()
             if choice != 'y':
-                print(f"{Colors.OKGREEN}✓ {I18n.t('keep_config')}{Colors.ENDC}\n")
+                print(f"{Colors.OKGREEN}{I18n.t('keep_config')}{Colors.ENDC}\n")
                 return
         
         print(f"{Colors.OKBLUE}{I18n.t('generating_config')}{Colors.ENDC}")
@@ -1192,11 +1192,11 @@ features:
             subprocess.run(['chmod', '644', config_file], check=True, capture_output=True)
             subprocess.run(['chown', 'ezyspeech:ezyspeech', config_file], check=True, capture_output=True)
             
-            print(f"{Colors.OKGREEN}✓ {I18n.t('config_generated')}{Colors.ENDC}")
+            print(f"{Colors.OKGREEN}{I18n.t('config_generated')}{Colors.ENDC}")
             print(f"  {I18n.t('config_location', config_file)}\n")
             
         except Exception as e:
-            print(f"{Colors.FAIL}✗ {I18n.t('config_failed', str(e))}{Colors.ENDC}\n")
+            print(f"{Colors.FAIL}{I18n.t('config_failed', str(e))}{Colors.ENDC}\n")
 
 
 # ============================================================================
@@ -1217,11 +1217,11 @@ class Uninstaller:
             sys.exit(1)
         
         print(f"\n{Colors.HEADER}{Colors.BOLD}{I18n.t('uninstall_title')}{Colors.ENDC}\n")
-        print(f"{Colors.WARNING}⚠ {I18n.t('uninstall_warning')}{Colors.ENDC}")
+        print(f"{Colors.WARNING}{I18n.t('uninstall_warning')}{Colors.ENDC}")
         
         confirm = input(f"\n{Colors.BOLD}{I18n.t('confirm_uninstall')}{Colors.ENDC}").strip()
         if confirm != 'yes':
-            print(f"{Colors.OKGREEN}✓ {I18n.t('uninstall_cancelled')}{Colors.ENDC}\n")
+            print(f"{Colors.OKGREEN}{I18n.t('uninstall_cancelled')}{Colors.ENDC}\n")
             return
         
         print()
@@ -1232,7 +1232,7 @@ class Uninstaller:
                       capture_output=True)
         subprocess.run(['systemctl', 'disable', 'ezyspeech-user.service', 'ezyspeech-admin.service'],
                       capture_output=True)
-        print(f"{Colors.OKGREEN}✓ {I18n.t('services_stopped_uninstall')}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}{I18n.t('services_stopped_uninstall')}{Colors.ENDC}")
         
         # 2. 删除systemd文件
         print(f"{Colors.OKBLUE}{I18n.t('deleting_services')}{Colors.ENDC}")
@@ -1241,20 +1241,20 @@ class Uninstaller:
         subprocess.run(['rm', f'/etc/systemd/system/ezyspeech-admin.service'],
                       capture_output=True)
         subprocess.run(['systemctl', 'daemon-reload'], capture_output=True)
-        print(f"{Colors.OKGREEN}✓ {I18n.t('services_deleted')}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}{I18n.t('services_deleted')}{Colors.ENDC}")
         
         # 3. 删除应用目录
         print(f"{Colors.OKBLUE}{I18n.t('deleting_app')}{Colors.ENDC}")
         if os.path.exists(Uninstaller.APP_DIR):
             shutil.rmtree(Uninstaller.APP_DIR)
-        print(f"{Colors.OKGREEN}✓ {I18n.t('app_deleted')}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}{I18n.t('app_deleted')}{Colors.ENDC}")
         
         # 4. 删除用户
         print(f"{Colors.OKBLUE}{I18n.t('deleting_user')}{Colors.ENDC}")
         subprocess.run(['userdel', '-r', Uninstaller.SERVICE_USER], capture_output=True)
-        print(f"{Colors.OKGREEN}✓ {I18n.t('user_deleted')}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}{I18n.t('user_deleted')}{Colors.ENDC}")
         
-        print(f"\n{Colors.OKGREEN}{Colors.BOLD}✓ {I18n.t('uninstall_complete')}{Colors.ENDC}\n")
+        print(f"\n{Colors.OKGREEN}{Colors.BOLD}{I18n.t('uninstall_complete')}{Colors.ENDC}\n")
 
 
 # ============================================================================

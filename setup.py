@@ -138,15 +138,15 @@ def prompt_admin_password():
     while True:
         user_password = getpass.getpass("Enter admin password (min 8 chars): ")
         if len(user_password) < 8:
-            print("⚠️  Password too short. Please try again.")
+            print("Password too short. Please try again.")
             continue
 
         confirm_password = getpass.getpass("Confirm admin password: ")
         if user_password != confirm_password:
-            print("⚠️  Passwords do not match. Please retry.")
+            print("Passwords do not match. Please retry.")
             continue
 
-        print("✓ Admin password set.")
+        print("Admin password set.")
         return user_password, True
 
 
@@ -158,9 +158,9 @@ def check_python_version():
     print_step(1, "Checking Python version...")
     version_info = sys.version_info
     if not (3, 8) <= (version_info.major, version_info.minor) <= (3, 14):
-        print(f"❌ Require Python 3.8 ~ 3.14, found {version_info.major}.{version_info.minor}")
+        print(f"Require Python 3.8 ~ 3.14, found {version_info.major}.{version_info.minor}")
         return False
-    print(f"✓ Python {version_info.major}.{version_info.minor}.{version_info.micro}")
+    print(f"Python {version_info.major}.{version_info.minor}.{version_info.micro}")
     return True
 
 
@@ -169,10 +169,10 @@ def check_openssl_availability():
     if run_command("openssl version"):
         result = subprocess.run("openssl version", shell=True,
                                  capture_output=True, text=True)
-        print(f"✓ OpenSSL available: {result.stdout.strip()}")
+        print(f"OpenSSL available: {result.stdout.strip()}")
         return True
     else:
-        print("⚠️ OpenSSL not found. SSL cert generation skipped.")
+        print("OpenSSL not found. SSL cert generation skipped.")
         return False
 
 
@@ -184,14 +184,14 @@ def create_venv():
     print_step(3, "Creating virtual environment...")
 
     if os.path.exists("venv"):
-        print("✓ venv already exists")
+        print("venv already exists")
         return True
 
     if run_command(f"{sys.executable} -m venv venv"):
-        print("✓ venv created")
+        print("venv created")
         return True
     else:
-        print("❌ Failed to create venv")
+        print("Failed to create venv")
         return False
 
 
@@ -213,10 +213,10 @@ def install_dependencies():
 
     print("Installing requirements.txt...")
     if run_command(f"{pip_exec} install -r requirements.txt"):
-        print("✓ Dependencies installed")
+        print("Dependencies installed")
         return True
 
-    print("❌ Failed to install dependencies")
+    print("Failed to install dependencies")
     return False
 
 
@@ -239,7 +239,7 @@ def ensure_directories():
 
     for d in dirs:
         os.makedirs(d, exist_ok=True)
-        print(f"✓ {d}/")
+        print(f"{d}/")
 
     return True
 
@@ -256,17 +256,17 @@ def configure_secrets():
     secrets_key_path = config_path.parent / 'secrets.key'
 
     if not config_path.exists():
-        print("❌ config/config.yaml not found")
+        print("config/config.yaml not found")
         return False
 
     # Check if secrets are already configured
     if secrets_key_path.exists():
         response = input("\n⚠️  Secrets already configured. Regenerate? (y/N): ").strip().lower()
         if response != 'y':
-            print("✓ Using existing secrets")
+            print("Using existing secrets")
             return True
     
-    print("\n🔐 Generating secure secrets...")
+    print("\nGenerating secure secrets...")
     
     # Generate keys
     admin_password, is_manual_password = prompt_admin_password()
@@ -294,9 +294,9 @@ def configure_secrets():
         print(f"Warning: Failed to generate/write secrets.key: {e}")
         return False
 
-    print("\n✅ Secrets generated and stored in config/secrets.key (Fernet)")
+    print("\nSecrets generated and stored in config/secrets.key (Fernet)")
     print("=" * 60)
-    print("🔑 YOUR ADMIN CREDENTIALS (SAVE THESE!):")
+    print("YOUR ADMIN CREDENTIALS (SAVE THESE!):")
     print("=" * 60)
     print(f"Username: admin")
     if is_manual_password:
@@ -304,7 +304,7 @@ def configure_secrets():
     else:
         print(f"Password: {admin_password}")
     print("=" * 60)
-    print("\n⚠️  IMPORTANT: Save this password now!")
+    print("\nIMPORTANT: Save this password now!")
     print("    It's encrypted and stored in config/secrets.key")
     print("    The config.yaml will reference it automatically.\n")
     
@@ -325,7 +325,7 @@ def generate_ssl_certificate():
     key_path = "config/ssl/key.pem"
 
     if os.path.exists(cert_path) and os.path.exists(key_path):
-        print("✓ SSL already exists")
+        print("SSL already exists")
         return True
 
     print("Generating self-signed certificate (valid 365 days)...")
@@ -336,10 +336,10 @@ def generate_ssl_certificate():
     )
 
     if run_command(cmd):
-        print("✓ SSL generated")
+        print("SSL generated")
         return True
 
-    print("⚠️ Failed to auto-generate SSL.")
+    print("Failed to auto-generate SSL.")
     print("    You may generate manually later.")
     return True
 
@@ -366,7 +366,7 @@ def create_run_scripts():
         run_command("chmod +x start_server.sh")
         run_command("chmod +x start_admin.sh")
 
-    print("✓ Run scripts created")
+    print("Run scripts created")
     return True
 
 
@@ -387,9 +387,9 @@ def verify_project_files():
     is_ok = True
     for file_path in required_files:
         if os.path.exists(file_path):
-            print(f"  ✓ {file_path}")
+            print(f" {file_path}")
         else:
-            print(f"  ✗ {file_path} (missing)")
+            print(f" {file_path} (missing)")
             is_ok = False
 
     return is_ok
@@ -402,12 +402,12 @@ def verify_project_files():
 def print_success_message():
     print_header("🎉 Setup Complete!")
 
-    print("🔐 Security Features Enabled:")
-    print("  ✓ Passwords encrypted and stored in config/secrets.key")
-    print("  ✓ Automatic decryption on server start")
-    print("  ✓ No plaintext passwords in config.yaml")
+    print("Security Features Enabled:")
+    print(" Passwords encrypted and stored in config/secrets.key")
+    print(" Automatic decryption on server start")
+    print(" No plaintext passwords in config.yaml")
     
-    print("\n📝 Start servers:")
+    print("\nStart servers:")
     if platform.system() == "Windows":
         print("  start_server.bat  (User server)")
         print("  start_admin.bat   (Admin panel)")
@@ -415,28 +415,28 @@ def print_success_message():
         print("  ./start_server.sh  (User server)")
         print("  ./start_admin.sh   (Admin panel)")
 
-    print("\n🌐 Access URLs:")
+    print("\nAccess URLs:")
     print("  User:  https://localhost:1915")
     print("  Admin: https://localhost:1916")
     
-    print("\n📂 Important Files:")
+    print("\nImportant Files:")
     print("  config/secrets.key        - Encrypted secrets (Fernet key + tokens)")
     print("  config/config.yaml        - Main configuration")
     print("  config/secure_loader.py   - Auto-decryption loader")
     print("  config/ssl/cert.pem       - SSL certificate")
     print("  config/ssl/key.pem        - SSL private key")
 
-    print("\n⚠️  Security Notes:")
+    print("\nSecurity Notes:")
     print("  • config/secrets.key contains the Fernet key and encrypted tokens — protect it and do not commit")
     print("  • Do not copy secrets.key to other machines")
     print("  • Run setup.py again on new deployment machines to provision new secrets.key")
     print("  • Ensure config/secrets.key is added to .gitignore")
     
-    print("\n🎯 Next Steps:")
+    print("\nNext Steps:")
     print("  1. Save your admin password somewhere safe")
     print("  2. Start the servers using the generated scripts")
     print("  3. Login with username: admin")
-    print("  4. Enjoy! 😎")
+    print("  4. Enjoy!")
 
 
 # ---------------------------
@@ -468,7 +468,7 @@ def main():
 
     for step_function in setup_steps:
         if not step_function():
-            print("\n❌ Setup failed.")
+            print("\nSetup failed.")
             sys.exit(1)
 
     print_success_message()

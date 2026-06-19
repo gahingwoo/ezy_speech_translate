@@ -79,7 +79,7 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
                 "ALTER TABLE translations ADD COLUMN room_id TEXT NOT NULL DEFAULT 'main'"
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_room_id ON translations(room_id)")
-            logger.info("✅ Migrated translations table: added room_id column")
+            logger.info("Migrated translations table: added room_id column")
     except Exception as exc:
         logger.warning("Schema migration error: %s", exc)
 
@@ -117,7 +117,7 @@ def init_db(db_path: str, enabled: bool = True) -> None:
         # 3) Now safe to create indexes and the rest of the schema
         conn.executescript(_DDL)
         conn.commit()
-    logger.info("✅ Database initialised: %s", db_path)
+    logger.info("Database initialised: %s", db_path)
 
 
 def load_all() -> list:
@@ -139,7 +139,7 @@ def load_all() -> list:
                 items.append(obj)
             except Exception:
                 pass
-        logger.info("✅ Loaded %d translations from DB", len(items))
+        logger.info("Loaded %d translations from DB", len(items))
         return items
     except Exception as exc:
         logger.warning("DB load_all error: %s", exc)

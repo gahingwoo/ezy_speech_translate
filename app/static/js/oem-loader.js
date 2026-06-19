@@ -112,8 +112,8 @@ function applyOEMConfig(oemConfig) {
         shortcutLink.href = faviconPath + '?t=' + Date.now();
         document.head.appendChild(shortcutLink);
         
-        console.log('✓ Favicon applied:', faviconPath);
-        console.log('✓ Cache buster timestamp:', Date.now());
+        console.log('Favicon applied:', faviconPath);
+        console.log('Cache buster timestamp:', Date.now());
     } else {
         console.warn('No favicon configured in OEM assets');
     }

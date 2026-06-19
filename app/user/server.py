@@ -19,6 +19,7 @@ import eventlet.wsgi
 # We need asyncio's native socket and select modules, not eventlet's patched versions
 eventlet.monkey_patch(select=False, socket=False)
 import secrets
+import hmac
 import re
 from collections import defaultdict
 import time
@@ -80,7 +81,7 @@ os.chdir(BASE_DIR)
 # Configuration (shared loader)
 # ──────────────────────────────────────────
 sys.path.insert(0, BASE_DIR)
-from app.core.config import get_config, config_loader  # noqa: E402
+from app.core.config import get_config, config_loader, ensure_runtime_secret  # noqa: E402
 
 # ──────────────────────────────────────────
 # Logging Setup with Security Logging
@@ -128,11 +129,14 @@ app = Flask(__name__,
             static_folder=STATIC_DIR,
             static_url_path='/static')
 
-# Secure configuration
-secret_key = get_config('server', 'secret_key')
-if not secret_key or secret_key == 'changeme':
-    secret_key = secrets.token_hex(32)
-    logger.warning("Using generated secret key. Set a permanent key in config!")
+# Secure configuration — resolve (and persist) a strong Flask secret key.
+# Existing configured keys are used unchanged; missing/insecure ones are
+# generated and stored in secrets.key so they survive restarts.
+secret_key = ensure_runtime_secret('server_secret_key', ('server', 'secret_key'))
+
+# Resolve (and persist) the JWT signing secret. Shared with the admin server
+# via secrets.key; never falls back to a guessable default.
+JWT_SECRET = ensure_runtime_secret('jwt_secret', ('authentication', 'jwt_secret'))
 
 app.config['SECRET_KEY'] = secret_key
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -152,9 +156,9 @@ CORS(app, origins=allowed_origins, supports_credentials=True)
 # Initialize OEM Configuration
 try:
     init_oem_config(app, get_config)
-    logger.info("✓ OEM configuration initialized successfully")
+    logger.info("OEM configuration initialized successfully")
 except Exception as e:
-    logger.warning(f"⚠ OEM configuration initialization failed: {e}")
+    logger.warning(f"OEM configuration initialization failed: {e}")
 
 # Trust Cloudflare Tunnel / reverse proxy headers
 # CF Tunnel acts as a proxy, so we need to unwrap the forwarded IP
@@ -234,7 +238,7 @@ if BIBLE_DETECTION_ENABLED:
         )
         bible_detector = _bible_mod
         logging.getLogger("bible").info(
-            f"📖 Bible detection enabled (source={BIBLE_SOURCE_TRANSLATION}"
+            f"Bible detection enabled (source={BIBLE_SOURCE_TRANSLATION}"
             + (f", target={BIBLE_TARGET_TRANSLATION}" if BIBLE_TARGET_TRANSLATION else "")
             + ")"
         )
@@ -432,7 +436,7 @@ def sanitize_text(text, max_length=5000):
 
 def validate_jwt_token(token):
     """Validate JWT token (delegates to app.auth.jwt_utils)."""
-    return _decode_jwt(token, get_config('authentication', 'jwt_secret', default='secret'))
+    return _decode_jwt(token, JWT_SECRET)
 
 # ──────────────────────────────────────────
 # In-memory Storage with Limits from Config
@@ -1036,7 +1040,7 @@ def login():
     # account['password_hash'] is sha256(config_password); client sends sha256(entered_password)
     account = _accounts.get(username)
 
-    if account and account['password_hash'] == password_hash:
+    if account and hmac.compare_digest(str(account['password_hash']), str(password_hash)):
         acct_role    = account.get('role', 'operator')
         acct_channel = account.get('channel', 'main')
         acct_display = account.get('display_name', username)
@@ -1054,11 +1058,11 @@ def login():
                 'iat': datetime.utcnow(),
                 'jti': secrets.token_hex(16)
             },
-            get_config('authentication', 'jwt_secret', default='secret'),
+            JWT_SECRET,
             algorithm='HS256'
         )
 
-        logger.info(f"✓ Login successful: {username} ({acct_role}/{acct_channel}) from {client_key}")
+        logger.info(f"Login successful: {username} ({acct_role}/{acct_channel}) from {client_key}")
         return jsonify({
             'success':      True,
             'token':        token,
@@ -1069,7 +1073,7 @@ def login():
         })
 
     # Failed login
-    logger.warning(f"✗ Failed login attempt: {username} from {client_key}")
+    logger.warning(f"Failed login attempt: {username} from {client_key}")
     if record_failed_login(client_key):
         return jsonify({'success': False, 'error': 'Too many failed attempts. Session blocked.'}), 403
 
@@ -1232,7 +1236,7 @@ def bible_source_translation_post():
             target_translation=BIBLE_TARGET_TRANSLATION,
         )
     username = (request.user.get('username') if hasattr(request, 'user') else None) or 'admin'
-    logger.info("📖 %s updated source translation to: %s", username, BIBLE_SOURCE_TRANSLATION)
+    logger.info("%s updated source translation to: %s", username, BIBLE_SOURCE_TRANSLATION)
     return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION, 'updated': True})
 
 
@@ -1583,7 +1587,7 @@ if 'EDGE_TTS_VOICES_CACHE_TIME' not in globals():
 # Prevents concurrent requests from all spawning separate fetch threads.
 _VOICES_FETCH_LOCK = threading.Lock()
 
-logger.info(f"🔍 Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(tts_cache)} items")
+logger.info(f"Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(tts_cache)} items")
 
 @app.route('/api/translate', methods=['POST'])
 @limiter.limit("300 per minute")  # 5 requests per second per client (need headroom for bulk imports)
@@ -1780,11 +1784,11 @@ def fetch_edge_tts_voices_in_thread():
     global EDGE_TTS_VOICES_CACHE, EDGE_TTS_VOICES_CACHE_TIME
 
     if not EDGE_TTS_AVAILABLE:
-        logger.warning("⚠️ Edge TTS not available, skipping voice fetch")
+        logger.warning("Edge TTS not available, skipping voice fetch")
         return []
 
     try:
-        logger.info("⏳ Fetching Edge TTS voices via CLI...")
+        logger.info("Fetching Edge TTS voices via CLI...")
 
         result = subprocess.run(
             [sys.executable, '-m', 'edge_tts', '--list-voices'],
@@ -1794,12 +1798,12 @@ def fetch_edge_tts_voices_in_thread():
         )
 
         if result.returncode != 0:
-            logger.error(f"❌ edge-tts --list-voices failed (rc={result.returncode}): {result.stderr}")
+            logger.error(f"edge-tts --list-voices failed (rc={result.returncode}): {result.stderr}")
             EDGE_TTS_VOICES_CACHE_TIME = None
             return []
 
         if not result.stdout or not result.stdout.strip():
-            logger.error("❌ edge-tts --list-voices returned empty output")
+            logger.error("edge-tts --list-voices returned empty output")
             EDGE_TTS_VOICES_CACHE_TIME = None
             return []
 
@@ -1831,23 +1835,23 @@ def fetch_edge_tts_voices_in_thread():
             voices.append(current)
 
         if not voices:
-            logger.error("❌ No voices parsed from CLI output")
+            logger.error("No voices parsed from CLI output")
             EDGE_TTS_VOICES_CACHE_TIME = None
             return []
 
-        logger.info(f"✅ Cached {len(voices)} Edge TTS voices via CLI")
+        logger.info(f"Cached {len(voices)} Edge TTS voices via CLI")
         if voices:
-            logger.info(f"🔍 First voice sample: {voices[0]}")
+            logger.info(f"First voice sample: {voices[0]}")
         EDGE_TTS_VOICES_CACHE = voices
         EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
         return voices
 
     except subprocess.TimeoutExpired:
-        logger.error("❌ edge-tts --list-voices timeout (60s)")
+        logger.error("edge-tts --list-voices timeout (60s)")
         EDGE_TTS_VOICES_CACHE_TIME = None
         return []
     except Exception as e:
-        logger.error(f"❌ fetch voices error: {e}", exc_info=True)
+        logger.error(f"fetch voices error: {e}", exc_info=True)
         EDGE_TTS_VOICES_CACHE_TIME = None
         return []
 
@@ -1881,7 +1885,7 @@ def get_cached_edge_tts_voices():
         if EDGE_TTS_VOICES_CACHE_TIME is None:
             # Set placeholder timestamp before spawning to prevent duplicate threads
             EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
-            logger.info("📥 Fetching Edge TTS voices in background OS thread...")
+            logger.info("Fetching Edge TTS voices in background OS thread...")
             threading.Thread(
                 target=fetch_edge_tts_voices_in_thread,
                 daemon=True,
@@ -1942,7 +1946,7 @@ def check_client_synthesis_limit(client_id, request_hash):
     current_count = len(CLIENT_SYNTHESIS_REQUESTS[client_id])
 
     if current_count >= CLIENT_SYNTHESIS_LIMIT:
-        logger.warning(f"⚠️ Client {client_id} exceeded synthesis limit ({current_count}/{CLIENT_SYNTHESIS_LIMIT})")
+        logger.warning(f"Client {client_id} exceeded synthesis limit ({current_count}/{CLIENT_SYNTHESIS_LIMIT})")
         return False, f"Rate limit exceeded: {current_count}/{CLIENT_SYNTHESIS_LIMIT} per hour", current_count
 
     CLIENT_SYNTHESIS_REQUESTS[client_id].append((current_time, request_hash))
@@ -2014,7 +2018,7 @@ def synthesize_tts():
     cache_key = get_synthesis_cache_key(text, validated_voice)
     cached_audio = tts_cache.get(cache_key)
     if cached_audio is not None:
-        logger.info(f"🔄 Cache hit (client: {client_id})")
+        logger.info(f"Cache hit (client: {client_id})")
         return Response(
             cached_audio,
             mimetype='audio/mpeg',
@@ -2037,7 +2041,7 @@ def synthesize_tts():
 
     # 合成：用 CLI 写到临时文件，完全绕开 eventlet/asyncio 冲突
     try:
-        logger.info(f"🔄 Synthesizing via CLI: len={len(text)}, voice={validated_voice}")
+        logger.info(f"Synthesizing via CLI: len={len(text)}, voice={validated_voice}")
 
         import tempfile
         with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
@@ -2057,7 +2061,7 @@ def synthesize_tts():
             )
 
             if result.returncode != 0:
-                logger.error(f"❌ edge-tts synthesis failed (rc={result.returncode}):\n{result.stderr}")
+                logger.error(f"edge-tts synthesis failed (rc={result.returncode}):\n{result.stderr}")
                 return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
 
             with open(tmp_path, 'rb') as f:
@@ -2070,22 +2074,22 @@ def synthesize_tts():
                 pass
 
     except subprocess.TimeoutExpired:
-        logger.error("❌ TTS synthesis timeout (30s)")
+        logger.error("TTS synthesis timeout (30s)")
         return jsonify({'success': False, 'error': 'Audio synthesis timeout'}), 503
     except Exception as e:
-        logger.error(f"❌ Synthesis error: {str(e)[:300]}")
+        logger.error(f"Synthesis error: {str(e)[:300]}")
         return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
 
     if not audio_data or len(audio_data) == 0:
-        logger.error("❌ TTS synthesis returned empty audio")
+        logger.error("TTS synthesis returned empty audio")
         return jsonify({'success': False, 'error': 'Audio synthesis failed - empty output'}), 500
 
-    logger.info(f"✅ Synthesized: {len(audio_data)} bytes, voice={validated_voice}")
+    logger.info(f"Synthesized: {len(audio_data)} bytes, voice={validated_voice}")
 
     # 写缓存 (TTL + LRU eviction handled by TTSCache)
     tts_cache.set(cache_key, audio_data)
     stats = tts_cache.stats()
-    logger.info(f"💾 Cache: {stats['cache_items']} items, {stats['cache_size_mb']:.2f}MB")
+    logger.info(f"Cache: {stats['cache_items']} items, {stats['cache_size_mb']:.2f}MB")
 
     return Response(
         audio_data,
@@ -2212,7 +2216,7 @@ def get_tts_cache_stats():
         return jsonify(stats)
 
     except Exception as e:
-        logger.error(f"❌ Error in get_tts_cache_stats: {e}", exc_info=True)
+        logger.error(f"Error in get_tts_cache_stats: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e),
@@ -2232,7 +2236,7 @@ def clear_tts_cache():
         source_ip = get_real_ip()
 
         logger.info(
-            f"🗑️ TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed from {source_ip}"
+            f"TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed from {source_ip}"
         )
         security_logger.info(
             f"TTS_ACTION: cache_cleared | Items: {cleared_items} | "
@@ -2396,7 +2400,7 @@ def add_glossary():
         get_translation_service().clear_cache()
     except Exception:
         pass
-    logger.info(f"[GLOSSARY] Added '{source_term}'→'{translation}' ({target_lang}, room={room_id}) "
+    logger.info(f"[GLOSSARY] Added '{source_term}''{translation}' ({target_lang}, room={room_id}) "
                 f"by {request.user.get('username')}")
     return jsonify({'success': True, 'id': entry_id})
 
@@ -3080,7 +3084,7 @@ def handle_correct_translation(data):
 
     socketio.emit('translation_corrected', target_item, room=f'room:{room_id}')
     socketio.emit('translation_corrected', target_item, room=f'admin:{room_id}')
-    logger.info(f"✏️ [CORRECTED] room={room_id} ID {translation_id}")
+    logger.info(f"[CORRECTED] room={room_id} ID {translation_id}")
     emit('correction_success', {'id': translation_id})
 
 @socketio.on('clear_history')
@@ -3273,7 +3277,7 @@ if __name__ == '__main__':
         val = get_config(*cfg_path, default='')
         if str(val).strip().lower() in _BAD_VALUES:
             logger.critical(
-                "⚠️  SECURITY WARNING: %s is set to an insecure default value. "
+                "SECURITY WARNING: %s is set to an insecure default value. "
                 "Update config/config.yaml before deploying to production!", label
             )
 
@@ -3305,16 +3309,16 @@ if __name__ == '__main__':
                 room_summary = ", ".join(
                     f"{rid}={len(state['history'])}" for rid, state in _rooms.items()
                 )
-                logger.info(f"✅ Restored {len(persisted)} translations from DB – rooms: {room_summary}")
+                logger.info(f"Restored {len(persisted)} translations from DB – rooms: {room_summary}")
 
     # Initialize Edge TTS voice cache in background (non-blocking)
     if EDGE_TTS_AVAILABLE:
-        logger.info("🎙️ Pre-loading Edge TTS voices in background...")
+        logger.info("Pre-loading Edge TTS voices in background...")
         threading.Thread(target=fetch_edge_tts_voices_in_thread, daemon=True, name="tts-voice-preload").start()
 
     # Start heartbeat cleanup greenlet
     eventlet.spawn(_heartbeat_cleanup_loop)
-    logger.info("🫀 Heartbeat cleanup greenlet started (timeout=45s, interval=15s)")
+    logger.info("Heartbeat cleanup greenlet started (timeout=45s, interval=15s)")
 
     for directory in ['logs']:
         os.makedirs(directory, exist_ok=True)

@@ -338,8 +338,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 function connectWebSocket() {
-    console.log('🔌 Connecting to WebSocket:', SERVER_URL);
-    console.log('🔑 Using token:', authToken ? 'Yes' : 'No');
+    console.log('Connecting to WebSocket:', SERVER_URL);
+    console.log('Using token:', authToken ? 'Yes' : 'No');
     
     // Admin should use separate persistent client ID (distinct from user client)
     const adminClientIdKey = '_admin_client_id';
@@ -356,7 +356,7 @@ function connectWebSocket() {
         localStorage.setItem('_admin_room_id', urlRoom);
     }
     window.CURRENT_ROOM_ID = localStorage.getItem('_admin_room_id') || 'main';
-    console.log('🚪 Admin room scope:', window.CURRENT_ROOM_ID);
+    console.log('Admin room scope:', window.CURRENT_ROOM_ID);
 
     socket = io(SERVER_URL, {
         transports: ['websocket', 'polling'],
@@ -371,19 +371,19 @@ function connectWebSocket() {
     });
 
     socket.on('connect', () => {
-        console.log('✅ WebSocket connected - SID:', socket.id);
+        console.log('WebSocket connected - SID:', socket.id);
         updateStatus(true);
 
         if (authToken) {
-            console.log('📤 Sending admin_connect (room:', window.CURRENT_ROOM_ID, ')');
+            console.log('Sending admin_connect (room:', window.CURRENT_ROOM_ID, ')');
             socket.emit('admin_connect', {token: authToken, room: window.CURRENT_ROOM_ID});
         }
     });
 
     socket.on('admin_connected', (response) => {
-        console.log('✅ Admin connected response:', response);
+        console.log('Admin connected response:', response);
         if (!response.success) {
-            console.error('❌ Admin connection rejected:', response.error);
+            console.error('Admin connection rejected:', response.error);
             showToast('Session expired. Please login again.', 'danger');
             localStorage.removeItem('authToken');
             window.location.href = '/login';
@@ -417,17 +417,17 @@ function connectWebSocket() {
     });
 
     socket.on('disconnect', () => {
-        console.log('⚠️ Disconnected');
+        console.log('Disconnected');
         updateStatus(false);
     });
 
     socket.on('connect_error', (error) => {
-        console.error('❌ Connection error:', error);
+        console.error('Connection error:', error);
         updateStatus(false);
     });
 
     socket.on('error', (error) => {
-        console.error('❌ Socket error:', error);
+        console.error('Socket error:', error);
 
         if (error.message && (error.message.includes('Unauthorized') || error.message.includes('Invalid token'))) {
             showToast('Session expired. Please login again.', 'danger');
@@ -444,7 +444,7 @@ function connectWebSocket() {
     socket.on('new_translation', (data) => {
         // Only process if not sent by this admin (server skips sender,
         // but handle edge cases like import from another admin)
-        console.log('📥 Received translation:', data);
+        console.log('Received translation:', data);
         const exists = translations.some(t => t.id === data.id);
         if (!exists) {
             translations.push(data);
@@ -454,7 +454,7 @@ function connectWebSocket() {
 
     // Confirmation that our transcription was stored with its server-assigned ID
     socket.on('transcription_confirmed', (data) => {
-        console.log('✅ Transcription confirmed, id:', data.id);
+        console.log('Transcription confirmed, id:', data.id);
         translations.push(data);
         renderTranscriptions();
     });
@@ -498,7 +498,7 @@ function updateStatus(connected) {
 
 async function fetchTranslationHistory() {
     try {
-        console.log('📥 Fetching translation history via HTTP...');
+        console.log('Fetching translation history via HTTP...');
         const roomParam = window.CURRENT_ROOM_ID && window.CURRENT_ROOM_ID !== 'main'
             ? '?room=' + encodeURIComponent(window.CURRENT_ROOM_ID) : '';
         const response = await fetch(`${SERVER_URL}/api/history${roomParam}`, {
@@ -517,7 +517,7 @@ async function fetchTranslationHistory() {
         const data = await response.json();
         if (data.success && Array.isArray(data.translations)) {
             translations = data.translations;
-            console.log(`✅ Loaded ${data.count} transcriptions from server`);
+            console.log(`Loaded ${data.count} transcriptions from server`);
             renderTranscriptions();
         }
     } catch (error) {
@@ -549,7 +549,7 @@ async function loadAudioDevices() {
         select.innerHTML = '<option>System Default</option>';
         stream.getTracks().forEach(track => track.stop());
 
-        console.log(`✅ Speech Recognition initialized`);
+        console.log(`Speech Recognition initialized`);
         setupRecognitionHandlers();
 
     } catch (error) {
@@ -563,7 +563,7 @@ function setupRecognitionHandlers() {
     if (!recognition) return;
 
     recognition.onstart = () => {
-        console.log('🎤 Speech recognition started');
+        console.log('Speech recognition started');
         isRecording = true;
         updateRecordButton();
         updateInterimDisplay('🎤 Listening...', true);
@@ -571,24 +571,24 @@ function setupRecognitionHandlers() {
     };
 
     recognition.onend = () => {
-        console.log('🛑 Speech recognition ended');
+        console.log('Speech recognition ended');
 
         if (isRecording && autoRestartEnabled) {
-            console.log('🔄 Auto-restarting in 300ms...');
+            console.log('Auto-restarting in 300ms...');
             clearTimeout(restartTimeout);
             restartTimeout = setTimeout(() => {
                 if (isRecording) {
                     try {
                         recognition.start();
-                        console.log('✅ Recognition restarted');
+                        console.log('Recognition restarted');
                     } catch (e) {
-                        console.error('❌ Restart failed:', e);
+                        console.error('Restart failed:', e);
                         setTimeout(() => {
                             if (isRecording) {
                                 try {
                                     recognition.start();
                                 } catch (err) {
-                                    console.error('❌ Second restart failed:', err);
+                                    console.error('Second restart failed:', err);
                                     isRecording = false;
                                     updateRecordButton();
                                     updateInterimDisplay('Error: Cannot restart', false);
@@ -608,11 +608,11 @@ function setupRecognitionHandlers() {
     };
 
     recognition.onerror = (event) => {
-        console.error('❌ Recognition error:', event.error);
+        console.error('Recognition error:', event.error);
 
         switch (event.error) {
             case 'no-speech':
-                console.log('⚠️ No speech detected - will auto-restart');
+                console.log('No speech detected - will auto-restart');
                 updateInterimDisplay('⚠️ No speech detected...', true);
                 break;
 
@@ -625,7 +625,7 @@ function setupRecognitionHandlers() {
                 break;
 
             case 'network':
-                console.error('❌ Network error - will retry');
+                console.error('Network error - will retry');
                 updateInterimDisplay('⚠️ Network error, retrying...', true);
                 break;
 
@@ -651,7 +651,7 @@ function setupRecognitionHandlers() {
             const confidence = event.results[i][0].confidence;
 
             if (event.results[i].isFinal) {
-                console.log(`📤 SENDING FINAL: "${transcript}"`);
+                console.log(`SENDING FINAL: "${transcript}"`);
                 // Send final with same temp_id so user-side replaces the interim card
                 sendTranscription(transcript, confidence, true);
                 currentTempId = null;  // Reset for next utterance
@@ -691,19 +691,19 @@ function updateInterimDisplay(text, active) {
 
 function sendTranscription(text, confidence, isFinal = true) {
     if (!text || !socket || !socket.connected) {
-        console.warn('⚠️ Cannot send - no text or no connection');
+        console.warn('Cannot send - no text or no connection');
         return;
     }
 
     const validation = validateText(text);
     if (!validation.valid) {
-        console.error('❌ Invalid input:', validation.error);
+        console.error('Invalid input:', validation.error);
         updateInterimDisplay('⚠️ ' + validation.error, false);
         return;
     }
 
     const sanitizedText = validation.text;
-    console.log(`📤 SENDING: "${sanitizedText}" (confidence: ${confidence}, final: ${isFinal})`);
+    console.log(`SENDING: "${sanitizedText}" (confidence: ${confidence}, final: ${isFinal})`);
 
     socket.emit('new_transcription', {
         text: sanitizedText,
@@ -757,9 +757,9 @@ async function toggleRecording() {
         try {
             recognition.start();
             lastSpeechTimestamp = Date.now();
-            console.log('🎤 Recognition started');
+            console.log('Recognition started');
         } catch (error) {
-            console.error('❌ Start failed:', error);
+            console.error('Start failed:', error);
             isRecording = false;
             updateRecordButton();
             showToast('Failed to start recording: ' + error.message, 'danger');
@@ -770,7 +770,7 @@ async function toggleRecording() {
 }
 
 function stopRecording() {
-    console.log('⏹️ Stopping recording');
+    console.log('Stopping recording');
     isRecording = false;
     autoRestartEnabled = false;
 
@@ -802,7 +802,7 @@ function changeSourceLanguage() {
     const select = document.getElementById('sourceLangSelect');
     const oldLang = recognitionLanguage;
     recognitionLanguage = select.value;
-    console.log(`🌍 Language: ${oldLang} → ${recognitionLanguage}`);
+    console.log(`Language: ${oldLang}${recognitionLanguage}`);
 }
 
 let draggedElement = null;
@@ -1157,7 +1157,7 @@ function importTranslations(translationsToImport) {
 
     if (!confirmed) return;
 
-    console.log(`📥 Importing ${translationsToImport.length} translations...`);
+    console.log(`Importing ${translationsToImport.length} translations...`);
 
     // Show progress
     let imported = 0;
@@ -1167,7 +1167,7 @@ function importTranslations(translationsToImport) {
     for (const item of translationsToImport) {
         const validation = validateText(item.corrected);
         if (!validation.valid) {
-            console.warn(`⚠️ Skipping invalid translation: ${item.corrected}`);
+            console.warn(`Skipping invalid translation: ${item.corrected}`);
             failed++;
             continue;
         }
@@ -1188,7 +1188,7 @@ function importTranslations(translationsToImport) {
 
     showToast(`✅ Import completed! — ${imported} transcription(s) imported ${failed > 0 ? `${failed} skipped (validation failed)` : 'No errors'}`, 'danger');
     
-    console.log(`✅ Import completed: ${imported}/${translationsToImport.length}`);
+    console.log(`Import completed: ${imported}/${translationsToImport.length}`);
 }
 
 function startSystemMonitor() {
@@ -1347,21 +1347,21 @@ async function refreshTTSCacheStats() {
         
         // Handle authentication errors
         if (response.status === 401) {
-            console.error('❌ Authentication failed for TTS cache stats');
+            console.error('Authentication failed for TTS cache stats');
             cacheItemsEl.textContent = '⚠️ Not authenticated';
             cacheMemoryEl.textContent = '⚠️ Not authenticated';
             return;
         }
         
         if (response.status === 403) {
-            console.error('❌ Access denied for TTS cache stats');
+            console.error('Access denied for TTS cache stats');
             cacheItemsEl.textContent = '⚠️ Access denied';
             cacheMemoryEl.textContent = '⚠️ Access denied';
             return;
         }
         
         if (!response.ok) {
-            console.error(`❌ Failed to fetch TTS cache stats: HTTP ${response.status}`);
+            console.error(`Failed to fetch TTS cache stats: HTTP ${response.status}`);
             cacheItemsEl.textContent = '❌ Error';
             cacheMemoryEl.textContent = `❌ HTTP ${response.status}`;
             return;
@@ -1371,10 +1371,10 @@ async function refreshTTSCacheStats() {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const bodyText = await response.text();
-            console.error('❌ Backend returned non-JSON response:', bodyText.substring(0, 200));
+            console.error('Backend returned non-JSON response:', bodyText.substring(0, 200));
             cacheItemsEl.textContent = '❌ Server Error';
             cacheMemoryEl.textContent = '❌ Invalid response from server';
-            console.warn('💡 Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
+            console.warn('Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
         
@@ -1386,19 +1386,19 @@ async function refreshTTSCacheStats() {
                 `${data.cache_items}/${data.max_cache_items}`;
             cacheMemoryEl.textContent = 
                 `${data.cache_size_mb.toFixed(2)}MB/${data.max_cache_size_mb}MB`;
-            console.log('✅ TTS Cache Stats:', data);
+            console.log('TTS Cache Stats:', data);
         } else {
             const errorMsg = data.error || 'Unknown error';
-            console.error('❌ Backend error:', errorMsg);
+            console.error('Backend error:', errorMsg);
             cacheItemsEl.textContent = '❌ Error';
             cacheMemoryEl.textContent = `❌ ${errorMsg}`;
-            console.warn('💡 Tip: Check admin server logs for details about the TTS cache error.');
+            console.warn('Tip: Check admin server logs for details about the TTS cache error.');
         }
     } catch (error) {
-        console.error('❌ Network error refreshing TTS cache stats:', error);
+        console.error('Network error refreshing TTS cache stats:', error);
         document.getElementById('cache-items').textContent = '❌ Error';
         document.getElementById('cache-memory').textContent = '❌ ' + (error.message || 'Network error');
-        console.warn('💡 Tip: Check if the admin panel is accessible and the backend is running.');
+        console.warn('Tip: Check if the admin panel is accessible and the backend is running.');
     }
 }
 
@@ -1420,19 +1420,19 @@ async function clearTTSCache() {
         
         // Handle authentication errors
         if (response.status === 401) {
-            console.error('❌ Authentication failed for TTS cache clear');
+            console.error('Authentication failed for TTS cache clear');
             showToast('❌ Session expired, please login again', 'danger');
             return;
         }
         
         if (response.status === 403) {
-            console.error('❌ Access denied for TTS cache clear');
+            console.error('Access denied for TTS cache clear');
             showToast('❌ Admin access required to clear cache', 'danger');
             return;
         }
         
         if (!response.ok) {
-            console.error(`❌ Failed to clear TTS cache: HTTP ${response.status}`);
+            console.error(`Failed to clear TTS cache: HTTP ${response.status}`);
             showToast(`❌ Failed to clear TTS cache (HTTP ${response.status}) — Check browser console and server logs for details.`, 'danger');
             return;
         }
@@ -1441,9 +1441,9 @@ async function clearTTSCache() {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const bodyText = await response.text();
-            console.error('❌ Backend returned non-JSON response:', bodyText.substring(0, 200));
+            console.error('Backend returned non-JSON response:', bodyText.substring(0, 200));
             showToast('❌ Invalid response from server. Check browser console for details.', 'danger');
-            console.warn('💡 Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
+            console.warn('Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
         
@@ -1451,22 +1451,22 @@ async function clearTTSCache() {
         
         if (data.success) {
             showToast(`✅ TTS Cache Cleared! — Cleared: ${data.cleared_items} items Freed: ${data.freed_mb.toFixed(2)}MB`, 'success');
-            console.log('✅ TTS Cache cleared:', data);
+            console.log('TTS Cache cleared:', data);
             // Refresh stats after clearing
             setTimeout(() => refreshTTSCacheStats(), 500);
         } else {
             const errorMsg = data.error || 'Failed to clear cache';
-            console.error('❌ Backend error:', errorMsg);
+            console.error('Backend error:', errorMsg);
             showToast(`❌ ${errorMsg} — Check admin server logs for details.`, 'danger');
         }
     } catch (error) {
-        console.error('❌ Network error clearing TTS cache:', error);
+        console.error('Network error clearing TTS cache:', error);
         showToast(`❌ Error: ${error.message} — Check if the admin panel is accessible and the backend is running.`, 'danger');
     }
 }
 
-console.log('✅ EzySpeechTranslate Admin Panel Ready');
-console.log('📝 Keyboard Shortcuts:');
+console.log('EzySpeechTranslate Admin Panel Ready');
+console.log('Keyboard Shortcuts:');
 console.log('   Ctrl+R: Toggle recording');
 console.log('   Ctrl+S: Save correction');
 console.log('   Escape: Cancel selection');
@@ -1982,9 +1982,9 @@ async function _startRecognitionAfterLock() {
         updateRecordButton();
         recognition.start();
         if (typeof lastSpeechTimestamp !== 'undefined') lastSpeechTimestamp = Date.now();
-        console.log('🎤 Recognition started (lock acquired)');
+        console.log('Recognition started (lock acquired)');
     } catch (error) {
-        console.error('❌ Start failed:', error);
+        console.error('Start failed:', error);
         isRecording = false;
         updateRecordButton();
         if (typeof showToast === 'function')

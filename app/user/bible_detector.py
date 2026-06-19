@@ -366,7 +366,7 @@ def init(
     _MAX_VERSES = max(1, int(max_verses))
     _API_TIMEOUT = max(1, int(api_timeout))
     logger.info(
-        "📖 Bible detector: source=%s target=%s max_verses=%d",
+        "Bible detector: source=%s target=%s max_verses=%d",
         _SOURCE_TRANSLATION,
         _TARGET_TRANSLATION or "(none)",
         _MAX_VERSES,
@@ -432,7 +432,7 @@ def _fetch_batch(requests_list: list[dict]) -> list[list[dict]]:
                 # Normalise to {verse, text} so downstream code works unchanged
                 return req_idx, {"verse": data["verse"], "text": data.get("text", "")}
         except Exception as exc:
-            logger.debug("📖 Bible verse fetch failed %s: %s", url, exc)
+            logger.debug("Bible verse fetch failed %s: %s", url, exc)
         return req_idx, None
 
     try:
@@ -443,7 +443,7 @@ def _fetch_batch(requests_list: list[dict]) -> list[list[dict]]:
                 if row is not None:
                     results[req_idx].append(row)
     except Exception as exc:
-        logger.warning("📖 Bible API batch fetch failed: %s", exc)
+        logger.warning("Bible API batch fetch failed: %s", exc)
 
     return results
 
@@ -578,5 +578,5 @@ def fetch_languages() -> list[dict]:
         resp.raise_for_status()
         return resp.json()
     except Exception as exc:
-        logger.warning("📖 Bible languages fetch failed: %s", exc)
+        logger.warning("Bible languages fetch failed: %s", exc)
         return []

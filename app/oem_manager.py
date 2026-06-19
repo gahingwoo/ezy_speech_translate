@@ -63,7 +63,7 @@ class OEMConfig:
         # Merge with provided config data
         if config_data:
             config = self._deep_merge(config, config_data)
-            logger.info("✓ OEM configuration loaded from config.yaml")
+            logger.info("OEM configuration loaded from config.yaml")
         
         return config
     
@@ -200,6 +200,6 @@ def init_oem_config(app, get_config_func):
     )
     
     status = "enabled" if oem_enabled else "disabled"
-    logger.info(f"✓ OEM Configuration initialized (status: {status})")
+    logger.info(f"OEM Configuration initialized (status: {status})")
     
     return oem_config

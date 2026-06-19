@@ -40,10 +40,10 @@ class UpdateManager:
         print(f"[{step_num}] {text}")
 
     def print_success(self, text):
-        print(f"✓ {text}")
+        print(f"{text}")
 
     def print_error(self, text):
-        print(f"✗ {text}")
+        print(f"{text}")
         sys.exit(1)
 
     def print_info(self, text):
