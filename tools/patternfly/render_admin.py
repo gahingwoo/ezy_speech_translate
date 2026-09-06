@@ -47,7 +47,7 @@ def btn_icon(name, where="start"):
 # and it references them by id through svgIcon() — the helper of that name in
 # admin.js.
 SPRITE_ICONS = ("check-circle", "exclamation-circle", "exclamation-triangle",
-                "info-circle", "times")
+                "grip-vertical", "info-circle", "times")
 
 
 def sprite():
@@ -112,15 +112,15 @@ def select(el_id, options, aria, onchange=None, extra="", indent=10):
 
 
 def textarea(el_id, rows=3, placeholder=None, i18n_placeholder=None,
-             disabled=False, extra="", indent=10):
+             readonly=False, extra="", indent=10):
     pad = " " * indent
     return ('%s<span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical%s">\n'
             '%s  <textarea id="%s" rows="%d"%s%s%s></textarea>\n'
             '%s</span>' % (
-                pad, " pf-m-disabled" if disabled else "", pad, el_id, rows,
+                pad, " pf-m-readonly pf-m-plain" if readonly else "", pad, el_id, rows,
                 ' placeholder="%s"' % placeholder if placeholder else "",
                 ' data-i18n-placeholder="%s"' % i18n_placeholder if i18n_placeholder else "",
-                (" disabled" if disabled else "") + extra, pad))
+                (" readonly" if readonly else "") + extra, pad))
 
 
 def text_input(el_id, kind="text", placeholder=None, extra="", indent=10):
@@ -324,6 +324,26 @@ DISPLAY_LANG_ONCHANGE = (
 
 # ── the sidebar ───────────────────────────────────────────────────────────
 
+def room_section():
+    """Which room this panel is broadcasting to, and the way into the manager.
+    It was in the masthead, where on a phone it pushed the bar to three rows."""
+    body = '''      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control room-switcher">
+          <span class="pf-v6-c-label pf-m-outline">
+            <span class="pf-v6-c-label__content">
+              <span class="pf-v6-c-label__icon">%s</span>
+              <span class="pf-v6-c-label__text" id="currentRoomLabel">main</span>
+            </span>
+          </span>
+%s
+        </div>
+      </div>
+''' % (icon("users"),
+       button("Manage rooms", "openRoomManager()", None, "secondary",
+              i18n="manage_rooms", indent=10))
+    return section("Room", body)
+
+
 def audio_section():
     body = (
         group(select("sourceLangSelect", SOURCE_LANGS, "Source language",
@@ -413,7 +433,7 @@ def settings_section():
 
 
 def tts_cache_section():
-    stats = ('''          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact"
+    stats = ('''          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
               id="ttsCacheStats">
 %s%s          </dl>'''
              % (dl_group("Items", '<strong id="cache-items">0/1000</strong>'),
@@ -523,7 +543,7 @@ def edit_card():
           </div>
         </div>
 ''' % (
-        group(textarea("originalText", 3, disabled=True, indent=16),
+        group(textarea("originalText", 3, readonly=True, indent=16),
               "Original", "original", "originalText", indent=14),
         group(textarea("correctedText", 4, "Select an item to edit...",
                        "selectItemToEdit", indent=16),
@@ -552,7 +572,7 @@ def system_info_card():
             </div>
           </div>
           <div class="pf-v6-c-card__body">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact">
+            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
 %s            </dl>
           </div>
         </div>
@@ -575,7 +595,7 @@ def analytics_card():
             </div>
           </div>
           <div class="pf-v6-c-card__body" id="analyticsCard" aria-label="Session Analytics">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact">
+            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
 %s            </dl>
           </div>
           <div class="pf-v6-c-card__footer">
@@ -588,20 +608,28 @@ def analytics_card():
 
 def empty_state(indent=16):
     """The list is empty on load and again whenever admin.js clears it, so the
-    same markup is rendered inline and into a <template> it can clone."""
+    same markup is rendered inline and into a <template> it can clone. It is a
+    row of the data list, because that is what it stands in for."""
     pad = " " * indent
-    return ('%s<div class="pf-v6-c-empty-state">\n'
-            '%s  <div class="pf-v6-c-empty-state__content">\n'
-            '%s    <div class="pf-v6-c-empty-state__icon">%s</div>\n'
-            '%s    <div class="pf-v6-c-empty-state__title">\n'
-            '%s      <h2 class="pf-v6-c-empty-state__title-text"\n'
-            '%s          data-i18n="noTranscriptionsYet">No transcriptions yet</h2>\n'
+    return ('%s<li class="pf-v6-c-data-list__item empty-row">\n'
+            '%s  <div class="pf-v6-c-data-list__item-row">\n'
+            '%s    <div class="pf-v6-c-data-list__item-content">\n'
+            '%s      <div class="pf-v6-c-data-list__cell">\n'
+            '%s        <div class="pf-v6-c-empty-state">\n'
+            '%s          <div class="pf-v6-c-empty-state__content">\n'
+            '%s            <div class="pf-v6-c-empty-state__icon">%s</div>\n'
+            '%s            <div class="pf-v6-c-empty-state__title">\n'
+            '%s              <h2 class="pf-v6-c-empty-state__title-text"\n'
+            '%s                  data-i18n="noTranscriptionsYet">No transcriptions yet</h2>\n'
+            '%s            </div>\n'
+            '%s            <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">\n'
+            '%s              Start recording to see transcriptions</div>\n'
+            '%s          </div>\n'
+            '%s        </div>\n'
+            '%s      </div>\n'
             '%s    </div>\n'
-            '%s    <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">\n'
-            '%s      Start recording to see transcriptions</div>\n'
             '%s  </div>\n'
-            '%s</div>\n' % (pad, pad, pad, icon("comments"), pad, pad, pad, pad,
-                            pad, pad, pad, pad))
+            '%s</li>\n' % ((pad,) * 7 + (icon("comments"),) + (pad,) * 12))
 
 
 # ── dialogs ───────────────────────────────────────────────────────────────
@@ -711,8 +739,7 @@ def recording_lock_modal():
 
 # term, its translation key, value, the value's translation key.
 ABOUT_ROWS = (
-    ("Version", None, "v3.3.0 - Open Source - MIT License", "version"),
-    ("Made by", "madeBy", "Ga Hing Woo", "author"),
+    ("Version", None, "v4.0.0 - Open Source - MIT License", "version"),
     ("Source", None, '<a href="https://github.com/gahingwoo/ezy_speech_translate"'
      ' rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a>',
      None),
@@ -755,6 +782,14 @@ def about_modal():
       <div class="pf-v6-c-about-modal-box__content">
         <dl class="pf-v6-c-description-list pf-m-horizontal">
 %s        </dl>
+        <p class="credit-badge">
+          <a href="https://github.com/gahingwoo" rel="noopener noreferrer" target="_blank">
+            <img class="credit-badge__light" src="{{ static_url('img/credit-badge-light.svg') }}"
+                 width="360" height="110" alt="Engineered by gahingwoo">
+            <img class="credit-badge__dark" src="{{ static_url('img/credit-badge-dark.svg') }}"
+                 width="360" height="110" alt="">
+          </a>
+        </p>
         <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
           Let language no longer stand in the way of connection</p>
       </div>
@@ -857,7 +892,7 @@ PAGE_SCRIPT = '''  <script>
 
 
 def build():
-    sidebar = (audio_section() + actions_section() + settings_section()
+    sidebar = (room_section() + audio_section() + actions_section() + settings_section()
                + tts_cache_section() + bible_section() + announcement_section()
                + qr_section())
 
@@ -917,24 +952,14 @@ def build():
 
       <div class="pf-v6-c-masthead__content">
         <!-- updateStatus() in admin.js replaces this class list outright, so
-             what it writes and what is written here have to agree. -->
+             what it writes and what is written here have to agree. The label's
+             colour carries the state; an icon as well would say it twice. -->
         <span class="pf-v6-c-label pf-m-red connection-badge offline" id="statusBadge"
-              role="status" aria-live="polite">
+              title="User server" role="status" aria-live="polite">
           <span class="pf-v6-c-label__content">
-            <span class="pf-v6-c-label__icon">%(bullseye)s</span>
-            <span class="pf-v6-c-label__text" data-i18n="offline">Disconnected</span>
+            <span class="pf-v6-c-label__text" data-i18n="offline">Offline</span>
           </span>
         </span>
-
-        <div class="room-switcher">
-          <span class="pf-v6-c-label pf-m-outline" title="Current room">
-            <span class="pf-v6-c-label__content">
-              <span class="pf-v6-c-label__icon">%(users)s</span>
-              <span class="pf-v6-c-label__text" id="currentRoomLabel">main</span>
-            </span>
-          </span>
-%(manage)s
-        </div>
 
 %(config)s
 %(logout)s
@@ -971,8 +996,9 @@ def build():
                 </p>
               </div>
 
-              <div class="transcription-list" id="transcriptionsList" role="list">
-%(empty)s              </div>
+              <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag transcription-list"
+                  id="transcriptionsList" role="list" aria-label="Transcriptions">
+%(empty)s              </ul>
             </div>
 
             <div class="pf-v6-l-grid__item pf-m-12-col pf-m-4-col-on-lg edit-panel">
@@ -997,13 +1023,9 @@ def build():
 ''' % {
         "sprite": sprite(),
         "bars": btn_icon("bars"),
-        "bullseye": icon("bullseye"),
-        "users": icon("users"),
         "grip": icon("grip-vertical"),
         "empty": empty_state(),
         "empty_template": empty_state(6),
-        "manage": button("Manage", "openRoomManager()", None, "secondary pf-m-block sidebar-action",
-                         i18n="manage_rooms", indent=10),
         "config": button("Config", "openConfigPasswordGate()", "cog",
                          "plain masthead-action",
                          extra=' title="Settings" aria-label="Settings"', indent=8),

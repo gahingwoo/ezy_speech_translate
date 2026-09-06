@@ -17,6 +17,16 @@
 
 /* ── page ─────────────────────────────────────────────────────────────── */
 
+/* PatternFly sets `display` on its components, and any author rule beats the
+ * browser's own `[hidden] { display: none }`. Without this the hidden
+ * attribute does nothing on a form section, a card body or an alert — which is
+ * how the room switcher stayed on screen with one room in the list.
+ */
+[hidden] {
+  display: none !important;
+}
+
+
 html,
 body {
   height: 100%;
@@ -57,10 +67,20 @@ html.pf-v6-theme-dark .icon-moon {
 
 /* ── masthead ─────────────────────────────────────────────────────────── */
 
-/* The mark sits on the masthead's own ground, at the size the church site
-   sets it: see .brand .brand-mark in mabc-ws/assets/site.css. No tile behind
-   it — a box around the mark reads as a favicon, not as the brand. */
+/* PatternFly sizes the logo box for a lockup image and fixes it at 11.8125rem.
+   This brand is a mark plus a name set in type, which needs more than that, so
+   the box was squashing the mark to 17.7px wide against its 28px height — the
+   glyph came out thin and stretched. The box takes the width its content asks
+   for, and the mark never shrinks.
+
+   Size and weight follow the church site: see .brand .brand-mark and
+   .brand-name in mabc-ws/assets/site.css. */
+.pf-v6-c-masthead__logo {
+  --pf-v6-c-masthead__logo--Width: auto;
+}
+
 .pf-v6-c-masthead__logo .brand-mark {
+  flex-shrink: 0;
   width: auto;
   height: 1.75rem;
 }
@@ -71,6 +91,7 @@ html.pf-v6-theme-dark .icon-moon {
   gap: var(--pf-t--global--spacer--sm);
   font-family: var(--pf-t--global--font--family--heading);
   font-size: var(--pf-t--global--font--size--heading--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
   white-space: nowrap;
 }
 
@@ -113,6 +134,19 @@ html.pf-v6-theme-dark .icon-moon {
 
 .pf-v6-c-page__sidebar-body {
   overflow-y: auto;
+}
+
+/* A folded group is a title and a chevron; the open ones keep the panel
+   padding. The rule between them is what makes the column readable. */
+.pf-v6-c-form__section + .sidebar-section,
+.pf-v6-c-form__field-group + .sidebar-section {
+  border-block-start: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+  padding-block-start: var(--pf-t--global--spacer--lg);
+}
+
+.pf-v6-c-form__field-group.sidebar-section {
+  --pf-v6-c-form__field-group-body--PaddingBlockStart: var(--pf-t--global--spacer--sm);
 }
 
 /* Actions in the sidebar read as a column of links rather than a row of
@@ -376,6 +410,14 @@ html.pf-v6-theme-dark .icon-moon {
     visibility 0s linear var(--pf-t--global--motion--duration--fade--default);
 }
 
+/* PatternFly sizes a modal for a desktop; on a phone the large one is wider
+   than the screen. The backdrop's padding is the room it gets. */
+.app-modal > .pf-v6-c-modal-box,
+.app-modal > .pf-v6-c-about-modal-box {
+  max-width: 100%;
+  max-height: 100%;
+}
+
 .app-modal.active,
 .app-modal.modal-overlay--open,
 .app-modal:not([hidden]).room-picker-overlay {
@@ -440,6 +482,32 @@ html.pf-v6-theme-dark .icon-moon {
   overflow-wrap: anywhere;
 }
 
+/* The maker's badge in the about box. Two files, one for each ground; the SVGs
+   are loaded as images so nothing in them reaches the network. */
+.credit-badge {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+}
+
+.credit-badge img {
+  display: block;
+  width: auto;
+  height: 2.25rem;
+}
+
+/* `.credit-badge img` is one class and one element, so it outranks a bare
+   class: the hiding selectors have to reach for the parent too. */
+.credit-badge .credit-badge__dark {
+  display: none;
+}
+
+html.pf-v6-theme-dark .credit-badge .credit-badge__light {
+  display: none;
+}
+
+html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
+  display: block;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-modal,
   .app-modal > .pf-v6-c-modal-box,
@@ -449,26 +517,21 @@ html.pf-v6-theme-dark .icon-moon {
   }
 }
 
-.tour-body {
-  min-height: 6rem;
+/* The guide: the steps down one side, the step being read on the other. Below
+   md there is no room for two columns, so they stack. */
+.tour-layout {
+  display: grid;
+  gap: var(--pf-t--global--spacer--lg);
 }
 
-.tour-dots {
-  display: flex;
-  justify-content: center;
-  gap: var(--pf-t--global--spacer--xs);
-  margin-block-start: var(--pf-t--global--spacer--md);
+@media (min-width: 48rem) {
+  .tour-layout {
+    grid-template-columns: 15rem 1fr;
+  }
 }
 
-.tour-dot {
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  background: var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--pill);
-}
-
-.tour-dot.active {
-  background: var(--pf-t--global--color--brand--default);
+.tour-progress {
+  margin-inline-end: auto;
 }
 
 .tour-progress {
@@ -502,16 +565,13 @@ html[data-ui-mode="elderly"] .text-source {
 /* These class names are set from JavaScript, so they are contracts: the
    markup never carries them, and renaming one silently breaks a control. */
 
-/* PatternFly slides its own sidebar out below xl and back with .pf-m-expanded;
-   this page toggles .mobile-open, so that sets the same pair. The sidebar sits
-   at z-index sm and the backdrop at lg, so the open drawer has to be lifted
-   over its own backdrop or every click lands on the dim. */
-.pf-v6-c-page__sidebar.mobile-open {
-  --pf-v6-c-page__sidebar--TranslateX: var(--pf-v6-c-page__sidebar--m-expanded--TranslateX);
-  --pf-v6-c-page__sidebar--Opacity: var(--pf-v6-c-page__sidebar--m-expanded--Opacity);
-
+/* The sidebar is PatternFly's, and so is its state: .pf-m-expanded opens the
+   drawer below xl, .pf-m-collapsed closes the panel at xl and above, and the
+   component animates both. All this adds is lifting the open drawer over its
+   own backdrop — the sidebar sits at z-index sm and the backdrop at lg, so
+   without this every click on the drawer lands on the dim. */
+.pf-v6-c-page__sidebar.pf-m-expanded {
   z-index: var(--pf-t--global--z-index--xl);
-  box-shadow: var(--pf-v6-c-page__sidebar--BoxShadow);
 }
 
 .sidebar-overlay {

@@ -144,31 +144,44 @@ function validateText(text, maxLength = 5000) {
 }
 
 function toggleMobileMenu() {
+    setSidebarOpen(!isSidebarOpen());
+}
+
+/* PatternFly owns the sidebar's state. Below xl the panel is a drawer that
+   .pf-m-expanded slides in; from xl it is a column that .pf-m-collapsed folds
+   away, and the page's main container widens into the space. One toggle, two
+   classes, because which one applies depends on the width. */
+function sidebarIsWide() {
+    return window.matchMedia('(min-width: 75rem)').matches;
+}
+
+function isSidebarOpen() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return false;
+    return sidebarIsWide()
+        ? !sidebar.classList.contains('pf-m-collapsed')
+        : sidebar.classList.contains('pf-m-expanded');
+}
+
+function setSidebarOpen(open) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggle = document.getElementById('mobileMenuToggle');
-
-    const isOpen = sidebar.classList.contains('mobile-open');
-
-    if (isOpen) {
-        sidebar.classList.remove('mobile-open');
-        overlay.classList.remove('active');
-        toggle.classList.remove('active');
-    } else {
-        sidebar.classList.add('mobile-open');
-        overlay.classList.add('active');
-        toggle.classList.add('active');
+    if (!sidebar) return;
+    const wide = sidebarIsWide();
+    sidebar.classList.toggle('pf-m-collapsed', wide && !open);
+    sidebar.classList.toggle('pf-m-expanded', !wide && open);
+    if (overlay) overlay.classList.toggle('active', open && !wide);
+    if (toggle) {
+        toggle.classList.toggle('active', open);
+        toggle.setAttribute('aria-expanded', String(open));
     }
 }
 
 function closeMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggle = document.getElementById('mobileMenuToggle');
-
-    sidebar.classList.remove('mobile-open');
-    overlay.classList.remove('active');
-    toggle.classList.remove('active');
+    // Only the drawer closes on its own; folding the desktop panel away
+    // because someone pressed a button in it would be a surprise.
+    if (!sidebarIsWide()) setSidebarOpen(false);
 }
 
 function showAbout() {
@@ -531,11 +544,13 @@ function connectWebSocket() {
 function updateStatus(connected) {
     const badge = document.getElementById('statusBadge');
     if (connected) {
+        // Short, because this sits in a masthead that has to fit a phone. The
+        // element's title says which server it is.
         badge.className = 'pf-v6-c-label pf-m-green connection-badge online';
-        badge.querySelector('.pf-v6-c-label__text').textContent = 'User Server is Online';
+        badge.querySelector('.pf-v6-c-label__text').textContent = 'Online';
     } else {
         badge.className = 'pf-v6-c-label pf-m-red connection-badge offline';
-        badge.querySelector('.pf-v6-c-label__text').textContent = 'User Server is Offline';
+        badge.querySelector('.pf-v6-c-label__text').textContent = 'Offline';
     }
 }
 
@@ -881,36 +896,51 @@ function renderTranscriptions() {
 
     // Display in reverse order (newest first)
     const reversed = [...translations].reverse();
+    // PatternFly's data list: a row with a drag handle, a check and a cell.
+    // .transcription-card stays on the row because admin.js's drag handlers
+    // find rows by that class.
     list.innerHTML = reversed.map((item, index) => `
-        <div class="pf-v6-c-card pf-m-compact transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
-             draggable="true"
-             data-id="${item.id}"
-             data-index="${index}"
-             onclick="selectItem(${item.id})"
-             ondragstart="handleDragStart(event, ${index})"
-             ondragend="handleDragEnd(event)"
-             ondragover="handleDragOver(event)"
-             ondrop="handleDrop(event, ${index})"
-             ontouchstart="handleTouchStart(event, ${index})"
-             ontouchmove="handleTouchMove(event)"
-             ontouchend="handleTouchEnd(event)">
-            <div class="drag-handle" aria-hidden="true"
-                 onmousedown="event.stopPropagation()"
-                 ontouchstart="event.stopPropagation()"></div>
-            <input type="checkbox"
-                   aria-label="Select transcription"
-                   class="pf-v6-c-check__input card-checkbox"
-                   data-id="${item.id}"
-                   ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
-                   onclick="handleCheckboxClick(event, ${item.id})">
-            <div class="card-content">
+        <li class="pf-v6-c-data-list__item transcription-card ${selectedItem && selectedItem.id === item.id ? 'pf-m-selected selected' : ''}"
+            draggable="true"
+            data-id="${item.id}"
+            data-index="${index}"
+            onclick="selectItem(${item.id})"
+            ondragstart="handleDragStart(event, ${index})"
+            ondragend="handleDragEnd(event)"
+            ondragover="handleDragOver(event)"
+            ondrop="handleDrop(event, ${index})"
+            ontouchstart="handleTouchStart(event, ${index})"
+            ontouchmove="handleTouchMove(event)"
+            ontouchend="handleTouchEnd(event)">
+          <div class="pf-v6-c-data-list__item-row">
+            <div class="pf-v6-c-data-list__item-control">
+              <div class="pf-v6-c-data-list__item-draggable-button">
+                <button class="pf-v6-c-button pf-m-plain drag-handle" type="button"
+                        aria-label="Reorder this transcription"
+                        onmousedown="event.stopPropagation()"
+                        ontouchstart="event.stopPropagation()">
+                  <span class="pf-v6-c-data-list__item-draggable-icon">${svgIcon('grip-vertical')}</span>
+                </button>
+              </div>
+              <div class="pf-v6-c-data-list__check">
+                <input type="checkbox" class="pf-v6-c-check__input card-checkbox"
+                       aria-label="Select transcription"
+                       data-id="${item.id}"
+                       ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
+                       onclick="handleCheckboxClick(event, ${item.id})">
+              </div>
+            </div>
+            <div class="pf-v6-c-data-list__item-content">
+              <div class="pf-v6-c-data-list__cell">
                 <div class="card-header">
-                    <span class="card-time">${escapeHtml(item.timestamp)}</span>
-                    ${item.is_corrected ? `<span class="pf-v6-c-label pf-m-green pf-m-compact card-badge"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${(shared && shared[lang] && shared[lang]['corrected']) || 'Corrected'}</span></span></span>` : ''}
+                  <span class="card-time">${escapeHtml(item.timestamp)}</span>
+                  ${item.is_corrected ? `<span class="pf-v6-c-label pf-m-green pf-m-compact card-badge"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${(shared && shared[lang] && shared[lang]['corrected']) || 'Corrected'}</span></span></span>` : ''}
                 </div>
                 <div class="card-text">${escapeHtml(item.corrected)}</div>
+              </div>
             </div>
-        </div>
+          </div>
+        </li>
     `).join('');
 }
 

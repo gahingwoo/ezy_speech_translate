@@ -26,6 +26,7 @@
     <symbol id="i-check-circle" viewBox="0 0 512 512"><path d="M504 256c0 136.967-111.033 248-248 248S8 392.967 8 256 119.033 8 256 8s248 111.033 248 248zM227.314 387.314l184-184c6.248-6.248 6.248-16.379 0-22.627l-22.627-22.627c-6.248-6.249-16.379-6.249-22.628 0L216 308.118l-70.059-70.059c-6.248-6.248-16.379-6.248-22.628 0l-22.627 22.627c-6.248 6.248-6.248 16.379 0 22.627l104 104c6.249 6.249 16.379 6.249 22.628.001z"/></symbol>
     <symbol id="i-exclamation-circle" viewBox="0 0 512 512"><path d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zm-248 50c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/></symbol>
     <symbol id="i-exclamation-triangle" viewBox="0 0 576 512"><path d="M569.517 440.013C587.975 472.007 564.806 512 527.94 512H48.054c-36.937 0-59.999-40.055-41.577-71.987L246.423 23.985c18.467-32.009 64.72-31.951 83.154 0l239.94 416.028zM288 354c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/></symbol>
+    <symbol id="i-grip-vertical" viewBox="0 0 320 512"><path d="M96 32H32C14.33 32 0 46.33 0 64v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V64c0-17.67-14.33-32-32-32zm0 160H32c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zm0 160H32c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zM288 32h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V64c0-17.67-14.33-32-32-32zm0 160h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zm0 160h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32z"/></symbol>
     <symbol id="i-info-circle" viewBox="0 0 512 512"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></symbol>
     <symbol id="i-times" viewBox="0 0 352 512"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></symbol>
   </svg>
@@ -57,26 +58,14 @@
 
       <div class="pf-v6-c-masthead__content">
         <!-- updateStatus() in admin.js replaces this class list outright, so
-             what it writes and what is written here have to agree. -->
+             what it writes and what is written here have to agree. The label's
+             colour carries the state; an icon as well would say it twice. -->
         <span class="pf-v6-c-label pf-m-red connection-badge offline" id="statusBadge"
-              role="status" aria-live="polite">
+              title="User server" role="status" aria-live="polite">
           <span class="pf-v6-c-label__content">
-            <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 496 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M248 8C111.03 8 0 119.03 0 256s111.03 248 248 248 248-111.03 248-248S384.97 8 248 8zm0 432c-101.69 0-184-82.29-184-184 0-101.69 82.29-184 184-184 101.69 0 184 82.29 184 184 0 101.69-82.29 184-184 184zm0-312c-70.69 0-128 57.31-128 128s57.31 128 128 128 128-57.31 128-128-57.31-128-128-128zm0 192c-35.29 0-64-28.71-64-64s28.71-64 64-64 64 28.71 64 64-28.71 64-64 64z"/></svg></span>
-            <span class="pf-v6-c-label__text" data-i18n="offline">Disconnected</span>
+            <span class="pf-v6-c-label__text" data-i18n="offline">Offline</span>
           </span>
         </span>
-
-        <div class="room-switcher">
-          <span class="pf-v6-c-label pf-m-outline" title="Current room">
-            <span class="pf-v6-c-label__content">
-              <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 640 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm32 32h-64c-17.6 0-33.5 7.1-45.1 18.6 40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64zm-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32 208 82.1 208 144s50.1 112 112 112zm76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2zm-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"/></svg></span>
-              <span class="pf-v6-c-label__text" id="currentRoomLabel">main</span>
-            </span>
-          </span>
-          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button" onclick="openRoomManager()">
-            <span class="pf-v6-c-button__text" data-i18n="manage_rooms">Manage</span>
-          </button>
-        </div>
 
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="openConfigPasswordGate()" title="Settings" aria-label="Settings">
           <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M487.4 315.7l-42.6-24.6c4.3-23.2 4.3-47 0-70.2l42.6-24.6c4.9-2.8 7.1-8.6 5.5-14-11.1-35.6-30-67.8-54.7-94.6-3.8-4.1-10-5.1-14.8-2.3L380.8 110c-17.9-15.4-38.5-27.3-60.8-35.1V25.8c0-5.6-3.9-10.5-9.4-11.7-36.7-8.2-74.3-7.8-109.2 0-5.5 1.2-9.4 6.1-9.4 11.7V75c-22.2 7.9-42.8 19.8-60.8 35.1L88.7 85.5c-4.9-2.8-11-1.9-14.8 2.3-24.7 26.7-43.6 58.9-54.7 94.6-1.7 5.4.6 11.2 5.5 14L67.3 221c-4.3 23.2-4.3 47 0 70.2l-42.6 24.6c-4.9 2.8-7.1 8.6-5.5 14 11.1 35.6 30 67.8 54.7 94.6 3.8 4.1 10 5.1 14.8 2.3l42.6-24.6c17.9 15.4 38.5 27.3 60.8 35.1v49.2c0 5.6 3.9 10.5 9.4 11.7 36.7 8.2 74.3 7.8 109.2 0 5.5-1.2 9.4-6.1 9.4-11.7v-49.2c22.2-7.9 42.8-19.8 60.8-35.1l42.6 24.6c4.9 2.8 11 1.9 14.8-2.3 24.7-26.7 43.6-58.9 54.7-94.6 1.5-5.5-.7-11.3-5.6-14.1zM256 336c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/></svg></span><span class="pf-v6-c-button__text">Config</span>
@@ -96,6 +85,22 @@
     <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Controls and settings">
       <div class="pf-v6-c-page__sidebar-body">
         <form class="pf-v6-c-form" onsubmit="return false;">
+    <section class="pf-v6-c-form__section sidebar-section">
+      <h2 class="pf-v6-c-form__section-title">Room</h2>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control room-switcher">
+          <span class="pf-v6-c-label pf-m-outline">
+            <span class="pf-v6-c-label__content">
+              <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 640 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm32 32h-64c-17.6 0-33.5 7.1-45.1 18.6 40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64zm-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32 208 82.1 208 144s50.1 112 112 112zm76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2zm-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"/></svg></span>
+              <span class="pf-v6-c-label__text" id="currentRoomLabel">main</span>
+            </span>
+          </span>
+          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="openRoomManager()">
+            <span class="pf-v6-c-button__text" data-i18n="manage_rooms">Manage rooms</span>
+          </button>
+        </div>
+      </div>
+    </section>
     <section class="pf-v6-c-form__section sidebar-section">
       <h2 class="pf-v6-c-form__section-title" data-i18n="audioControls">Audio Controls</h2>
       <div class="pf-v6-c-form__group">
@@ -238,7 +243,7 @@
         <div class="pf-v6-c-form__group-control">
           <div class="pf-v6-c-card pf-m-compact" id="ttsCacheContainer" aria-label="TTS Cache">
             <div class="pf-v6-c-card__body">
-          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact"
+          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
               id="ttsCacheStats">
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
@@ -460,19 +465,28 @@
                 </p>
               </div>
 
-              <div class="transcription-list" id="transcriptionsList" role="list">
-                <div class="pf-v6-c-empty-state">
-                  <div class="pf-v6-c-empty-state__content">
-                    <div class="pf-v6-c-empty-state__icon"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 192c0-88.4-93.1-160-208-160S0 103.6 0 192c0 34.3 14.1 65.9 38 92-13.4 30.2-35.5 54.2-35.8 54.5-2.2 2.3-2.8 5.7-1.5 8.7S4.8 352 8 352c36.6 0 66.9-12.3 88.7-25 32.2 15.7 70.3 25 111.3 25 114.9 0 208-71.6 208-160zm122 220c23.9-26 38-57.7 38-92 0-66.9-53.5-124.2-129.3-148.1.9 6.6 1.3 13.3 1.3 20.1 0 105.9-107.7 192-240 192-10.8 0-21.3-.8-31.7-1.9C207.8 439.6 281.8 480 368 480c41 0 79.1-9.2 111.3-25 21.8 12.7 52.1 25 88.7 25 3.2 0 6.1-1.9 7.3-4.8 1.3-2.9.7-6.3-1.5-8.7-.3-.3-22.4-24.2-35.8-54.5z"/></svg></div>
-                    <div class="pf-v6-c-empty-state__title">
-                      <h2 class="pf-v6-c-empty-state__title-text"
-                          data-i18n="noTranscriptionsYet">No transcriptions yet</h2>
+              <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag transcription-list"
+                  id="transcriptionsList" role="list" aria-label="Transcriptions">
+                <li class="pf-v6-c-data-list__item empty-row">
+                  <div class="pf-v6-c-data-list__item-row">
+                    <div class="pf-v6-c-data-list__item-content">
+                      <div class="pf-v6-c-data-list__cell">
+                        <div class="pf-v6-c-empty-state">
+                          <div class="pf-v6-c-empty-state__content">
+                            <div class="pf-v6-c-empty-state__icon"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 192c0-88.4-93.1-160-208-160S0 103.6 0 192c0 34.3 14.1 65.9 38 92-13.4 30.2-35.5 54.2-35.8 54.5-2.2 2.3-2.8 5.7-1.5 8.7S4.8 352 8 352c36.6 0 66.9-12.3 88.7-25 32.2 15.7 70.3 25 111.3 25 114.9 0 208-71.6 208-160zm122 220c23.9-26 38-57.7 38-92 0-66.9-53.5-124.2-129.3-148.1.9 6.6 1.3 13.3 1.3 20.1 0 105.9-107.7 192-240 192-10.8 0-21.3-.8-31.7-1.9C207.8 439.6 281.8 480 368 480c41 0 79.1-9.2 111.3-25 21.8 12.7 52.1 25 88.7 25 3.2 0 6.1-1.9 7.3-4.8 1.3-2.9.7-6.3-1.5-8.7-.3-.3-22.4-24.2-35.8-54.5z"/></svg></div>
+                            <div class="pf-v6-c-empty-state__title">
+                              <h2 class="pf-v6-c-empty-state__title-text"
+                                  data-i18n="noTranscriptionsYet">No transcriptions yet</h2>
+                            </div>
+                            <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">
+                              Start recording to see transcriptions</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">
-                      Start recording to see transcriptions</div>
                   </div>
-                </div>
-              </div>
+                </li>
+              </ul>
             </div>
 
             <div class="pf-v6-l-grid__item pf-m-12-col pf-m-4-col-on-lg edit-panel">
@@ -491,8 +505,8 @@
                   </label>
                 </div>
                 <div class="pf-v6-c-form__group-control">
-                <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical pf-m-disabled">
-                  <textarea id="originalText" rows="3" disabled></textarea>
+                <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical pf-m-readonly pf-m-plain">
+                  <textarea id="originalText" rows="3" readonly></textarea>
                 </span>
                 </div>
               </div>
@@ -526,7 +540,7 @@
             </div>
           </div>
           <div class="pf-v6-c-card__body">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact">
+            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
                 <span class="pf-v6-c-description-list__text" data-i18n="clients">Clients</span>
@@ -569,7 +583,7 @@
             </div>
           </div>
           <div class="pf-v6-c-card__body" id="analyticsCard" aria-label="Session Analytics">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact">
+            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
                 <span class="pf-v6-c-description-list__text">Duration</span>
@@ -636,17 +650,25 @@
 
   <!-- admin.js clones this when it clears the list. -->
   <template id="emptyStateTemplate">
-      <div class="pf-v6-c-empty-state">
-        <div class="pf-v6-c-empty-state__content">
-          <div class="pf-v6-c-empty-state__icon"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 192c0-88.4-93.1-160-208-160S0 103.6 0 192c0 34.3 14.1 65.9 38 92-13.4 30.2-35.5 54.2-35.8 54.5-2.2 2.3-2.8 5.7-1.5 8.7S4.8 352 8 352c36.6 0 66.9-12.3 88.7-25 32.2 15.7 70.3 25 111.3 25 114.9 0 208-71.6 208-160zm122 220c23.9-26 38-57.7 38-92 0-66.9-53.5-124.2-129.3-148.1.9 6.6 1.3 13.3 1.3 20.1 0 105.9-107.7 192-240 192-10.8 0-21.3-.8-31.7-1.9C207.8 439.6 281.8 480 368 480c41 0 79.1-9.2 111.3-25 21.8 12.7 52.1 25 88.7 25 3.2 0 6.1-1.9 7.3-4.8 1.3-2.9.7-6.3-1.5-8.7-.3-.3-22.4-24.2-35.8-54.5z"/></svg></div>
-          <div class="pf-v6-c-empty-state__title">
-            <h2 class="pf-v6-c-empty-state__title-text"
-                data-i18n="noTranscriptionsYet">No transcriptions yet</h2>
+      <li class="pf-v6-c-data-list__item empty-row">
+        <div class="pf-v6-c-data-list__item-row">
+          <div class="pf-v6-c-data-list__item-content">
+            <div class="pf-v6-c-data-list__cell">
+              <div class="pf-v6-c-empty-state">
+                <div class="pf-v6-c-empty-state__content">
+                  <div class="pf-v6-c-empty-state__icon"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 192c0-88.4-93.1-160-208-160S0 103.6 0 192c0 34.3 14.1 65.9 38 92-13.4 30.2-35.5 54.2-35.8 54.5-2.2 2.3-2.8 5.7-1.5 8.7S4.8 352 8 352c36.6 0 66.9-12.3 88.7-25 32.2 15.7 70.3 25 111.3 25 114.9 0 208-71.6 208-160zm122 220c23.9-26 38-57.7 38-92 0-66.9-53.5-124.2-129.3-148.1.9 6.6 1.3 13.3 1.3 20.1 0 105.9-107.7 192-240 192-10.8 0-21.3-.8-31.7-1.9C207.8 439.6 281.8 480 368 480c41 0 79.1-9.2 111.3-25 21.8 12.7 52.1 25 88.7 25 3.2 0 6.1-1.9 7.3-4.8 1.3-2.9.7-6.3-1.5-8.7-.3-.3-22.4-24.2-35.8-54.5z"/></svg></div>
+                  <div class="pf-v6-c-empty-state__title">
+                    <h2 class="pf-v6-c-empty-state__title-text"
+                        data-i18n="noTranscriptionsYet">No transcriptions yet</h2>
+                  </div>
+                  <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">
+                    Start recording to see transcriptions</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">
-            Start recording to see transcriptions</div>
         </div>
-      </div>
+      </li>
   </template>
 
   <div class="pf-v6-c-backdrop app-modal" id="roomManagerModal" onclick="if(event.target===this)closeRoomManager()">
@@ -822,15 +844,7 @@
               <span class="pf-v6-c-description-list__text">Version</span>
             </dt>
             <dd class="pf-v6-c-description-list__description">
-              <div class="pf-v6-c-description-list__text" data-i18n="version">v3.3.0 - Open Source - MIT License</div>
-            </dd>
-          </div>
-          <div class="pf-v6-c-description-list__group">
-            <dt class="pf-v6-c-description-list__term">
-              <span class="pf-v6-c-description-list__text" data-i18n="madeBy">Made by</span>
-            </dt>
-            <dd class="pf-v6-c-description-list__description">
-              <div class="pf-v6-c-description-list__text" data-i18n="author">Ga Hing Woo</div>
+              <div class="pf-v6-c-description-list__text" data-i18n="version">v4.0.0 - Open Source - MIT License</div>
             </dd>
           </div>
           <div class="pf-v6-c-description-list__group">
@@ -850,6 +864,14 @@
             </dd>
           </div>
         </dl>
+        <p class="credit-badge">
+          <a href="https://github.com/gahingwoo" rel="noopener noreferrer" target="_blank">
+            <img class="credit-badge__light" src="{{ static_url('img/credit-badge-light.svg') }}"
+                 width="360" height="110" alt="Engineered by gahingwoo">
+            <img class="credit-badge__dark" src="{{ static_url('img/credit-badge-dark.svg') }}"
+                 width="360" height="110" alt="">
+          </a>
+        </p>
         <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
           Let language no longer stand in the way of connection</p>
       </div>

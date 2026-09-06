@@ -38,3 +38,14 @@ body { margin: 0; }
 .login-error:has(#loginError:empty) {
   display: none;
 }
+
+/* The reveal button holds both eyes; only the one matching the field's state
+   is shown, so the button never has to be rebuilt. */
+.icon-eye-slash,
+#passwordToggle[aria-pressed="true"] .icon-eye {
+  display: none;
+}
+
+#passwordToggle[aria-pressed="true"] .icon-eye-slash {
+  display: inline-block;
+}

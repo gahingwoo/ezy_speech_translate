@@ -212,4 +212,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
+/* The reveal button beside the password field. The button carries both eyes;
+   the stylesheet shows the one that matches aria-pressed, so nothing here has
+   to touch an icon. */
+function togglePassword() {
+    const input = document.getElementById('password');
+    const button = document.getElementById('passwordToggle');
+    if (!input || !button) return;
+    const shown = input.type === 'text';
+    input.type = shown ? 'password' : 'text';
+    button.setAttribute('aria-pressed', String(!shown));
+    button.setAttribute('aria-label', shown ? 'Show password' : 'Hide password');
+    input.focus();
+}
+window.togglePassword = togglePassword;
+
 console.log('Login page ready');

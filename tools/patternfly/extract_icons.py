@@ -28,7 +28,8 @@ OUT = ROOT / "tools/patternfly/icons.json"
 NAMES = """
 angle-down angle-left angle-right bars bell book bullhorn bullseye chart-line
 check check-circle cog comments copy database desktop download edit ellipsis-v
-exclamation-circle exclamation-triangle expand external-link-alt file-export
+exclamation-circle exclamation-triangle expand external-link-alt eye eye-slash
+file-export
 globe grip-vertical
 info-circle key keyboard language lightbulb list lock microphone moon
 paper-plane pause play plus qrcode redo save search share-alt sign-out-alt

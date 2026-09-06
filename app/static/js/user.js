@@ -1738,36 +1738,44 @@ function updateDisplayMode() {
    =================================== */
 
 function toggleMobileMenu() {
+    setSidebarOpen(!isSidebarOpen());
+}
+
+/* PatternFly owns the sidebar's state. Below xl the panel is a drawer that
+   .pf-m-expanded slides in; from xl it is a column that .pf-m-collapsed folds
+   away, and the page's main container widens into the space. One toggle, two
+   classes, because which one applies depends on the width. */
+function sidebarIsWide() {
+    return window.matchMedia('(min-width: 75rem)').matches;
+}
+
+function isSidebarOpen() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return false;
+    return sidebarIsWide()
+        ? !sidebar.classList.contains('pf-m-collapsed')
+        : sidebar.classList.contains('pf-m-expanded');
+}
+
+function setSidebarOpen(open) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggle = document.getElementById('mobileMenuToggle');
-    const isOpen = sidebar.classList.contains('mobile-open');
-
-    if (isOpen) {
-        sidebar.classList.remove('mobile-open');
-        overlay.classList.remove('active');
-        toggle.classList.remove('active');
-        if (toggle) toggle.setAttribute('aria-expanded', 'false');
-        if (overlay) overlay.setAttribute('aria-hidden', 'true');
-    } else {
-        sidebar.classList.add('mobile-open');
-        overlay.classList.add('active');
-        toggle.classList.add('active');
-        if (toggle) toggle.setAttribute('aria-expanded', 'true');
-        if (overlay) overlay.setAttribute('aria-hidden', 'false');
+    if (!sidebar) return;
+    const wide = sidebarIsWide();
+    sidebar.classList.toggle('pf-m-collapsed', wide && !open);
+    sidebar.classList.toggle('pf-m-expanded', !wide && open);
+    if (overlay) overlay.classList.toggle('active', open && !wide);
+    if (toggle) {
+        toggle.classList.toggle('active', open);
+        toggle.setAttribute('aria-expanded', String(open));
     }
 }
 
 function closeMobileMenu() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggle = document.getElementById('mobileMenuToggle');
-
-    sidebar.classList.remove('mobile-open');
-    overlay.classList.remove('active');
-    toggle.classList.remove('active');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
-    if (overlay) overlay.setAttribute('aria-hidden', 'true');
+    // Only the drawer closes on its own; folding the desktop panel away
+    // because someone pressed a button in it would be a surprise.
+    if (!sidebarIsWide()) setSidebarOpen(false);
 }
 
 function toggleMobileSearch() {
@@ -2078,15 +2086,34 @@ function __renderTour() {
     p.textContent = t(step.bodyKey, step.bodyFb);
     bodyEl.appendChild(p);
     if (dotsEl) {
-        dotsEl.innerHTML = '';
-        for (let i = 0; i < total; i++) {
-            const d = document.createElement('button');
-            d.type = 'button';
-            d.className = 'tour-dot' + (i === __tourStep ? ' active' : '');
-            d.setAttribute('aria-label', 'Go to step ' + (i + 1));
-            d.onclick = (function (idx) { return function () { __tourStep = idx; __renderTour(); }; })(i);
-            dotsEl.appendChild(d);
-        }
+        // PatternFly's progress stepper: a step is done, current, or still to
+        // come, and each one is a button so the tour can be jumped through.
+        dotsEl.replaceChildren();
+        steps.forEach(function (s, i) {
+            const state = i < __tourStep ? 'pf-m-success'
+                : i === __tourStep ? 'pf-m-current' : 'pf-m-pending';
+            const li = document.createElement('li');
+            li.className = 'pf-v6-c-progress-stepper__step ' + state;
+            if (i === __tourStep) li.setAttribute('aria-current', 'step');
+            const connector = document.createElement('div');
+            connector.className = 'pf-v6-c-progress-stepper__step-connector';
+            const icon = document.createElement('span');
+            icon.className = 'pf-v6-c-progress-stepper__step-icon';
+            // A finished step is ticked; the current and the coming ones are
+            // the plain circles PatternFly draws for them.
+            if (state === 'pf-m-success') icon.innerHTML = svgIcon('check');
+            connector.appendChild(icon);
+            const main = document.createElement('div');
+            main.className = 'pf-v6-c-progress-stepper__step-main';
+            const title = document.createElement('button');
+            title.type = 'button';
+            title.className = 'pf-v6-c-progress-stepper__step-title pf-v6-c-button pf-m-inline pf-m-link';
+            title.textContent = t(s.titleKey, s.titleFb);
+            title.onclick = function () { __tourStep = i; __renderTour(); };
+            main.appendChild(title);
+            li.append(connector, main);
+            dotsEl.appendChild(li);
+        });
     }
     if (progEl) progEl.textContent = (__tourStep + 1) + ' / ' + total;
     if (prevBtn) prevBtn.disabled = (__tourStep === 0);

@@ -79,6 +79,34 @@ def select(el_id, onchange, aria, options, extra=""):
             '          </span>' % (el_id, aria, onchange, extra, options, icon("angle-down")))
 
 
+def field_group(title, i18n, body, el_id=None, extra=""):
+    """PatternFly's expandable field group, which is what the design system
+    offers for a long form: the panel holds six groups of controls and only the
+    display settings are touched every time, so the rest start folded. The
+    component animates its own body open and shut."""
+    return '''    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section"%s%s>
+      <div class="pf-v6-c-form__field-group-toggle">
+        <div class="pf-v6-c-form__field-group-toggle-button">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                  aria-label="Toggle %s" onclick="toggleFieldGroup(this)">
+            <span class="pf-v6-c-form__field-group-toggle-icon">%s</span>
+          </button>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-header">
+        <div class="pf-v6-c-form__field-group-header-main">
+          <div class="pf-v6-c-form__field-group-header-title">
+            <div class="pf-v6-c-form__field-group-header-title-text"%s>%s</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-body">
+%s      </div>
+    </div>
+''' % (' id="%s"' % el_id if el_id else "", extra, title, icon("angle-right"),
+       ' data-i18n="%s"' % i18n if i18n else "", title, body)
+
+
 def sidebar_button(el_id, onclick, aria, icon_name, text_id, text, i18n_key=None, extra=""):
     """A full-width action in the sidebar. PatternFly's secondary button, not
     a nav item: these do things, they do not navigate. Not the link button
@@ -111,15 +139,13 @@ LANGS = ('<option value="en">English</option><option value="zh">简体中文</op
 
 
 def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=None,
-          title_icon_id=None, title_text_id=None):
+          title_icon_id=None, title_text_id=None, size="md"):
     close = close_fn or ("hide" + el_id.replace("Modal", "").capitalize() + "()")
     # The backdrop closes on a click; a click on the box itself must not reach
     # it, which is what the app's own handlers already expected.
     outer = close.replace("()", "(event)")
     return '''  <div class="pf-v6-c-backdrop app-modal" id="%s" onclick="%s">
-    <div class="pf-v6-l-bullseye">
-      <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true" aria-labelledby="%s"
-           onclick="event.stopPropagation()">
+    <div class="pf-v6-c-modal-box pf-m-%s" role="dialog" aria-modal="true" aria-labelledby="%s">
         <div class="pf-v6-c-modal-box__close">
           <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close" onclick="%s">%s</button>
         </div>
@@ -131,10 +157,9 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
         <div class="pf-v6-c-modal-box__body">
 %s
         </div>%s
-      </div>
     </div>
   </div>
-''' % (el_id, outer, title_id, close, btn_icon("times"),
+''' % (el_id, outer, size, title_id, close, btn_icon("times"),
        " pf-m-icon" if title_icon_id else "", title_id,
        # An element carrying data-i18n has its textContent replaced wholesale,
        # so anything the JavaScript writes into has to be a sibling of it, never
@@ -149,8 +174,7 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
 
 # term, its translation key, value, the value's translation key.
 ABOUT_ROWS = (
-    ("Version", None, "v3.3.0 - Open Source - MIT License", "version"),
-    ("Made by", "madeBy", "Ga Hing Woo", "author"),
+    ("Version", None, "v4.0.0 - Open Source - MIT License", "version"),
     ("Source", None, '<a href="https://github.com/gahingwoo/ezy_speech_translate"'
      ' rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a>',
      None),
@@ -193,6 +217,14 @@ def about_modal():
       <div class="pf-v6-c-about-modal-box__content">
         <dl class="pf-v6-c-description-list pf-m-horizontal">
 %s        </dl>
+        <p class="credit-badge">
+          <a href="https://github.com/gahingwoo" rel="noopener noreferrer" target="_blank">
+            <img class="credit-badge__light" src="{{ static_url('img/credit-badge-light.svg') }}"
+                 width="360" height="110" alt="Engineered by gahingwoo">
+            <img class="credit-badge__dark" src="{{ static_url('img/credit-badge-dark.svg') }}"
+                 width="360" height="110" alt="">
+          </a>
+        </p>
         <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
           Let language no longer stand in the way of connection</p>
       </div>
@@ -232,8 +264,7 @@ def build():
     ))
 
     # Text to speech
-    sidebar.append('''    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="textToSpeech">Text-to-Speech</h2>
+    sidebar.append(field_group("Text-to-Speech", "textToSpeech", '''
       <div class="pf-v6-c-form__group">
         <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" id="toggleTTS"
                 aria-pressed="false" aria-label="Toggle text to speech" onclick="toggleTTS()">
@@ -241,7 +272,7 @@ def build():
           <span class="pf-v6-c-button__text" data-i18n="enableTTS">Enable TTS</span>
         </button>
       </div>
-%s%s%s%s    </section>
+%s%s%s%s
 ''' % (
         btn_icon("volume-up"),
         form_group("TTS Engine", "ttsEngine",
@@ -271,11 +302,10 @@ def build():
             </div>
             <div class="pf-v6-c-slider__value"><span class="slider-value" id="volumeValue">100%</span></div>
           </div>''', "volumeSlider"),
-    ))
+    )))
 
     # Export
-    sidebar.append('''    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="export">Export</h2>
+    sidebar.append(field_group("Export", "export", '''
 %s      <div class="pf-v6-c-form__group">
         <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button"
                 aria-label="Download translations" onclick="exportData()">
@@ -283,7 +313,7 @@ def build():
           <span class="pf-v6-c-button__text" data-i18n="download">Download</span>
         </button>
       </div>
-%s%s    </section>
+%s%s
 ''' % (
         form_group("Format", "format",
                    select("exportFormat", "", "Select export format",
@@ -298,12 +328,11 @@ def build():
         '      <p class="pf-v6-c-form__helper-text" data-i18n="aiSermonHint">'
         'Opens your AI assistant with the transcript.</p>\n',
         sidebar_button(None, "clearLocal()", "Clear display", "trash", None, "Clear display", "clearDisplay"),
-    ))
+    )))
 
     # Settings
-    sidebar.append('''    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="settings">Settings</h2>
-%s%s%s%s%s%s%s%s    </section>
+    sidebar.append(field_group("Settings", "settings", '''
+%s%s%s%s%s%s%s%s
 ''' % (
         form_group("View Mode", "uiMode",
                    select("uiMode", "updateUIMode()", "View mode",
@@ -334,19 +363,15 @@ def build():
         sidebar_button(None, "showShortcuts()", "Keyboard shortcuts", "keyboard", None,
                        "Keyboard Shortcuts", "shortcuts_title"),
         sidebar_button(None, "showAbout()", "About", "info-circle", None, "About", "about"),
-    ))
+    )))
 
     # Bible verses, behind the same Jinja flag as before
-    sidebar.append('''    {%% if bible_detection_enabled %%}
-    <section class="pf-v6-c-form__section sidebar-section" id="bibleSidebarSection" aria-label="Bible Verses">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="bibleVerses">Bible Verses</h2>
-%s      <div class="pf-v6-c-form__group" id="bibleVerseToggleWrap">
+    sidebar.append('''    {% if bible_detection_enabled %}
+''' + field_group("Bible Verses", "bibleVerses", '''%s      <div class="pf-v6-c-form__group" id="bibleVerseToggleWrap">
 %s        <p class="pf-v6-c-form__helper-text" id="bibleTransLoadingHint" hidden>
           <span data-i18n="bibleAutoMatched">Auto-matched to your language. Choose any Bible below.</span>
         </p>
       </div>
-    </section>
-    {%% endif %%}
 ''' % (
         sidebar_button("bibleVerseToggle", "toggleBibleVerse()", "Toggle Bible verse display",
                        "book", "bibleVerseText", "Show Bible Verses", "bibleVerseShow",
@@ -356,7 +381,9 @@ def build():
                           "Select Bible translation for your language",
                           '<option value="" data-i18n="bibleLoading">— Loading... —</option>'),
                    "bibleTargetTranslation"),
-    ))
+    ), el_id="bibleSidebarSection", extra=' aria-label="Bible Verses"')
+                   + '''    {% endif %}
+''')
 
 
     shortcuts_body = '''          <dl class="pf-v6-c-description-list pf-m-horizontal">
@@ -402,14 +429,17 @@ def build():
           </button>
         </footer>'''
 
-    tour_body = '''          <div class="tour-body" id="tourStepBody"></div>
-          <div class="tour-dots" id="tourDots" role="tablist" aria-label="Tour progress"></div>'''
+    tour_body = '''          <div class="tour-layout">
+            <ol class="pf-v6-c-progress-stepper pf-m-vertical" id="tourDots"
+                aria-label="Guide steps"></ol>
+            <div class="tour-body pf-v6-c-content" id="tourStepBody"></div>
+          </div>'''
     tour_footer = '''
         <footer class="pf-v6-c-modal-box__footer">
+          <span class="tour-progress" id="tourProgress">1 / 1</span>
           <button class="pf-v6-c-button pf-m-secondary" type="button" id="tourPrev" onclick="tourPrev()">
             <span class="pf-v6-c-button__text" data-i18n="tour_prev">Back</span>
           </button>
-          <span class="tour-progress" id="tourProgress">1 / 1</span>
           <button class="pf-v6-c-button pf-m-primary" type="button" id="tourNext" onclick="tourNext()">
             <span class="pf-v6-c-button__text" data-i18n="tour_next">Next</span>
           </button>
@@ -593,6 +623,16 @@ def build():
           aria-label="Scroll to top" onclick="scrollToTop()">%(expand)s</button>
 
   <script>
+    // PatternFly's expandable field group: the class on the group and the
+    // button's aria-expanded are the two halves of its state.
+    function toggleFieldGroup(button) {
+      const group = button.closest('.pf-v6-c-form__field-group');
+      if (!group) return;
+      const open = group.classList.toggle('pf-m-expanded');
+      button.setAttribute('aria-expanded', String(open));
+    }
+    window.toggleFieldGroup = toggleFieldGroup;
+
     // Persistent room switcher: navigates by reloading with ?room=
     window.userSwitchRoom = function (roomId) {
       if (!roomId || !/^[A-Za-z0-9][A-Za-z0-9_\\-]{0,63}$/.test(roomId)) return;
@@ -684,7 +724,7 @@ def build():
         # user.js fills the tour's icon and title per step, so neither carries
         # a data-i18n key of its own.
         "tour": modal("tourModal", "tourTitle", None, "User Guide",
-                      tour_body, tour_footer, close_fn="hideTour()",
+                      tour_body, tour_footer, close_fn="hideTour()", size="lg",
                       title_icon_id="tourStepIcon", title_text_id="tourStepTitle"),
     }
 

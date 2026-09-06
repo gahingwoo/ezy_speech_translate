@@ -16,6 +16,16 @@
 
 /* ── page ─────────────────────────────────────────────────────────────── */
 
+/* PatternFly sets `display` on its components, and any author rule beats the
+ * browser's own `[hidden] { display: none }`. Without this the hidden
+ * attribute does nothing on a form section, a card body or an alert — which is
+ * how the room switcher stayed on screen with one room in the list.
+ */
+[hidden] {
+  display: none !important;
+}
+
+
 html,
 body {
   height: 100%;
@@ -60,10 +70,20 @@ html.pf-v6-theme-dark .icon-moon {
 
 /* ── masthead ─────────────────────────────────────────────────────────── */
 
-/* The mark sits on the masthead's own ground, at the size the church site
-   sets it: see .brand .brand-mark in mabc-ws/assets/site.css. No tile behind
-   it — a box around the mark reads as a favicon, not as the brand. */
+/* PatternFly sizes the logo box for a lockup image and fixes it at 11.8125rem.
+   This brand is a mark plus a name set in type, which needs more than that, so
+   the box was squashing the mark to 17.7px wide against its 28px height — the
+   glyph came out thin and stretched. The box takes the width its content asks
+   for, and the mark never shrinks.
+
+   Size and weight follow the church site: see .brand .brand-mark and
+   .brand-name in mabc-ws/assets/site.css. */
+.pf-v6-c-masthead__logo {
+  --pf-v6-c-masthead__logo--Width: auto;
+}
+
 .pf-v6-c-masthead__logo .brand-mark {
+  flex-shrink: 0;
   width: auto;
   height: 1.75rem;
 }
@@ -74,6 +94,7 @@ html.pf-v6-theme-dark .icon-moon {
   align-items: center;
   font-family: var(--pf-t--global--font--family--heading);
   font-size: var(--pf-t--global--font--size--heading--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
   white-space: nowrap;
 }
 
@@ -86,30 +107,26 @@ html.pf-v6-theme-dark .icon-moon {
   min-width: 0;
 }
 
+/* The room name and the way into the manager, in the sidebar's Room section. */
 .room-switcher {
   display: flex;
-  gap: var(--pf-t--global--spacer--xs);
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
   align-items: center;
-  min-width: 0;
 }
 
-.room-switcher .pf-v6-c-label__text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 10rem;
-}
-
-/* Below md the masthead stacks and the second row is only wide enough for the
-   state, Manage, and the two icons: the state and the room name shrink to
-   their icons, and Manage stays, because it is the only way to change rooms
-   from a phone. */
+/* Below md the masthead stacks, and its second row holds the toggle, the state
+   and two icon buttons. That fits on one line only if the buttons drop their
+   labels. */
 @media (max-width: 47.99rem) {
-  .room-switcher > .pf-v6-c-label .pf-v6-c-label__text,
-  .connection-badge .pf-v6-c-label__text,
   .masthead-action .pf-v6-c-button__text {
     display: none;
   }
+}
+
+/* Nothing in the masthead shrinks: a squeezed row turns "main" into "m". */
+.pf-v6-c-masthead__content > * {
+  flex-shrink: 0;
 }
 
 /* ── sidebar ──────────────────────────────────────────────────────────── */
@@ -157,19 +174,16 @@ html.pf-v6-theme-dark .icon-moon {
   text-align: start;
 }
 
-/* PatternFly slides its own sidebar out below xl and back with .pf-m-expanded;
-   admin.js toggles .mobile-open, so that is what has to set the same pair. */
-.pf-v6-c-page__sidebar.mobile-open {
-  --pf-v6-c-page__sidebar--TranslateX: var(--pf-v6-c-page__sidebar--m-expanded--TranslateX);
-  --pf-v6-c-page__sidebar--Opacity: var(--pf-v6-c-page__sidebar--m-expanded--Opacity);
-
-  /* The sidebar sits at z-index sm and the backdrop at lg, so the open drawer
-     has to be lifted over its own backdrop or every click lands on the dim. */
+/* The sidebar is PatternFly's, and so is its state: .pf-m-expanded opens the
+   drawer below xl, .pf-m-collapsed closes the panel at xl and above, and the
+   component animates both. All this adds is lifting the open drawer over its
+   own backdrop — the sidebar sits at z-index sm and the backdrop at lg, so
+   without this every click on the drawer lands on the dim. */
+.pf-v6-c-page__sidebar.pf-m-expanded {
   z-index: var(--pf-t--global--z-index--xl);
-  box-shadow: var(--pf-v6-c-page__sidebar--BoxShadow);
 }
 
-/* The backdrop behind that drawer. admin.js adds .active with the drawer. */
+/* The backdrop behind the drawer, below xl only. */
 .sidebar-overlay {
   display: none;
 }
@@ -263,32 +277,13 @@ html.pf-v6-theme-dark .icon-moon {
   align-items: center;
 }
 
-.transcription-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--sm);
-}
-
-/* ── transcription cards ──────────────────────────────────────────────── */
-/* admin.js builds these as HTML strings, so they are styled here rather than
-   in the template. The class names below are a contract with that code. */
+/* ── transcription rows ───────────────────────────────────────────────── */
+/* admin.js builds these as PatternFly data list rows. The class names below
+   are a contract with that code: it finds rows by .transcription-card and
+   marks them .selected, .dragging and .drag-over. */
 
 .transcription-card {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  gap: var(--pf-t--global--spacer--sm);
-  align-items: start;
-  padding: var(--pf-t--global--spacer--md);
   cursor: pointer;
-}
-
-.transcription-card:hover {
-  border-color: var(--pf-t--global--border--color--hover);
-}
-
-.transcription-card.selected {
-  border-color: var(--pf-t--global--border--color--brand--default);
-  box-shadow: var(--pf-t--global--box-shadow--sm);
 }
 
 .transcription-card.dragging {
@@ -296,40 +291,34 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 .transcription-card.drag-over {
-  border-color: var(--pf-t--global--border--color--brand--default);
-  border-style: dashed;
+  outline: var(--pf-t--global--border--width--strong) dashed
+    var(--pf-t--global--border--color--brand--default);
+  outline-offset: calc(-1 * var(--pf-t--global--border--width--strong));
 }
 
-/* The grip. Drawn rather than typed, so no glyph has to be trusted to a font. */
+/* The empty state stands in for the whole list, so it has no row furniture. */
+.empty-row {
+  --pf-v6-c-data-list__item--BorderBlockEndWidth: 0;
+}
+
 .drag-handle {
-  width: 0.75rem;
-  height: 1.25rem;
   cursor: grab;
-  background-image: radial-gradient(currentcolor 1px, transparent 1px);
-  background-size: 0.375rem 0.375rem;
-  color: var(--pf-t--global--icon--color--subtle);
 }
 
 .drag-handle:active {
   cursor: grabbing;
 }
 
-.card-checkbox {
-  margin-block-start: 0.125rem;
-}
-
-.card-content {
-  min-width: 0;
-}
-
 .card-header {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--pf-t--global--spacer--sm);
   align-items: center;
   margin-block-end: var(--pf-t--global--spacer--xs);
 }
 
 .card-time {
+  font-family: var(--pf-t--global--font--family--mono);
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--subtle);
 }
@@ -345,6 +334,22 @@ html.pf-v6-theme-dark .icon-moon {
   display: flex;
   flex-direction: column;
   gap: var(--pf-t--global--spacer--md);
+}
+
+/* The list beside this can run to thousands of rows, and a grid item stretches
+   to the tallest thing in its row, so the panel was 33,000px tall with its
+   cards at the very top: scroll the list and the editor was gone. From lg it
+   stops stretching and sticks to the top of the scrolling area instead.
+   The 7rem is the masthead plus the page inset above it; being a little short
+   only means the panel starts scrolling sooner than it has to. */
+@media (min-width: 62rem) {
+  .edit-panel {
+    position: sticky;
+    inset-block-start: 0;
+    align-self: start;
+    max-height: calc(100dvh - 7rem);
+    overflow-y: auto;
+  }
 }
 
 /* ── dialogs ──────────────────────────────────────────────────────────── */
@@ -367,6 +372,14 @@ html.pf-v6-theme-dark .icon-moon {
     opacity var(--pf-t--global--motion--duration--fade--default)
       var(--pf-t--global--motion--timing-function--accelerate),
     visibility 0s linear var(--pf-t--global--motion--duration--fade--default);
+}
+
+/* PatternFly sizes a modal for a desktop; on a phone the large one is wider
+   than the screen. The backdrop's padding is the room it gets. */
+.app-modal > .pf-v6-c-modal-box,
+.app-modal > .pf-v6-c-about-modal-box {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .app-modal.active,
@@ -431,6 +444,32 @@ html.pf-v6-theme-dark .icon-moon {
    makes the box wider than a phone rather than wrapping. */
 .pf-v6-c-about-modal-box a {
   overflow-wrap: anywhere;
+}
+
+/* The maker's badge in the about box. Two files, one for each ground; the SVGs
+   are loaded as images so nothing in them reaches the network. */
+.credit-badge {
+  margin-block-start: var(--pf-t--global--spacer--lg);
+}
+
+.credit-badge img {
+  display: block;
+  width: auto;
+  height: 2.25rem;
+}
+
+/* `.credit-badge img` is one class and one element, so it outranks a bare
+   class: the hiding selectors have to reach for the parent too. */
+.credit-badge .credit-badge__dark {
+  display: none;
+}
+
+html.pf-v6-theme-dark .credit-badge .credit-badge__light {
+  display: none;
+}
+
+html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
+  display: block;
 }
 
 @media (prefers-reduced-motion: reduce) {
