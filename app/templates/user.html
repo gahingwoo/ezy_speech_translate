@@ -100,7 +100,7 @@
     </header>
 
     <!-- Mobile search, revealed by the button above -->
-    <div class="mobile-search-bar" id="mobileSearchBar" hidden>
+    <div class="mobile-search-bar" id="mobileSearchBar">
       <div class="pf-v6-c-text-input-group">
         <div class="pf-v6-c-text-input-group__main pf-m-icon">
           <span class="pf-v6-c-text-input-group__text">
@@ -116,7 +116,7 @@
 
     <!-- Backdrop behind the sidebar on a phone -->
     <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
-         onclick="toggleMobileMenu()" hidden></div>
+         onclick="toggleMobileMenu()"></div>
 
     <!-- The sidebar holds settings, not navigation, so its contents are a
          form rather than a nav list. -->
@@ -449,8 +449,8 @@
     </div>
   </div>
 
-  <!-- Room picker, filled in by user.js -->
-  <div class="pf-v6-c-backdrop room-picker-overlay" id="roomPickerOverlay" hidden>
+  <!-- Room picker, filled in by the script at the end of this page -->
+  <div class="pf-v6-c-backdrop app-modal room-picker-overlay" id="roomPickerOverlay" hidden>
     <div class="pf-v6-l-bullseye">
       <div class="pf-v6-c-modal-box pf-m-sm" role="dialog" aria-modal="true" aria-label="Choose a room">
         <header class="pf-v6-c-modal-box__header">
@@ -468,34 +468,64 @@
   </div>
 
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
-       role="status" aria-live="polite" hidden>Translations updated</div>
+       role="status" aria-live="polite">Translations updated</div>
 
-  <div class="pf-v6-c-backdrop app-modal" id="aboutModal" onclick="hideAbout(event)" hidden>
-    <div class="pf-v6-l-bullseye">
-      <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true" aria-labelledby="aboutTitle"
-           onclick="event.stopPropagation()">
-        <div class="pf-v6-c-modal-box__close">
-          <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close" onclick="hideAbout()"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span></button>
-        </div>
-        <header class="pf-v6-c-modal-box__header">
-          <h1 class="pf-v6-c-modal-box__title" id="aboutTitle">
-            <span class="pf-v6-c-modal-box__title-text" data-i18n="aboutTitle">EzySpeech</span>
-          </h1>
-        </header>
-        <div class="pf-v6-c-modal-box__body">
-          <div class="pf-v6-c-content">
-            <p data-i18n="tagline">Let language no longer stand in the way of connection</p>
-            <h3 data-i18n="madeBy">Made by</h3>
-            <p data-i18n="author">Ga Hing Woo</p>
+  <div class="pf-v6-c-backdrop app-modal about-backdrop" id="aboutModal"
+       onclick="hideAbout(event)">
+    <div class="pf-v6-c-about-modal-box" role="dialog" aria-modal="true"
+         aria-labelledby="aboutTitle">
+      <div class="pf-v6-c-about-modal-box__brand">
+        <img class="pf-v6-c-about-modal-box__brand-image"
+             src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208" alt="">
+      </div>
+      <div class="pf-v6-c-about-modal-box__close">
+        <button class="pf-v6-c-button pf-m-plain about-close" type="button"
+                aria-label="Close" onclick="hideAbout()"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span></button>
+      </div>
+      <div class="pf-v6-c-about-modal-box__header">
+        <h1 class="pf-v6-c-title pf-m-4xl" id="aboutTitle" data-i18n="aboutTitle">EzySpeech</h1>
+      </div>
+      <div class="pf-v6-c-about-modal-box__content">
+        <dl class="pf-v6-c-description-list pf-m-horizontal">
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text">Version</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text" data-i18n="version">v3.3.0 - Open Source - MIT License</div>
+            </dd>
           </div>
-          <div class="about-links">
-            <span data-i18n="feedback">Feedback</span>
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text" data-i18n="madeBy">Made by</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text" data-i18n="author">Ga Hing Woo</div>
+            </dd>
           </div>
-        </div>
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text">Source</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text"><a href="https://github.com/gahingwoo/ezy_speech_translate" rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a></div>
+            </dd>
+          </div>
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text" data-i18n="feedback">Feedback</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text"><a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose" rel="noopener noreferrer" target="_blank">Open an issue</a></div>
+            </dd>
+          </div>
+        </dl>
+        <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
+          Let language no longer stand in the way of connection</p>
       </div>
     </div>
   </div>
-  <div class="pf-v6-c-backdrop app-modal" id="shortcutsModal" onclick="hideShortcuts(event)" hidden>
+  <div class="pf-v6-c-backdrop app-modal" id="shortcutsModal" onclick="hideShortcuts(event)">
     <div class="pf-v6-l-bullseye">
       <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle"
            onclick="event.stopPropagation()">
@@ -534,7 +564,7 @@
       </div>
     </div>
   </div>
-  <div class="pf-v6-c-backdrop app-modal" id="welcomeModal" onclick="hideWelcome(event)" hidden>
+  <div class="pf-v6-c-backdrop app-modal" id="welcomeModal" onclick="hideWelcome(event)">
     <div class="pf-v6-l-bullseye">
       <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle"
            onclick="event.stopPropagation()">
@@ -568,7 +598,7 @@
       </div>
     </div>
   </div>
-  <div class="pf-v6-c-backdrop app-modal" id="tourModal" onclick="hideTour(event)" hidden>
+  <div class="pf-v6-c-backdrop app-modal" id="tourModal" onclick="hideTour(event)">
     <div class="pf-v6-l-bullseye">
       <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true" aria-labelledby="tourTitle"
            onclick="event.stopPropagation()">
@@ -599,7 +629,77 @@
   </div>
 
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
-          aria-label="Scroll to top" onclick="scrollToTop()" hidden><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span></button>
+          aria-label="Scroll to top" onclick="scrollToTop()"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span></button>
+
+  <script>
+    // Persistent room switcher: navigates by reloading with ?room=
+    window.userSwitchRoom = function (roomId) {
+      if (!roomId || !/^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$/.test(roomId)) return;
+      if (roomId === (window.CURRENT_ROOM_ID || 'main')) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('room', roomId);
+      window.location.href = url.toString();
+    };
+
+    (async function () {
+      try {
+        const catalog = window.sharedI18n || {};
+        const lang = window.resolveDisplayLang
+          ? window.resolveDisplayLang(localStorage.getItem('displayLanguage'))
+          : 'en';
+        const t = (k, fb) => (catalog[lang] && catalog[lang][k]) || (catalog.en && catalog.en[k]) || fb;
+
+        const explicitRoom = new URLSearchParams(window.location.search).get('room');
+        const resp = await fetch('/api/rooms');
+        if (!resp.ok) return;
+        const rooms = ((await resp.json()) || {}).rooms || [];
+        if (rooms.length <= 1) return;
+
+        // The sidebar switcher, whenever there is more than one room.
+        const section = document.getElementById('userRoomSwitcherSection');
+        const select = document.getElementById('userRoomSelect');
+        if (section && select) {
+          const current = explicitRoom || window.CURRENT_ROOM_ID || 'main';
+          select.replaceChildren();
+          rooms.forEach(function (r) {
+            const opt = document.createElement('option');
+            opt.value = r.room_id;
+            opt.textContent = (r.display_name || r.room_id) + ' (' + (r.listeners || 0) + ')';
+            if (r.room_id === current) opt.selected = true;
+            select.appendChild(opt);
+          });
+          section.hidden = false;
+        }
+
+        // The picker, only on a first load that names no room.
+        if (explicitRoom) return;
+        const overlay = document.getElementById('roomPickerOverlay');
+        const list = document.getElementById('roomPickerList');
+        if (!overlay || !list) return;
+        rooms.forEach(function (r) {
+          const li = document.createElement('li');
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'pf-v6-c-button pf-m-tertiary pf-m-block room-picker-overlay__item';
+          const name = document.createElement('span');
+          name.className = 'pf-v6-c-button__text';
+          name.textContent = (r.display_name || r.room_id) + ' · '
+            + t('listenersCount', '{n} listening').replace('{n}', r.listeners || 0);
+          btn.appendChild(name);
+          btn.onclick = function () {
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', r.room_id);
+            window.location.href = url.toString();
+          };
+          li.appendChild(btn);
+          list.appendChild(li);
+        });
+        overlay.hidden = false;
+      } catch (e) {
+        console.warn('Room picker init failed:', e);
+      }
+    })();
+  </script>
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/user.js') }}"></script>

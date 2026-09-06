@@ -506,7 +506,7 @@ async function loadBibleTranslationOptions(langCode) {
         }
     }
 
-    if (hint) hint.style.display = ppLangName ? '' : 'none';
+    if (hint) hint.hidden = !ppLangName;
 
     // Restore saved preference if still valid for this language, else auto-match
     if (bibleTargetTrans && allMatchedCodes.includes(bibleTargetTrans)) {
@@ -4940,7 +4940,7 @@ function showAnnouncement(text, duration, type) {
 
     // Map type to banner colour via data attribute
     banner.dataset.type = type || 'info';
-    banner.style.display = '';
+    banner.hidden = false;
     banner.classList.remove('announcement-hide');
     banner.classList.add('announcement-show');
 
@@ -4956,7 +4956,7 @@ function dismissAnnouncement() {
     banner.classList.remove('announcement-show');
     banner.classList.add('announcement-hide');
     setTimeout(() => {
-        banner.style.display = 'none';
+        banner.hidden = true;
         banner.classList.remove('announcement-hide');
     }, 300);
 }

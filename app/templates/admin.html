@@ -217,8 +217,23 @@
         </div>
       </div>
     </section>
-    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title">TTS Cache</h2>
+    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section">
+      <div class="pf-v6-c-form__field-group-toggle">
+        <div class="pf-v6-c-form__field-group-toggle-button">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                  aria-label="Toggle TTS Cache" onclick="toggleFieldGroup(this)">
+            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
+          </button>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-header">
+        <div class="pf-v6-c-form__field-group-header-main">
+          <div class="pf-v6-c-form__field-group-header-title">
+            <div class="pf-v6-c-form__field-group-header-title-text">TTS Cache</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-body">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-control">
           <div class="pf-v6-c-card pf-m-compact" id="ttsCacheContainer" aria-label="TTS Cache">
@@ -256,9 +271,25 @@
           </button>
         </div>
       </div>
-    </section>
-    <section class="pf-v6-c-form__section sidebar-section" id="bibleAdminSection">
-      <h2 class="pf-v6-c-form__section-title">Bible</h2>
+      </div>
+    </div>
+    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section" id="bibleAdminSection">
+      <div class="pf-v6-c-form__field-group-toggle">
+        <div class="pf-v6-c-form__field-group-toggle-button">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                  aria-label="Toggle Bible" onclick="toggleFieldGroup(this)">
+            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
+          </button>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-header">
+        <div class="pf-v6-c-form__field-group-header-main">
+          <div class="pf-v6-c-form__field-group-header-title">
+            <div class="pf-v6-c-form__field-group-header-title-text">Bible</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-body">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
           <label class="pf-v6-c-form__label" for="adminBibleSourceSelect">
@@ -275,9 +306,25 @@
         </div>
         <p class="pf-v6-c-form__helper-text" id="adminBibleSaveStatus" role="status" aria-live="polite"></p>
       </div>
-    </section>
-    <section class="pf-v6-c-form__section sidebar-section" id="announcementSection">
-      <h2 class="pf-v6-c-form__section-title">Announcement</h2>
+      </div>
+    </div>
+    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section" id="announcementSection">
+      <div class="pf-v6-c-form__field-group-toggle">
+        <div class="pf-v6-c-form__field-group-toggle-button">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                  aria-label="Toggle Announcement" onclick="toggleFieldGroup(this)">
+            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
+          </button>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-header">
+        <div class="pf-v6-c-form__field-group-header-main">
+          <div class="pf-v6-c-form__field-group-header-title">
+            <div class="pf-v6-c-form__field-group-header-title-text">Announcement</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-body">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
           <label class="pf-v6-c-form__label" for="announcementText">
@@ -327,9 +374,25 @@
           </button>
         </div>
       </div>
-    </section>
-    <section class="pf-v6-c-form__section sidebar-section" id="qrSection">
-      <h2 class="pf-v6-c-form__section-title">Audience QR Code</h2>
+      </div>
+    </div>
+    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section" id="qrSection">
+      <div class="pf-v6-c-form__field-group-toggle">
+        <div class="pf-v6-c-form__field-group-toggle-button">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                  aria-label="Toggle Audience QR Code" onclick="toggleFieldGroup(this)">
+            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
+          </button>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-header">
+        <div class="pf-v6-c-form__field-group-header-main">
+          <div class="pf-v6-c-form__field-group-header-title">
+            <div class="pf-v6-c-form__field-group-header-title-text">Audience QR Code</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-body">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
           <label class="pf-v6-c-form__label" for="qrRoomSelect">
@@ -374,7 +437,8 @@
           </div>
         </div>
       </div>
-    </section>
+      </div>
+    </div>
         </form>
       </div>
     </div>
@@ -771,36 +835,58 @@
       </footer>
     </div>
   </div>
-  <div class="pf-v6-c-backdrop app-modal" id="aboutModal" onclick="hideAbout(event)">
-    <div class="pf-v6-c-modal-box pf-m-sm" role="dialog" aria-modal="true"
-         aria-labelledby="aboutModalTitle">
-      <div class="pf-v6-c-modal-box__close">
+  <div class="pf-v6-c-backdrop app-modal about-backdrop" id="aboutModal"
+       onclick="hideAbout(event)">
+    <div class="pf-v6-c-about-modal-box" role="dialog" aria-modal="true"
+         aria-labelledby="aboutTitle">
+      <div class="pf-v6-c-about-modal-box__brand">
+        <img class="pf-v6-c-about-modal-box__brand-image"
+             src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208" alt="">
+      </div>
+      <div class="pf-v6-c-about-modal-box__close">
         <button class="pf-v6-c-button pf-m-plain about-close" type="button"
                 aria-label="Close" onclick="hideAbout()"><span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span></button>
       </div>
-      <header class="pf-v6-c-modal-box__header">
-        <h1 class="pf-v6-c-modal-box__title" id="aboutModalTitle">
-          <span class="pf-v6-c-modal-box__title-text">EzySpeech</span>
-        </h1>
-      </header>
-      <div class="pf-v6-c-modal-box__body">
-          <div class="pf-v6-c-content">
-            <p><strong>Real-time Speech Transcription</strong></p>
-            <p>Let language no longer stand in the way of connection</p>
-            <h3>Made by</h3>
-            <p>Ga Hing Woo</p>
+      <div class="pf-v6-c-about-modal-box__header">
+        <h1 class="pf-v6-c-title pf-m-4xl" id="aboutTitle" data-i18n="aboutTitle">EzySpeech</h1>
+      </div>
+      <div class="pf-v6-c-about-modal-box__content">
+        <dl class="pf-v6-c-description-list pf-m-horizontal">
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text">Version</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text" data-i18n="version">v3.3.0 - Open Source - MIT License</div>
+            </dd>
           </div>
-          <div class="about-links">
-            <a class="pf-v6-c-button pf-m-link" href="https://github.com/gahingwoo/ezy_speech_translate"
-               rel="noopener noreferrer" target="_blank">
-              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M352 320c-22.608 0-43.387 7.819-59.79 20.895l-102.486-64.054a96.551 96.551 0 0 0 0-41.683l102.486-64.054C308.613 184.181 329.392 192 352 192c53.019 0 96-42.981 96-96S405.019 0 352 0s-96 42.981-96 96c0 7.158.79 14.13 2.276 20.841L155.79 180.895C139.387 167.819 118.608 160 96 160c-53.019 0-96 42.981-96 96s42.981 96 96 96c22.608 0 43.387-7.819 59.79-20.895l102.486 64.054A96.301 96.301 0 0 0 256 416c0 53.019 42.981 96 96 96s96-42.981 96-96-42.981-96-96-96z"/></svg></span><span class="pf-v6-c-button__text">GitHub</span>
-            </a>
-            <a class="pf-v6-c-button pf-m-link" href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-               rel="noopener noreferrer" target="_blank">
-              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 192c0-88.4-93.1-160-208-160S0 103.6 0 192c0 34.3 14.1 65.9 38 92-13.4 30.2-35.5 54.2-35.8 54.5-2.2 2.3-2.8 5.7-1.5 8.7S4.8 352 8 352c36.6 0 66.9-12.3 88.7-25 32.2 15.7 70.3 25 111.3 25 114.9 0 208-71.6 208-160zm122 220c23.9-26 38-57.7 38-92 0-66.9-53.5-124.2-129.3-148.1.9 6.6 1.3 13.3 1.3 20.1 0 105.9-107.7 192-240 192-10.8 0-21.3-.8-31.7-1.9C207.8 439.6 281.8 480 368 480c41 0 79.1-9.2 111.3-25 21.8 12.7 52.1 25 88.7 25 3.2 0 6.1-1.9 7.3-4.8 1.3-2.9.7-6.3-1.5-8.7-.3-.3-22.4-24.2-35.8-54.5z"/></svg></span><span class="pf-v6-c-button__text">Feedback</span>
-            </a>
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text" data-i18n="madeBy">Made by</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text" data-i18n="author">Ga Hing Woo</div>
+            </dd>
           </div>
-          <p class="pf-v6-c-form__helper-text about-version">v3.3.0 · Open Source · MIT License</p>
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text">Source</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text"><a href="https://github.com/gahingwoo/ezy_speech_translate" rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a></div>
+            </dd>
+          </div>
+          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text" data-i18n="feedback">Feedback</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text"><a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose" rel="noopener noreferrer" target="_blank">Open an issue</a></div>
+            </dd>
+          </div>
+        </dl>
+        <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
+          Let language no longer stand in the way of connection</p>
       </div>
     </div>
   </div>
@@ -920,6 +1006,16 @@
     </div>
   </div>
   <script>
+    // PatternFly's expandable field group: the class on the group and the
+    // button's aria-expanded are the two halves of its state.
+    function toggleFieldGroup(button) {
+      const group = button.closest('.pf-v6-c-form__field-group');
+      if (!group) return;
+      const open = group.classList.toggle('pf-m-expanded');
+      button.setAttribute('aria-expanded', String(open));
+    }
+    window.toggleFieldGroup = toggleFieldGroup;
+
     function openRoomManager() {
       document.getElementById('roomManagerModal').classList.add('modal-overlay--open');
       const optCur = document.getElementById('glossaryScopeCurrent');

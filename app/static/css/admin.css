@@ -118,10 +118,17 @@ html.pf-v6-theme-dark .icon-moon {
   overflow-y: auto;
 }
 
-.sidebar-section + .sidebar-section {
+.pf-v6-c-form__section + .sidebar-section,
+.pf-v6-c-form__field-group + .sidebar-section {
   border-block-start: var(--pf-t--global--border--width--divider--default) solid
     var(--pf-t--global--border--color--default);
   padding-block-start: var(--pf-t--global--spacer--lg);
+}
+
+/* A folded group is a title and a chevron; it does not need the panel padding
+   an open section takes. */
+.pf-v6-c-form__field-group.sidebar-section {
+  --pf-v6-c-form__field-group-body--PaddingBlockStart: var(--pf-t--global--spacer--sm);
 }
 
 /* Two actions to a row while they fit, one when they do not. */
@@ -341,22 +348,98 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 /* ── dialogs ──────────────────────────────────────────────────────────── */
-/* Two mechanisms, both driven from admin.js: the older dialogs are opened with
+/* Two mechanisms, both driven from admin.js: the older dialogs open with
    .active, the room and config ones with .modal-overlay--open. Both are kept
    because the handlers that use them are spread through 78KB of admin.js.
-   The backdrop centres the box itself, with no wrapper in between, because
-   those handlers close on `event.target === this`. */
+   The backdrop is always laid out and hidden with visibility rather than
+   display, which cannot animate, and it centres the box itself with no
+   wrapper in between, because those handlers close on `event.target === this`.
+   The box drifts up a little as it arrives. */
 
 .app-modal {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--pf-t--global--spacer--md);
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--accelerate),
+    visibility 0s linear var(--pf-t--global--motion--duration--fade--default);
 }
 
 .app-modal.active,
-.app-modal.modal-overlay--open {
-  display: flex;
+.app-modal.modal-overlay--open,
+.app-modal:not([hidden]).room-picker-overlay {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--decelerate),
+    visibility 0s;
+}
+
+.app-modal > .pf-v6-c-modal-box,
+.app-modal > .pf-v6-c-about-modal-box,
+.app-modal > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
+  translate: 0 -0.75rem;
+  transition: translate var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--decelerate);
+}
+
+.app-modal.active > .pf-v6-c-modal-box,
+.app-modal.active > .pf-v6-c-about-modal-box,
+.app-modal.modal-overlay--open > .pf-v6-c-modal-box,
+.app-modal:not([hidden]).room-picker-overlay > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
+  translate: 0 0;
+}
+
+.app-modal[hidden].room-picker-overlay {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* The about box takes the height its rows ask for rather than PatternFly's
+   fixed product-about height, and carries the design system's own background
+   pattern in the column the component leaves for it. */
+.about-backdrop .pf-v6-c-about-modal-box {
+  --pf-v6-c-about-modal-box--BackgroundImage: url("../patternfly/assets/images/pf-background.svg");
+  --pf-v6-c-about-modal-box--BackgroundPosition: bottom right;
+  --pf-v6-c-about-modal-box--Height: auto;
+  --pf-v6-c-about-modal-box--lg--Height: auto;
+
+  width: min(42rem, 100%);
+  max-height: calc(100dvh - 2 * var(--pf-t--global--spacer--lg));
+  overflow-y: auto;
+  border-radius: var(--pf-t--global--border--radius--large);
+}
+
+/* Below sm the box is one column, so the pattern would sit under the text. */
+@media (max-width: 35.99rem) {
+  .about-backdrop .pf-v6-c-about-modal-box {
+    --pf-v6-c-about-modal-box--BackgroundImage: none;
+  }
+}
+
+.about-backdrop .pf-v6-c-about-modal-box__brand-image {
+  width: auto;
+  height: 2.5rem;
+}
+
+/* A repository URL has no break opportunity inside it, so one long enough
+   makes the box wider than a phone rather than wrapping. */
+.pf-v6-c-about-modal-box a {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-modal,
+  .app-modal > .pf-v6-c-modal-box,
+  .app-modal > .pf-v6-c-about-modal-box,
+  .app-modal > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
+    transition-duration: 1ms;
+  }
 }
 
 .room-toolbar {

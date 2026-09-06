@@ -12,6 +12,7 @@
 set -e
 
 COMPONENTS="Login/login Form/form FormControl/form-control \
+            AboutModalBox/about-modal-box \
             Button/button Title/title Content/content \
             Card/card HelperText/helper-text \
             BackgroundImage/background-image Brand/brand List/list \

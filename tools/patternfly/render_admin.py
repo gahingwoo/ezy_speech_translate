@@ -132,6 +132,33 @@ def text_input(el_id, kind="text", placeholder=None, extra="", indent=10):
                            extra, pad))
 
 
+def field_group(title, body, el_id=None, i18n=None):
+    """PatternFly's expandable field group. The sidebar carries seven panels of
+    controls and only the first two are used every session, so the rest start
+    folded. The component animates its own body open and shut."""
+    return '''    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section"%s>
+      <div class="pf-v6-c-form__field-group-toggle">
+        <div class="pf-v6-c-form__field-group-toggle-button">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                  aria-label="Toggle %s" onclick="toggleFieldGroup(this)">
+            <span class="pf-v6-c-form__field-group-toggle-icon">%s</span>
+          </button>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-header">
+        <div class="pf-v6-c-form__field-group-header-main">
+          <div class="pf-v6-c-form__field-group-header-title">
+            <div class="pf-v6-c-form__field-group-header-title-text"%s>%s</div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__field-group-body">
+%s      </div>
+    </div>
+''' % (' id="%s"' % el_id if el_id else "", title, icon("angle-right"),
+       i18n_attr(i18n), title, body)
+
+
 def section(title, body, i18n=None, el_id=None):
     return ('    <section class="pf-v6-c-form__section sidebar-section"%s>\n'
             '      <h2 class="pf-v6-c-form__section-title"%s>%s</h2>\n'
@@ -409,7 +436,7 @@ def tts_cache_section():
 ''' % (stats,
        button("Refresh", "refreshTTSCacheStats()", "sync-alt", "secondary"),
        button("Clear", "clearTTSCache()", "trash", "danger")))
-    return section("TTS Cache", body)
+    return field_group("TTS Cache", body)
 
 
 def bible_section():
@@ -421,7 +448,7 @@ def bible_section():
         "Source Translation", None, "adminBibleSourceSelect",
         helper='<p class="pf-v6-c-form__helper-text" id="adminBibleSaveStatus"'
                ' role="status" aria-live="polite"></p>')
-    return section("Bible", body, el_id="bibleAdminSection")
+    return field_group("Bible", body, el_id="bibleAdminSection")
 
 
 def announcement_section():
@@ -451,7 +478,7 @@ def announcement_section():
       </div>
 ''' % button("Send to All Viewers", "sendAnnouncement()", "paper-plane",
              "primary pf-m-block"))
-    return section("Announcement", body, el_id="announcementSection")
+    return field_group("Announcement", body, el_id="announcementSection")
 
 
 def qr_section():
@@ -474,7 +501,7 @@ def qr_section():
 ''' % (button("Generate QR Code", "generateQR()", "qrcode", "primary pf-m-block"),
        button("Download PNG", "downloadQR()", "download", "secondary pf-m-block",
               indent=12)))
-    return section("Audience QR Code", body, el_id="qrSection")
+    return field_group("Audience QR Code", body, el_id="qrSection")
 
 
 # ── the edit panel ────────────────────────────────────────────────────────
@@ -702,27 +729,58 @@ def recording_lock_modal():
                             "danger", indent=8)))
 
 
+# term, its translation key, value, the value's translation key.
+ABOUT_ROWS = (
+    ("Version", None, "v3.3.0 - Open Source - MIT License", "version"),
+    ("Made by", "madeBy", "Ga Hing Woo", "author"),
+    ("Source", None, '<a href="https://github.com/gahingwoo/ezy_speech_translate"'
+     ' rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a>',
+     None),
+    ("Feedback", "feedback", '<a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"'
+     ' rel="noopener noreferrer" target="_blank">Open an issue</a>', None),
+)
+
+
 def about_modal():
-    body = '''          <div class="pf-v6-c-content">
-            <p><strong>Real-time Speech Transcription</strong></p>
-            <p>Let language no longer stand in the way of connection</p>
-            <h3>Made by</h3>
-            <p>Ga Hing Woo</p>
+    """PatternFly's about modal, which is the component this box has always
+    been imitating. The backdrop centres it directly, with no wrapper, because
+    hideAbout() closes on `event.target === this`."""
+    rows = "".join(
+        '''          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text"%s>%s</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text"%s>%s</div>
+            </dd>
           </div>
-          <div class="about-links">
-            <a class="pf-v6-c-button pf-m-link" href="https://github.com/gahingwoo/ezy_speech_translate"
-               rel="noopener noreferrer" target="_blank">
-              %s<span class="pf-v6-c-button__text">GitHub</span>
-            </a>
-            <a class="pf-v6-c-button pf-m-link" href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
-               rel="noopener noreferrer" target="_blank">
-              %s<span class="pf-v6-c-button__text">Feedback</span>
-            </a>
-          </div>
-          <p class="pf-v6-c-form__helper-text about-version">v3.3.0 · Open Source · MIT License</p>''' % (
-        btn_icon("share-alt"), btn_icon("comments"))
-    return modal("aboutModal", "EzySpeech", body, "hideAbout()", size="sm",
-                 backdrop_onclick="hideAbout(event)")
+''' % (i18n_attr(term_key), term, i18n_attr(value_key), value)
+        for term, term_key, value, value_key in ABOUT_ROWS)
+
+    return '''  <div class="pf-v6-c-backdrop app-modal about-backdrop" id="aboutModal"
+       onclick="hideAbout(event)">
+    <div class="pf-v6-c-about-modal-box" role="dialog" aria-modal="true"
+         aria-labelledby="aboutTitle">
+      <div class="pf-v6-c-about-modal-box__brand">
+        <img class="pf-v6-c-about-modal-box__brand-image"
+             src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208" alt="">
+      </div>
+      <div class="pf-v6-c-about-modal-box__close">
+        <button class="pf-v6-c-button pf-m-plain about-close" type="button"
+                aria-label="Close" onclick="hideAbout()">%s</button>
+      </div>
+      <div class="pf-v6-c-about-modal-box__header">
+        <h1 class="pf-v6-c-title pf-m-4xl" id="aboutTitle" data-i18n="aboutTitle">EzySpeech</h1>
+      </div>
+      <div class="pf-v6-c-about-modal-box__content">
+        <dl class="pf-v6-c-description-list pf-m-horizontal">
+%s        </dl>
+        <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
+          Let language no longer stand in the way of connection</p>
+      </div>
+    </div>
+  </div>
+''' % (btn_icon("times"), rows)
 
 
 def shortcuts_modal():
@@ -773,6 +831,16 @@ def export_modal():
 # The dialog glue that lived in the template before, unchanged in behaviour.
 # It belongs to the page rather than to admin.js, which never calls into it.
 PAGE_SCRIPT = '''  <script>
+    // PatternFly's expandable field group: the class on the group and the
+    // button's aria-expanded are the two halves of its state.
+    function toggleFieldGroup(button) {
+      const group = button.closest('.pf-v6-c-form__field-group');
+      if (!group) return;
+      const open = group.classList.toggle('pf-m-expanded');
+      button.setAttribute('aria-expanded', String(open));
+    }
+    window.toggleFieldGroup = toggleFieldGroup;
+
     function openRoomManager() {
       document.getElementById('roomManagerModal').classList.add('modal-overlay--open');
       const optCur = document.getElementById('glossaryScopeCurrent');

@@ -93,10 +93,6 @@ html.pf-v6-theme-dark .icon-moon {
     var(--pf-t--global--border--color--default);
 }
 
-.mobile-search-bar:not([hidden]) {
-  display: block;
-}
-
 .search-results-info {
   margin-block-start: var(--pf-t--global--spacer--xs);
   font-size: var(--pf-t--global--font--size--body--sm);
@@ -130,16 +126,6 @@ html.pf-v6-theme-dark .icon-moon {
 /* Below xl the sidebar is a drawer over the content, so the page needs a
    backdrop behind it. PatternFly's own sidebar handles the sliding; this
    only says when the backdrop is there. */
-.sidebar-overlay:not([hidden]) {
-  display: block;
-}
-
-@media (min-width: 75rem) {
-  .sidebar-overlay {
-    display: none !important;
-  }
-}
-
 /* ── translation cards ────────────────────────────────────────────────── */
 /* user.js builds these as HTML strings, so they are styled here rather than
    assembled from PatternFly's card markup. They follow the card's tokens so
@@ -348,6 +334,7 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 .sync-indicator {
+  display: none;
   position: fixed;
   inset-block-end: var(--pf-t--global--spacer--lg);
   inset-inline-start: 50%;
@@ -360,13 +347,10 @@ html.pf-v6-theme-dark .icon-moon {
   border-radius: var(--pf-t--global--border--radius--pill);
 }
 
-.sync-indicator[hidden] {
-  display: none;
-}
-
 /* ── scroll to top ────────────────────────────────────────────────────── */
 
 .scroll-to-top {
+  display: none;
   position: fixed;
   inset-block-end: var(--pf-t--global--spacer--lg);
   inset-inline-end: var(--pf-t--global--spacer--lg);
@@ -374,15 +358,95 @@ html.pf-v6-theme-dark .icon-moon {
   rotate: 180deg;
 }
 
-.scroll-to-top[hidden] {
-  display: none;
+/* ── dialogs ──────────────────────────────────────────────────────────── */
+/* Both pages open a dialog by adding a class, so the backdrop is always laid
+   out and hidden with visibility rather than display, which cannot animate.
+   The box drifts up a little as it arrives. */
+
+.app-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pf-t--global--spacer--md);
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--accelerate),
+    visibility 0s linear var(--pf-t--global--motion--duration--fade--default);
 }
 
-/* ── dialogs ──────────────────────────────────────────────────────────── */
+.app-modal.active,
+.app-modal.modal-overlay--open,
+.app-modal:not([hidden]).room-picker-overlay {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--decelerate),
+    visibility 0s;
+}
 
-.app-modal[hidden],
-.room-picker-overlay[hidden] {
-  display: none;
+.app-modal > .pf-v6-c-modal-box,
+.app-modal > .pf-v6-c-about-modal-box,
+.app-modal > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
+  translate: 0 -0.75rem;
+  transition: translate var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--decelerate);
+}
+
+.app-modal.active > .pf-v6-c-modal-box,
+.app-modal.active > .pf-v6-c-about-modal-box,
+.app-modal.modal-overlay--open > .pf-v6-c-modal-box,
+.app-modal:not([hidden]).room-picker-overlay > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
+  translate: 0 0;
+}
+
+.app-modal[hidden].room-picker-overlay {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* The about box takes the height its rows ask for rather than PatternFly's
+   fixed product-about height, and carries the design system's own background
+   pattern in the column the component leaves for it. */
+.about-backdrop .pf-v6-c-about-modal-box {
+  --pf-v6-c-about-modal-box--BackgroundImage: url("../patternfly/assets/images/pf-background.svg");
+  --pf-v6-c-about-modal-box--BackgroundPosition: bottom right;
+  --pf-v6-c-about-modal-box--Height: auto;
+  --pf-v6-c-about-modal-box--lg--Height: auto;
+
+  width: min(42rem, 100%);
+  max-height: calc(100dvh - 2 * var(--pf-t--global--spacer--lg));
+  overflow-y: auto;
+  border-radius: var(--pf-t--global--border--radius--large);
+}
+
+/* Below sm the box is one column, so the pattern would sit under the text. */
+@media (max-width: 35.99rem) {
+  .about-backdrop .pf-v6-c-about-modal-box {
+    --pf-v6-c-about-modal-box--BackgroundImage: none;
+  }
+}
+
+.about-backdrop .pf-v6-c-about-modal-box__brand-image {
+  width: auto;
+  height: 2.5rem;
+}
+
+/* A repository URL has no break opportunity inside it, so one long enough
+   makes the box wider than a phone rather than wrapping. */
+.pf-v6-c-about-modal-box a {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-modal,
+  .app-modal > .pf-v6-c-modal-box,
+  .app-modal > .pf-v6-c-about-modal-box,
+  .app-modal > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
+    transition-duration: 1ms;
+  }
 }
 
 .tour-body {
@@ -438,30 +502,42 @@ html[data-ui-mode="elderly"] .text-source {
 /* These class names are set from JavaScript, so they are contracts: the
    markup never carries them, and renaming one silently breaks a control. */
 
-/* Sidebar as a drawer below xl. PatternFly slides its own expanded sidebar;
-   this app toggles .mobile-open instead, so that is what opens it here. */
-@media (max-width: 74.99rem) {
-  .pf-v6-c-page__sidebar {
-    position: fixed;
-    inset-block: var(--masthead-h, 4.75rem) 0;
-    inset-inline-start: 0;
-    z-index: var(--pf-t--global--z-index--lg);
-    transform: translateX(-100%);
-    transition: transform var(--pf-t--global--motion--duration--fade--default)
-      var(--pf-t--global--motion--timing-function--decelerate);
-  }
+/* PatternFly slides its own sidebar out below xl and back with .pf-m-expanded;
+   this page toggles .mobile-open, so that sets the same pair. The sidebar sits
+   at z-index sm and the backdrop at lg, so the open drawer has to be lifted
+   over its own backdrop or every click lands on the dim. */
+.pf-v6-c-page__sidebar.mobile-open {
+  --pf-v6-c-page__sidebar--TranslateX: var(--pf-v6-c-page__sidebar--m-expanded--TranslateX);
+  --pf-v6-c-page__sidebar--Opacity: var(--pf-v6-c-page__sidebar--m-expanded--Opacity);
 
-  .pf-v6-c-page__sidebar.mobile-open {
-    transform: translateX(0);
-  }
+  z-index: var(--pf-t--global--z-index--xl);
+  box-shadow: var(--pf-v6-c-page__sidebar--BoxShadow);
+}
+
+.sidebar-overlay {
+  display: none;
 }
 
 .sidebar-overlay.active {
   display: block;
 }
 
+@media (min-width: 75rem) {
+  .sidebar-overlay.active {
+    display: none;
+  }
+}
 
-.sync-indicator.show { display: block; }
+/* The rest of what user.js toggles. Each of these was written with a hidden
+   attribute the JavaScript never clears, which kept them shut for good. */
+.mobile-search-bar.active {
+  display: block;
+}
+
+.sync-indicator.show,
+.scroll-to-top.show {
+  display: block;
+}
 
 /* The empty state user.js writes when the list is cleared. */
 .empty-icon {

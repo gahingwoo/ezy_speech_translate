@@ -27,6 +27,10 @@ def icon(name, cls="pf-v6-svg"):
             '<path d="%s"/></svg>' % (cls, i["w"], i["h"], i["d"]))
 
 
+def i18n_attr(key):
+    return ' data-i18n="%s"' % key if key else ""
+
+
 def btn_icon(name):
     return '<span class="pf-v6-c-button__icon">%s</span>' % icon(name)
 
@@ -112,7 +116,7 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
     # The backdrop closes on a click; a click on the box itself must not reach
     # it, which is what the app's own handlers already expected.
     outer = close.replace("()", "(event)")
-    return '''  <div class="pf-v6-c-backdrop app-modal" id="%s" onclick="%s" hidden>
+    return '''  <div class="pf-v6-c-backdrop app-modal" id="%s" onclick="%s">
     <div class="pf-v6-l-bullseye">
       <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true" aria-labelledby="%s"
            onclick="event.stopPropagation()">
@@ -141,6 +145,60 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
        ' id="%s"' % title_text_id if title_text_id else "",
        ' data-i18n="%s"' % title_i18n if title_i18n else "",
        title_text, body, footer)
+
+
+# term, its translation key, value, the value's translation key.
+ABOUT_ROWS = (
+    ("Version", None, "v3.3.0 - Open Source - MIT License", "version"),
+    ("Made by", "madeBy", "Ga Hing Woo", "author"),
+    ("Source", None, '<a href="https://github.com/gahingwoo/ezy_speech_translate"'
+     ' rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a>',
+     None),
+    ("Feedback", "feedback", '<a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"'
+     ' rel="noopener noreferrer" target="_blank">Open an issue</a>', None),
+)
+
+
+def about_modal():
+    """PatternFly's about modal, which is the component this box has always
+    been imitating. The backdrop centres it directly, with no wrapper, because
+    hideAbout() closes on `event.target === this`."""
+    rows = "".join(
+        '''          <div class="pf-v6-c-description-list__group">
+            <dt class="pf-v6-c-description-list__term">
+              <span class="pf-v6-c-description-list__text"%s>%s</span>
+            </dt>
+            <dd class="pf-v6-c-description-list__description">
+              <div class="pf-v6-c-description-list__text"%s>%s</div>
+            </dd>
+          </div>
+''' % (i18n_attr(term_key), term, i18n_attr(value_key), value)
+        for term, term_key, value, value_key in ABOUT_ROWS)
+
+    return '''  <div class="pf-v6-c-backdrop app-modal about-backdrop" id="aboutModal"
+       onclick="hideAbout(event)">
+    <div class="pf-v6-c-about-modal-box" role="dialog" aria-modal="true"
+         aria-labelledby="aboutTitle">
+      <div class="pf-v6-c-about-modal-box__brand">
+        <img class="pf-v6-c-about-modal-box__brand-image"
+             src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208" alt="">
+      </div>
+      <div class="pf-v6-c-about-modal-box__close">
+        <button class="pf-v6-c-button pf-m-plain about-close" type="button"
+                aria-label="Close" onclick="hideAbout()">%s</button>
+      </div>
+      <div class="pf-v6-c-about-modal-box__header">
+        <h1 class="pf-v6-c-title pf-m-4xl" id="aboutTitle" data-i18n="aboutTitle">EzySpeech</h1>
+      </div>
+      <div class="pf-v6-c-about-modal-box__content">
+        <dl class="pf-v6-c-description-list pf-m-horizontal">
+%s        </dl>
+        <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
+          Let language no longer stand in the way of connection</p>
+      </div>
+    </div>
+  </div>
+''' % (btn_icon("times"), rows)
 
 
 def build():
@@ -300,14 +358,6 @@ def build():
                    "bibleTargetTranslation"),
     ))
 
-    about_body = '''          <div class="pf-v6-c-content">
-            <p data-i18n="tagline">Let language no longer stand in the way of connection</p>
-            <h3 data-i18n="madeBy">Made by</h3>
-            <p data-i18n="author">Ga Hing Woo</p>
-          </div>
-          <div class="about-links">
-            <span data-i18n="feedback">Feedback</span>
-          </div>'''
 
     shortcuts_body = '''          <dl class="pf-v6-c-description-list pf-m-horizontal">
             <div class="pf-v6-c-description-list__group">
@@ -449,7 +499,7 @@ def build():
     </header>
 
     <!-- Mobile search, revealed by the button above -->
-    <div class="mobile-search-bar" id="mobileSearchBar" hidden>
+    <div class="mobile-search-bar" id="mobileSearchBar">
       <div class="pf-v6-c-text-input-group">
         <div class="pf-v6-c-text-input-group__main pf-m-icon">
           <span class="pf-v6-c-text-input-group__text">
@@ -465,7 +515,7 @@ def build():
 
     <!-- Backdrop behind the sidebar on a phone -->
     <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
-         onclick="toggleMobileMenu()" hidden></div>
+         onclick="toggleMobileMenu()"></div>
 
     <!-- The sidebar holds settings, not navigation, so its contents are a
          form rather than a nav list. -->
@@ -517,8 +567,8 @@ def build():
     </div>
   </div>
 
-  <!-- Room picker, filled in by user.js -->
-  <div class="pf-v6-c-backdrop room-picker-overlay" id="roomPickerOverlay" hidden>
+  <!-- Room picker, filled in by the script at the end of this page -->
+  <div class="pf-v6-c-backdrop app-modal room-picker-overlay" id="roomPickerOverlay" hidden>
     <div class="pf-v6-l-bullseye">
       <div class="pf-v6-c-modal-box pf-m-sm" role="dialog" aria-modal="true" aria-label="Choose a room">
         <header class="pf-v6-c-modal-box__header">
@@ -536,11 +586,81 @@ def build():
   </div>
 
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
-       role="status" aria-live="polite" hidden>Translations updated</div>
+       role="status" aria-live="polite">Translations updated</div>
 
 %(about)s%(shortcuts)s%(welcome)s%(tour)s
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
-          aria-label="Scroll to top" onclick="scrollToTop()" hidden>%(expand)s</button>
+          aria-label="Scroll to top" onclick="scrollToTop()">%(expand)s</button>
+
+  <script>
+    // Persistent room switcher: navigates by reloading with ?room=
+    window.userSwitchRoom = function (roomId) {
+      if (!roomId || !/^[A-Za-z0-9][A-Za-z0-9_\\-]{0,63}$/.test(roomId)) return;
+      if (roomId === (window.CURRENT_ROOM_ID || 'main')) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('room', roomId);
+      window.location.href = url.toString();
+    };
+
+    (async function () {
+      try {
+        const catalog = window.sharedI18n || {};
+        const lang = window.resolveDisplayLang
+          ? window.resolveDisplayLang(localStorage.getItem('displayLanguage'))
+          : 'en';
+        const t = (k, fb) => (catalog[lang] && catalog[lang][k]) || (catalog.en && catalog.en[k]) || fb;
+
+        const explicitRoom = new URLSearchParams(window.location.search).get('room');
+        const resp = await fetch('/api/rooms');
+        if (!resp.ok) return;
+        const rooms = ((await resp.json()) || {}).rooms || [];
+        if (rooms.length <= 1) return;
+
+        // The sidebar switcher, whenever there is more than one room.
+        const section = document.getElementById('userRoomSwitcherSection');
+        const select = document.getElementById('userRoomSelect');
+        if (section && select) {
+          const current = explicitRoom || window.CURRENT_ROOM_ID || 'main';
+          select.replaceChildren();
+          rooms.forEach(function (r) {
+            const opt = document.createElement('option');
+            opt.value = r.room_id;
+            opt.textContent = (r.display_name || r.room_id) + ' (' + (r.listeners || 0) + ')';
+            if (r.room_id === current) opt.selected = true;
+            select.appendChild(opt);
+          });
+          section.hidden = false;
+        }
+
+        // The picker, only on a first load that names no room.
+        if (explicitRoom) return;
+        const overlay = document.getElementById('roomPickerOverlay');
+        const list = document.getElementById('roomPickerList');
+        if (!overlay || !list) return;
+        rooms.forEach(function (r) {
+          const li = document.createElement('li');
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'pf-v6-c-button pf-m-tertiary pf-m-block room-picker-overlay__item';
+          const name = document.createElement('span');
+          name.className = 'pf-v6-c-button__text';
+          name.textContent = (r.display_name || r.room_id) + ' \u00b7 '
+            + t('listenersCount', '{n} listening').replace('{n}', r.listeners || 0);
+          btn.appendChild(name);
+          btn.onclick = function () {
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', r.room_id);
+            window.location.href = url.toString();
+          };
+          li.appendChild(btn);
+          list.appendChild(li);
+        });
+        overlay.hidden = false;
+      } catch (e) {
+        console.warn('Room picker init failed:', e);
+      }
+    })();
+  </script>
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/user.js') }}"></script>
@@ -556,8 +676,7 @@ def build():
         "times": btn_icon("times"),
         "expand": btn_icon("angle-down"),
         "sidebar": "".join(sidebar),
-        "about": modal("aboutModal", "aboutTitle", "aboutTitle", "EzySpeech", about_body,
-                       close_fn="hideAbout()"),
+        "about": about_modal(),
         "shortcuts": modal("shortcutsModal", "shortcutsTitle", "shortcuts_title", "Keyboard Shortcuts",
                            shortcuts_body, close_fn="hideShortcuts()"),
         "welcome": modal("welcomeModal", "welcomeTitle", "welcome_title", "Welcome to EzySpeech",
