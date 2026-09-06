@@ -119,7 +119,12 @@ websocket_connections = defaultdict(int)
 # ──────────────────────────────────────────
 # Flask App
 # ──────────────────────────────────────────
+from app.core.static_version import make_static_url
+
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=TEMPLATE_DIR)
+# Templates address static files through static_url(), which appends a hash of
+# the file's contents so a changed stylesheet is never served from cache.
+app.jinja_env.globals["static_url"] = make_static_url(STATIC_DIR)
 app.config['SECRET_KEY'] = ensure_runtime_secret("server_secret_key", ("server", "secret_key"))
 
 CORS(app, origins=get_config("advanced", "security", "cors_origins", default="*"))

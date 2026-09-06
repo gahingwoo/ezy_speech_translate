@@ -278,7 +278,7 @@ function applyDisplayMode() {
         if (languageGroup)  languageGroup.style.display = 'none';
         if (bibleTransRow)  bibleTransRow.style.display = 'none';
     } else {
-        if (ttsSection)     ttsSection.style.display = 'block';
+        if (ttsSection)     ttsSection.style.display = '';
         if (languageGroup)  languageGroup.style.display = '';
         if (bibleTransRow)  bibleTransRow.style.display = '';
     }
@@ -1189,7 +1189,7 @@ function applyDisplayLanguageLocal() {
 
     const badge = document.getElementById('statusBadge');
     if (badge) {
-        const statusSpan = badge.querySelector('span:last-child');
+        const statusSpan = badge.querySelector('.pf-v6-c-label__text');
         if (statusSpan) {
             statusSpan.textContent = i18n[displayLanguage]?.online || i18n[displayLanguage]?.offline || i18n[displayLanguage]?.waiting || statusSpan.textContent;
         }
@@ -1714,7 +1714,7 @@ function updateDisplayMode() {
 
         console.log('Transcription mode enabled');
     } else {
-        if (ttsSection)      ttsSection.style.display = 'block';
+        if (ttsSection)      ttsSection.style.display = '';
         if (languageGroup)   languageGroup.style.display = '';
         if (bibleTransRow)   bibleTransRow.style.display = '';
 
@@ -1816,13 +1816,13 @@ function toggleTheme() {
 
 
 function updateThemeUI(theme) {
-    const icon = document.getElementById('themeIcon');
     const text = document.getElementById('themeText');
+    // The icon is two PatternFly SVGs in the markup and CSS shows the one that
+    // matches the theme, so nothing here writes a glyph into the page.
+    document.documentElement.classList.toggle('pf-v6-theme-dark', theme === 'dark');
     if (theme === 'dark') {
-        if (icon) icon.textContent = '☀️';
         if (text) text.textContent = t('lightMode', 'Light Mode');
     } else {
-        if (icon) icon.textContent = '🌙';
         if (text) text.textContent = t('darkMode', 'Dark Mode');
     }
 }
@@ -1931,9 +1931,13 @@ function setConnectionStatus(state) {
     const badge = document.getElementById('statusBadge');
     if (!badge) return;
     const known = { online: 'online', offline: 'offline', waiting: 'waiting' };
+    // PatternFly label modifiers carry the state colour. This function
+    // rewrites className wholesale, so they are set here rather than in the
+    // template, where they would be wiped on the first status change.
+    const mod = { online: 'pf-m-green', offline: 'pf-m-red', waiting: 'pf-m-orange' };
     const cls = known[state] || 'waiting';
-    badge.className = 'connection-badge ' + cls;
-    const sp = badge.querySelector('span:last-child');
+    badge.className = 'pf-v6-c-label ' + mod[cls] + ' connection-badge ' + cls;
+    const sp = badge.querySelector('.pf-v6-c-label__text');
     if (sp) sp.textContent = t(cls, sp.textContent || cls);
 }
 
@@ -3041,12 +3045,13 @@ async function renderTranslations() {
         const emptyDesc = (i18n[displayLanguage] && i18n[displayLanguage][descKey]) || (i18n['en'] && i18n['en'][descKey]) || 'Translations will appear here in real-time';
 
         list.innerHTML = '\
-            <div class="empty-state">\
-                <div class="empty-icon">💬</div>\
-                <div>' + emptyText + '</div>\
-                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">\
-                    ' + emptyDesc + '\
-                </small>\
+            <div class="pf-v6-c-empty-state empty-state">\
+                <div class="pf-v6-c-empty-state__content">\
+                    <div class="pf-v6-c-empty-state__title">\
+                        <h2 class="pf-v6-c-empty-state__title-text">' + emptyText + '</h2>\
+                    </div>\
+                    <div class="pf-v6-c-empty-state__body">' + emptyDesc + '</div>\
+                </div>\
             </div>\
         ';
         return;

@@ -7,58 +7,103 @@
     <title>Admin Login</title>
     <meta data-i18n-meta="metaDescription" content="Admin login for EzySpeech" name="description">
     <!-- Favicon will be set by OEM loader -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Red+Hat+Mono:wght@400;500&family=Red+Hat+Text:wght@400;500;600;700&display=swap">
-    <link href="/static/css/admin.css" rel="stylesheet">
-    <link href="/static/css/login.css" rel="stylesheet">
+    <!-- PatternFly carries Red Hat Text and Display itself, so the fonts no
+         longer come from Google and nothing here reaches outside the network
+         this runs on. -->
+    <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+    <link href="{{ static_url('css/login.css') }}" rel="stylesheet">
     <!-- OEM Configuration Loader -->
-    <script src="/static/js/oem-loader.js"></script>
+    <script src="{{ static_url('js/oem-loader.js') }}"></script>
 </head>
 
 <body data-theme="light">
-    <div class="login-wrapper">
-        <div class="login-box">
-            <div class="login-logo">
-                <div class="login-logo-content">
-                    <h1 data-i18n="adminLogin">Admin Login</h1>
-                    <p data-i18n="loginSubtitle">Sign in to access the admin panel</p>
+    <!-- PatternFly's login page is laid out around a background image; the
+         pattern ships with the design system. -->
+    <div class="pf-v6-c-background-image"></div>
+
+    <div class="pf-v6-c-login">
+        <div class="pf-v6-c-login__container">
+            <!-- Logotype. The .login-logo-icon class is where oem-loader.js
+                 puts a customer's brand image, so it stays. -->
+            <header class="pf-v6-c-login__header">
+                <div class="login-logo-icon">
+                    <img class="pf-v6-c-brand" src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208"
+                        alt="Mt Albert Baptist">
                 </div>
-                <div class="login-logo-icon">🎙️</div>
-            </div>
+            </header>
 
-            <form class="login-form" id="loginForm" onsubmit="return false;">
-                <div class="control-group">
-                    <label class="control-label" for="username" data-i18n="username">Username</label>
-                    <input autocomplete="username" id="username" placeholder="Enter your username"
-                        data-i18n-placeholder="username" required type="text">
+            <main class="pf-v6-c-login__main">
+                <!-- .login-logo is the hook oem-loader.js looks for to
+                     override this heading with a customer's product name. -->
+                <header class="pf-v6-c-login__main-header login-logo">
+                    <h1 class="pf-v6-c-title pf-m-3xl" data-i18n="adminLogin">Admin Login</h1>
+                    <p class="pf-v6-c-login__main-header-desc" data-i18n="loginSubtitle">
+                        Sign in to access the admin panel
+                    </p>
+                </header>
+
+                <div class="pf-v6-c-login__main-body">
+                    <form class="pf-v6-c-form" id="loginForm" onsubmit="return false;" novalidate>
+                        <div class="pf-v6-c-form__group">
+                            <div class="pf-v6-c-form__group-label">
+                                <label class="pf-v6-c-form__label" for="username">
+                                    <span class="pf-v6-c-form__label-text" data-i18n="username">Username</span>
+                                    <span class="pf-v6-c-form__label-required" aria-hidden="true">&#42;</span>
+                                </label>
+                            </div>
+                            <div class="pf-v6-c-form__group-control">
+                                <span class="pf-v6-c-form-control pf-m-required">
+                                    <input autocomplete="username" id="username" placeholder="Enter your username"
+                                        data-i18n-placeholder="username" required type="text">
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="pf-v6-c-form__group">
+                            <div class="pf-v6-c-form__group-label">
+                                <label class="pf-v6-c-form__label" for="password">
+                                    <span class="pf-v6-c-form__label-text" data-i18n="password">Password</span>
+                                    <span class="pf-v6-c-form__label-required" aria-hidden="true">&#42;</span>
+                                </label>
+                            </div>
+                            <div class="pf-v6-c-form__group-control">
+                                <span class="pf-v6-c-form-control pf-m-required">
+                                    <input autocomplete="current-password" id="password"
+                                        placeholder="Enter your password" data-i18n-placeholder="password" required
+                                        type="password">
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- The element login.js writes a failed sign-in into.
+                             A live region, so a screen reader hears it. -->
+                        <div class="login-error" id="loginError" role="alert" aria-live="polite"></div>
+
+                        <div class="pf-v6-c-form__group pf-m-action">
+                            <div class="pf-v6-c-form__actions">
+                                <button class="pf-v6-c-button pf-m-primary pf-m-block" id="loginButton" type="submit"
+                                    data-i18n="signIn">
+                                    <span class="pf-v6-c-button__text">Log in</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
-                <div class="control-group">
-                    <label class="control-label" for="password" data-i18n="password">Password</label>
-                    <input autocomplete="current-password" id="password" placeholder="Enter your password"
-                        data-i18n-placeholder="password" required type="password">
-                </div>
+            </main>
 
-                <div class="login-error" id="loginError"></div>
-
-                <button class="login-submit" id="loginButton" type="submit" data-i18n="signIn">
-                    Sign In
-                </button>
-            </form>
-
-            <div class="login-footer">
-                <button class="theme-btn" onclick="toggleLoginTheme()">
-                    <span id="loginThemeIcon">🌙</span>
-                    <span id="loginThemeText" data-i18n="darkMode">Dark Mode</span>
-                </button>
-            </div>
+            <!-- Description, the area PatternFly reserves beside the card. -->
+            <footer class="pf-v6-c-login__footer">
+                <p class="pf-v6-c-content--p" data-i18n="loginBlurb">
+                    Live transcription and translation for events. Speak once, and everyone
+                    follows along in their own language.
+                </p>
+            </footer>
         </div>
     </div>
 
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/login.js"></script>
+    <script src="{{ static_url('js/i18n.js') }}"></script>
+    <script src="{{ static_url('js/login.js') }}"></script>
 </body>
 
 </html>

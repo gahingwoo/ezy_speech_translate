@@ -124,10 +124,15 @@ security_logger.setLevel(logging.WARNING)
 # ──────────────────────────────────────────
 # Flask Initialization with Security
 # ──────────────────────────────────────────
+from app.core.static_version import make_static_url
+
 app = Flask(__name__,
             template_folder=TEMPLATE_DIR,
             static_folder=STATIC_DIR,
             static_url_path='/static')
+# Templates address static files through static_url(), which appends a hash of
+# the file's contents so a changed stylesheet is never served from cache.
+app.jinja_env.globals["static_url"] = make_static_url(STATIC_DIR)
 
 # Secure configuration — resolve (and persist) a strong Flask secret key.
 # Existing configured keys are used unchanged; missing/insecure ones are
@@ -957,28 +962,8 @@ def set_cache_headers(response):
     
     return response
 
-# ──────────────────────────────────────────
-# Jinja2 Helpers - Static File Versioning
-# ──────────────────────────────────────────
-def get_static_file_version(filename):
-    """
-    Get file modification time as version string for cache busting
-    Usage in templates: {{ url_for('static', filename='css/user.css') }}?v={{ 'css/user.css' | static_version }}
-    """
-    try:
-        filepath = os.path.join(STATIC_DIR, filename)
-        if os.path.exists(filepath):
-            mtime = os.path.getmtime(filepath)
-            return str(int(mtime))
-        else:
-            logger.warning(f"Static file not found for versioning: {filename}")
-            return "1"
-    except Exception as e:
-        logger.error(f"Error getting static file version for {filename}: {e}")
-        return "1"
-
-# Register Jinja2 filter for static file versioning
-app.jinja_env.filters['static_version'] = get_static_file_version
+# Static file versioning lives in app/core/static_version.py; the URL is
+# built by static_url() in the templates.
 
 # ──────────────────────────────────────────
 # Routes with Protection

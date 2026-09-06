@@ -152,7 +152,7 @@ function applyOEMConfig(oemConfig) {
         }
         
         // Apply login icon
-        const loginIcon = assets.login_icon || '🎙️';
+        const loginIcon = assets.login_icon || '';
         const baseLoginHeight = 60;  // Base height for login icon
         const maxLoginHeight = Math.round(baseLoginHeight * iconScale);
         const loginIconEl = document.querySelector('.login-logo-icon');
@@ -167,7 +167,10 @@ function applyOEMConfig(oemConfig) {
                 img.style.display = 'block';
                 loginIconEl.innerHTML = '';
                 loginIconEl.appendChild(img);
-            } else {
+            } else if (loginIcon && !loginIconEl.querySelector('img')) {
+                // Only a text icon, and only when the page has no mark of its
+                // own: an OEM default must not overwrite the brand the
+                // template ships with.
                 loginIconEl.textContent = loginIcon;
             }
         }

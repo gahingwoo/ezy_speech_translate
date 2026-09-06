@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <!-- ✅ CSP is now dynamically set by server via HTTP headers based on config.server.external_url -->
+    <title>EzySpeech - User Client</title>
+    <meta data-i18n-meta="metaDescription" content="Real-time speech translation with TTS support for 20+ languages"
+        name="description">
+    <!-- Favicon will be set by OEM loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- PatternFly carries Red Hat Text, Display and Mono itself, so the fonts
+         no longer come from Google and nothing here reaches outside the
+         network this runs on. -->
+    <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+    <!-- ✅ CSS with cache-busting version number based on file modification time -->
+    <link href="{{ static_url('css/user.css') }}" rel="stylesheet">
+    <!-- OEM Configuration Loader with cache-busting -->
+    <script src="{{ static_url('js/oem-loader.js') }}"></script>
+    <!-- Google Translate removed to comply with CSP; using local i18n instead -->
+</head>
+
+<body data-theme="light">
+    <!-- Skip-to-main link (additive, accessibility) -->
+    <a class="skip-link" href="#mainTitle" data-i18n="skipToMain">Skip to translations</a>
+
+    <!-- Room picker overlay (shown only when multiple active rooms exist and ?room= is not set) -->
+    <div id="roomPickerOverlay" class="room-picker-overlay">
+        <div class="room-picker-overlay__panel">
+            <h3 class="room-picker-overlay__title"><span aria-hidden="true">🚪</span> <span data-i18n="chooseSession">Choose a session</span></h3>
+            <p class="room-picker-overlay__hint" data-i18n="chooseSessionHint">Multiple translation sessions are active. Pick one to join.</p>
+            <div id="roomPickerList" class="room-picker-overlay__list"></div>
+        </div>
+    </div>
+    <script>
+        // Persistent room switcher: navigates by reloading with ?room=
+        window.userSwitchRoom = function (roomId) {
+            if (!roomId || !/^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$/.test(roomId)) return;
+            const cur = (window.CURRENT_ROOM_ID || 'main');
+            if (roomId === cur) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', roomId);
+            window.location.href = url.toString();
+        };
+
+        (async function () {
+            try {
+                // Translate JS-generated room labels using the shared catalog
+                const _i18n = window.sharedI18n || {};
+                const _lang = window.resolveDisplayLang
+                    ? window.resolveDisplayLang(localStorage.getItem('displayLanguage'))
+                    : 'en';
+                const _t = (k, fb) => (_i18n[_lang] && _i18n[_lang][k]) || (_i18n.en && _i18n.en[k]) || fb;
+                const params = new URLSearchParams(window.location.search);
+                const explicitRoom = params.get('room');
+                const resp = await fetch('/api/rooms');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const rooms = (data && data.rooms) || [];
+
+                // ── Populate sidebar room switcher (always when >1 room) ──
+                if (rooms.length > 1) {
+                    const sw = document.getElementById('userRoomSwitcherSection');
+                    const sel = document.getElementById('userRoomSelect');
+                    if (sw && sel) {
+                        sel.innerHTML = '';
+                        const currentRoom = explicitRoom || (window.CURRENT_ROOM_ID || 'main');
+                        rooms.forEach(r => {
+                            const opt = document.createElement('option');
+                            opt.value = r.room_id;
+                            opt.textContent = (r.display_name || r.room_id) +
+                                ' (' + (r.listeners || 0) + ')';
+                            if (r.room_id === currentRoom) opt.selected = true;
+                            sel.appendChild(opt);
+                        });
+                        sw.style.display = '';
+                    }
+                }
+
+                // ── First-load picker overlay (only when no explicit room) ──
+                if (explicitRoom) return;
+                if (rooms.length <= 1) return;
+                const overlay = document.getElementById('roomPickerOverlay');
+                const list = document.getElementById('roomPickerList');
+                rooms.forEach(r => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'room-picker-overlay__item';
+                    const nameEl = document.createElement('strong');
+                    nameEl.textContent = r.display_name || r.room_id;
+                    const countEl = document.createElement('span');
+                    countEl.className = 'room-picker-overlay__item-count';
+                    countEl.textContent = _t('listenersCount', '{n} listening').replace('{n}', (r.listeners || 0));
+                    btn.appendChild(nameEl);
+                    btn.appendChild(countEl);
+                    btn.onclick = () => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('room', r.room_id);
+                        window.location.href = url.toString();
+                    };
+                    list.appendChild(btn);
+                });
+                overlay.classList.add('room-picker-overlay--open');
+            } catch (e) { console.warn('Room picker init failed:', e); }
+        })();
+    </script>
+    <!-- Sync Notification Indicator -->
+    <div aria-live="polite" class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated">
+        🔄 Translations Updated
+    </div>
+
+    <!-- Feature 2: Announcement Banner -->
+    <div id="announcementBanner" class="announcement-banner" style="display:none;" role="alert" aria-live="assertive">
+        <span class="announcement-icon" id="announcementIcon" aria-hidden="true">📢</span>
+        <span class="announcement-text" id="announcementMessage"></span>
+        <button class="announcement-close" onclick="dismissAnnouncement()" aria-label="Dismiss announcement">✕</button>
+    </div>
+
+    <!-- Toast Notification Container (additive) -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- PatternFly page: the masthead, the sidebar and the content are
+         siblings inside it, not nested in one another. -->
+    <div class="pf-v6-c-page">
+    <!-- Masthead -->
+    <header class="pf-v6-c-masthead" role="banner">
+        <div class="pf-v6-c-masthead__main">
+            <span class="pf-v6-c-masthead__toggle">
+                <button aria-controls="sidebar" aria-expanded="false" aria-label="Toggle mobile menu"
+                    class="pf-v6-c-button pf-m-plain" id="mobileMenuToggle" type="button" onclick="toggleMobileMenu()">
+                    <span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 132h416c8.837 0 16-7.163 16-16V76c0-8.837-7.163-16-16-16H16C7.163 60 0 67.163 0 76v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16z"/></svg></span>
+                </button>
+            </span>
+            <div class="pf-v6-c-masthead__brand">
+                <!-- .brand and the order of its two spans are the hooks
+                     oem-loader.js writes the customer's icon and name into. -->
+                <div class="pf-v6-c-masthead__logo brand">
+                    <span aria-hidden="true"><img src="{{ static_url('img/mabc-mark.png') }}" alt=""></span>
+                    <span>EzySpeech User</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="pf-v6-c-masthead__content">
+            <!-- Connection state. setConnectionStatus() in user.js rewrites
+                 this element's class list, so it sets the PatternFly label
+                 modifiers there too. -->
+            <span aria-live="polite" class="pf-v6-c-label pf-m-orange connection-badge waiting" id="statusBadge"
+                role="status">
+                <span class="pf-v6-c-label__content">
+                    <span class="pf-v6-c-label__text" data-i18n="waiting">Waiting</span>
+                </span>
+            </span>
+
+            <div class="header-search-desktop" id="headerSearchDesktop">
+                <div class="pf-v6-c-text-input-group">
+                    <div class="pf-v6-c-text-input-group__main pf-m-icon">
+                        <span class="pf-v6-c-text-input-group__text">
+                            <span class="pf-v6-c-text-input-group__icon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"/></svg></span>
+                            <input class="pf-v6-c-text-input-group__text-input" aria-label="Search translations"
+                                id="searchInput" oninput="handleSearch()" data-i18n-placeholder="search"
+                                placeholder="Search..." type="search">
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <button aria-label="Toggle search" class="pf-v6-c-button pf-m-plain mobile-search-toggle"
+                id="mobileSearchToggle" type="button" onclick="toggleMobileSearch()">
+                <span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"/></svg></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Search Bar -->
+    <div class="mobile-search-bar" id="mobileSearchBar">
+        <div class="mobile-search-container">
+            <input aria-label="Search translations" class="search-input-mobile" id="searchInputMobile"
+                oninput="handleSearch()" data-i18n-placeholder="searchTranslations" placeholder="Search translations..."
+                type="search">
+        </div>
+        <div aria-live="polite" class="search-results-info" id="searchResultsInfo" role="status" style="display: none;">
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div aria-hidden="true" class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+
+    <!-- Main Content Container -->
+    <!-- Sidebar -->
+    <div aria-label="Settings and controls" class="pf-v6-c-page__sidebar" id="sidebar">
+        <div class="pf-v6-c-page__sidebar-body">
+
+            <!-- Room switcher (hidden unless >1 room exists) -->
+            <section class="sidebar-section user-room-switcher-section" id="userRoomSwitcherSection" style="display:none;">
+                <h3 class="sidebar-title">
+                    <span data-i18n="room">Room</span>
+                </h3>
+                <div class="control-group">
+                    <label class="control-label" for="userRoomSelect" data-i18n="currentRoom">Current room</label>
+                    <select aria-label="Switch room" id="userRoomSelect"
+                            onchange="window.userSwitchRoom && window.userSwitchRoom(this.value)"></select>
+                </div>
+            </section>
+
+            <!-- Translation Settings Section -->
+            <section class="sidebar-section">
+                <h3 class="sidebar-title" data-i18n="displaySettings">Display Settings</h3>
+
+                <div class="control-group">
+                    <label class="control-label" for="displayLanguage" data-i18n="displayLanguage">Display
+                        Language</label>
+                    <select aria-label="Select display language" id="displayLanguage"
+                        onchange="changeDisplayLanguageLocal()">
+                        <option value="en">English</option>
+                        <option value="zh">简体中文</option>
+                        <option value="zh-tw">繁體中文</option>
+                        <option value="yue">粵語</option>
+                        <option value="ja">日本語</option>
+                        <option value="ko">한국어</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                        <option value="ru">Русский</option>
+                        <option value="ar">العربية</option>
+                        <option value="pt">Português</option>
+                        <option value="it">Italiano</option>
+                        <option value="nl">Nederlands</option>
+                        <option value="pl">Polski</option>
+                        <option value="tr">Türkçe</option>
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="th">ไทย</option>
+                        <option value="id">Bahasa Indonesia</option>
+                        <option value="ms">Bahasa Malaysia</option>
+                        <option value="hi">हिन्दी</option>
+                        <option value="ta">தமிழ்</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="displayMode" data-i18n="displayMode">Display Mode</label>
+                    <select aria-label="Select display mode" id="displayMode" onchange="changeDisplayMode()">
+                        <option value="translation" data-i18n="translation">Translation</option>
+                        <option value="transcription" data-i18n="transcriptionOnly">Transcription Only</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="languageSelectGroup">
+                    <label class="control-label" for="targetLang" data-i18n="targetLanguage">Target Language</label>
+                    <select aria-label="Select target language" id="targetLang" onchange="changeLanguage()">
+                        <option value="yue">Cantonese (粵語)</option>
+                        <option value="zh">Chinese Simplified (简体中文)</option>
+                        <option value="zh-tw">Chinese Traditional (繁體中文)</option>
+                        <option value="ja">Japanese (日本語)</option>
+                        <option value="ko">Korean (한국어)</option>
+                        <option value="es">Spanish (Español)</option>
+                        <option value="fr">French (Français)</option>
+                        <option value="de">German (Deutsch)</option>
+                        <option value="ru">Russian (Русский)</option>
+                        <option value="ar">Arabic (العربية)</option>
+                        <option value="pt">Portuguese (Português)</option>
+                        <option value="it">Italian (Italiano)</option>
+                        <option value="nl">Dutch (Nederlands)</option>
+                        <option value="pl">Polish (Polski)</option>
+                        <option value="tr">Turkish (Türkçe)</option>
+                        <option value="vi">Vietnamese (Tiếng Việt)</option>
+                        <option value="th">Thai (ไทย)</option>
+                        <option value="id">Indonesian (Bahasa Indonesia)</option>
+                        <option value="ms">Malay (Bahasa Malaysia)</option>
+                        <option value="hi">Hindi (हिन्दी)</option>
+                        <option value="ta">Tamil (தமிழ்)</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Text-to-Speech Section -->
+            <section class="sidebar-section">
+                <h3 class="sidebar-title" data-i18n="textToSpeech">Text-to-Speech</h3>
+
+                <div class="control-group">
+                    <button aria-pressed="false" class="pf-v6-c-button pf-m-primary" id="toggleTTS"
+                        onclick="toggleTTS()"><span class="pf-v6-c-button__text"><span aria-hidden="true">🔊</span>
+                        <span data-i18n="enableTTS">Enable TTS</span></span></button>
+                </div>
+
+                <!-- TTS Engine Selection -->
+                <div class="control-group">
+                    <label class="control-label" for="ttsEngine" data-i18n="ttsEngine">TTS Engine</label>
+                    <select aria-label="Select TTS engine" id="ttsEngine" onchange="changeTTSEngine()">
+                        <option value="system">🖥️ System (Local)</option>
+                        <option value="edge">☁️ Edge TTS (Cloud)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="voiceSelect" data-i18n="voice">Voice</label>
+                    <select aria-label="Select voice" id="voiceSelect" onchange="changeVoice()">
+                        <option value="">Loading voices...</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="rateSlider" data-i18n="speed">Speed</label>
+                    <div class="slider-wrapper">
+                        <input aria-label="Speech rate" class="slider" id="rateSlider" max="2" min="0.5"
+                            oninput="updateRate()" step="0.1" type="range" value="1">
+                        <span class="slider-value" id="rateValue">1.0x</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="volumeSlider" data-i18n="volume">Volume</label>
+                    <div class="slider-wrapper">
+                        <input aria-label="Speech volume" class="slider" id="volumeSlider" max="1" min="0"
+                            oninput="updateVolume()" step="0.1" type="range" value="1">
+                        <span class="slider-value" id="volumeValue">100%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export Section -->
+            <section class="sidebar-section">
+                <h3 class="sidebar-title" data-i18n="export">Export</h3>
+
+                <div class="control-group">
+                    <label class="control-label" for="exportFormat" data-i18n="format">Format</label>
+                    <select aria-label="Select export format" id="exportFormat">
+                        <option value="txt">📄 Text (TXT)</option>
+                        <option value="json">📋 JSON</option>
+                        <option value="csv">📊 CSV</option>
+                        <option value="srt">🎬 Subtitle (SRT)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Download translations" class="pf-v6-c-button pf-m-primary"
+                        onclick="exportData()"><span class="pf-v6-c-button__text"><span aria-hidden="true">💾</span>
+                        <span data-i18n="download">Download</span></span></button>
+                </div>
+
+                <!-- AI Summary: opens ChatGPT with sermon pre-loaded -->
+                <div class="control-group">
+                    <button id="ai-summary-btn" class="pf-v6-c-button pf-m-secondary" style="width:100%"
+                        onclick="shareForAI('chatgpt')"><span class="pf-v6-c-button__text"><span aria-hidden="true">✨</span> <span data-i18n="aiSermonSummary">AI Sermon Summary</span></span></button>
+                    <p style="font-size:0.72rem;color:var(--text-secondary);margin-top:0.35rem;line-height:1.4;"
+                       data-i18n="aiSermonHint">
+                        Opens ChatGPT with sermon already loaded</p>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Clear display" class="pf-v6-c-button pf-m-secondary"
+                        onclick="clearLocal()"><span class="pf-v6-c-button__text"><span aria-hidden="true">🗑️</span>
+                        <span data-i18n="clearDisplay">Clear Display</span></span></button>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="sidebar-section">
+                <h3 class="sidebar-title" data-i18n="settings">Settings</h3>
+
+                <div class="control-group">
+                    <label class="control-label" for="uiMode" data-i18n="uiMode">View Mode</label>
+                    <select aria-label="View mode" id="uiMode" onchange="updateUIMode()">
+                        <option value="standard" data-i18n="uiMode_standard">🎯 Standard</option>
+                        <option value="accessibility" data-i18n="uiMode_accessibility">♿ Accessibility</option>
+                        <option value="elderly" data-i18n="uiMode_elderly">👵 Elderly</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="fontSizeSlider" data-i18n="fontSize">Font Size</label>
+                    <div class="slider-wrapper">
+                        <input aria-label="Translation font size" class="slider" id="fontSizeSlider" max="24" min="12"
+                            oninput="updateFontSize()" step="1" type="range" value="18">
+                        <span class="slider-value" id="fontSizeValue">18px</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Toggle source text display" class="sidebar-menu-item" id="sourceTextToggle" onclick="toggleSourceText()">
+                        <span aria-hidden="true">📖</span>
+                        <span id="sourceTextText">Show Source</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Toggle theme" class="sidebar-menu-item" onclick="toggleTheme()">
+                        <span aria-hidden="true" id="themeIcon">🌙</span>
+                        <span id="themeText" data-i18n="darkMode">Dark Mode</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Reset settings" class="sidebar-menu-item" onclick="resetSettings()">
+                        <span aria-hidden="true">🔄</span>
+                        <span data-i18n="resetSettings">Reset Settings</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="User guide" class="sidebar-menu-item" onclick="showTour()">
+                        <span aria-hidden="true">💡</span>
+                        <span data-i18n="userGuide">User Guide</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="Keyboard shortcuts" class="sidebar-menu-item" onclick="showShortcuts()">
+                        <span aria-hidden="true">⌨️</span>
+                        <span data-i18n="shortcuts_title">Keyboard Shortcuts</span>
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <button aria-label="About" class="sidebar-menu-item" onclick="showAbout()">
+                        <span aria-hidden="true">ℹ️</span>
+                        <span data-i18n="about">About</span>
+                    </button>
+                </div>
+            </section>
+
+            {% if bible_detection_enabled %}
+            <!-- Bible Verses — standalone section, separate from Settings -->
+            <section class="sidebar-section" id="bibleSidebarSection" aria-label="Bible Verses">
+                <h3 class="sidebar-title"><span data-i18n="bibleVerses">Bible Verses</span></h3>
+
+                <div class="control-group">
+                    <button aria-label="Toggle Bible verse display" aria-pressed="false"
+                            class="sidebar-menu-item" id="bibleVerseToggle"
+                            onclick="toggleBibleVerse()">
+                        <span aria-hidden="true">📖</span>
+                        <span id="bibleVerseText" data-i18n="bibleVerseShow">Show Bible Verses</span>
+                    </button>
+                </div>
+
+                <div class="control-group" id="bibleVerseToggleWrap">
+                    <label class="control-label" for="bibleTargetTranslation" data-i18n="yourBible">Your Bible</label>
+                    <select aria-label="Select Bible translation for your language"
+                            id="bibleTargetTranslation"
+                            onchange="onBibleTranslationChange()">
+                        <option value="" data-i18n="bibleLoading">— Loading... —</option>
+                    </select>
+                    <div id="bibleTransLoadingHint"
+                         style="font-size:11px; color:var(--text-secondary,#888); margin-top:4px; display:none;">
+                        <span data-i18n="bibleAutoMatched">Auto-matched to your language. Choose any Bible below.</span>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="pf-v6-c-page__main-container">
+        <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
+        <section aria-label="Translation list" class="pf-v6-c-page__main-section">
+            <div class="content-header">
+                <h2 class="content-title" id="mainTitle">
+                    <span id="mainTitleText" data-i18n="liveTranslations">Live Translations</span>
+                    <span aria-label="Translation count" class="count-badge" id="itemCount">0</span>
+                </h2>
+            </div>
+
+            <div class="translation-list" id="translationsList" role="list">
+                <div class="empty-state" role="status">
+                    <div aria-hidden="true" class="empty-icon">💬</div>
+                    <div data-i18n="waitingTranslations">Waiting for translations...</div>
+                    <small data-i18n="waitingDesc" style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                        Translations will appear here in real-time
+                    </small>
+                </div>
+            </div>
+        </section>
+        </main>
+    </div>
+    </div>
+
+    <!-- About Modal -->
+    <div aria-labelledby="aboutTitle" aria-modal="true" class="about-modal" id="aboutModal" onclick="hideAbout(event)"
+        role="dialog">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="aboutTitle">
+                    <span aria-hidden="true">🎙️</span>
+                    <span data-i18n="aboutTitle">EzySpeech</span>
+                </div>
+                <button aria-label="Close about dialog" class="about-close" onclick="hideAbout()">
+                    ✕
+                </button>
+            </div>
+            <div class="about-body">
+                <p data-i18n="tagline">🌍 Let language no longer stand in the way of connection</p>
+
+                <h3 data-i18n="madeBy">Made with ❤️ by</h3>
+                <p data-i18n="author">Ga Hing Woo</p>
+
+                <div class="about-links">
+                    <a class="about-link" href="https://github.com/gahingwoo/ezy_speech_translate"
+                        rel="noopener noreferrer" target="_blank">
+                        <span>⭐</span>
+                        <span>GitHub</span>
+                    </a>
+                    <a class="about-link" href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"
+                        rel="noopener noreferrer" target="_blank">
+                        <span>💬</span>
+                        <span data-i18n="feedback">Feedback</span>
+                    </a>
+                </div>
+
+                <div class="about-version">
+                    v3.3.0 • Open Source • MIT License
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal (reuses .about-modal styles) -->
+    <div aria-labelledby="shortcutsTitle" aria-modal="true" class="about-modal" id="shortcutsModal"
+        onclick="hideShortcuts(event)" role="dialog">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="shortcutsTitle">
+                    <span aria-hidden="true">⌨️</span>
+                    <span data-i18n="shortcuts_title">Keyboard Shortcuts</span>
+                </div>
+                <button aria-label="Close" class="about-close" onclick="hideShortcuts()">✕</button>
+            </div>
+            <div class="about-body">
+                <div class="shortcut-list">
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_help">Show this help</span><kbd>?</kbd></div>
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_search">Focus search</span><kbd>/</kbd></div>
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_top">Scroll to top</span><kbd>g</kbd></div>
+                    <div class="shortcut-row"><span class="shortcut-label" data-i18n="shortcuts_close">Close dialog / menu</span><kbd>Esc</kbd></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-visit Welcome Modal (reuses .about-modal styles) -->
+    <div aria-labelledby="welcomeTitle" aria-modal="true" class="about-modal" id="welcomeModal"
+        onclick="hideWelcome(event)" role="dialog">
+        <div class="about-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="welcomeTitle">
+                    <span aria-hidden="true">👋</span>
+                    <span data-i18n="welcome_title">Welcome to EzySpeech</span>
+                </div>
+                <button aria-label="Close" class="about-close" onclick="hideWelcome()">✕</button>
+            </div>
+            <div class="about-body">
+                <p data-i18n="welcome_intro">Real-time speech translations will appear here as the host speaks.</p>
+                <div class="shortcut-list">
+                    <div class="onboarding-tip"><span class="tip-icon">🌐</span><span data-i18n="welcome_tip_lang">Pick your display language in the sidebar.</span></div>
+                    <div class="onboarding-tip"><span class="tip-icon">🔊</span><span data-i18n="welcome_tip_tts">Enable Text-to-Speech to hear translations aloud.</span></div>
+                    <div class="onboarding-tip"><span class="tip-icon">📋</span><span data-i18n="welcome_tip_copy">Tap a card to copy or replay it.</span></div>
+                    <div class="onboarding-tip"><span class="tip-icon">⌨️</span><span><span data-i18n="welcome_tip_keys">Press</span> <kbd>?</kbd> <span data-i18n="welcome_tip_keys_after">any time for shortcuts.</span></span></div>
+                </div>
+            </div>
+            <div class="about-version">
+                <button class="pf-v6-c-button pf-m-secondary" onclick="hideWelcome()" data-i18n="welcome_gotIt" style="margin-right:0.5rem;"><span class="pf-v6-c-button__text">Got it</span></button>
+                <button class="pf-v6-c-button pf-m-primary" onclick="hideWelcome(); showTour();" data-i18n="welcome_takeTour"><span class="pf-v6-c-button__text">Take a quick tour</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button aria-label="Scroll to top" class="scroll-to-top" id="scrollToTopBtn" onclick="scrollToTop()">
+        ↑
+    </button>
+
+    <!-- Feature Tour Modal (reuses .about-modal styles) -->
+    <div aria-labelledby="tourTitle" aria-modal="true" class="about-modal" id="tourModal"
+        onclick="hideTour(event)" role="dialog">
+        <div class="about-content tour-content" onclick="event.stopPropagation()">
+            <div class="about-header">
+                <div class="about-title" id="tourTitle">
+                    <span aria-hidden="true" id="tourStepIcon">✨</span>
+                    <span id="tourStepTitle">User Guide</span>
+                </div>
+                <button aria-label="Close" class="about-close" onclick="hideTour()">✕</button>
+            </div>
+            <div class="about-body">
+                <div class="tour-body" id="tourStepBody"></div>
+                <div class="tour-dots" id="tourDots" role="tablist" aria-label="Tour progress"></div>
+            </div>
+            <div class="tour-footer">
+                <button class="pf-v6-c-button pf-m-secondary" id="tourPrev" onclick="tourPrev()" data-i18n="tour_prev"><span class="pf-v6-c-button__text">Back</span></button>
+                <span class="tour-progress" id="tourProgress">1 / 1</span>
+                <button class="pf-v6-c-button pf-m-primary" id="tourNext" onclick="tourNext()" data-i18n="tour_next"><span class="pf-v6-c-button__text">Next</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Translate Element -->
+    <div id="google_translate_element" style="display: none;"></div>
+
+    <!-- ✅ Scripts with cache-busting version numbers -->
+    <script src="{{ static_url('js/i18n.js') }}"></script>
+    <script src="{{ static_url('js/user.js') }}"></script>
+</body>
+
+</html>

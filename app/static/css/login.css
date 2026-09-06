@@ -1,179 +1,48 @@
-.login-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: var(--bg);
-    padding: 1rem;
+/* Login page, on top of PatternFly's login component.
+ *
+ * PatternFly lays the whole page out: the two-column container, the card, the
+ * form, the fields, the button. Nothing here re-lays any of it. What is left
+ * is the background colour PatternFly leaves to the Page component, sizing for
+ * the brand mark, and the one thing the design system has no component for —
+ * the error line the sign-in writes into.
+ *
+ * Every value is a PatternFly token, so light and dark come for free and this
+ * file no longer depends on admin.css for its colours.
+ */
+
+/* The page colour goes on the root, not on the body. PatternFly's background
+ * image sits at z-index -1, so a background painted on the body covers the
+ * pattern completely; on the root it stays underneath it. */
+html {
+  background: var(--pf-t--global--background--color--primary--default);
+}
+body { margin: 0; }
+
+/* The pattern the login page is designed around. PatternFly already places it
+ * bottom-right and sizes it; only the file has to be named. */
+.pf-v6-c-background-image {
+  --pf-v6-c-background-image--BackgroundImage: url("/static/patternfly/assets/images/pf-background.svg");
 }
 
-.login-box {
-    background: var(--surface);
-    padding: 2.5rem;
-    border-radius: 8px;
-    box-shadow: 0 10px 40px var(--shadow);
-    width: 100%;
-    max-width: 520px;
-    border: 1px solid var(--border);
+/* Logotype. oem-loader.js replaces the contents of .login-logo-icon with a
+ * customer's image and sets its height inline, so this sizes the default mark
+ * and leaves an OEM image to say how tall it is. */
+.login-logo-icon .pf-v6-c-brand {
+  height: 3rem;
+  width: auto;
 }
+.login-logo-icon img { max-width: 100%; }
 
-.login-logo {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    gap: 2rem;
-}
-
-.login-logo-content {
-    flex: 1;
-    text-align: left;
-}
-
-.login-logo-icon {
-    font-size: 3.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 80px;
-    min-width: 100px;
-    flex-shrink: 0;
-}
-
-.login-logo h1 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text);
-    margin: 0 0 0.25rem 0;
-}
-
-.login-logo p {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin: 0;
-}
-
-.login-form .control-group {
-    margin-bottom: 1.25rem;
-}
-
-.login-form .control-label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: var(--text);
-}
-
-.login-form input[type="text"],
-.login-form input[type="password"] {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    font-size: 0.938rem;
-    background: var(--bg);
-    color: var(--text);
-    transition: all 0.2s;
-    font-family: inherit;
-}
-
-.login-form input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
-}
-
+/* The message login.js writes on a failed sign-in. Empty until then, so it
+ * takes no space and draws no border while the form is untouched. */
 .login-error {
-    color: var(--danger);
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: rgba(238, 0, 0, 0.1);
-    border-radius: 3px;
-    border-left: 3px solid var(--danger);
-    display: none;
+  color: var(--pf-t--global--text--color--status--danger--default);
+  font-size: var(--pf-t--global--font--size--body--sm);
 }
-
-.login-submit {
-    width: 100%;
-    padding: 0.75rem;
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 3px;
-    font-size: 0.938rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 0.5rem;
-}
-
-.login-submit:hover:not(:disabled) {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
-}
-
-.login-submit:active:not(:disabled) {
-    transform: translateY(0);
-}
-
-.login-submit:disabled {
-    background: var(--border);
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.login-footer {
-    margin-top: 1.5rem;
-    text-align: center;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--border);
-}
-
-.theme-btn {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.5rem 1rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.theme-btn:hover {
-    background: var(--bg);
-    border-color: var(--primary);
-}
-
-@media (max-width: 480px) {
-    .login-box {
-        padding: 2rem 1.5rem;
-        max-width: 100%;
-    }
-
-    .login-logo {
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .login-logo-content {
-        text-align: center;
-        width: 100%;
-    }
-
-    .login-logo h1 {
-        font-size: 1.25rem;
-    }
-
-    .login-logo-icon {
-        font-size: 3rem;
-        min-width: 80px;
-    }
+.login-error:not(:empty) {
+  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  border-inline-start: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--border--color--status--danger--default);
+  background: var(--pf-t--global--background--color--status--danger--default);
+  border-radius: var(--pf-t--global--border--radius--small);
 }

@@ -61,10 +61,11 @@ function toggleLoginTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     const newTheme = current === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', newTheme);
+    // PatternFly switches its own tokens on this class; data-theme is kept
+    // because the rest of the app's CSS still reads it.
+    document.documentElement.classList.toggle('pf-v6-theme-dark', newTheme === 'dark');
     localStorage.setItem('theme', newTheme);
 
-    document.getElementById('loginThemeIcon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    document.getElementById('loginThemeText').textContent = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
 }
 
 async function login(event) {
@@ -173,11 +174,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme
     const storedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', storedTheme);
+    document.documentElement.classList.toggle('pf-v6-theme-dark', storedTheme === 'dark');
 
-    if (storedTheme === 'dark') {
-        document.getElementById('loginThemeIcon').textContent = '☀️';
-        document.getElementById('loginThemeText').textContent = 'Light Mode';
-    }
+
 
     // Load server config
     try {

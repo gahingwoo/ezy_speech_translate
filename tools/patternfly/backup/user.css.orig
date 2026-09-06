@@ -1,0 +1,1629 @@
+/* ===================================
+   Base Styles & Reset
+   =================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* CSS Variables for Light Theme */
+:root {
+    --primary: #0066cc;
+    --primary-hover: #0052a3;
+    --success: #3ec930;
+    --danger: #ee0000;
+    --warning: #f0ab00;
+    --bg: #f0f0f0;
+    --surface: #ffffff;
+    --border: #d2d2d2;
+    --text: #151515;
+    --text-secondary: #6a6e73;
+    --shadow: rgba(3, 3, 3, 0.16);
+    --card-radius: 3px;
+    --btn-radius: 3px;
+}
+
+/* CSS Variables for Dark Theme */
+[data-theme="dark"] {
+    --bg: #1b1d21;
+    --surface: #2b2d31;
+    --border: #3d4044;
+    --text: #f0f0f0;
+    --text-secondary: #a9adb3;
+    --shadow: rgba(0, 0, 0, 0.4);
+}
+
+body {
+    font-family: "Red Hat Text", "Overpass", overpass, helvetica, arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    transition: all 0.3s ease;
+}
+
+.brand {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+/* Header Search - Desktop */
+.header-search-desktop {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Mobile Search Toggle Button */
+.mobile-search-toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 1.125rem;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.mobile-search-toggle:hover {
+    background: var(--bg);
+    border-color: var(--primary);
+}
+
+.mobile-search-toggle.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Mobile Search Bar */
+.mobile-search-bar {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.875rem 1rem;
+    box-shadow: 0 2px 4px var(--shadow);
+    z-index: 99;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.mobile-search-bar.active {
+    display: flex;
+}
+
+.mobile-search-container {
+    position: relative;
+}
+
+.search-input-mobile {
+    width: 100%;
+    padding: 0.625rem 2rem 0.625rem 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.search-input-mobile:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.search-results-info {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Search Highlight */
+.search-highlight {
+    background: #ffeb3b;
+    color: #000;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .search-highlight {
+    background: #ffc107;
+    color: #000;
+}
+
+/* Connection Status Badge */
+.connection-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 3px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.connection-badge.online {
+    background: #e7f4e4;
+    color: #1e4f18;
+    border: 1px solid #a3d89f;
+}
+
+[data-theme="dark"] .connection-badge.online {
+    background: #1e3a1c;
+    color: #b2f0a8;
+    border: 1px solid #3d7d37;
+}
+
+.connection-badge.waiting {
+    background: #fef6e7;
+    color: #6b5300;
+    border: 1px solid #f0d896;
+}
+
+[data-theme="dark"] .connection-badge.waiting {
+    background: #3d3314;
+    color: #f0d896;
+    border: 1px solid #7d6b2d;
+}
+
+.connection-badge.offline {
+    background: #faeae8;
+    color: #6a1504;
+    border: 1px solid #f4b9b0;
+}
+
+[data-theme="dark"] .connection-badge.offline {
+    background: #3d1714;
+    color: #f9b9ad;
+    border: 1px solid #7d2d22;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.8;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.mobile-menu-toggle.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Mobile Sidebar Overlay */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+.sidebar-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-menu-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.2s;
+    margin-bottom: 0.5rem;
+}
+
+.sidebar-menu-item:hover {
+    background: var(--bg);
+    border-color: var(--primary);
+}
+
+.sidebar-menu-item:last-child {
+    margin-bottom: 0;
+}
+
+/* ===================================
+   Form Controls
+   =================================== */
+.control-group {
+    margin-bottom: 1.25rem;
+}
+
+.control-group:last-child {
+    margin-bottom: 0;
+}
+
+.control-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+@keyframes button-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.9;
+    }
+}
+
+/* Slider Controls */
+.slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
+
+.slider-value {
+    color: var(--text);
+    font-weight: 600;
+    min-width: 50px;
+    text-align: right;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.content-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.count-badge {
+    background: var(--primary);
+    color: white;
+    padding: 0.25rem 0.625rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* ===================================
+   Translation List
+   =================================== */
+.translation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.translation-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 1.25rem;
+    transition: all 0.2s;
+    /* Removed slideIn animation to prevent flashing (accessibility for photosensitivity) */
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.translation-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.translation-card.corrected {
+    border-left: 4px solid var(--success);
+}
+
+.translation-card.hidden {
+    display: none;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    min-height: 1.75rem;  /* Ensure header has minimum height */
+}
+
+.card-time {
+    font-size: 0.813rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    align-items: center;  /* Vertically center with actions */
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 1.5rem;  /* Fixed height to prevent fluctuations */
+}
+
+.card-badge {
+    background: var(--success);
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--btn-radius) !important;
+    font-size: 0.75rem;
+    font-weight: 600;
+    height: 1.25rem;  /* Fixed height to match action items */
+    display: flex;
+    align-items: center;  /* Vertically center text inside badge */
+}
+
+.copy-btn {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--btn-radius) !important;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    min-width: 32px;
+    text-align: center;
+    height: 1.25rem;  /* Fixed height to prevent expansion */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-btn:hover {
+    background: var(--bg);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.copy-btn.copied {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.tts-icon {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--btn-radius) !important;
+    background: var(--primary);
+    color: white;
+    border: none;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    height: 1.25rem;  /* Fixed height to prevent expansion */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;  /* Square-ish shape */
+}
+
+.tts-icon:hover {
+    background: var(--primary-hover);
+    transform: scale(1.1);
+}
+
+/* ✅ Responsive buttons: smart sizing for mobile vs desktop */
+@media (max-width: 768px) {
+    /* Mobile devices: moderate buttons for touch, not too large */
+    .copy-btn {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.75rem;
+        min-width: 1.75rem;
+        border-radius: 4px;
+    }
+
+    .tts-icon {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.75rem;
+        min-width: 1.75rem;
+        border-radius: 4px;
+    }
+
+    .card-actions {
+        height: 2rem;  /* Slightly taller for mobile */
+        gap: 0.625rem;
+    }
+
+    .card-badge {
+        font-size: 0.8125rem;
+        padding: 0.1875rem 0.625rem;
+        height: 1.5rem;
+    }
+
+    .card-header {
+        min-height: 2.25rem;
+    }
+}
+
+/* Tablet: medium sizing */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .copy-btn {
+        font-size: 0.9375rem;
+        padding: 0.3125rem 0.563rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .tts-icon {
+        font-size: 0.9375rem;
+        padding: 0.3125rem 0.563rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .card-actions {
+        height: 1.75rem;
+    }
+
+    .card-badge {
+        height: 1.375rem;
+    }
+
+    .card-header {
+        min-height: 2rem;
+    }
+}
+
+/* Desktop: larger sizing for better visibility */
+@media (min-width: 1025px) {
+    .copy-btn {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .tts-icon {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
+        height: 1.5rem;
+        min-width: 1.5rem;
+    }
+
+    .card-actions {
+        height: 1.75rem;
+    }
+
+    .card-badge {
+        height: 1.375rem;
+    }
+
+    .card-header {
+        min-height: 2rem;
+    }
+}
+
+.text-source {
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    font-size: 0.938rem;
+    line-height: 1.6;
+}
+
+.text-target {
+    color: var(--text);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.7;
+}
+
+.text-target.translating {
+    color: var(--text-secondary);
+    font-style: italic;
+    opacity: 0.7;
+    animation: dotPulse 1.2s infinite;
+}
+
+/* ── Bible verse panel (church mode, opt-in) ─────────────────── */
+.bible-verse-panel {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--card-radius);
+    box-shadow: 0 1px 3px var(--shadow);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+.bible-verse-block + .bible-verse-block {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.bible-verse-head {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+.bible-verse-ref {
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--text);
+    flex: 1 1 auto;
+}
+.bible-verse-translation {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 1px 7px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.6;
+}
+/* Chinese script variants — amber for 简体, purple for 繁体 */
+.bible-verse-translation[data-script="simplified"] {
+    background: rgba(240, 171, 0, 0.12);
+    color: #7d5a00;
+    border-color: rgba(240, 171, 0, 0.4);
+}
+.bible-verse-translation[data-script="traditional"] {
+    background: rgba(163, 0, 128, 0.1);
+    color: #6f0057;
+    border-color: rgba(163, 0, 128, 0.3);
+}
+[data-theme="dark"] .bible-verse-translation[data-script="simplified"] {
+    background: rgba(240, 171, 0, 0.2);
+    color: #f5c518;
+    border-color: rgba(245, 197, 24, 0.4);
+}
+[data-theme="dark"] .bible-verse-translation[data-script="traditional"] {
+    background: rgba(206, 109, 188, 0.2);
+    color: #ce6dbc;
+    border-color: rgba(206, 109, 188, 0.4);
+}
+.bible-verse-divider {
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px dashed var(--border);
+}
+.bible-verse-line + .bible-verse-line { margin-top: 0.3rem; }
+.bible-verse-num {
+    font-size: 0.65em;
+    font-weight: 700;
+    color: var(--primary);
+    margin-right: 1px;
+    vertical-align: super;
+}
+.bible-verse-missing {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+@keyframes dotPulse {
+    0%, 20% { opacity: 1; }
+    50% { opacity: 0.3; }
+    80%, 100% { opacity: 1; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.loading {
+    color: var(--text-secondary);
+    font-style: italic;
+    /* Removed fadeInOut animation to prevent flashing (accessibility issue)
+       Using solid opacity instead of flickering animation */
+    opacity: 0.7;
+    position: relative;
+}
+
+/* Subtle loading indicator - no flickering */
+.loading::after {
+    content: '';
+    animation: none;
+}
+
+/* ===================================
+   Sync Indicator
+   =================================== */
+.sync-indicator {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--success);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    box-shadow: 0 4px 12px var(--shadow);
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.sync-indicator.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ===================================
+   About Modal
+   =================================== */
+.about-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.about-modal.active {
+    display: flex;
+}
+
+.about-content {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px var(--shadow);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.about-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.about-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.about-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.about-close:hover {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.about-body {
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 0.875rem;
+}
+
+.about-body h3 {
+    font-size: 1rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+}
+
+.about-body p {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.about-links {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.about-link {
+    padding: 0.5rem 0.75rem;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.813rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.about-link:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.about-version {
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ===================================
+   Scroll to Top Button
+   =================================== */
+.scroll-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 0.75rem 1rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--shadow);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.scroll-to-top:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.scroll-to-top.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ===================================
+   Responsive Design
+   =================================== */
+@media (max-width: 992px) {
+    .pf-c-page__sidebar {
+        width: 280px;
+    }
+}
+
+/* ===================================
+   Accessibility: Reduced Motion
+   =================================== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
+    .header-search-desktop {
+        display: none;
+    }
+
+    .mobile-search-toggle {
+        display: flex;
+    }
+
+    .pf-c-page__sidebar {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1000;
+        transform: translateX(-100%);
+    }
+
+    .pf-c-page__sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 12px var(--shadow);
+    }
+
+    .pf-c-page__header {
+        padding: 0.5rem 0.75rem;
+        gap: 0.25rem;
+    }
+
+    .header-left {
+        gap: 0.5rem;
+    }
+
+    .brand span:last-child {
+        display: inline;
+    }
+
+    .connection-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        gap: 0.25rem;
+    }
+
+    .connection-badge span:last-child {
+        display: none;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    .pf-c-page__main {
+        flex-direction: column;
+    }
+
+    .pf-c-page__main-section {
+        padding: 1rem;
+        width: 100%;
+    }
+
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .translation-card {
+        padding: 1rem;
+    }
+
+    .text-source {
+        font-size: 0.875rem;
+    }
+
+    .text-target {
+        font-size: 1rem;
+    }
+
+    .copy-btn,
+    .tts-icon {
+        padding: 0.375rem 0.625rem;
+    }
+
+    .scroll-to-top {
+        bottom: 1rem;
+        right: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .content-title {
+        font-size: 1.25rem;
+    }
+
+    .card-time {
+        font-size: 0.75rem;
+    }
+
+    .text-target {
+        font-size: 0.938rem;
+    }
+}
+
+/* Touch Device Enhancements */
+@media (hover: none) and (pointer: coarse) {
+    .pf-c-button {
+        min-height: 44px;
+    }
+
+    .copy-btn,
+    .tts-icon {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .translation-card {
+        min-height: 80px;
+    }
+
+    .slider::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* --- Improved Responsive Button Sizing --- */
+@media (max-width: 480px) {
+    /* Small mobile: compact but touchable */
+    .copy-btn, .tts-icon {
+        font-size: 0.95rem;
+        padding: 0.25rem 0.5rem;
+        height: 1.35rem;
+        min-width: 1.35rem;
+        border-radius: 4px;
+    }
+    .card-actions { height: 1.6rem; }
+    .card-header { min-height: 1.7rem; }
+    .card-badge { height: 1.1rem; font-size: 0.75rem; }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+    /* Large mobile: slightly bigger */
+    .copy-btn, .tts-icon {
+        font-size: 1.05rem;
+        padding: 0.3rem 0.55rem;
+        height: 1.55rem;
+        min-width: 1.55rem;
+    }
+    .card-actions { height: 1.8rem; }
+    .card-header { min-height: 1.9rem; }
+    .card-badge { height: 1.2rem; font-size: 0.8rem; }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+    /* Tablet: medium */
+    .copy-btn, .tts-icon {
+        font-size: 1.15rem;
+        padding: 0.35rem 0.6rem;
+        height: 1.7rem;
+        min-width: 1.7rem;
+    }
+    .card-actions { height: 2rem; }
+    .card-header { min-height: 2.1rem; }
+    .card-badge { height: 1.3rem; font-size: 0.85rem; }
+}
+
+@media (min-width: 1025px) {
+    /* Desktop: clearly bigger */
+    .copy-btn, .tts-icon {
+        font-size: 1.25rem;
+        padding: 0.45rem 0.8rem;
+        height: 2.1rem;
+        min-width: 2.1rem;
+    }
+    .card-actions { height: 2.3rem; }
+    .card-header { min-height: 2.5rem; }
+    .card-badge { height: 1.7rem; font-size: 1rem; }
+}
+/* --- End Improved Responsive Button Sizing --- */
+
+/* --- Force square action buttons --- */
+.copy-btn, .tts-icon {
+    aspect-ratio: 1 / 1;
+    width: unset; /* allow min-width to control */
+    min-width: unset;
+    max-width: unset;
+}
+
+@media (max-width: 480px) {
+    .copy-btn, .tts-icon {
+        width: 1.35rem;
+        min-width: 1.35rem;
+        max-width: 1.35rem;
+        height: 1.35rem;
+    }
+}
+@media (min-width: 481px) and (max-width: 767px) {
+    .copy-btn, .tts-icon {
+        width: 1.55rem;
+        min-width: 1.55rem;
+        max-width: 1.55rem;
+        height: 1.55rem;
+    }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+    .copy-btn, .tts-icon {
+        width: 1.7rem;
+        min-width: 1.7rem;
+        max-width: 1.7rem;
+        height: 1.7rem;
+    }
+}
+@media (min-width: 1025px) {
+    .copy-btn, .tts-icon {
+        width: 2.1rem;
+        min-width: 2.1rem;
+        max-width: 2.1rem;
+        height: 2.1rem;
+    }
+}
+/* --- End force square action buttons --- */
+
+/* --- Refined square button sizes for better balance --- */
+@media (max-width: 480px) {
+    .copy-btn, .tts-icon {
+        width: 1.8rem;
+        min-width: 1.8rem;
+        max-width: 1.8rem;
+        height: 1.8rem;
+        font-size: 1.1rem;
+    }
+}
+@media (min-width: 481px) and (max-width: 767px) {
+    .copy-btn, .tts-icon {
+        width: 2.1rem;
+        min-width: 2.1rem;
+        max-width: 2.1rem;
+        height: 2.1rem;
+        font-size: 1.18rem;
+    }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+    .copy-btn, .tts-icon {
+        width: 2.2rem;
+        min-width: 2.2rem;
+        max-width: 2.2rem;
+        height: 2.2rem;
+        font-size: 1.22rem;
+    }
+}
+@media (min-width: 1025px) {
+    .copy-btn, .tts-icon {
+        width: 2.05rem;
+        min-width: 2.05rem;
+        max-width: 2.05rem;
+        height: 2.05rem;
+        font-size: 1.13rem;
+    }
+}
+
+/* ===================================
+   Skip-to-main link (accessibility)
+   =================================== */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 8px;
+    background: var(--primary);
+    color: white;
+    padding: 0.5rem 0.85rem;
+    border-radius: 3px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    z-index: 2000;
+    transition: top 0.15s ease;
+}
+.skip-link:focus {
+    top: 8px;
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* ===================================
+   Toast Notifications (additive)
+   - Mirrors .sync-indicator pattern, stacked
+   =================================== */
+.toast-container {
+    position: fixed;
+    top: 130px;
+    right: 20px;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: calc(100vw - 40px);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success { border-left-color: var(--success); }
+.toast.danger  { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.info    { border-left-color: var(--primary); }
+
+@media (max-width: 600px) {
+    .toast-container {
+        top: auto;
+        bottom: 80px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    .toast { max-width: none; font-size: 0.813rem; }
+}
+
+/* ===================================
+   Cache-hit indicator (reuses .card-badge)
+   =================================== */
+.card-badge.cache-hit {
+    background: var(--text-secondary);
+    color: var(--surface);
+    opacity: 0.75;
+    cursor: help;
+}
+.card-badge.cache-hit:hover { opacity: 1; }
+
+/* ===================================
+   Keyboard shortcuts modal (reuses .about-modal)
+   =================================== */
+.shortcut-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.shortcut-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 0.875rem;
+}
+.shortcut-row:last-child { border-bottom: none; }
+
+.shortcut-row .shortcut-label { color: var(--text); }
+
+kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: 'Red Hat Mono', monospace;
+    font-size: 0.8125rem;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    line-height: 1.2;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* ===================================
+   Onboarding hint (reuses .about-modal)
+   =================================== */
+.onboarding-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--text);
+}
+.onboarding-tip .tip-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* ===================================
+   Feature Tour (reuses .about-modal)
+   =================================== */
+.tour-content {
+    max-width: 460px;
+}
+.tour-body {
+    color: var(--text);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    min-height: 110px;
+}
+.tour-body h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--primary);
+}
+.tour-body p {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-secondary);
+}
+.tour-body ul {
+    margin: 0.25rem 0 0 1.1rem;
+    padding: 0;
+    color: var(--text-secondary);
+}
+.tour-body ul li { margin-bottom: 0.25rem; }
+.tour-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 0.85rem 0 0.25rem 0;
+}
+.tour-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s, transform 0.2s;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+.tour-dot:hover { background: var(--text-secondary); }
+.tour-dot:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.tour-dot.active {
+    background: var(--primary);
+    transform: scale(1.3);
+}
+.tour-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.tour-progress {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===================================================================
+   View Modes (additive, opt-in via body[data-ui-mode="..."])
+   - "standard": no overrides (default look untouched)
+   - "accessibility": stronger focus, reduced motion, higher contrast,
+     larger tap targets — keeps the same layout
+   - "elderly": larger text, bigger buttons, more spacing, calmer motion
+   =================================================================== */
+
+/* ---------- Accessibility mode ---------- */
+body[data-ui-mode="accessibility"] *:focus-visible {
+    outline: 3px solid var(--primary) !important;
+    outline-offset: 2px !important;
+    border-radius: 3px;
+}
+body[data-ui-mode="accessibility"] button,
+body[data-ui-mode="accessibility"] a,
+body[data-ui-mode="accessibility"] select,
+body[data-ui-mode="accessibility"] input[type="range"] {
+    min-height: 44px; /* WCAG 2.5.5 target size */
+}
+body[data-ui-mode="accessibility"] .copy-btn,
+body[data-ui-mode="accessibility"] .tts-icon {
+    min-width: 44px;
+    min-height: 44px;
+}
+body[data-ui-mode="accessibility"] .card-badge {
+    border: 1px solid currentColor;
+    font-weight: 700;
+}
+body[data-ui-mode="accessibility"] .connection-badge {
+    border: 1px solid var(--border);
+    font-weight: 700;
+}
+body[data-ui-mode="accessibility"] .text-target,
+body[data-ui-mode="accessibility"] .text-source {
+    line-height: 1.7;
+}
+/* Calm down decorative animations but keep functional transitions */
+body[data-ui-mode="accessibility"] .sync-indicator,
+body[data-ui-mode="accessibility"] .toast {
+    transition-duration: 0.15s;
+}
+body[data-ui-mode="accessibility"] .about-content {
+    animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    body[data-ui-mode="accessibility"] *,
+    body[data-ui-mode="accessibility"] *::before,
+    body[data-ui-mode="accessibility"] *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ---------- Elderly mode ---------- */
+body[data-ui-mode="elderly"] {
+    font-size: 1.05rem;
+}
+body[data-ui-mode="elderly"] .text-target {
+    font-size: 1.6rem !important;
+    line-height: 1.8;
+}
+body[data-ui-mode="elderly"] .text-source {
+    font-size: 1.15rem;
+    line-height: 1.7;
+}
+body[data-ui-mode="elderly"] .translation-card {
+    padding: 1.1rem 1.25rem;
+}
+body[data-ui-mode="elderly"] .control-label,
+body[data-ui-mode="elderly"] .sidebar-title {
+    font-size: 1rem;
+}
+body[data-ui-mode="elderly"] select,
+body[data-ui-mode="elderly"] input[type="search"],
+body[data-ui-mode="elderly"] input[type="text"] {
+    min-height: 48px;
+    font-size: 1rem;
+}
+body[data-ui-mode="elderly"] .copy-btn,
+body[data-ui-mode="elderly"] .tts-icon {
+    width: 2.6rem !important;
+    min-width: 2.6rem !important;
+    max-width: 2.6rem !important;
+    height: 2.6rem !important;
+    font-size: 1.35rem !important;
+}
+body[data-ui-mode="elderly"] .card-time {
+    font-size: 0.95rem;
+}
+body[data-ui-mode="elderly"] .card-badge {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.55rem;
+}
+body[data-ui-mode="elderly"] .connection-badge {
+    font-size: 1rem;
+    padding: 0.4rem 0.85rem;
+}
+body[data-ui-mode="elderly"] .empty-state {
+    font-size: 1.1rem;
+}
+/* Stronger focus for older eyes */
+body[data-ui-mode="elderly"] *:focus-visible {
+    outline: 3px solid var(--primary) !important;
+    outline-offset: 2px !important;
+}
+/* Calmer motion */
+body[data-ui-mode="elderly"] * {
+    animation-duration: 0.4s;
+    transition-duration: 0.25s;
+}
+body[data-ui-mode="elderly"] .about-content {
+    animation: none !important;
+}
+
+/* --- End refined square button sizes --- */
+/* ── Feature 2: Announcement Banner ─────────────────────────────────── */
+.announcement-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--primary, #0066cc);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-family: "Red Hat Text", system-ui, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transform: translateY(-100%);
+    transition: transform 0.28s ease;
+}
+.announcement-banner.announcement-show {
+    transform: translateY(0);
+}
+.announcement-banner.announcement-hide {
+    transform: translateY(-100%);
+}
+.announcement-banner[data-type="success"] { background: #1e7e34; }
+.announcement-banner[data-type="warning"] { background: #b45309; }
+.announcement-banner[data-type="danger"]  { background: #c00; }
+
+.announcement-icon { font-size: 1.25rem; flex-shrink: 0; }
+.announcement-text { flex: 1; line-height: 1.4; }
+.announcement-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.125rem 0.4rem;
+    line-height: 1.4;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+.announcement-close:hover { opacity: 1; }
+
+[data-theme="dark"] .announcement-banner { box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+[data-landscape="true"] header                 { padding-top: 0; padding-bottom: 0; min-height: 36px; }
+[data-landscape="true"] .header-search-desktop { display: none; }
+[data-landscape="true"] #mainTitle             { font-size: 0.9rem; }
+
+/* ── Room picker overlay (shown when multiple sessions exist) ─────── */
+.room-picker-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.55);
+    align-items: center;
+    justify-content: center;
+}
+.room-picker-overlay__panel {
+    background: var(--surface, #fff);
+    color: var(--text, #222);
+    padding: 24px;
+    border-radius: 10px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.room-picker-overlay__title { margin-top: 0; }
+.room-picker-overlay__hint { font-size: 14px; color: #555; }
+.room-picker-overlay__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow: auto;
+}
+
+/* ── Room switcher sidebar section ───────────────────────────────── */
+/* Use native sidebar/select styling — no overrides, only icon alignment */
+.user-room-switcher-section .sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ---- PatternFly theme bridge ----
+   The app switches themes with data-theme; PatternFly switches its tokens on
+   a class. Both are set, and the theme button shows the icon for the theme it
+   would switch to. */
+.icon-sun { display: none; }
+html.pf-v6-theme-dark .icon-sun { display: inline-block; }
+html.pf-v6-theme-dark .icon-moon { display: none; }
+
+/* Sidebar actions read as a column of links, not a row of buttons. */
+.sidebar-action { width: 100%; justify-content: flex-start; }
