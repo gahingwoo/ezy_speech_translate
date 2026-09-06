@@ -521,6 +521,77 @@ html.pf-v6-theme-dark .icon-moon {
   align-items: baseline;
 }
 
+/* ── settings page ────────────────────────────────────────────────────── */
+/* config.html shares this stylesheet because it shares the page shell. What is
+   here is only what that page adds: a column of cards, a bar that appears when
+   something has changed, and a mark against the fields that changed. */
+
+.config-page {
+  max-width: 56rem;
+}
+
+.config-page__intro {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.config-card {
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.config-card__intro {
+  padding-block-end: 0;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* A changed field is marked on its leading edge; the bar below says how many.
+   Nothing is written until Save, so the page has to show what is pending. */
+.pf-v6-c-form__group.is-changed {
+  border-inline-start: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--border--color--brand--default);
+  padding-inline-start: var(--pf-t--global--spacer--md);
+  margin-inline-start: calc(-1 * var(--pf-t--global--spacer--md));
+}
+
+.pf-v6-c-form__group.is-invalid {
+  border-inline-start: var(--pf-t--global--border--width--strong) solid
+    var(--pf-t--global--border--color--status--danger--default);
+  padding-inline-start: var(--pf-t--global--spacer--md);
+  margin-inline-start: calc(-1 * var(--pf-t--global--spacer--md));
+}
+
+.config-actions {
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: var(--pf-t--global--z-index--md);
+  display: flex;
+  gap: var(--pf-t--global--spacer--md);
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
+  background: var(--pf-t--global--background--color--primary--default);
+  border-block-start: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+  box-shadow: var(--pf-t--global--box-shadow--md--top);
+}
+
+.config-actions[hidden] {
+  display: none;
+}
+
+.config-actions__count {
+  margin-inline-end: auto;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* PatternFly's card toggle rotates on the card, and the content is switched
+   with the attribute rather than a class so it is gone for a screen reader
+   too. */
+.pf-v6-c-card__expandable-content[hidden] {
+  display: none;
+}
+
 /* ── toasts ───────────────────────────────────────────────────────────── */
 /* PatternFly's toast alert group is positioned by the component; this only
    lifts it above the sidebar drawer. */

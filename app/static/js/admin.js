@@ -2133,7 +2133,7 @@ async function confirmConfigPassword() {
         });
         if (resp.ok) {
             window.closeConfigPasswordGate && window.closeConfigPasswordGate();
-            window.openConfigEditor && window.openConfigEditor();
+            window.location.href = '/config';
         } else {
             if (typeof showToast === 'function') showToast('Wrong password', 'danger');
             if (inp) { inp.value = ''; inp.focus(); }
@@ -2143,34 +2143,3 @@ async function confirmConfigPassword() {
     }
 }
 window.confirmConfigPassword = confirmConfigPassword;
-
-async function loadConfigEditor() {
-    const ta = document.getElementById('configEditorTextarea');
-    if (!ta) return;
-    ta.value = 'Loading…';
-    try {
-        const data = await _adminFetch('/api/config/raw');
-        ta.value = data.yaml || '';
-    } catch (e) {
-        ta.value = '# Failed to load: ' + e.message;
-        if (typeof showToast === 'function') showToast('Load failed: ' + e.message, 'danger');
-    }
-}
-
-async function saveConfigEditor() {
-    const ta = document.getElementById('configEditorTextarea');
-    if (!ta) return;
-    try {
-        const data = await _adminFetch('/api/config/raw', {
-            method: 'POST',
-            body: JSON.stringify({ yaml: ta.value }),
-        });
-        if (typeof showToast === 'function')
-            showToast(data.message || 'Saved. Restart server to apply.', 'success');
-        window.closeConfigEditor && window.closeConfigEditor();
-    } catch (e) {
-        if (typeof showToast === 'function') showToast('Save failed: ' + e.message, 'danger');
-    }
-}
-window.loadConfigEditor = loadConfigEditor;
-window.saveConfigEditor = saveConfigEditor;

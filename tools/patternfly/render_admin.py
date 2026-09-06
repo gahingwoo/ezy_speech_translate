@@ -688,26 +688,6 @@ def config_password_modal():
                      button("Confirm", "confirmConfigPassword()", None, "primary", indent=8)))
 
 
-def config_editor_modal():
-    body = '''          <span class="pf-v6-c-form-control pf-m-textarea config-editor">
-            <textarea id="configEditorTextarea" spellcheck="false"
-                      aria-label="config.yaml" placeholder="Loading…"></textarea>
-          </span>
-          <div class="pf-v6-c-alert pf-m-warning pf-m-inline config-warning">
-            <div class="pf-v6-c-alert__icon">%s</div>
-            <p class="pf-v6-c-alert__title">Some changes (ports, secrets) only take effect
-              after restarting the server.</p>
-          </div>''' % icon("exclamation-triangle")
-    return modal("configEditorModal", "Edit config.yaml", body,
-                 "closeConfigEditor()", size="lg", icon_name="cog",
-                 description="Sensitive values (passwords, secrets) appear as *** and "
-                             "remain untouched on save.",
-                 backdrop_onclick="if(event.target===this)closeConfigEditor()",
-                 footer=footer(
-                     button("Cancel", "closeConfigEditor()", None, "link", indent=8),
-                     button("Save", "saveConfigEditor()", None, "primary", indent=8)))
-
-
 def recording_lock_modal():
     body = '''          <div class="pf-v6-c-alert pf-m-warning pf-m-inline">
             <div class="pf-v6-c-alert__icon">%s</div>
@@ -862,15 +842,6 @@ PAGE_SCRIPT = '''  <script>
       const inp = document.getElementById('configPasswordInput');
       if (inp) inp.value = '';
     }
-    function openConfigEditor() {
-      const ta = document.getElementById('configEditorTextarea');
-      ta.value = 'Loading…';
-      document.getElementById('configEditorModal').classList.add('modal-overlay--open');
-      if (typeof loadConfigEditor === 'function') loadConfigEditor();
-    }
-    function closeConfigEditor() {
-      document.getElementById('configEditorModal').classList.remove('modal-overlay--open');
-    }
     function closeRecordingLock() {
       document.getElementById('recordingLockModal').classList.remove('modal-overlay--open');
       const pw = document.getElementById('recordingLockPassword');
@@ -880,8 +851,6 @@ PAGE_SCRIPT = '''  <script>
     window.closeRoomManager = closeRoomManager;
     window.openConfigPasswordGate = openConfigPasswordGate;
     window.closeConfigPasswordGate = closeConfigPasswordGate;
-    window.openConfigEditor = openConfigEditor;
-    window.closeConfigEditor = closeConfigEditor;
     window.closeRecordingLock = closeRecordingLock;
   </script>
 '''
@@ -892,7 +861,7 @@ def build():
                + tts_cache_section() + bible_section() + announcement_section()
                + qr_section())
 
-    dialogs = (room_manager() + config_password_modal() + config_editor_modal()
+    dialogs = (room_manager() + config_password_modal()
                + recording_lock_modal() + about_modal() + shortcuts_modal()
                + input_modal() + export_modal())
 
@@ -1037,7 +1006,7 @@ def build():
                          i18n="manage_rooms", indent=10),
         "config": button("Config", "openConfigPasswordGate()", "cog",
                          "plain masthead-action",
-                         extra=' title="Edit config.yaml" aria-label="Config"', indent=8),
+                         extra=' title="Settings" aria-label="Settings"', indent=8),
         "logout": button("Logout", "logout()", "sign-out-alt",
                          "plain masthead-action", i18n="logout",
                          extra=' aria-label="Logout"', indent=8),

@@ -393,6 +393,13 @@ def admin_page():
     """Serve admin dashboard page"""
     return render_template("admin.html")
 
+@app.route("/config")
+def config_page():
+    """Serve the settings page. Like the dashboard, the page itself is public
+    and config.js sends the browser back to /login without a token; every
+    setting it reads or writes goes through an endpoint that requires one."""
+    return render_template("config.html")
+
 @app.route("/api/login", methods=["POST"])
 @rate_limit_check
 def login():
@@ -768,6 +775,21 @@ def proxy_get_raw_config():
 @rate_limit_check
 def proxy_save_raw_config():
     return _proxy_to_user('POST', '/api/config/raw', json_body=request.get_json(silent=True))
+
+
+# ── config.yaml, field by field, for the settings page ────────────
+@app.route("/api/config/fields", methods=["GET"])
+@require_auth
+@rate_limit_check
+def proxy_get_config_fields():
+    return _proxy_to_user('GET', '/api/config/fields')
+
+
+@app.route("/api/config/fields", methods=["POST"])
+@require_auth
+@rate_limit_check
+def proxy_save_config_fields():
+    return _proxy_to_user('POST', '/api/config/fields', json_body=request.get_json(silent=True))
 
 
 @app.route("/api/protected-endpoint")

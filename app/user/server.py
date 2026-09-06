@@ -2661,6 +2661,249 @@ def save_raw_config():
         return jsonify({'success': False, 'error': str(exc)}), 500
 
 
+# ── config.yaml, field by field ───────────────────────────────────────────
+# The YAML editor above hands the whole document back from the browser, so a
+# key the page did not render is a key that gets dropped. These two take named
+# scalar fields instead: a path that is not already in the file is refused, and
+# so is any path ending in a sensitive key, so the settings page can never
+# reach a secret or lose a setting it does not know about.
+
+_CONFIG_PATH_SEGMENT = re.compile(r'^[A-Za-z0-9_]{1,64}$')
+_CONFIG_MAX_DEPTH = 6
+_CONFIG_MAX_CHANGES = 200
+
+
+def _config_scalar(value):
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _config_lookup(root, parts):
+    """The container holding the leaf, and the leaf's current value."""
+    node = root
+    for part in parts[:-1]:
+        if not isinstance(node, dict) or part not in node:
+            return None, None
+        node = node[part]
+    if not isinstance(node, dict) or parts[-1] not in node:
+        return None, None
+    return node, node[parts[-1]]
+
+
+def _config_coerce(current, value):
+    """Fit the incoming value to the type already in the file. Raises ValueError."""
+    if isinstance(current, bool):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.lower() in ('true', 'false'):
+            return value.lower() == 'true'
+        raise ValueError('expected true or false')
+    if isinstance(current, int):
+        if isinstance(value, bool):
+            raise ValueError('expected a number')
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.strip().lstrip('-').isdigit():
+            return int(value)
+        raise ValueError('expected a whole number')
+    if isinstance(current, float):
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            raise ValueError('expected a number')
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            raise ValueError('expected a number')
+    if current is None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        if _config_scalar(value):
+            return value
+        raise ValueError('expected a single value')
+    if isinstance(current, str):
+        if value is None:
+            return ''
+        if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+            return str(value)
+        raise ValueError('expected text')
+    raise ValueError('this setting is not a single value')
+
+
+_CONFIG_KEY_LINE = re.compile(r'^(?P<indent>[ ]*)(?P<key>[A-Za-z0-9_]+)[ ]*:(?P<rest>.*)$')
+
+
+def _config_scalar_text(value):
+    """One scalar, written the way YAML writes it."""
+    import yaml
+    text = yaml.safe_dump(value, default_flow_style=True, allow_unicode=True).rstrip()
+    if text.endswith('\n...'):
+        text = text[:-4].rstrip()
+    return text
+
+
+def _config_split_comment(rest):
+    """The value and the trailing comment on a `key: value  # why` line.
+    None when the line is not a plain scalar this can safely rewrite."""
+    value, comment, quote = [], '', ''
+    for i, ch in enumerate(rest):
+        if quote:
+            if ch == quote:
+                quote = ''
+        elif ch in ('"', "'"):
+            quote = ch
+        elif ch == '#' and (not value or value[-1] in ' \t'):
+            comment = rest[i:]
+            break
+        value.append(ch)
+    if quote:
+        return None                       # an unterminated quote: leave it be
+    joined = ''.join(value)
+    if not joined.strip():
+        return None                       # a mapping or a block, not a scalar
+    if joined.lstrip()[0] in ('&', '*', '|', '>'):
+        return None                       # anchors and block scalars
+    return joined, comment
+
+
+def _config_write_in_place(text, changes):
+    """Rewrite the values of named scalars and leave the rest of the file — its
+    comments, its order, its blank lines — exactly as it was.
+
+    Returns the new text, or None when a path could not be found on a line this
+    can safely rewrite, so the caller falls back to dumping the document.
+    """
+    lines = text.split('\n')
+    stack, done = [], set()
+    for n, line in enumerate(lines):
+        match = _CONFIG_KEY_LINE.match(line)
+        if not match:
+            continue
+        indent = len(match.group('indent'))
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        stack.append((indent, match.group('key')))
+        path = '.'.join(key for _, key in stack)
+        if path not in changes or path in done:
+            continue
+        split = _config_split_comment(match.group('rest'))
+        if split is None:
+            return None
+        comment = split[1]
+        prefix = line[:line.index(':', indent) + 1]
+        written = prefix + ' ' + _config_scalar_text(changes[path])
+        if comment:
+            # Put the comment back in the column it was in, so a file that
+            # lines its comments up stays lined up.
+            column = len(line) - len(comment)
+            written += ' ' * max(1, column - len(written)) + comment
+        lines[n] = written
+        done.add(path)
+
+    if done != set(changes):
+        return None
+    return '\n'.join(lines)
+
+
+@app.route('/api/config/fields', methods=['GET'])
+@limiter.limit("30 per minute")
+@require_admin_auth
+def get_config_fields():
+    """The current config.yaml as JSON, sensitive values masked."""
+    try:
+        import yaml
+        if not os.path.exists(_CONFIG_FILE_PATH):
+            return jsonify({'success': False, 'error': 'config.yaml not found'}), 404
+        with open(_CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+            parsed = yaml.safe_load(f.read()) or {}
+        return jsonify({
+            'success': True,
+            'config': _mask_sensitive(parsed),
+            'path': _CONFIG_FILE_PATH,
+        })
+    except Exception as exc:
+        logger.warning(f"get_config_fields error: {exc}")
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+
+@app.route('/api/config/fields', methods=['POST'])
+@limiter.limit("10 per minute")
+@require_admin_auth
+def save_config_fields():
+    """Apply named scalar fields to config.yaml.
+
+    Body: {"changes": {"server.port": 1915, "features.dark_mode": true}}.
+    Every path must already exist in the file and already hold a single value;
+    the new value is fitted to the type that is there. Nothing else in the file
+    is touched, and the write is atomic.
+    """
+    try:
+        import yaml
+        body = request.get_json(silent=True) or {}
+        changes = body.get('changes')
+        if not isinstance(changes, dict) or not changes:
+            return jsonify({'success': False, 'error': 'No changes given'}), 400
+        if len(changes) > _CONFIG_MAX_CHANGES:
+            return jsonify({'success': False, 'error': 'Too many changes at once'}), 400
+        if not os.path.exists(_CONFIG_FILE_PATH):
+            return jsonify({'success': False, 'error': 'config.yaml not found'}), 404
+
+        with open(_CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        config = yaml.safe_load(raw) or {}
+
+        applied, errors = {}, {}
+        for path, value in changes.items():
+            parts = str(path).split('.')
+            if not (1 <= len(parts) <= _CONFIG_MAX_DEPTH) or \
+                    not all(_CONFIG_PATH_SEGMENT.match(p) for p in parts):
+                errors[path] = 'not a setting name'
+                continue
+            if parts[-1] in _SENSITIVE_CONFIG_KEYS:
+                errors[path] = 'secrets are not editable here'
+                continue
+            holder, current = _config_lookup(config, parts)
+            if holder is None:
+                errors[path] = 'no such setting'
+                continue
+            if not _config_scalar(current):
+                errors[path] = 'not a single value'
+                continue
+            try:
+                holder[parts[-1]] = _config_coerce(current, value)
+            except ValueError as exc:
+                errors[path] = str(exc)
+                continue
+            applied[path] = holder[parts[-1]]
+
+        if errors:
+            return jsonify({'success': False, 'error': 'Some settings were refused',
+                            'errors': errors}), 400
+
+        # Rewrite the changed lines where the file allows it, so the comments
+        # and the layout survive. Anything unexpected falls back to dumping the
+        # document, and either way the result has to parse back to what was
+        # intended before it is written.
+        new_text = _config_write_in_place(raw, applied)
+        if new_text is not None and yaml.safe_load(new_text) != config:
+            new_text = None
+        if new_text is None:
+            new_text = yaml.safe_dump(config, allow_unicode=True, sort_keys=False)
+
+        tmp_path = _CONFIG_FILE_PATH + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            f.write(new_text)
+        os.replace(tmp_path, _CONFIG_FILE_PATH)
+        username = (request.user.get('username') if request.user else 'admin') or 'admin'
+        logger.warning(f"[CONFIG] {len(applied)} setting(s) updated by {username}: "
+                       + ', '.join(sorted(applied)))
+        return jsonify({
+            'success': True,
+            'applied': applied,
+            'message': 'Saved. Restart the server for changes to take effect.',
+        })
+    except Exception as exc:
+        logger.error(f"save_config_fields error: {exc}")
+        return jsonify({'success': False, 'error': str(exc)}), 500
+
+
 # ──────────────────────────────────────────
 # WebSocket Events with Security
 # ──────────────────────────────────────────
