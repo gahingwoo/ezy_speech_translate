@@ -1696,18 +1696,19 @@ function changeDisplayMode() {
 }
 
 function updateDisplayMode() {
-    const ttsSection = document.querySelector('.sidebar-section:has(#toggleTTS)');
+    const ttsTab = document.getElementById('settings-tabitem-speech');
+    const bibleTab = document.getElementById('settings-tabitem-bible');
     const languageGroup = document.getElementById('languageSelectGroup');
-    const bibleSection = document.getElementById('bibleSidebarSection');
     const bibleTransRow = document.getElementById('bibleVerseToggleWrap');
     const mainTitleText = document.getElementById('mainTitleText');
     const emptyStateText = document.getElementById('emptyStateText');
     const emptyStateDesc = document.getElementById('emptyStateDesc');
 
     if (displayMode === 'transcription') {
-        if (ttsSection)      ttsSection.style.display = 'none';
-        if (languageGroup)   languageGroup.style.display = 'none';
-        if (bibleTransRow)   bibleTransRow.style.display = 'none';
+        if (ttsTab)          ttsTab.hidden = true;
+        if (bibleTab)        bibleTab.hidden = true;
+        if (languageGroup)   languageGroup.hidden = true;
+        if (bibleTransRow)   bibleTransRow.hidden = true;
 
         // Update title (use localized string when available)
         if (mainTitleText) mainTitleText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].liveTranscriptions) || i18n['en'].liveTranscriptions || 'Live Transcriptions';
@@ -1718,9 +1719,10 @@ function updateDisplayMode() {
 
         console.log('Transcription mode enabled');
     } else {
-        if (ttsSection)      ttsSection.style.display = '';
-        if (languageGroup)   languageGroup.style.display = '';
-        if (bibleTransRow)   bibleTransRow.style.display = '';
+        if (ttsTab)          ttsTab.hidden = false;
+        if (bibleTab)        bibleTab.hidden = false;
+        if (languageGroup)   languageGroup.hidden = false;
+        if (bibleTransRow)   bibleTransRow.hidden = false;
 
         // Update title (use localized string when available)
         if (mainTitleText) mainTitleText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].liveTranslations) || (i18n['en'] && i18n['en'].liveTranslations) || 'Live Translations';

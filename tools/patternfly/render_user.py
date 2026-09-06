@@ -79,6 +79,51 @@ def select(el_id, onchange, aria, options, extra=""):
             '          </span>' % (el_id, aria, onchange, extra, options, icon("angle-down")))
 
 
+SETTINGS_TABS = (
+    ("language", "Language", "displaySettings"),
+    ("speech", "Text-to-Speech", "textToSpeech"),
+    ("bible", "Bible Verses", "bibleVerses"),
+    ("export", "Export", "export"),
+    ("view", "View", "uiMode"),
+)
+
+
+def tab_panel(key, body, extra=""):
+    """One panel of the settings dialog. The tab list and the panels are
+    siblings, which is what PatternFly's vertical tabs expect."""
+    return '''    <section class="pf-v6-c-tab-content settings-panel" id="settings-%s"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-%s"%s hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+%s        </form>
+      </div>
+    </section>
+''' % (key, key, extra, body)
+
+
+def tab_list():
+    items = []
+    for i, (key, title, i18n) in enumerate(SETTINGS_TABS):
+        items.append(
+            '      <li class="pf-v6-c-tabs__item%s" id="settings-tabitem-%s">\n'
+            '        <button class="pf-v6-c-tabs__link" type="button" role="tab"\n'
+            '                id="settings-tab-%s" aria-controls="settings-%s"\n'
+            '                aria-selected="%s" onclick="showSettingsTab(\'%s\')">\n'
+            '          <span class="pf-v6-c-tabs__item-text"%s>%s</span>\n'
+            '        </button>\n'
+            '      </li>\n'
+            % (" pf-m-current" if i == 0 else "", key, key, key,
+               "true" if i == 0 else "false", key, i18n_attr(i18n), title))
+        if key == "bible":
+            items[-1] = ("    {% if bible_detection_enabled %}\n" + items[-1]
+                         + "    {% endif %}\n")
+    return '''    <div class="pf-v6-c-tabs pf-m-vertical pf-m-box settings-tabs" role="region">
+      <ul class="pf-v6-c-tabs__list" role="tablist" aria-label="Settings sections">
+%s      </ul>
+    </div>
+''' % "".join(items)
+
+
 def field_group(title, i18n, body, el_id=None, extra=""):
     """PatternFly's expandable field group, which is what the design system
     offers for a long form: the panel holds six groups of controls and only the
@@ -233,23 +278,161 @@ def about_modal():
 ''' % (btn_icon("times"), rows)
 
 
-def build():
-    sidebar = []
+# The three things a listener has to choose before anything is useful. They
+# are asked once, in a wizard; everything else waits behind the gear. Each
+# control writes through to the real one in the settings dialog, so there is
+# still one source of truth.
+SETUP_STEPS = (
+    ("language", "Your language", "welcome_step_language",
+     "Pick the language you want to read, and the language this page is in."),
+    ("speech", "Reading aloud", "welcome_step_speech",
+     "Text-to-speech reads each translation out as it arrives. You can turn it "
+     "on now or later."),
+    ("done", "You are set", "welcome_step_done",
+     "Translations appear as the speaker talks. Everything else lives behind "
+     "the gear in the top right."),
+)
 
-    # Room switcher, hidden until there is more than one room
-    sidebar.append('''    <section class="pf-v6-c-form__section sidebar-section user-room-switcher-section"
+
+def setup_wizard():
+    """PatternFly's wizard, for the one time a listener has to be asked
+    something. Its controls carry setup- ids of their own and hand what they
+    collect to the real controls in the settings dialog."""
+    nav = "".join(
+        '''          <li class="pf-v6-c-wizard__nav-item">
+            <button class="pf-v6-c-wizard__nav-link%s" type="button" id="setup-nav-%s"
+                    onclick="showSetupStep(\'%s\')"%s>%s</button>
+          </li>
+''' % (" pf-m-current" if i == 0 else "", key, key,
+       ' aria-current="step"' if i == 0 else "", title)
+        for i, (key, title, _i18n, _desc) in enumerate(SETUP_STEPS))
+
+    bodies = [
+        '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-language">
+            <p class="pf-v6-c-content--p" data-i18n="welcome_step_language">%s</p>
+            <form class="pf-v6-c-form" onsubmit="return false;">
+%s%s            </form>
+          </div>
+''' % (SETUP_STEPS[0][3],
+       form_group("Display Language", "displayLanguage",
+                  select("setupDisplayLanguage", "setupApply(\'displayLanguage\', this.value)",
+                         "Interface language", LANGS), "setupDisplayLanguage"),
+       form_group("Target Language", "targetLanguage",
+                  select("setupTargetLanguage", "setupApply(\'targetLang\', this.value)",
+                         "Translation language", LANGS), "setupTargetLanguage")),
+
+        '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-speech" hidden>
+            <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">%s</p>
+            <form class="pf-v6-c-form" onsubmit="return false;">
+              <div class="pf-v6-c-form__group">
+                <div class="pf-v6-c-switch">
+                  <input class="pf-v6-c-switch__input" type="checkbox" id="setupTTS"
+                         onchange="setupToggleTTS(this.checked)">
+                  <label class="pf-v6-c-switch__label" for="setupTTS">
+                    <span class="pf-v6-c-switch__toggle"></span>
+                    <span data-i18n="enableTTS">Enable TTS</span>
+                  </label>
+                </div>
+              </div>
+            </form>
+          </div>
+''' % SETUP_STEPS[1][3],
+
+        '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-done" hidden>
+            <p class="pf-v6-c-content--p" data-i18n="welcome_step_done">%s</p>
+            <ul class="pf-v6-c-list" role="list">
+              <li data-i18n="welcome_tip_copy">Tap a card to copy or replay it.</li>
+              <li><span data-i18n="welcome_tip_keys">Press</span> <kbd>?</kbd>
+                  <span data-i18n="welcome_tip_keys_after">any time for shortcuts.</span></li>
+            </ul>
+          </div>
+''' % SETUP_STEPS[2][3],
+    ]
+
+    return '''  <div class="pf-v6-c-backdrop app-modal" id="welcomeModal" onclick="hideWelcome(event)">
+    <div class="pf-v6-c-wizard pf-m-plain setup-wizard" role="dialog" aria-modal="true"
+         aria-labelledby="welcomeTitle">
+      <div class="pf-v6-c-wizard__header">
+        <div class="pf-v6-c-wizard__close">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
+                  onclick="hideWelcome()">%s</button>
+        </div>
+        <h1 class="pf-v6-c-wizard__title" id="welcomeTitle">
+          <span class="pf-v6-c-wizard__title-text" data-i18n="welcome_title">Welcome to EzySpeech</span>
+        </h1>
+        <div class="pf-v6-c-wizard__description" data-i18n="welcome_intro">
+          Real-time speech translations will appear here as the host speaks.</div>
+      </div>
+      <div class="pf-v6-c-wizard__outer-wrap">
+        <div class="pf-v6-c-wizard__inner-wrap">
+          <nav class="pf-v6-c-wizard__nav" aria-label="Setup steps">
+            <ol class="pf-v6-c-wizard__nav-list">
+%s            </ol>
+          </nav>
+          <main class="pf-v6-c-wizard__main">
+%s          </main>
+        </div>
+        <footer class="pf-v6-c-wizard__footer">
+          <button class="pf-v6-c-button pf-m-primary" type="button" id="setupNext"
+                  onclick="setupNext()">
+            <span class="pf-v6-c-button__text" data-i18n="tour_next">Next</span>
+          </button>
+          <button class="pf-v6-c-button pf-m-secondary" type="button" id="setupBack"
+                  onclick="setupBack()" disabled>
+            <span class="pf-v6-c-button__text" data-i18n="tour_prev">Back</span>
+          </button>
+          <button class="pf-v6-c-button pf-m-link" type="button"
+                  onclick="hideWelcome(); showTour();">
+            <span class="pf-v6-c-button__text" data-i18n="welcome_takeTour">Take a quick tour</span>
+          </button>
+        </footer>
+      </div>
+    </div>
+  </div>
+''' % (btn_icon("times"), nav, "".join(bodies))
+
+
+def settings_modal(panels):
+    """The settings dialog: PatternFly's vertical tabs, one panel each. Every
+    control the sidebar used to hold lives here, once."""
+    body = [tab_list()]
+    for key, _title, _i18n in SETTINGS_TABS:
+        panel = tab_panel(key, panels[key])
+        if key == "bible":
+            panel = "    {% if bible_detection_enabled %}\n" + panel + "    {% endif %}\n"
+        body.append(panel)
+
+    return '''  <div class="pf-v6-c-backdrop app-modal" id="settingsModal"
+       onclick="hideSettings(event)">
+    <div class="pf-v6-c-modal-box pf-m-lg" role="dialog" aria-modal="true"
+         aria-labelledby="settingsTitle">
+      <div class="pf-v6-c-modal-box__close">
+        <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
+                onclick="hideSettings()">%s</button>
+      </div>
+      <header class="pf-v6-c-modal-box__header">
+        <h1 class="pf-v6-c-modal-box__title" id="settingsTitle">
+          <span class="pf-v6-c-modal-box__title-text" data-i18n="settings">Settings</span>
+        </h1>
+      </header>
+      <div class="pf-v6-c-modal-box__body settings-body">
+%s      </div>
+    </div>
+  </div>
+''' % (btn_icon("times"), "".join(body))
+
+
+def build():
+    panels = {}
+
+    # Language: the room, when there is more than one, and what to show.
+    panels["language"] = ('''    <section class="pf-v6-c-form__section user-room-switcher-section"
              id="userRoomSwitcherSection" hidden>
       <h2 class="pf-v6-c-form__section-title" data-i18n="room">Room</h2>
 %s    </section>
 ''' % form_group("Current room", "currentRoom",
                  select("userRoomSelect", "window.userSwitchRoom && window.userSwitchRoom(this.value)",
-                        "Switch room", ""), "userRoomSelect"))
-
-    # Display
-    sidebar.append('''    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="displaySettings">Display Settings</h2>
-%s%s%s    </section>
-''' % (
+                        "Switch room", ""), "userRoomSelect")) + ('''%s%s%s''' % (
         form_group("Display Language", "displayLanguage",
                    select("displayLanguage", "changeDisplayLanguageLocal()", "Select display language", LANGS),
                    "displayLanguage"),
@@ -264,7 +447,7 @@ def build():
     ))
 
     # Text to speech
-    sidebar.append(field_group("Text-to-Speech", "textToSpeech", '''
+    panels["speech"] = ('''
       <div class="pf-v6-c-form__group">
         <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" id="toggleTTS"
                 aria-pressed="false" aria-label="Toggle text to speech" onclick="toggleTTS()">
@@ -302,10 +485,10 @@ def build():
             </div>
             <div class="pf-v6-c-slider__value"><span class="slider-value" id="volumeValue">100%</span></div>
           </div>''', "volumeSlider"),
-    )))
+    ))
 
     # Export
-    sidebar.append(field_group("Export", "export", '''
+    panels["export"] = ('''
 %s      <div class="pf-v6-c-form__group">
         <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button"
                 aria-label="Download translations" onclick="exportData()">
@@ -328,10 +511,10 @@ def build():
         '      <p class="pf-v6-c-form__helper-text" data-i18n="aiSermonHint">'
         'Opens your AI assistant with the transcript.</p>\n',
         sidebar_button(None, "clearLocal()", "Clear display", "trash", None, "Clear display", "clearDisplay"),
-    )))
+    ))
 
-    # Settings
-    sidebar.append(field_group("Settings", "settings", '''
+    # View
+    panels["view"] = ('''
 %s%s%s%s%s%s%s%s
 ''' % (
         form_group("View Mode", "uiMode",
@@ -363,11 +546,10 @@ def build():
         sidebar_button(None, "showShortcuts()", "Keyboard shortcuts", "keyboard", None,
                        "Keyboard Shortcuts", "shortcuts_title"),
         sidebar_button(None, "showAbout()", "About", "info-circle", None, "About", "about"),
-    )))
+    ))
 
     # Bible verses, behind the same Jinja flag as before
-    sidebar.append('''    {% if bible_detection_enabled %}
-''' + field_group("Bible Verses", "bibleVerses", '''%s      <div class="pf-v6-c-form__group" id="bibleVerseToggleWrap">
+    panels["bible"] = ('''%s      <div class="pf-v6-c-form__group" id="bibleVerseToggleWrap">
 %s        <p class="pf-v6-c-form__helper-text" id="bibleTransLoadingHint" hidden>
           <span data-i18n="bibleAutoMatched">Auto-matched to your language. Choose any Bible below.</span>
         </p>
@@ -381,9 +563,7 @@ def build():
                           "Select Bible translation for your language",
                           '<option value="" data-i18n="bibleLoading">— Loading... —</option>'),
                    "bibleTargetTranslation"),
-    ), el_id="bibleSidebarSection", extra=' aria-label="Bible Verses"')
-                   + '''    {% endif %}
-''')
+    ))
 
 
     shortcuts_body = '''          <dl class="pf-v6-c-description-list pf-m-horizontal">
@@ -409,7 +589,7 @@ def build():
             </div>
           </dl>'''
 
-    welcome_body = '''          <p class="pf-v6-c-content--p" data-i18n="welcome_intro">
+    WELCOME_BODY_UNUSED = '''          <p class="pf-v6-c-content--p" data-i18n="welcome_intro">
             Real-time speech translations will appear here as the host speaks.</p>
           <ul class="pf-v6-c-list" role="list">
             <li data-i18n="welcome_tip_lang">Pick your display language in the sidebar.</li>
@@ -475,17 +655,12 @@ def build():
   <ul class="pf-v6-c-alert-group pf-m-toast toast-container" id="toastContainer" role="list"
       aria-live="polite" aria-atomic="true"></ul>
 
-  <div class="pf-v6-c-page">
+  <div class="pf-v6-c-page pf-m-no-sidebar">
     <!-- PatternFly stacks the masthead by default: the brand takes its own
          row, the toggle and the actions the next. That is right on a phone;
          from md there is room for one row. -->
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
-        <span class="pf-v6-c-masthead__toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
-                  aria-controls="sidebar" aria-expanded="false" aria-label="Toggle mobile menu"
-                  onclick="toggleMobileMenu()">%(bars)s</button>
-        </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
                writes a customer's icon and name into. -->
@@ -525,6 +700,10 @@ def build():
         <button class="pf-v6-c-button pf-m-plain mobile-search-toggle" type="button"
                 id="mobileSearchToggle" aria-label="Toggle search"
                 onclick="toggleMobileSearch()">%(search)s</button>
+
+        <button class="pf-v6-c-button pf-m-plain" type="button" id="settingsToggle"
+                aria-label="Settings" data-i18n-title="settings" title="Settings"
+                onclick="showSettings()">%(cog)s</button>
       </div>
     </header>
 
@@ -541,19 +720,6 @@ def build():
         </div>
       </div>
       <div class="search-results-info" id="searchResultsInfo" role="status" aria-live="polite" hidden></div>
-    </div>
-
-    <!-- Backdrop behind the sidebar on a phone -->
-    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
-         onclick="toggleMobileMenu()"></div>
-
-    <!-- The sidebar holds settings, not navigation, so its contents are a
-         form rather than a nav list. -->
-    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Settings and controls">
-      <div class="pf-v6-c-page__sidebar-body">
-        <form class="pf-v6-c-form" onsubmit="return false;">
-%(sidebar)s        </form>
-      </div>
     </div>
 
     <div class="pf-v6-c-page__main-container">
@@ -618,20 +784,95 @@ def build():
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
-%(about)s%(shortcuts)s%(welcome)s%(tour)s
+%(settings)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
           aria-label="Scroll to top" onclick="scrollToTop()">%(expand)s</button>
 
   <script>
-    // PatternFly's expandable field group: the class on the group and the
-    // button's aria-expanded are the two halves of its state.
-    function toggleFieldGroup(button) {
-      const group = button.closest('.pf-v6-c-form__field-group');
-      if (!group) return;
-      const open = group.classList.toggle('pf-m-expanded');
-      button.setAttribute('aria-expanded', String(open));
+    /* The settings dialog. PatternFly's vertical tabs: the list and the panels
+       are siblings, one panel is shown at a time, and the tab that is current
+       carries pf-m-current and aria-selected. */
+    function showSettingsTab(key) {
+      document.querySelectorAll('.settings-tabs .pf-v6-c-tabs__item').forEach(function (item) {
+        const on = item.id === 'settings-tabitem-' + key;
+        item.classList.toggle('pf-m-current', on);
+        const link = item.querySelector('.pf-v6-c-tabs__link');
+        if (link) link.setAttribute('aria-selected', String(on));
+      });
+      document.querySelectorAll('.settings-panel').forEach(function (panel) {
+        panel.hidden = panel.id !== 'settings-' + key;
+      });
     }
-    window.toggleFieldGroup = toggleFieldGroup;
+    window.showSettingsTab = showSettingsTab;
+
+    /* The setup wizard. Its controls hand what they collect to the real ones
+       in the settings dialog, so there is still one source of truth. */
+    function setupApply(targetId, value) {
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      el.value = value;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    window.setupApply = setupApply;
+
+    function setupToggleTTS(on) {
+      const button = document.getElementById('toggleTTS');
+      if (!button) return;
+      const isOn = button.classList.contains('active');
+      if (isOn !== on) button.click();
+    }
+    window.setupToggleTTS = setupToggleTTS;
+
+    const SETUP_STEPS = ['language', 'speech', 'done'];
+    let setupStep = 0;
+
+    function showSetupStep(key) {
+      setupStep = Math.max(0, SETUP_STEPS.indexOf(key));
+      SETUP_STEPS.forEach(function (k, i) {
+        const link = document.getElementById('setup-nav-' + k);
+        if (link) {
+          link.classList.toggle('pf-m-current', i === setupStep);
+          if (i === setupStep) link.setAttribute('aria-current', 'step');
+          else link.removeAttribute('aria-current');
+        }
+        const body = document.getElementById('setup-' + k);
+        if (body) body.hidden = i !== setupStep;
+      });
+      const back = document.getElementById('setupBack');
+      const next = document.getElementById('setupNext');
+      if (back) back.disabled = setupStep === 0;
+      if (next) {
+        const last = setupStep === SETUP_STEPS.length - 1;
+        next.querySelector('.pf-v6-c-button__text').textContent =
+          last ? (window.sharedI18n && window.sharedI18n.en && window.sharedI18n.en.tour_done) || 'Done'
+               : (window.sharedI18n && window.sharedI18n.en && window.sharedI18n.en.tour_next) || 'Next';
+      }
+    }
+    window.showSetupStep = showSetupStep;
+
+    function setupNext() {
+      if (setupStep >= SETUP_STEPS.length - 1) { hideWelcome(); return; }
+      showSetupStep(SETUP_STEPS[setupStep + 1]);
+    }
+    window.setupNext = setupNext;
+
+    function setupBack() {
+      if (setupStep > 0) showSetupStep(SETUP_STEPS[setupStep - 1]);
+    }
+    window.setupBack = setupBack;
+
+    function showSettings(key) {
+      const first = document.querySelector('.settings-tabs .pf-v6-c-tabs__item');
+      showSettingsTab(key || (first && first.id.replace('settings-tabitem-', '')) || 'language');
+      document.getElementById('settingsModal').classList.add('active');
+    }
+    window.showSettings = showSettings;
+
+    function hideSettings(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+    window.hideSettings = hideSettings;
 
     // Persistent room switcher: navigates by reloading with ?room=
     window.userSwitchRoom = function (roomId) {
@@ -709,18 +950,17 @@ def build():
 </html>
 ''' % {
         "sprite": sprite(),
-        "bars": btn_icon("bars"),
+        "cog": icon("cog"),
         "search": icon("search"),
         "comments": icon("comments"),
         "info": icon("info-circle"),
         "times": btn_icon("times"),
         "expand": btn_icon("angle-down"),
-        "sidebar": "".join(sidebar),
+        "settings": settings_modal(panels),
         "about": about_modal(),
         "shortcuts": modal("shortcutsModal", "shortcutsTitle", "shortcuts_title", "Keyboard Shortcuts",
                            shortcuts_body, close_fn="hideShortcuts()"),
-        "welcome": modal("welcomeModal", "welcomeTitle", "welcome_title", "Welcome to EzySpeech",
-                         welcome_body, welcome_footer, close_fn="hideWelcome()"),
+        "welcome": setup_wizard(),
         # user.js fills the tour's icon and title per step, so neither carries
         # a data-i18n key of its own.
         "tour": modal("tourModal", "tourTitle", None, "User Guide",

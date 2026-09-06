@@ -24,7 +24,7 @@ COMPONENTS="Login/login Form/form FormControl/form-control \
             DescriptionList/description-list Table/table Table/table-grid Check/check \
             Panel/panel Spinner/spinner DragDrop/drag-drop \
             InputGroup/input-group ProgressStepper/progress-stepper \
-            DataList/data-list"
+            DataList/data-list Tabs/tabs TabContent/tab-content Wizard/wizard"
 LAYOUTS="Bullseye/bullseye Stack/stack Flex/flex Grid/grid Split/split Level/level"
 
 OUT=app/static/patternfly

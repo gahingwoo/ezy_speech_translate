@@ -392,6 +392,59 @@ html.pf-v6-theme-dark .icon-moon {
   rotate: 180deg;
 }
 
+/* ── setup wizard ─────────────────────────────────────────────────────── */
+/* PatternFly's wizard is sized for a page; in a dialog it takes the room the
+   backdrop's padding leaves it. */
+
+.setup-wizard {
+  width: min(48rem, 100%);
+  max-height: 100%;
+  background: var(--pf-t--global--background--color--primary--default);
+  border-radius: var(--pf-t--global--border--radius--large);
+  box-shadow: var(--pf-t--global--box-shadow--lg);
+}
+
+.setup-step[hidden] {
+  display: none;
+}
+
+/* ── settings dialog ──────────────────────────────────────────────────── */
+/* PatternFly's vertical tabs put the list beside the panel, and the two are
+   siblings, so the dialog body is the row that holds them. Below md there is
+   no room for a column of tabs, so they run along the top instead. */
+
+.settings-body {
+  display: flex;
+  gap: var(--pf-t--global--spacer--lg);
+  align-items: flex-start;
+}
+
+/* PatternFly's vertical tabs are 100% wide by design — they expect a column of
+   their own — so in this row the flex item has to be the column. */
+.settings-tabs {
+  flex: 0 0 12rem;
+}
+
+.settings-panel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 47.99rem) {
+  .settings-body {
+    flex-direction: column;
+  }
+
+  .settings-tabs {
+    flex: 0 0 auto;
+    align-self: stretch;
+  }
+
+  .settings-panel {
+    align-self: stretch;
+  }
+}
+
 /* ── dialogs ──────────────────────────────────────────────────────────── */
 /* Both pages open a dialog by adding a class, so the backdrop is always laid
    out and hidden with visibility rather than display, which cannot animate.
