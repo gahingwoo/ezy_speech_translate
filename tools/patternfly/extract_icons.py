@@ -32,7 +32,8 @@ exclamation-circle exclamation-triangle expand external-link-alt eye eye-slash
 file-export
 globe grip-vertical
 info-circle key keyboard language lightbulb list lock microphone minus
-moon paper-plane pause play plus qrcode redo save search share-alt sign-out-alt
+moon paper-plane pause play plus qrcode redo save search server share-alt
+sign-out-alt
 stop sun sync-alt table times trash upload user users volume-up wheelchair
 """.split()
 

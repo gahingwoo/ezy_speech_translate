@@ -107,7 +107,7 @@ html.pf-v6-theme-dark .icon-moon {
   min-width: 0;
 }
 
-/* The room name and the way into the manager, in the sidebar's Room section. */
+/* The room name and the way into the manager, in the settings dialog. */
 .room-switcher {
   display: flex;
   flex-wrap: wrap;
@@ -129,72 +129,103 @@ html.pf-v6-theme-dark .icon-moon {
   flex-shrink: 0;
 }
 
-/* ── sidebar ──────────────────────────────────────────────────────────── */
+/* ── toolbar ─────────────────────────────────────────────────────────── */
+/* What drives the list sits above it. A bare select in a bar says nothing, so
+   the two that pick a source keep their labels beside them. */
 
-.pf-v6-c-page__sidebar-body {
-  overflow-y: auto;
-}
-
-.pf-v6-c-form__section + .sidebar-section,
-.pf-v6-c-form__field-group + .sidebar-section {
-  border-block-start: var(--pf-t--global--border--width--divider--default) solid
-    var(--pf-t--global--border--color--default);
-  padding-block-start: var(--pf-t--global--spacer--lg);
-}
-
-/* A folded group is a title and a chevron; it does not need the panel padding
-   an open section takes. */
-.pf-v6-c-form__field-group.sidebar-section {
-  --pf-v6-c-form__field-group-body--PaddingBlockStart: var(--pf-t--global--spacer--sm);
-}
-
-/* Two actions to a row while they fit, one when they do not. */
-.sidebar-actions {
+.toolbar-field {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--pf-t--global--spacer--sm);
-}
-
-/* The sidebar body is about 250px wide, so the basis has to leave room for
-   two of these and the gap between them. */
-.sidebar-actions > .pf-v6-c-button {
-  flex: 1 1 6rem;
+  align-items: center;
   min-width: 0;
 }
 
-/* A column of full-width actions, each reading from its icon. */
-.sidebar-links {
+.toolbar-field .pf-v6-c-form__label {
+  white-space: nowrap;
+}
+
+.toolbar-field .pf-v6-c-form-control {
+  min-width: 10rem;
+}
+
+/* PatternFly's toolbar keeps its row on one line; a phone has room for one
+   control at a time, so below md every item takes the width and the two
+   labelled selects put their label above rather than beside. */
+@media (max-width: 47.99rem) {
+  .pf-v6-c-toolbar__content-section {
+    flex-wrap: wrap;
+  }
+
+  .pf-v6-c-toolbar__item,
+  .pf-v6-c-toolbar__group {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .toolbar-field {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-field .pf-v6-c-form-control {
+    min-width: 0;
+  }
+
+  .pf-v6-c-toolbar__group.pf-m-action-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--pf-t--global--spacer--sm);
+  }
+}
+
+/* What is being heard right now takes whatever room is left in the row, so a
+   long phrase is readable rather than clipped into a chip. */
+.interim-wrap {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.interim-wrap .interim-display {
+  width: 100%;
+}
+
+/* admin.js shows this with `display: flex`, which would otherwise stretch an
+   inline-flex label the width of the bar. */
+.auto-restart-badge {
+  width: fit-content;
+}
+
+/* ── settings dialog ──────────────────────────────────────────────────── */
+/* PatternFly's vertical tabs put the list beside the panel, and the two are
+   siblings, so the dialog body is the row that holds them. Below md there is
+   no room for a column of tabs, so they run along the top instead. */
+
+.settings-body {
   display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--sm);
+  gap: var(--pf-t--global--spacer--lg);
+  align-items: flex-start;
 }
 
-.sidebar-action {
-  justify-content: flex-start;
-  text-align: start;
+/* PatternFly's vertical tabs are 100% wide by design — they expect a column of
+   their own — so in this row the flex item has to be the column. */
+.settings-tabs {
+  flex: 0 0 12rem;
 }
 
-/* The sidebar is PatternFly's, and so is its state: .pf-m-expanded opens the
-   drawer below xl, .pf-m-collapsed closes the panel at xl and above, and the
-   component animates both. All this adds is lifting the open drawer over its
-   own backdrop — the sidebar sits at z-index sm and the backdrop at lg, so
-   without this every click on the drawer lands on the dim. */
-.pf-v6-c-page__sidebar.pf-m-expanded {
-  z-index: var(--pf-t--global--z-index--xl);
+.settings-panel {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-/* The backdrop behind the drawer, below xl only. */
-.sidebar-overlay {
-  display: none;
-}
+@media (max-width: 47.99rem) {
+  .settings-body {
+    flex-direction: column;
+  }
 
-.sidebar-overlay.active {
-  display: block;
-}
-
-@media (min-width: 75rem) {
-  .sidebar-overlay.active {
-    display: none;
+  .settings-tabs,
+  .settings-panel {
+    flex: 0 0 auto;
+    align-self: stretch;
   }
 }
 
@@ -219,13 +250,6 @@ html.pf-v6-theme-dark .icon-moon {
 .interim-display.active {
   color: var(--pf-t--global--text--color--regular);
   border-color: var(--pf-t--global--border--color--brand--default);
-}
-
-/* admin.js shows this with `display: flex`, which would otherwise stretch an
-   inline-flex label the width of the sidebar. */
-.auto-restart-badge {
-  width: fit-content;
-  margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
 /* ── QR code ──────────────────────────────────────────────────────────── */
@@ -630,7 +654,7 @@ html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
 
 /* ── toasts ───────────────────────────────────────────────────────────── */
 /* PatternFly's toast alert group is positioned by the component; this only
-   lifts it above the sidebar drawer. */
+   lifts it above the dialogs. */
 
 .toast-container {
   z-index: var(--pf-t--global--z-index--xl);
@@ -640,7 +664,7 @@ html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
 
 @media print {
   .pf-v6-c-masthead,
-  .pf-v6-c-page__sidebar,
+  .pf-v6-c-toolbar,
   .edit-panel,
   .toast-container {
     display: none !important;

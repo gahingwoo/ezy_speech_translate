@@ -35,17 +35,12 @@
   <ul class="pf-v6-c-alert-group pf-m-toast toast-container" id="toastContainer" role="list"
       aria-live="polite" aria-atomic="true"></ul>
 
-  <div class="pf-v6-c-page">
+  <div class="pf-v6-c-page pf-m-no-sidebar">
     <!-- PatternFly stacks the masthead by default: the brand takes its own
          row, the toggle and the actions the next. That is right on a phone;
          from md there is room for one row. -->
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
-        <span class="pf-v6-c-masthead__toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
-                  aria-controls="sidebar" aria-expanded="false" aria-label="Toggle mobile menu"
-                  onclick="toggleMobileMenu()"><span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 132h416c8.837 0 16-7.163 16-16V76c0-8.837-7.163-16-16-16H16C7.163 60 0 67.163 0 76v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16z"/></svg></span></button>
-        </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
                writes a customer's icon and name into. -->
@@ -67,8 +62,12 @@
           </span>
         </span>
 
-        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="openConfigPasswordGate()" title="Settings" aria-label="Settings">
-          <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M487.4 315.7l-42.6-24.6c4.3-23.2 4.3-47 0-70.2l42.6-24.6c4.9-2.8 7.1-8.6 5.5-14-11.1-35.6-30-67.8-54.7-94.6-3.8-4.1-10-5.1-14.8-2.3L380.8 110c-17.9-15.4-38.5-27.3-60.8-35.1V25.8c0-5.6-3.9-10.5-9.4-11.7-36.7-8.2-74.3-7.8-109.2 0-5.5 1.2-9.4 6.1-9.4 11.7V75c-22.2 7.9-42.8 19.8-60.8 35.1L88.7 85.5c-4.9-2.8-11-1.9-14.8 2.3-24.7 26.7-43.6 58.9-54.7 94.6-1.7 5.4.6 11.2 5.5 14L67.3 221c-4.3 23.2-4.3 47 0 70.2l-42.6 24.6c-4.9 2.8-7.1 8.6-5.5 14 11.1 35.6 30 67.8 54.7 94.6 3.8 4.1 10 5.1 14.8 2.3l42.6-24.6c17.9 15.4 38.5 27.3 60.8 35.1v49.2c0 5.6 3.9 10.5 9.4 11.7 36.7 8.2 74.3 7.8 109.2 0 5.5-1.2 9.4-6.1 9.4-11.7v-49.2c22.2-7.9 42.8-19.8 60.8-35.1l42.6 24.6c4.9 2.8 11 1.9 14.8-2.3 24.7-26.7 43.6-58.9 54.7-94.6 1.5-5.5-.7-11.3-5.6-14.1zM256 336c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/></svg></span><span class="pf-v6-c-button__text">Config</span>
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="settingsToggle" aria-label="Settings" title="Settings"
+                data-i18n-title="settings" onclick="showSettings()"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M487.4 315.7l-42.6-24.6c4.3-23.2 4.3-47 0-70.2l42.6-24.6c4.9-2.8 7.1-8.6 5.5-14-11.1-35.6-30-67.8-54.7-94.6-3.8-4.1-10-5.1-14.8-2.3L380.8 110c-17.9-15.4-38.5-27.3-60.8-35.1V25.8c0-5.6-3.9-10.5-9.4-11.7-36.7-8.2-74.3-7.8-109.2 0-5.5 1.2-9.4 6.1-9.4 11.7V75c-22.2 7.9-42.8 19.8-60.8 35.1L88.7 85.5c-4.9-2.8-11-1.9-14.8 2.3-24.7 26.7-43.6 58.9-54.7 94.6-1.7 5.4.6 11.2 5.5 14L67.3 221c-4.3 23.2-4.3 47 0 70.2l-42.6 24.6c-4.9 2.8-7.1 8.6-5.5 14 11.1 35.6 30 67.8 54.7 94.6 3.8 4.1 10 5.1 14.8 2.3l42.6-24.6c17.9 15.4 38.5 27.3 60.8 35.1v49.2c0 5.6 3.9 10.5 9.4 11.7 36.7 8.2 74.3 7.8 109.2 0 5.5-1.2 9.4-6.1 9.4-11.7v-49.2c22.2-7.9 42.8-19.8 60.8-35.1l42.6 24.6c4.9 2.8 11 1.9 14.8-2.3 24.7-26.7 43.6-58.9 54.7-94.6 1.5-5.5-.7-11.3-5.6-14.1zM256 336c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/></svg></button>
+
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="openConfigPasswordGate()" title="Server configuration" aria-label="Server configuration">
+          <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg></span><span class="pf-v6-c-button__text">Config</span>
         </button>
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="logout()" aria-label="Logout">
           <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M497 273L329 441c-15 15-41 4.5-41-17v-96H152c-13.3 0-24-10.7-24-24v-96c0-13.3 10.7-24 24-24h136V88c0-21.4 25.9-32 41-17l168 168c9.3 9.4 9.3 24.6 0 34zM192 436v-40c0-6.6-5.4-12-12-12H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h84c6.6 0 12-5.4 12-12V76c0-6.6-5.4-12-12-12H96c-53 0-96 43-96 96v192c0 53 43 96 96 96h84c6.6 0 12-5.4 12-12z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="logout">Logout</span>
@@ -76,381 +75,88 @@
       </div>
     </header>
 
-    <!-- Backdrop behind the sidebar on a phone -->
-    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
-         onclick="toggleMobileMenu()"></div>
-
-    <!-- The sidebar holds controls, not navigation, so its contents are a
-         form rather than a nav list. -->
-    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Controls and settings">
-      <div class="pf-v6-c-page__sidebar-body">
-        <form class="pf-v6-c-form" onsubmit="return false;">
-    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title">Room</h2>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control room-switcher">
-          <span class="pf-v6-c-label pf-m-outline">
-            <span class="pf-v6-c-label__content">
-              <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 640 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm32 32h-64c-17.6 0-33.5 7.1-45.1 18.6 40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64zm-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32 208 82.1 208 144s50.1 112 112 112zm76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2zm-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"/></svg></span>
-              <span class="pf-v6-c-label__text" id="currentRoomLabel">main</span>
-            </span>
-          </span>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="openRoomManager()">
-            <span class="pf-v6-c-button__text" data-i18n="manage_rooms">Manage rooms</span>
-          </button>
-        </div>
-      </div>
-    </section>
-    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="audioControls">Audio Controls</h2>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="sourceLangSelect">
-            <span class="pf-v6-c-form__label-text" data-i18n="sourceLanguage">Source Language</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="sourceLangSelect" aria-label="Source language" onchange="changeSourceLanguage()"><option value="en-US" data-i18n="englishUS">English (US)</option><option value="en-GB" data-i18n="englishUK">English (UK)</option><option value="zh-CN" data-i18n="chineseMandarin">中文 (普通话)</option><option value="yue-Hant-HK">粵語</option><option value="ja-JP">日本語</option><option value="ko-KR">한국어</option><option value="es-ES">Español</option><option value="fr-FR">Français</option><option value="de-DE">Deutsch</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="deviceSelect">
-            <span class="pf-v6-c-form__label-text" data-i18n="audioDevice">Audio Device</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="deviceSelect" aria-label="Audio device"><option data-i18n="loading">Loading...</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control">
-          <button class="pf-v6-c-button pf-m-primary" type="button" id="recordBtn" onclick="toggleRecording()" aria-pressed="false">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="startRecording">Start Recording</span>
-          </button>
-          <span class="pf-v6-c-label pf-m-blue auto-restart-badge" id="autoRestartBadge"
-                style="display: none;">
-            <span class="pf-v6-c-label__content">
-              <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span>
-              <span class="pf-v6-c-label__text" data-i18n="autoRestartEnabled">Auto-restart enabled</span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="interimDisplay">
-            <span class="pf-v6-c-form__label-text" data-i18n="recognizing">Recognizing...</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <div class="interim-display inactive" id="interimDisplay"
-               role="status" aria-live="polite">
-            <span id="interimText" data-i18n="waitingForSpeech">Waiting for speech...</span>
-          </div>
-        </div>
-      </div>
-    </section>
-    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="actions">Actions</h2>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control sidebar-actions">
-          <button class="pf-v6-c-button pf-m-primary" type="button" onclick="addNewItem()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="add">Add</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="editSelected()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M402.6 83.2l90.2 90.2c3.8 3.8 3.8 10 0 13.8L274.4 405.6l-92.8 10.3c-12.4 1.4-22.9-9.1-21.5-21.5l10.3-92.8L388.8 83.2c3.8-3.8 10-3.8 13.8 0zm162-22.9l-48.8-48.8c-15.2-15.2-39.9-15.2-55.2 0l-35.4 35.4c-3.8 3.8-3.8 10 0 13.8l90.2 90.2c3.8 3.8 10 3.8 13.8 0l35.4-35.4c15.2-15.3 15.2-40 0-55.2zM384 346.2V448H64V128h229.8c3.2 0 6.2-1.3 8.5-3.5l40-40c7.6-7.6 2.2-20.5-8.5-20.5H48C21.5 64 0 85.5 0 112v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V306.2c0-10.7-12.9-16-20.5-8.5l-40 40c-2.2 2.3-3.5 5.3-3.5 8.5z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="edit">Edit</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-danger" type="button" onclick="deleteSelected()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="delete">Delete</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="clearHistory()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="clearAll">Clear All</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="exportData()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="export">Export</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="document.getElementById('importFileInput').click()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M296 384h-80c-13.3 0-24-10.7-24-24V192h-87.7c-17.8 0-26.7-21.5-14.1-34.1L242.3 5.7c7.5-7.5 19.8-7.5 27.3 0l152.2 152.2c12.6 12.6 3.7 34.1-14.1 34.1H320v168c0 13.3-10.7 24-24 24zm216-8v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h136v8c0 30.9 25.1 56 56 56h80c30.9 0 56-25.1 56-56v-8h136c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="import">Import</span>
-          </button>
-          <input type="file" id="importFileInput" accept=".json" hidden
-                 onchange="handleImportFile(event)">
-        </div>
-      </div>
-    </section>
-    <section class="pf-v6-c-form__section sidebar-section">
-      <h2 class="pf-v6-c-form__section-title" data-i18n="settings">Settings</h2>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="displayLanguage">
-            <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Interface Language</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="displayLanguage" aria-label="Interface language" onchange="(function(el){ const v = el.value; if(!v){ localStorage.removeItem('displayLanguage'); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } else { if(window.changeDisplayLanguage) window.changeDisplayLanguage(v); else { localStorage.setItem('displayLanguage', v); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } } })(this)"><option value="">Auto</option><option value="en">English</option><option value="zh">简体中文</option><option value="yue">粵語</option><option value="zh-tw">繁體中文</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="pt">Português</option><option value="it">Italiano</option><option value="nl">Nederlands</option><option value="pl">Polski</option><option value="tr">Türkçe</option><option value="vi">Tiếng Việt</option><option value="th">ไทย</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="hi">हिन्दी</option><option value="ta">தமிழ்</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control sidebar-links">
-          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button"
-                  aria-label="Toggle theme" onclick="toggleTheme(); closeMobileMenu();">
-            <span class="pf-v6-c-button__icon pf-m-start" aria-hidden="true"
-                  id="themeIcon"><svg class="pf-v6-svg icon-moon" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M283.211 512c78.962 0 151.079-35.925 198.857-94.792 7.068-8.708-.639-21.43-11.562-19.35-124.203 23.654-238.262-71.576-238.262-196.954 0-72.222 38.662-138.635 101.498-174.394 9.686-5.512 7.25-20.197-3.756-22.23A258.156 258.156 0 0 0 283.211 0c-141.309 0-256 114.511-256 256 0 141.309 114.511 256 256 256z"/></svg><svg class="pf-v6-svg icon-sun" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 160c-52.9 0-96 43.1-96 96s43.1 96 96 96 96-43.1 96-96-43.1-96-96-96zm246.4 80.5l-94.7-47.3 33.5-100.4c4.5-13.6-8.4-26.5-21.9-21.9l-100.4 33.5-47.4-94.8c-6.4-12.8-24.6-12.8-31 0l-47.3 94.7L92.7 70.8c-13.6-4.5-26.5 8.4-21.9 21.9l33.5 100.4-94.7 47.4c-12.8 6.4-12.8 24.6 0 31l94.7 47.3-33.5 100.5c-4.5 13.6 8.4 26.5 21.9 21.9l100.4-33.5 47.3 94.7c6.4 12.8 24.6 12.8 31 0l47.3-94.7 100.4 33.5c13.6 4.5 26.5-8.4 21.9-21.9l-33.5-100.4 94.7-47.3c13-6.5 13-24.7.2-31.1zm-155.9 106c-49.9 49.9-131.1 49.9-181 0-49.9-49.9-49.9-131.1 0-181 49.9-49.9 131.1-49.9 181 0 49.9 49.9 49.9 131.1 0 181z"/></svg></span>
-            <span class="pf-v6-c-button__text" id="themeText" data-i18n="darkMode">Dark Mode</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button" onclick="showShortcuts(); closeMobileMenu();" aria-label="Keyboard shortcuts">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M528 448H48c-26.51 0-48-21.49-48-48V112c0-26.51 21.49-48 48-48h480c26.51 0 48 21.49 48 48v288c0 26.51-21.49 48-48 48zM128 180v-40c0-6.627-5.373-12-12-12H76c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm-336 96v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm-336 96v-40c0-6.627-5.373-12-12-12H76c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm288 0v-40c0-6.627-5.373-12-12-12H172c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h232c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="shortcuts_title">Keyboard Shortcuts</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button" onclick="showAbout(); closeMobileMenu();" aria-label="About">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="about">About</span>
-          </button>
-        </div>
-      </div>
-    </section>
-    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section">
-      <div class="pf-v6-c-form__field-group-toggle">
-        <div class="pf-v6-c-form__field-group-toggle-button">
-          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
-                  aria-label="Toggle TTS Cache" onclick="toggleFieldGroup(this)">
-            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
-          </button>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-header">
-        <div class="pf-v6-c-form__field-group-header-main">
-          <div class="pf-v6-c-form__field-group-header-title">
-            <div class="pf-v6-c-form__field-group-header-title-text">TTS Cache</div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-body">
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-card pf-m-compact" id="ttsCacheContainer" aria-label="TTS Cache">
-            <div class="pf-v6-c-card__body">
-          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
-              id="ttsCacheStats">
-            <div class="pf-v6-c-description-list__group">
-              <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Items</span>
-              </dt>
-              <dd class="pf-v6-c-description-list__description">
-                <div class="pf-v6-c-description-list__text"><strong id="cache-items">0/1000</strong></div>
-              </dd>
-            </div>
-            <div class="pf-v6-c-description-list__group">
-              <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Memory</span>
-              </dt>
-              <dd class="pf-v6-c-description-list__description">
-                <div class="pf-v6-c-description-list__text"><strong id="cache-memory">0.00MB/1000MB</strong></div>
-              </dd>
-            </div>
-          </dl>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control sidebar-actions">
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="refreshTTSCacheStats()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span><span class="pf-v6-c-button__text">Refresh</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-danger" type="button" onclick="clearTTSCache()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text">Clear</span>
-          </button>
-        </div>
-      </div>
-      </div>
-    </div>
-    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section" id="bibleAdminSection">
-      <div class="pf-v6-c-form__field-group-toggle">
-        <div class="pf-v6-c-form__field-group-toggle-button">
-          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
-                  aria-label="Toggle Bible" onclick="toggleFieldGroup(this)">
-            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
-          </button>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-header">
-        <div class="pf-v6-c-form__field-group-header-main">
-          <div class="pf-v6-c-form__field-group-header-title">
-            <div class="pf-v6-c-form__field-group-header-title-text">Bible</div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-body">
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="adminBibleSourceSelect">
-            <span class="pf-v6-c-form__label-text">Source Translation</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="adminBibleSourceSelect" aria-label="Bible source translation" onchange="saveBibleSourceTranslation()" title="Bible translation shown alongside the original-language caption. Choose based on the language being spoken."><option value="">— Loading... —</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-        <p class="pf-v6-c-form__helper-text" id="adminBibleSaveStatus" role="status" aria-live="polite"></p>
-      </div>
-      </div>
-    </div>
-    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section" id="announcementSection">
-      <div class="pf-v6-c-form__field-group-toggle">
-        <div class="pf-v6-c-form__field-group-toggle-button">
-          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
-                  aria-label="Toggle Announcement" onclick="toggleFieldGroup(this)">
-            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
-          </button>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-header">
-        <div class="pf-v6-c-form__field-group-header-main">
-          <div class="pf-v6-c-form__field-group-header-title">
-            <div class="pf-v6-c-form__field-group-header-title-text">Announcement</div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-body">
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="announcementText">
-            <span class="pf-v6-c-form__label-text">Message</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical">
-            <textarea id="announcementText" rows="3" placeholder="Type announcement to all viewers..."></textarea>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="announcementDuration">
-            <span class="pf-v6-c-form__label-text">Duration</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="announcementDuration" aria-label="Announcement duration"><option value="5000">5 seconds</option><option value="10000" selected>10 seconds</option><option value="30000">30 seconds</option><option value="60000">1 minute</option><option value="0">Until dismissed</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="announcementType">
-            <span class="pf-v6-c-form__label-text">Type</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="announcementType" aria-label="Announcement type"><option value="info" selected>Info</option><option value="success">Success</option><option value="warning">Warning</option><option value="danger">Urgent</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control">
-          <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" onclick="sendAnnouncement()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M476 3.2L12.5 270.6c-18.1 10.4-15.8 35.6 2.2 43.2L121 358.4l287.3-253.2c5.5-4.9 13.3 2.6 8.6 8.3L176 407v80.5c0 23.6 28.5 32.9 42.5 15.8L282 426l124.6 52.2c14.2 6 30.4-2.9 33-18.2l72-432C515 7.8 493.3-6.8 476 3.2z"/></svg></span><span class="pf-v6-c-button__text">Send to All Viewers</span>
-          </button>
-        </div>
-      </div>
-      </div>
-    </div>
-    <div class="pf-v6-c-form__field-group pf-m-expandable sidebar-section" id="qrSection">
-      <div class="pf-v6-c-form__field-group-toggle">
-        <div class="pf-v6-c-form__field-group-toggle-button">
-          <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
-                  aria-label="Toggle Audience QR Code" onclick="toggleFieldGroup(this)">
-            <span class="pf-v6-c-form__field-group-toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 256 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M224.3 273l-136 136c-9.4 9.4-24.6 9.4-33.9 0l-22.6-22.6c-9.4-9.4-9.4-24.6 0-33.9l96.4-96.4-96.4-96.4c-9.4-9.4-9.4-24.6 0-33.9L54.3 103c9.4-9.4 24.6-9.4 33.9 0l136 136c9.5 9.4 9.5 24.6.1 34z"/></svg></span>
-          </button>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-header">
-        <div class="pf-v6-c-form__field-group-header-main">
-          <div class="pf-v6-c-form__field-group-header-title">
-            <div class="pf-v6-c-form__field-group-header-title-text">Audience QR Code</div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__field-group-body">
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="qrRoomSelect">
-            <span class="pf-v6-c-form__label-text">Room</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="qrRoomSelect" aria-label="QR room"><option value="">— Auto (current room) —</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="qrLangSelect">
-            <span class="pf-v6-c-form__label-text">Language preset</span>
-          </label>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="qrLangSelect" aria-label="QR language preset"><option value="">— No preset (default) —</option><option value="zh">简体中文 (Simplified Chinese)</option><option value="zh-tw">繁體中文 (Traditional Chinese)</option><option value="yue">粵語 (Cantonese)</option><option value="en">English</option><option value="id">Bahasa Indonesia (Indonesian)</option><option value="ms">Bahasa Melayu (Malay)</option><option value="ja">日本語 (Japanese)</option><option value="ko">한국어 (Korean)</option><option value="th">ภาษาไทย (Thai)</option><option value="vi">Tiếng Việt (Vietnamese)</option><option value="hi">हिन्दी (Hindi)</option><option value="ar">العربية (Arabic)</option><option value="ta">தமிழ் (Tamil)</option><option value="es">Español (Spanish)</option><option value="pt">Português (Portuguese)</option><option value="fr">Français (French)</option><option value="de">Deutsch (German)</option><option value="it">Italiano (Italian)</option><option value="nl">Nederlands (Dutch)</option><option value="ru">Русский (Russian)</option><option value="pl">Polski (Polish)</option><option value="tr">Türkçe (Turkish)</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control">
-          <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" onclick="generateQR()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M0 224h192V32H0v192zM64 96h64v64H64V96zm192-64v192h192V32H256zm128 128h-64V96h64v64zM0 480h192V288H0v192zm64-128h64v64H64v-64zm352-64h32v128h-96v-32h-32v96h-64V288h96v32h64v-32zm0 160h32v32h-32v-32zm-64 0h32v32h-32v-32z"/></svg></span><span class="pf-v6-c-button__text">Generate QR Code</span>
-          </button>
-          <div class="qr-output" id="qrOutput" style="display:none;">
-            <div class="qr-canvas" id="qrCanvas"></div>
-            <p class="qr-url" id="qrUrlLabel"></p>
-            <button class="pf-v6-c-button pf-m-secondary pf-m-block" type="button" onclick="downloadQR()">
-              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text">Download PNG</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      </div>
-    </div>
-        </form>
-      </div>
-    </div>
-
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
         <section class="pf-v6-c-page__main-section pf-m-fill">
+          <div class="pf-v6-c-toolbar" id="recordingToolbar">
+            <div class="pf-v6-c-toolbar__content">
+              <div class="pf-v6-c-toolbar__content-section">
+                <div class="pf-v6-c-toolbar__item toolbar-field">
+                  <label class="pf-v6-c-form__label" for="sourceLangSelect">
+                    <span class="pf-v6-c-form__label-text"
+                          data-i18n="sourceLanguage">Source Language</span>
+                  </label>
+                  <span class="pf-v6-c-form-control">
+                    <select id="sourceLangSelect" aria-label="Source language" onchange="changeSourceLanguage()"><option value="en-US" data-i18n="englishUS">English (US)</option><option value="en-GB" data-i18n="englishUK">English (UK)</option><option value="zh-CN" data-i18n="chineseMandarin">中文 (普通话)</option><option value="yue-Hant-HK">粵語</option><option value="ja-JP">日本語</option><option value="ko-KR">한국어</option><option value="es-ES">Español</option><option value="fr-FR">Français</option><option value="de-DE">Deutsch</option></select>
+                    <span class="pf-v6-c-form-control__utilities">
+                      <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+                    </span>
+                  </span>
+                </div>
+                <div class="pf-v6-c-toolbar__item toolbar-field">
+                  <label class="pf-v6-c-form__label" for="deviceSelect">
+                    <span class="pf-v6-c-form__label-text"
+                          data-i18n="audioDevice">Audio Device</span>
+                  </label>
+                  <span class="pf-v6-c-form-control">
+                    <select id="deviceSelect" aria-label="Audio device"><option data-i18n="loading">Loading...</option></select>
+                    <span class="pf-v6-c-form-control__utilities">
+                      <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+                    </span>
+                  </span>
+                </div>
+                <div class="pf-v6-c-toolbar__item">
+                  <button class="pf-v6-c-button pf-m-primary" type="button" id="recordBtn" onclick="toggleRecording()" aria-pressed="false">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M176 352c53.02 0 96-42.98 96-96V96c0-53.02-42.98-96-96-96S80 42.98 80 96v160c0 53.02 42.98 96 96 96zm160-160h-16c-8.84 0-16 7.16-16 16v48c0 74.8-64.49 134.82-140.79 127.38C96.71 376.89 48 317.11 48 250.3V208c0-8.84-7.16-16-16-16H16c-8.84 0-16 7.16-16 16v40.16c0 89.64 63.97 169.55 152 181.69V464H96c-8.84 0-16 7.16-16 16v16c0 8.84 7.16 16 16 16h160c8.84 0 16-7.16 16-16v-16c0-8.84-7.16-16-16-16h-56v-33.77C285.71 418.47 352 344.9 352 256v-48c0-8.84-7.16-16-16-16z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="startRecording">Start Recording</span>
+                  </button>
+                </div>
+                <div class="pf-v6-c-toolbar__item">
+                  <span class="pf-v6-c-label pf-m-blue auto-restart-badge"
+                        id="autoRestartBadge" style="display: none;">
+                    <span class="pf-v6-c-label__content">
+                      <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span>
+                      <span class="pf-v6-c-label__text"
+                            data-i18n="autoRestartEnabled">Auto-restart enabled</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="pf-v6-c-toolbar__item interim-wrap">
+                  <div class="interim-display inactive" id="interimDisplay"
+                       role="status" aria-live="polite" data-i18n-title="recognizing"
+                       title="Recognizing...">
+                    <span id="interimText"
+                          data-i18n="waitingForSpeech">Waiting for speech...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pf-v6-c-toolbar__content-section">
+                <div class="pf-v6-c-toolbar__group pf-m-action-group">
+                  <button class="pf-v6-c-button pf-m-primary" type="button" onclick="addNewItem()">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="add">Add</span>
+                  </button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="editSelected()">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M402.6 83.2l90.2 90.2c3.8 3.8 3.8 10 0 13.8L274.4 405.6l-92.8 10.3c-12.4 1.4-22.9-9.1-21.5-21.5l10.3-92.8L388.8 83.2c3.8-3.8 10-3.8 13.8 0zm162-22.9l-48.8-48.8c-15.2-15.2-39.9-15.2-55.2 0l-35.4 35.4c-3.8 3.8-3.8 10 0 13.8l90.2 90.2c3.8 3.8 10 3.8 13.8 0l35.4-35.4c15.2-15.3 15.2-40 0-55.2zM384 346.2V448H64V128h229.8c3.2 0 6.2-1.3 8.5-3.5l40-40c7.6-7.6 2.2-20.5-8.5-20.5H48C21.5 64 0 85.5 0 112v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V306.2c0-10.7-12.9-16-20.5-8.5l-40 40c-2.2 2.3-3.5 5.3-3.5 8.5z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="edit">Edit</span>
+                  </button>
+                  <button class="pf-v6-c-button pf-m-danger" type="button" onclick="deleteSelected()">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="delete">Delete</span>
+                  </button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="clearHistory()">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="clearAll">Clear All</span>
+                  </button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="exportData()">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="export">Export</span>
+                  </button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="document.getElementById('importFileInput').click()">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M296 384h-80c-13.3 0-24-10.7-24-24V192h-87.7c-17.8 0-26.7-21.5-14.1-34.1L242.3 5.7c7.5-7.5 19.8-7.5 27.3 0l152.2 152.2c12.6 12.6 3.7 34.1-14.1 34.1H320v168c0 13.3-10.7 24-24 24zm216-8v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h136v8c0 30.9 25.1 56 56 56h80c30.9 0 56-25.1 56-56v-8h136c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="import">Import</span>
+                  </button>
+                  <input type="file" id="importFileInput" accept=".json" hidden
+                         onchange="handleImportFile(event)">
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="pf-v6-l-grid pf-m-gutter">
 
             <div class="pf-v6-l-grid__item pf-m-12-col pf-m-8-col-on-lg">
@@ -671,6 +377,307 @@
       </li>
   </template>
 
+  <div class="pf-v6-c-backdrop app-modal" id="settingsModal"
+       onclick="hideSettings(event)">
+    <div class="pf-v6-c-modal-box pf-m-lg" role="dialog" aria-modal="true"
+         aria-labelledby="settingsTitle">
+      <div class="pf-v6-c-modal-box__close">
+        <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
+                onclick="hideSettings()"><span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span></button>
+      </div>
+      <header class="pf-v6-c-modal-box__header">
+        <h1 class="pf-v6-c-modal-box__title" id="settingsTitle">
+          <span class="pf-v6-c-modal-box__title-text" data-i18n="settings">Settings</span>
+        </h1>
+      </header>
+      <div class="pf-v6-c-modal-box__body settings-body">
+    <div class="pf-v6-c-tabs pf-m-vertical pf-m-box settings-tabs" role="region">
+      <ul class="pf-v6-c-tabs__list" role="tablist" aria-label="Settings sections">
+      <li class="pf-v6-c-tabs__item pf-m-current" id="settings-tabitem-room">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-room" aria-controls="settings-room"
+                aria-selected="true" onclick="showSettingsTab('room')">
+          <span class="pf-v6-c-tabs__item-text" data-i18n="room">Room</span>
+        </button>
+      </li>
+      <li class="pf-v6-c-tabs__item" id="settings-tabitem-announcement">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-announcement" aria-controls="settings-announcement"
+                aria-selected="false" onclick="showSettingsTab('announcement')">
+          <span class="pf-v6-c-tabs__item-text">Announcement</span>
+        </button>
+      </li>
+      <li class="pf-v6-c-tabs__item" id="settings-tabitem-qr">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-qr" aria-controls="settings-qr"
+                aria-selected="false" onclick="showSettingsTab('qr')">
+          <span class="pf-v6-c-tabs__item-text">Audience QR code</span>
+        </button>
+      </li>
+      <li class="pf-v6-c-tabs__item" id="settings-tabitem-bible">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-bible" aria-controls="settings-bible"
+                aria-selected="false" onclick="showSettingsTab('bible')">
+          <span class="pf-v6-c-tabs__item-text">Bible</span>
+        </button>
+      </li>
+      <li class="pf-v6-c-tabs__item" id="settings-tabitem-cache">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-cache" aria-controls="settings-cache"
+                aria-selected="false" onclick="showSettingsTab('cache')">
+          <span class="pf-v6-c-tabs__item-text">TTS cache</span>
+        </button>
+      </li>
+      <li class="pf-v6-c-tabs__item" id="settings-tabitem-display">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-display" aria-controls="settings-display"
+                aria-selected="false" onclick="showSettingsTab('display')">
+          <span class="pf-v6-c-tabs__item-text">Display</span>
+        </button>
+      </li>
+      </ul>
+    </div>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-room"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-room" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control room-switcher">
+          <span class="pf-v6-c-label pf-m-outline">
+            <span class="pf-v6-c-label__content">
+              <span class="pf-v6-c-label__icon"><svg class="pf-v6-svg" viewBox="0 0 640 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm32 32h-64c-17.6 0-33.5 7.1-45.1 18.6 40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64zm-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32 208 82.1 208 144s50.1 112 112 112zm76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2zm-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"/></svg></span>
+              <span class="pf-v6-c-label__text" id="currentRoomLabel">main</span>
+            </span>
+          </span>
+          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="openRoomManager()">
+            <span class="pf-v6-c-button__text" data-i18n="manage_rooms">Manage rooms</span>
+          </button>
+        </div>
+      </div>
+        </form>
+      </div>
+    </section>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-announcement"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-announcement" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+<div id="announcementSection">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="announcementText">
+            <span class="pf-v6-c-form__label-text">Message</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical">
+            <textarea id="announcementText" rows="3" placeholder="Type announcement to all viewers..."></textarea>
+          </span>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="announcementDuration">
+            <span class="pf-v6-c-form__label-text">Duration</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <select id="announcementDuration" aria-label="Announcement duration"><option value="5000">5 seconds</option><option value="10000" selected>10 seconds</option><option value="30000">30 seconds</option><option value="60000">1 minute</option><option value="0">Until dismissed</option></select>
+            <span class="pf-v6-c-form-control__utilities">
+              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="announcementType">
+            <span class="pf-v6-c-form__label-text">Type</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <select id="announcementType" aria-label="Announcement type"><option value="info" selected>Info</option><option value="success">Success</option><option value="warning">Warning</option><option value="danger">Urgent</option></select>
+            <span class="pf-v6-c-form-control__utilities">
+              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control">
+          <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" onclick="sendAnnouncement()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M476 3.2L12.5 270.6c-18.1 10.4-15.8 35.6 2.2 43.2L121 358.4l287.3-253.2c5.5-4.9 13.3 2.6 8.6 8.3L176 407v80.5c0 23.6 28.5 32.9 42.5 15.8L282 426l124.6 52.2c14.2 6 30.4-2.9 33-18.2l72-432C515 7.8 493.3-6.8 476 3.2z"/></svg></span><span class="pf-v6-c-button__text">Send to All Viewers</span>
+          </button>
+        </div>
+      </div>
+      </div>
+        </form>
+      </div>
+    </section>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-qr"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-qr" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+<div id="qrSection">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="qrRoomSelect">
+            <span class="pf-v6-c-form__label-text">Room</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <select id="qrRoomSelect" aria-label="QR room"><option value="">— Auto (current room) —</option></select>
+            <span class="pf-v6-c-form-control__utilities">
+              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="qrLangSelect">
+            <span class="pf-v6-c-form__label-text">Language preset</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <select id="qrLangSelect" aria-label="QR language preset"><option value="">— No preset (default) —</option><option value="zh">简体中文 (Simplified Chinese)</option><option value="zh-tw">繁體中文 (Traditional Chinese)</option><option value="yue">粵語 (Cantonese)</option><option value="en">English</option><option value="id">Bahasa Indonesia (Indonesian)</option><option value="ms">Bahasa Melayu (Malay)</option><option value="ja">日本語 (Japanese)</option><option value="ko">한국어 (Korean)</option><option value="th">ภาษาไทย (Thai)</option><option value="vi">Tiếng Việt (Vietnamese)</option><option value="hi">हिन्दी (Hindi)</option><option value="ar">العربية (Arabic)</option><option value="ta">தமிழ் (Tamil)</option><option value="es">Español (Spanish)</option><option value="pt">Português (Portuguese)</option><option value="fr">Français (French)</option><option value="de">Deutsch (German)</option><option value="it">Italiano (Italian)</option><option value="nl">Nederlands (Dutch)</option><option value="ru">Русский (Russian)</option><option value="pl">Polski (Polish)</option><option value="tr">Türkçe (Turkish)</option></select>
+            <span class="pf-v6-c-form-control__utilities">
+              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control">
+          <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" onclick="generateQR()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M0 224h192V32H0v192zM64 96h64v64H64V96zm192-64v192h192V32H256zm128 128h-64V96h64v64zM0 480h192V288H0v192zm64-128h64v64H64v-64zm352-64h32v128h-96v-32h-32v96h-64V288h96v32h64v-32zm0 160h32v32h-32v-32zm-64 0h32v32h-32v-32z"/></svg></span><span class="pf-v6-c-button__text">Generate QR Code</span>
+          </button>
+          <div class="qr-output" id="qrOutput" style="display:none;">
+            <div class="qr-canvas" id="qrCanvas"></div>
+            <p class="qr-url" id="qrUrlLabel"></p>
+            <button class="pf-v6-c-button pf-m-secondary pf-m-block" type="button" onclick="downloadQR()">
+              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text">Download PNG</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      </div>
+        </form>
+      </div>
+    </section>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-bible"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-bible" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+<div id="bibleAdminSection">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="adminBibleSourceSelect">
+            <span class="pf-v6-c-form__label-text">Source Translation</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <select id="adminBibleSourceSelect" aria-label="Bible source translation" onchange="saveBibleSourceTranslation()" title="Bible translation shown alongside the original-language caption. Choose based on the language being spoken."><option value="">— Loading... —</option></select>
+            <span class="pf-v6-c-form-control__utilities">
+              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+            </span>
+          </span>
+        </div>
+        <p class="pf-v6-c-form__helper-text" id="adminBibleSaveStatus" role="status" aria-live="polite"></p>
+      </div>
+      </div>
+        </form>
+      </div>
+    </section>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-cache"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-cache" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control">
+          <div class="pf-v6-c-card pf-m-compact" id="ttsCacheContainer" aria-label="TTS Cache">
+            <div class="pf-v6-c-card__body">
+          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
+              id="ttsCacheStats">
+            <div class="pf-v6-c-description-list__group">
+              <dt class="pf-v6-c-description-list__term">
+                <span class="pf-v6-c-description-list__text">Items</span>
+              </dt>
+              <dd class="pf-v6-c-description-list__description">
+                <div class="pf-v6-c-description-list__text"><strong id="cache-items">0/1000</strong></div>
+              </dd>
+            </div>
+            <div class="pf-v6-c-description-list__group">
+              <dt class="pf-v6-c-description-list__term">
+                <span class="pf-v6-c-description-list__text">Memory</span>
+              </dt>
+              <dd class="pf-v6-c-description-list__description">
+                <div class="pf-v6-c-description-list__text"><strong id="cache-memory">0.00MB/1000MB</strong></div>
+              </dd>
+            </div>
+          </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control sidebar-actions">
+          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="refreshTTSCacheStats()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span><span class="pf-v6-c-button__text">Refresh</span>
+          </button>
+          <button class="pf-v6-c-button pf-m-danger" type="button" onclick="clearTTSCache()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text">Clear</span>
+          </button>
+        </div>
+      </div>
+        </form>
+      </div>
+    </section>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-display"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-display" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="displayLanguage">
+            <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Interface Language</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <select id="displayLanguage" aria-label="Interface language" onchange="(function(el){ const v = el.value; if(!v){ localStorage.removeItem('displayLanguage'); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } else { if(window.changeDisplayLanguage) window.changeDisplayLanguage(v); else { localStorage.setItem('displayLanguage', v); if(window.applyDisplayLanguage) window.applyDisplayLanguage(); } } })(this)"><option value="">Auto</option><option value="en">English</option><option value="zh">简体中文</option><option value="yue">粵語</option><option value="zh-tw">繁體中文</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="pt">Português</option><option value="it">Italiano</option><option value="nl">Nederlands</option><option value="pl">Polski</option><option value="tr">Türkçe</option><option value="vi">Tiếng Việt</option><option value="th">ไทย</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="hi">हिन्दी</option><option value="ta">தமிழ்</option></select>
+            <span class="pf-v6-c-form-control__utilities">
+              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
+            </span>
+          </span>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control sidebar-links">
+          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button"
+                  aria-label="Toggle theme" onclick="toggleTheme(); closeMobileMenu();">
+            <span class="pf-v6-c-button__icon pf-m-start" aria-hidden="true"
+                  id="themeIcon"><svg class="pf-v6-svg icon-moon" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M283.211 512c78.962 0 151.079-35.925 198.857-94.792 7.068-8.708-.639-21.43-11.562-19.35-124.203 23.654-238.262-71.576-238.262-196.954 0-72.222 38.662-138.635 101.498-174.394 9.686-5.512 7.25-20.197-3.756-22.23A258.156 258.156 0 0 0 283.211 0c-141.309 0-256 114.511-256 256 0 141.309 114.511 256 256 256z"/></svg><svg class="pf-v6-svg icon-sun" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 160c-52.9 0-96 43.1-96 96s43.1 96 96 96 96-43.1 96-96-43.1-96-96-96zm246.4 80.5l-94.7-47.3 33.5-100.4c4.5-13.6-8.4-26.5-21.9-21.9l-100.4 33.5-47.4-94.8c-6.4-12.8-24.6-12.8-31 0l-47.3 94.7L92.7 70.8c-13.6-4.5-26.5 8.4-21.9 21.9l33.5 100.4-94.7 47.4c-12.8 6.4-12.8 24.6 0 31l94.7 47.3-33.5 100.5c-4.5 13.6 8.4 26.5 21.9 21.9l100.4-33.5 47.3 94.7c6.4 12.8 24.6 12.8 31 0l47.3-94.7 100.4 33.5c13.6 4.5 26.5-8.4 21.9-21.9l-33.5-100.4 94.7-47.3c13-6.5 13-24.7.2-31.1zm-155.9 106c-49.9 49.9-131.1 49.9-181 0-49.9-49.9-49.9-131.1 0-181 49.9-49.9 131.1-49.9 181 0 49.9 49.9 49.9 131.1 0 181z"/></svg></span>
+            <span class="pf-v6-c-button__text" id="themeText" data-i18n="darkMode">Dark Mode</span>
+          </button>
+          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button" onclick="showShortcuts(); closeMobileMenu();" aria-label="Keyboard shortcuts">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M528 448H48c-26.51 0-48-21.49-48-48V112c0-26.51 21.49-48 48-48h480c26.51 0 48 21.49 48 48v288c0 26.51-21.49 48-48 48zM128 180v-40c0-6.627-5.373-12-12-12H76c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm-336 96v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm-336 96v-40c0-6.627-5.373-12-12-12H76c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm288 0v-40c0-6.627-5.373-12-12-12H172c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h232c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="shortcuts_title">Keyboard Shortcuts</span>
+          </button>
+          <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button" onclick="showAbout(); closeMobileMenu();" aria-label="About">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="about">About</span>
+          </button>
+        </div>
+      </div>
+        </form>
+      </div>
+    </section>
+      </div>
+    </div>
+  </div>
   <div class="pf-v6-c-backdrop app-modal" id="roomManagerModal" onclick="if(event.target===this)closeRoomManager()">
     <div class="pf-v6-c-modal-box pf-m-lg" role="dialog" aria-modal="true"
          aria-labelledby="roomManagerModalTitle">
@@ -993,15 +1000,33 @@
     </div>
   </div>
   <script>
-    // PatternFly's expandable field group: the class on the group and the
-    // button's aria-expanded are the two halves of its state.
-    function toggleFieldGroup(button) {
-      const group = button.closest('.pf-v6-c-form__field-group');
-      if (!group) return;
-      const open = group.classList.toggle('pf-m-expanded');
-      button.setAttribute('aria-expanded', String(open));
+    /* The settings dialog. PatternFly's vertical tabs: the list and the panels
+       are siblings, one panel is shown at a time, and the tab that is current
+       carries pf-m-current and aria-selected. */
+    function showSettingsTab(key) {
+      document.querySelectorAll('.settings-tabs .pf-v6-c-tabs__item').forEach(function (item) {
+        const on = item.id === 'settings-tabitem-' + key;
+        item.classList.toggle('pf-m-current', on);
+        const link = item.querySelector('.pf-v6-c-tabs__link');
+        if (link) link.setAttribute('aria-selected', String(on));
+      });
+      document.querySelectorAll('.settings-panel').forEach(function (panel) {
+        panel.hidden = panel.id !== 'settings-' + key;
+      });
     }
-    window.toggleFieldGroup = toggleFieldGroup;
+    window.showSettingsTab = showSettingsTab;
+
+    function showSettings(key) {
+      showSettingsTab(key || 'room');
+      document.getElementById('settingsModal').classList.add('active');
+    }
+    window.showSettings = showSettings;
+
+    function hideSettings(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+    window.hideSettings = hideSettings;
 
     function openRoomManager() {
       document.getElementById('roomManagerModal').classList.add('modal-overlay--open');

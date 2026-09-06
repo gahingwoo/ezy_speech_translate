@@ -159,6 +159,156 @@ def field_group(title, body, el_id=None, i18n=None):
        i18n_attr(i18n), title, body)
 
 
+SETTINGS_TABS = (
+    ("room", "Room", "room"),
+    ("announcement", "Announcement", None),
+    ("qr", "Audience QR code", None),
+    ("bible", "Bible", None),
+    ("cache", "TTS cache", None),
+    # No translation key: "settings" would render this "Settings" inside a
+    # dialog already titled Settings.
+    ("display", "Display", None),
+)
+
+
+def tab_panel(key, body):
+    """One panel of the settings dialog. The tab list and the panels are
+    siblings, which is what PatternFly's vertical tabs expect."""
+    return '''    <section class="pf-v6-c-tab-content settings-panel" id="settings-%s"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-%s" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+%s        </form>
+      </div>
+    </section>
+''' % (key, key, body)
+
+
+def tab_list():
+    items = []
+    for i, (key, title, i18n) in enumerate(SETTINGS_TABS):
+        items.append(
+            '      <li class="pf-v6-c-tabs__item%s" id="settings-tabitem-%s">\n'
+            '        <button class="pf-v6-c-tabs__link" type="button" role="tab"\n'
+            '                id="settings-tab-%s" aria-controls="settings-%s"\n'
+            '                aria-selected="%s" onclick="showSettingsTab(\'%s\')">\n'
+            '          <span class="pf-v6-c-tabs__item-text"%s>%s</span>\n'
+            '        </button>\n'
+            '      </li>\n'
+            % (" pf-m-current" if i == 0 else "", key, key, key,
+               "true" if i == 0 else "false", key, i18n_attr(i18n), title))
+    return '''    <div class="pf-v6-c-tabs pf-m-vertical pf-m-box settings-tabs" role="region">
+      <ul class="pf-v6-c-tabs__list" role="tablist" aria-label="Settings sections">
+%s      </ul>
+    </div>
+''' % "".join(items)
+
+
+def settings_modal(panels):
+    """Everything the panel is set up with rather than run with. It was a
+    sidebar of seven unrelated groups beside the transcript."""
+    body = [tab_list()]
+    for key, _title, _i18n in SETTINGS_TABS:
+        body.append(tab_panel(key, panels[key]))
+    return '''  <div class="pf-v6-c-backdrop app-modal" id="settingsModal"
+       onclick="hideSettings(event)">
+    <div class="pf-v6-c-modal-box pf-m-lg" role="dialog" aria-modal="true"
+         aria-labelledby="settingsTitle">
+      <div class="pf-v6-c-modal-box__close">
+        <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
+                onclick="hideSettings()">%s</button>
+      </div>
+      <header class="pf-v6-c-modal-box__header">
+        <h1 class="pf-v6-c-modal-box__title" id="settingsTitle">
+          <span class="pf-v6-c-modal-box__title-text" data-i18n="settings">Settings</span>
+        </h1>
+      </header>
+      <div class="pf-v6-c-modal-box__body settings-body">
+%s      </div>
+    </div>
+  </div>
+''' % (btn_icon("times"), "".join(body))
+
+
+def toolbar():
+    """PatternFly's toolbar: what drives the list sits above it, in two rows
+    with a job each. The first is the recording — where the sound comes from,
+    the button that starts it, and what is being heard right now. The second is
+    what can be done to the list. The two selects keep their labels, because a
+    bare select in a bar says nothing."""
+    return '''          <div class="pf-v6-c-toolbar" id="recordingToolbar">
+            <div class="pf-v6-c-toolbar__content">
+              <div class="pf-v6-c-toolbar__content-section">
+                <div class="pf-v6-c-toolbar__item toolbar-field">
+                  <label class="pf-v6-c-form__label" for="sourceLangSelect">
+                    <span class="pf-v6-c-form__label-text"
+                          data-i18n="sourceLanguage">Source Language</span>
+                  </label>
+%s
+                </div>
+                <div class="pf-v6-c-toolbar__item toolbar-field">
+                  <label class="pf-v6-c-form__label" for="deviceSelect">
+                    <span class="pf-v6-c-form__label-text"
+                          data-i18n="audioDevice">Audio Device</span>
+                  </label>
+%s
+                </div>
+                <div class="pf-v6-c-toolbar__item">
+%s
+                </div>
+                <div class="pf-v6-c-toolbar__item">
+                  <span class="pf-v6-c-label pf-m-blue auto-restart-badge"
+                        id="autoRestartBadge" style="display: none;">
+                    <span class="pf-v6-c-label__content">
+                      <span class="pf-v6-c-label__icon">%s</span>
+                      <span class="pf-v6-c-label__text"
+                            data-i18n="autoRestartEnabled">Auto-restart enabled</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="pf-v6-c-toolbar__item interim-wrap">
+                  <div class="interim-display inactive" id="interimDisplay"
+                       role="status" aria-live="polite" data-i18n-title="recognizing"
+                       title="Recognizing...">
+                    <span id="interimText"
+                          data-i18n="waitingForSpeech">Waiting for speech...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pf-v6-c-toolbar__content-section">
+                <div class="pf-v6-c-toolbar__group pf-m-action-group">
+%s
+%s
+%s
+%s
+%s
+%s
+                  <input type="file" id="importFileInput" accept=".json" hidden
+                         onchange="handleImportFile(event)">
+                </div>
+              </div>
+            </div>
+          </div>
+''' % (
+        select("sourceLangSelect", SOURCE_LANGS, "Source language",
+               "changeSourceLanguage()", indent=18),
+        select("deviceSelect", '<option data-i18n="loading">Loading...</option>',
+               "Audio device", indent=18),
+        button("Start Recording", "toggleRecording()", "microphone", "primary",
+               el_id="recordBtn", i18n="startRecording",
+               extra=' aria-pressed="false"', indent=18),
+        icon("sync-alt"),
+        button("Add", "addNewItem()", "plus", "primary", i18n="add", indent=18),
+        button("Edit", "editSelected()", "edit", "secondary", i18n="edit", indent=18),
+        button("Delete", "deleteSelected()", "trash", "danger", i18n="delete", indent=18),
+        button("Clear All", "clearHistory()", "times", "secondary", i18n="clearAll", indent=18),
+        button("Export", "exportData()", "download", "secondary", i18n="export", indent=18),
+        button("Import", "document.getElementById(\'importFileInput\').click()",
+               "upload", "secondary", i18n="import", indent=18),
+    )
+
+
 def section(title, body, i18n=None, el_id=None):
     return ('    <section class="pf-v6-c-form__section sidebar-section"%s>\n'
             '      <h2 class="pf-v6-c-form__section-title"%s>%s</h2>\n'
@@ -341,7 +491,7 @@ def room_section():
 ''' % (icon("users"),
        button("Manage rooms", "openRoomManager()", None, "secondary",
               i18n="manage_rooms", indent=10))
-    return section("Room", body)
+    return body
 
 
 def audio_section():
@@ -429,7 +579,7 @@ def settings_section():
             button("About", "showAbout(); closeMobileMenu();", "info-circle",
                    "secondary pf-m-block sidebar-action", i18n="about", extra=' aria-label="About"'),
         ))
-    return section("Settings", body, "settings")
+    return body
 
 
 def tts_cache_section():
@@ -456,7 +606,7 @@ def tts_cache_section():
 ''' % (stats,
        button("Refresh", "refreshTTSCacheStats()", "sync-alt", "secondary"),
        button("Clear", "clearTTSCache()", "trash", "danger")))
-    return field_group("TTS Cache", body)
+    return body
 
 
 def bible_section():
@@ -468,7 +618,7 @@ def bible_section():
         "Source Translation", None, "adminBibleSourceSelect",
         helper='<p class="pf-v6-c-form__helper-text" id="adminBibleSaveStatus"'
                ' role="status" aria-live="polite"></p>')
-    return field_group("Bible", body, el_id="bibleAdminSection")
+    return '<div id="bibleAdminSection">\n%s      </div>\n' % body
 
 
 def announcement_section():
@@ -498,7 +648,7 @@ def announcement_section():
       </div>
 ''' % button("Send to All Viewers", "sendAnnouncement()", "paper-plane",
              "primary pf-m-block"))
-    return field_group("Announcement", body, el_id="announcementSection")
+    return '<div id="announcementSection">\n%s      </div>\n' % body
 
 
 def qr_section():
@@ -521,7 +671,7 @@ def qr_section():
 ''' % (button("Generate QR Code", "generateQR()", "qrcode", "primary pf-m-block"),
        button("Download PNG", "downloadQR()", "download", "secondary pf-m-block",
               indent=12)))
-    return field_group("Audience QR Code", body, el_id="qrSection")
+    return '<div id="qrSection">\n%s      </div>\n' % body
 
 
 # ── the edit panel ────────────────────────────────────────────────────────
@@ -846,15 +996,33 @@ def export_modal():
 # The dialog glue that lived in the template before, unchanged in behaviour.
 # It belongs to the page rather than to admin.js, which never calls into it.
 PAGE_SCRIPT = '''  <script>
-    // PatternFly's expandable field group: the class on the group and the
-    // button's aria-expanded are the two halves of its state.
-    function toggleFieldGroup(button) {
-      const group = button.closest('.pf-v6-c-form__field-group');
-      if (!group) return;
-      const open = group.classList.toggle('pf-m-expanded');
-      button.setAttribute('aria-expanded', String(open));
+    /* The settings dialog. PatternFly's vertical tabs: the list and the panels
+       are siblings, one panel is shown at a time, and the tab that is current
+       carries pf-m-current and aria-selected. */
+    function showSettingsTab(key) {
+      document.querySelectorAll('.settings-tabs .pf-v6-c-tabs__item').forEach(function (item) {
+        const on = item.id === 'settings-tabitem-' + key;
+        item.classList.toggle('pf-m-current', on);
+        const link = item.querySelector('.pf-v6-c-tabs__link');
+        if (link) link.setAttribute('aria-selected', String(on));
+      });
+      document.querySelectorAll('.settings-panel').forEach(function (panel) {
+        panel.hidden = panel.id !== 'settings-' + key;
+      });
     }
-    window.toggleFieldGroup = toggleFieldGroup;
+    window.showSettingsTab = showSettingsTab;
+
+    function showSettings(key) {
+      showSettingsTab(key || 'room');
+      document.getElementById('settingsModal').classList.add('active');
+    }
+    window.showSettings = showSettings;
+
+    function hideSettings(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+    window.hideSettings = hideSettings;
 
     function openRoomManager() {
       document.getElementById('roomManagerModal').classList.add('modal-overlay--open');
@@ -892,11 +1060,16 @@ PAGE_SCRIPT = '''  <script>
 
 
 def build():
-    sidebar = (room_section() + audio_section() + actions_section() + settings_section()
-               + tts_cache_section() + bible_section() + announcement_section()
-               + qr_section())
+    panels = {
+        "room": room_section(),
+        "announcement": announcement_section(),
+        "qr": qr_section(),
+        "bible": bible_section(),
+        "cache": tts_cache_section(),
+        "display": settings_section(),
+    }
 
-    dialogs = (room_manager() + config_password_modal()
+    dialogs = (settings_modal(panels) + room_manager() + config_password_modal()
                + recording_lock_modal() + about_modal() + shortcuts_modal()
                + input_modal() + export_modal())
 
@@ -929,17 +1102,12 @@ def build():
   <ul class="pf-v6-c-alert-group pf-m-toast toast-container" id="toastContainer" role="list"
       aria-live="polite" aria-atomic="true"></ul>
 
-  <div class="pf-v6-c-page">
+  <div class="pf-v6-c-page pf-m-no-sidebar">
     <!-- PatternFly stacks the masthead by default: the brand takes its own
          row, the toggle and the actions the next. That is right on a phone;
          from md there is room for one row. -->
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
-        <span class="pf-v6-c-masthead__toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
-                  aria-controls="sidebar" aria-expanded="false" aria-label="Toggle mobile menu"
-                  onclick="toggleMobileMenu()">%(bars)s</button>
-        </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
                writes a customer's icon and name into. -->
@@ -961,27 +1129,19 @@ def build():
           </span>
         </span>
 
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="settingsToggle" aria-label="Settings" title="Settings"
+                data-i18n-title="settings" onclick="showSettings()">%(cog)s</button>
+
 %(config)s
 %(logout)s
       </div>
     </header>
 
-    <!-- Backdrop behind the sidebar on a phone -->
-    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
-         onclick="toggleMobileMenu()"></div>
-
-    <!-- The sidebar holds controls, not navigation, so its contents are a
-         form rather than a nav list. -->
-    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Controls and settings">
-      <div class="pf-v6-c-page__sidebar-body">
-        <form class="pf-v6-c-form" onsubmit="return false;">
-%(sidebar)s        </form>
-      </div>
-    </div>
-
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
         <section class="pf-v6-c-page__main-section pf-m-fill">
+%(toolbar)s
           <div class="pf-v6-l-grid pf-m-gutter">
 
             <div class="pf-v6-l-grid__item pf-m-12-col pf-m-8-col-on-lg">
@@ -1022,17 +1182,20 @@ def build():
 </html>
 ''' % {
         "sprite": sprite(),
-        "bars": btn_icon("bars"),
+        "cog": icon("cog"),
+        "toolbar": toolbar(),
         "grip": icon("grip-vertical"),
         "empty": empty_state(),
         "empty_template": empty_state(6),
-        "config": button("Config", "openConfigPasswordGate()", "cog",
+        # Two cogs side by side said nothing about which was which: this one
+        # opens the server's own configuration file.
+        "config": button("Config", "openConfigPasswordGate()", "server",
                          "plain masthead-action",
-                         extra=' title="Settings" aria-label="Settings"', indent=8),
+                         extra=' title="Server configuration"'
+                               ' aria-label="Server configuration"', indent=8),
         "logout": button("Logout", "logout()", "sign-out-alt",
                          "plain masthead-action", i18n="logout",
                          extra=' aria-label="Logout"', indent=8),
-        "sidebar": sidebar,
         "edit": edit_card(),
         "sysinfo": system_info_card(),
         "analytics": analytics_card(),
