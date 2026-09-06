@@ -923,7 +923,7 @@
               <span class="pf-v6-c-description-list__text" data-i18n="madeBy">Made by</span>
             </dt>
             <dd class="pf-v6-c-description-list__description">
-              <div class="pf-v6-c-description-list__text"><a class="about-link" href="https://github.com/gahingwoo" rel="noopener noreferrer" target="_blank"><span data-i18n="author">Ga Hing Woo (Jiaxing Hu)</span><svg class="pf-v6-svg about-link__icon" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z"/></svg></a></div>
+              <div class="pf-v6-c-description-list__text"><a class="about-link" href="https://gahingwoo.com" rel="noopener noreferrer" target="_blank"><span data-i18n="author">Ga Hing Woo (Jiaxing Hu)</span><svg class="pf-v6-svg about-link__icon" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z"/></svg></a></div>
             </dd>
           </div>
           <div class="pf-v6-c-description-list__group">
@@ -944,11 +944,13 @@
           </div>
         </dl>
         <p class="credit-badge">
-          <a href="https://github.com/gahingwoo" rel="noopener noreferrer" target="_blank">
-            <img class="credit-badge__light" src="{{ static_url('img/credit-badge-light.svg') }}"
-                 width="360" height="110" alt="Engineered by gahingwoo">
-            <img class="credit-badge__dark" src="{{ static_url('img/credit-badge-dark.svg') }}"
-                 width="360" height="110" alt="">
+          <!-- One element, and the stylesheet picks which of the two files it
+               draws: a hidden <img> is fetched anyway, so the pair cost every
+               visitor both downloads to show one. -->
+          <a class="credit-badge__link" href="https://gahingwoo.com"
+             rel="noopener noreferrer" target="_blank">
+            <span class="credit-badge__art" role="img"
+                  aria-label="Engineered by gahingwoo"></span>
           </a>
         </p>
         <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">

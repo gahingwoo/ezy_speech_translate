@@ -622,24 +622,26 @@ html.pf-v6-theme-dark .icon-moon {
   margin-block-start: var(--pf-t--global--spacer--lg);
 }
 
-.credit-badge img {
+/* The badge is drawn as a background rather than an <img>, because a hidden
+   <img> is still fetched: the light/dark pair cost every visitor both files
+   to show one. A background-image on a rule that does not apply is never
+   requested, so the theme picks exactly one. */
+.credit-badge__link {
+  display: inline-block;
+}
+
+.credit-badge__art {
   display: block;
-  width: auto;
-  height: 2.25rem;
+  width: 11.25rem;
+  aspect-ratio: 360 / 110;
+  background-image: url("../img/credit-badge-light.svg");
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
 }
 
-/* `.credit-badge img` is one class and one element, so it outranks a bare
-   class: the hiding selectors have to reach for the parent too. */
-.credit-badge .credit-badge__dark {
-  display: none;
-}
-
-html.pf-v6-theme-dark .credit-badge .credit-badge__light {
-  display: none;
-}
-
-html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
-  display: block;
+html.pf-v6-theme-dark .credit-badge__art {
+  background-image: url("../img/credit-badge-dark.svg");
 }
 
 @media (prefers-reduced-motion: reduce) {

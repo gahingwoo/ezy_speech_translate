@@ -857,7 +857,7 @@ ABOUT_ROWS = (
     # Who wrote it. This was in the box the rewrite replaced and went missing
     # on the way; the credit badge below says the same thing in a logo, and a
     # logo is not a row anyone can read out.
-    ("Made by", "madeBy", about_link("https://github.com/gahingwoo",
+    ("Made by", "madeBy", about_link("https://gahingwoo.com",
                                      "Ga Hing Woo (Jiaxing Hu)", "author"), None),
     ("Source", None, about_link(REPO, "gahingwoo/ezy_speech_translate"), None),
     ("Feedback", "feedback",
@@ -900,11 +900,13 @@ def about_modal():
         <dl class="pf-v6-c-description-list pf-m-horizontal">
 %s        </dl>
         <p class="credit-badge">
-          <a href="https://github.com/gahingwoo" rel="noopener noreferrer" target="_blank">
-            <img class="credit-badge__light" src="{{ static_url('img/credit-badge-light.svg') }}"
-                 width="360" height="110" alt="Engineered by gahingwoo">
-            <img class="credit-badge__dark" src="{{ static_url('img/credit-badge-dark.svg') }}"
-                 width="360" height="110" alt="">
+          <!-- One element, and the stylesheet picks which of the two files it
+               draws: a hidden <img> is fetched anyway, so the pair cost every
+               visitor both downloads to show one. -->
+          <a class="credit-badge__link" href="https://gahingwoo.com"
+             rel="noopener noreferrer" target="_blank">
+            <span class="credit-badge__art" role="img"
+                  aria-label="Engineered by gahingwoo"></span>
           </a>
         </p>
         <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
