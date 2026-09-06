@@ -785,6 +785,24 @@ function loadVoices() {
 /* =========================
    Translation (uses Google translate endpoints like before)
    ========================= */
+/* Two language codes name the same language when their base subtag matches —
+   en-US and en, cmn-Hans-CN and zh — except that Chinese splits by script, so
+   simplified and traditional stay apart. */
+function sameLanguage(a, b) {
+    if (!a || !b) return false;
+    const base = code => {
+        const s = String(code).toLowerCase();
+        // Cantonese is written in traditional script but is its own language,
+        // so it has to be recognised before the script test.
+        if (s.startsWith('yue')) return 'yue';
+        if (s.startsWith('zh-tw') || s.includes('-hant')) return 'zh-tw';
+        if (s.startsWith('zh')) return 'zh';
+        return s.split('-')[0];
+    };
+    return base(a) === base(b);
+}
+window.sameLanguage = sameLanguage;
+
 async function translateText(text, target) {
     if (!text) return '';
     try {
@@ -1268,6 +1286,7 @@ function loadSettings() {
             btn.classList.toggle('active', ttsEnabled);
             btn.setAttribute('aria-pressed', String(ttsEnabled));
             if (label) label.textContent = ttsEnabled ? 'Disable TTS' : 'Enable TTS';
+            syncTTSQuickToggle();
         }
         console.log('Loaded TTS enabled state:', ttsEnabled);
     }
@@ -2972,6 +2991,16 @@ async function speakTextEdge(text) {
     }
 }
 
+/* The masthead's speaker button and the one in the settings dialog are the
+   same switch; this keeps the masthead one showing the state. */
+function syncTTSQuickToggle() {
+    const quick = document.getElementById('ttsQuickToggle');
+    if (quick) {
+        quick.setAttribute('aria-pressed', String(ttsEnabled));
+        quick.classList.toggle('pf-m-selected', ttsEnabled);
+    }
+}
+
 function toggleTTS() {
     ttsEnabled = !ttsEnabled;
     localStorage.setItem('ttsEnabled', ttsEnabled);
@@ -2982,10 +3011,12 @@ function toggleTTS() {
         btn.classList.add('active');
         btn.setAttribute('aria-pressed', 'true');
         text.textContent = 'Disable TTS';
+        syncTTSQuickToggle();
     } else {
         btn.classList.remove('active');
         btn.setAttribute('aria-pressed', 'false');
         text.textContent = 'Enable TTS';
+        syncTTSQuickToggle();
         // Clear TTS queue and stop current playback when disabling
         clearTTSQueue();
     }
@@ -3533,11 +3564,17 @@ function createTranslationHTML(item) {
     const normalizedTargetLang = targetLang;
 
     // Show source text if: (1) showSourceText is enabled AND (2) source language differs from target
-    const shouldShowSource = showSourceText && normalizedSourceLang !== normalizedTargetLang;
+    const shouldShowSource = showSourceText
+        && !sameLanguage(normalizedSourceLang, normalizedTargetLang);
 
     if (displayMode !== 'transcription') {
-        // Use server-cached translation if language matches — skip the API call entirely
-        if (item.translated && item.translated_lang === targetLang) {
+        // Nothing to translate when the listener is reading the language being
+        // spoken: the original is the answer.
+        if (sameLanguage(itemSourceLang, targetLang)) {
+            item.translated = item.corrected;
+            item.currentLang = targetLang;
+        } else if (item.translated && item.translated_lang === targetLang) {
+            // Use the server's translation when it is already in this language
             item.currentLang = targetLang;
         } else if (!item.translated || item.currentLang !== targetLang) {
             item.currentLang = targetLang;
@@ -3949,7 +3986,10 @@ async function translateInBackground(item, itemId, textEl) {
             }
         }
         
-        const translated = await translateText(item.corrected, lang);
+        const spoken = item.source_language || item.language || '';
+        const translated = sameLanguage(spoken, lang)
+            ? item.corrected
+            : await translateText(item.corrected, lang);
         item.translated = translated || item.corrected;
         item.currentLang = lang;
 
@@ -4769,7 +4809,9 @@ function setupSocketEventListeners() {
                     const itemSourceLang = data.source_language || data.language || 'en';
                     const normalizedSourceLang = itemSourceLang;
                     const normalizedTargetLang = targetLang;
-                    const shouldShowSource = showSourceText && normalizedSourceLang !== normalizedTargetLang && displayMode !== 'transcription';
+                    const shouldShowSource = showSourceText
+                        && !sameLanguage(normalizedSourceLang, normalizedTargetLang)
+                        && displayMode !== 'transcription';
 
                     console.log('Source language check:', {
                         source: normalizedSourceLang,

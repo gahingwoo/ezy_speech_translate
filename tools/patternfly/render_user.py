@@ -364,8 +364,18 @@ def setup_wizard():
           Real-time speech translations will appear here as the host speaks.</div>
       </div>
       <div class="pf-v6-c-wizard__outer-wrap">
+        <button class="pf-v6-c-wizard__toggle" type="button" id="setupToggle"
+                aria-expanded="false" aria-controls="setupNav" onclick="toggleSetupNav()">
+          <span class="pf-v6-c-wizard__toggle-list">
+            <span class="pf-v6-c-wizard__toggle-list-item">
+              <span class="pf-v6-c-wizard__toggle-num" id="setupToggleNum">1</span>
+              <span id="setupToggleTitle">Your language</span>
+            </span>
+          </span>
+          <span class="pf-v6-c-wizard__toggle-icon">%s</span>
+        </button>
         <div class="pf-v6-c-wizard__inner-wrap">
-          <nav class="pf-v6-c-wizard__nav" aria-label="Setup steps">
+          <nav class="pf-v6-c-wizard__nav" id="setupNav" aria-label="Setup steps">
             <ol class="pf-v6-c-wizard__nav-list">
 %s            </ol>
           </nav>
@@ -389,7 +399,7 @@ def setup_wizard():
       </div>
     </div>
   </div>
-''' % (btn_icon("times"), nav, "".join(bodies))
+''' % (btn_icon("times"), icon("angle-down"), nav, "".join(bodies))
 
 
 def settings_modal(panels):
@@ -701,14 +711,29 @@ def build():
                 id="mobileSearchToggle" aria-label="Toggle search"
                 onclick="toggleMobileSearch()">%(search)s</button>
 
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
+                data-i18n-title="textToSpeech" title="Text-to-Speech"
+                onclick="toggleTTS()">%(volume)s</button>
+
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="shareToggle" aria-label="Share and export"
+                data-i18n-title="export" title="Export"
+                onclick="showSettings('export')">%(share)s</button>
+
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="aboutToggle" aria-label="About"
+                data-i18n-title="about" title="About"
+                onclick="showAbout()">%(info)s</button>
+
         <button class="pf-v6-c-button pf-m-plain" type="button" id="settingsToggle"
                 aria-label="Settings" data-i18n-title="settings" title="Settings"
                 onclick="showSettings()">%(cog)s</button>
       </div>
-    </header>
 
-    <!-- Mobile search, revealed by the button above -->
-    <div class="mobile-search-bar" id="mobileSearchBar">
+      <!-- Mobile search, revealed by the button above. Inside the masthead, so
+           it sits under it rather than in a grid row of its own. -->
+      <div class="pf-v6-c-masthead__expandable-content mobile-search-bar" id="mobileSearchBar">
       <div class="pf-v6-c-text-input-group">
         <div class="pf-v6-c-text-input-group__main pf-m-icon">
           <span class="pf-v6-c-text-input-group__text">
@@ -719,8 +744,9 @@ def build():
           </span>
         </div>
       </div>
-      <div class="search-results-info" id="searchResultsInfo" role="status" aria-live="polite" hidden></div>
-    </div>
+        <div class="search-results-info" id="searchResultsInfo" role="status" aria-live="polite" hidden></div>
+      </div>
+    </header>
 
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
@@ -826,6 +852,16 @@ def build():
     const SETUP_STEPS = ['language', 'speech', 'done'];
     let setupStep = 0;
 
+    function toggleSetupNav() {
+      const toggle = document.getElementById('setupToggle');
+      const nav = document.getElementById('setupNav');
+      const open = !toggle.classList.contains('pf-m-expanded');
+      toggle.classList.toggle('pf-m-expanded', open);
+      nav.classList.toggle('pf-m-expanded', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+    window.toggleSetupNav = toggleSetupNav;
+
     function showSetupStep(key) {
       setupStep = Math.max(0, SETUP_STEPS.indexOf(key));
       SETUP_STEPS.forEach(function (k, i) {
@@ -838,6 +874,21 @@ def build():
         const body = document.getElementById('setup-' + k);
         if (body) body.hidden = i !== setupStep;
       });
+      // The toggle is what a phone sees instead of the step list, so it has
+      // to say which step this is; choosing one from it also puts it away.
+      const link = document.getElementById('setup-nav-' + SETUP_STEPS[setupStep]);
+      const num = document.getElementById('setupToggleNum');
+      const title = document.getElementById('setupToggleTitle');
+      if (num) num.textContent = String(setupStep + 1);
+      if (title && link) title.textContent = link.textContent.trim();
+      const toggle = document.getElementById('setupToggle');
+      const nav = document.getElementById('setupNav');
+      if (toggle && toggle.classList.contains('pf-m-expanded')) {
+        toggle.classList.remove('pf-m-expanded');
+        nav.classList.remove('pf-m-expanded');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+
       const back = document.getElementById('setupBack');
       const next = document.getElementById('setupNext');
       if (back) back.disabled = setupStep === 0;
@@ -951,6 +1002,9 @@ def build():
 ''' % {
         "sprite": sprite(),
         "cog": icon("cog"),
+        "volume": icon("volume-up"),
+        "share": icon("share-alt"),
+        "info": icon("info-circle"),
         "search": icon("search"),
         "comments": icon("comments"),
         "info": icon("info-circle"),

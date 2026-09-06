@@ -106,7 +106,12 @@ html.pf-v6-theme-dark .icon-moon {
   display: none;
 }
 
+/* The masthead is a grid, and it orders the brand (-1) then the content (1).
+   The bar it reveals has to come after both and span the whole width, or it
+   lands in the first column beside the actions. */
 .mobile-search-bar {
+  grid-column: 1 / -1;
+  order: 2;
   display: none;
   padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
   background: var(--pf-t--global--background--color--primary--default);
