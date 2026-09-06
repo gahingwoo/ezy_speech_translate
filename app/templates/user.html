@@ -402,24 +402,22 @@
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-number-input">
-            <div class="pf-v6-c-input-group">
-              <div class="pf-v6-c-input-group__item">
-                <button class="pf-v6-c-button pf-m-control" type="button"
-                        aria-label="Less" onclick="stepNumber('rateSlider', -0.1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+          <div class="pf-v6-c-slider app-slider" data-slider-input="rateSlider">
+            <div class="pf-v6-c-slider__main">
+              <div class="pf-v6-c-slider__rail">
+                <div class="pf-v6-c-slider__rail-track"></div>
               </div>
-              <div class="pf-v6-c-input-group__item">
-                <span class="pf-v6-c-form-control">
-                  <input type="number" id="rateSlider" value="1" step="0.1" min="0.5" max="2"
-                         aria-label="Speech rate" oninput="updateRate()">
-                </span>
-              </div>
-              <div class="pf-v6-c-input-group__item">
-                <button class="pf-v6-c-button pf-m-control" type="button"
-                        aria-label="More" onclick="stepNumber('rateSlider', 0.1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
-              </div>
+              <div class="pf-v6-c-slider__thumb" role="slider" tabindex="0"
+                   aria-label="Speech rate" aria-valuemin="0.5" aria-valuemax="2"
+                   aria-valuenow="1"></div>
             </div>
-            <span class="pf-v6-c-number-input__unit"><span id="rateValue">&times;</span></span>
+            <div class="pf-v6-c-slider__value">
+              <span class="pf-v6-c-form-control">
+                <input type="number" id="rateSlider" value="1" step="0.1"
+                       min="0.5" max="2" aria-label="Speech rate" oninput="updateRate()">
+              </span>
+              <span class="app-slider__unit"><span id="rateValue">&times;</span></span>
+            </div>
           </div>
         </div>
       </div>
@@ -436,24 +434,22 @@
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-number-input">
-            <div class="pf-v6-c-input-group">
-              <div class="pf-v6-c-input-group__item">
-                <button class="pf-v6-c-button pf-m-control" type="button"
-                        aria-label="Less" onclick="stepNumber('volumeSlider', -5)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+          <div class="pf-v6-c-slider app-slider" data-slider-input="volumeSlider">
+            <div class="pf-v6-c-slider__main">
+              <div class="pf-v6-c-slider__rail">
+                <div class="pf-v6-c-slider__rail-track"></div>
               </div>
-              <div class="pf-v6-c-input-group__item">
-                <span class="pf-v6-c-form-control">
-                  <input type="number" id="volumeSlider" value="100" step="5" min="0" max="100"
-                         aria-label="Speech volume" oninput="updateVolume()">
-                </span>
-              </div>
-              <div class="pf-v6-c-input-group__item">
-                <button class="pf-v6-c-button pf-m-control" type="button"
-                        aria-label="More" onclick="stepNumber('volumeSlider', 5)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
-              </div>
+              <div class="pf-v6-c-slider__thumb" role="slider" tabindex="0"
+                   aria-label="Speech volume" aria-valuemin="0" aria-valuemax="100"
+                   aria-valuenow="100"></div>
             </div>
-            <span class="pf-v6-c-number-input__unit"><span id="volumeValue">%</span></span>
+            <div class="pf-v6-c-slider__value">
+              <span class="pf-v6-c-form-control">
+                <input type="number" id="volumeSlider" value="100" step="5"
+                       min="0" max="100" aria-label="Speech volume" oninput="updateVolume()">
+              </span>
+              <span class="app-slider__unit"><span id="volumeValue">%</span></span>
+            </div>
           </div>
         </div>
       </div>
@@ -598,24 +594,22 @@
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-number-input">
-            <div class="pf-v6-c-input-group">
-              <div class="pf-v6-c-input-group__item">
-                <button class="pf-v6-c-button pf-m-control" type="button"
-                        aria-label="Less" onclick="stepNumber('fontSizeSlider', -1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+          <div class="pf-v6-c-slider app-slider" data-slider-input="fontSizeSlider">
+            <div class="pf-v6-c-slider__main">
+              <div class="pf-v6-c-slider__rail">
+                <div class="pf-v6-c-slider__rail-track"></div>
               </div>
-              <div class="pf-v6-c-input-group__item">
-                <span class="pf-v6-c-form-control">
-                  <input type="number" id="fontSizeSlider" value="18" step="1" min="12" max="24"
-                         aria-label="Translation font size" oninput="updateFontSize()">
-                </span>
-              </div>
-              <div class="pf-v6-c-input-group__item">
-                <button class="pf-v6-c-button pf-m-control" type="button"
-                        aria-label="More" onclick="stepNumber('fontSizeSlider', 1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
-              </div>
+              <div class="pf-v6-c-slider__thumb" role="slider" tabindex="0"
+                   aria-label="Translation font size" aria-valuemin="12" aria-valuemax="24"
+                   aria-valuenow="18"></div>
             </div>
-            <span class="pf-v6-c-number-input__unit"><span id="fontSizeValue">px</span></span>
+            <div class="pf-v6-c-slider__value">
+              <span class="pf-v6-c-form-control">
+                <input type="number" id="fontSizeSlider" value="18" step="1"
+                       min="12" max="24" aria-label="Translation font size" oninput="updateFontSize()">
+              </span>
+              <span class="app-slider__unit"><span id="fontSizeValue">px</span></span>
+            </div>
           </div>
         </div>
       </div>
@@ -836,7 +830,7 @@
             </form>
           </div>
           <div class="pf-v6-c-wizard__main-body setup-step" id="setup-speech" hidden>
-            <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">Text-to-speech reads each translation out as it arrives. You can turn it on now or later.</p>
+            <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">Reading aloud speaks each translation as it arrives. Turn it on now, or later.</p>
             <form class="pf-v6-c-form" onsubmit="return false;">
               <div class="pf-v6-c-form__group">
                 <div class="pf-v6-c-switch">
@@ -1000,20 +994,88 @@
       window.addEventListener('scroll', hide, true);
     })();
 
-    /* The minus and plus of a number input: nudge the field, keep it inside its
-       bounds, then let its own handler run. */
-    function stepNumber(id, by) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const step = Number(el.step) || 1;
-      const decimals = (String(step).split('.')[1] || '').length;
-      let next = (Number(el.value) || 0) + Number(by);
-      if (el.min !== '') next = Math.max(Number(el.min), next);
-      if (el.max !== '') next = Math.min(Number(el.max), next);
-      el.value = next.toFixed(decimals);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
+    /* PatternFly's slider is markup plus a --value custom property; the drag,
+       the keys and the bounds are the page's job. Each slider names the number
+       input it drives, so the two are one control: drag the thumb or type the
+       number, and the same oninput handler runs either way. */
+    function initSliders() {
+      document.querySelectorAll('.pf-v6-c-slider[data-slider-input]').forEach(function (slider) {
+        const input = document.getElementById(slider.dataset.sliderInput);
+        const thumb = slider.querySelector('.pf-v6-c-slider__thumb');
+        const rail = slider.querySelector('.pf-v6-c-slider__rail');
+        if (!input || !thumb || !rail) return;
+
+        const min = Number(input.min), max = Number(input.max);
+        const step = Number(input.step) || 1;
+        const decimals = (String(step).split('.')[1] || '').length;
+
+        function paint() {
+          const v = Math.min(max, Math.max(min, Number(input.value) || min));
+          const pct = max === min ? 0 : ((v - min) / (max - min)) * 100;
+          slider.style.setProperty('--pf-v6-c-slider--value', pct + '%');
+          thumb.setAttribute('aria-valuenow', String(v));
+        }
+
+        function setFromValue(v, fire) {
+          const stepped = Math.round((v - min) / step) * step + min;
+          const clamped = Math.min(max, Math.max(min, stepped));
+          const next = clamped.toFixed(decimals);
+          if (next === input.value) { paint(); return; }
+          input.value = next;
+          paint();
+          if (fire) input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function setFromPointer(clientX) {
+          const box = rail.getBoundingClientRect();
+          if (!box.width) return;
+          const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+          setFromValue(min + ratio * (max - min), true);
+        }
+
+        slider.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('.pf-v6-c-slider__value')) return;
+          e.preventDefault();
+          thumb.focus();
+          slider.setPointerCapture(e.pointerId);
+          setFromPointer(e.clientX);
+          const move = ev => setFromPointer(ev.clientX);
+          const up = () => {
+            slider.removeEventListener('pointermove', move);
+            slider.removeEventListener('pointerup', up);
+            slider.removeEventListener('pointercancel', up);
+          };
+          slider.addEventListener('pointermove', move);
+          slider.addEventListener('pointerup', up);
+          slider.addEventListener('pointercancel', up);
+        });
+
+        thumb.addEventListener('keydown', function (e) {
+          const by = { ArrowLeft: -step, ArrowDown: -step,
+                       ArrowRight: step, ArrowUp: step }[e.key];
+          if (by === undefined && e.key !== 'Home' && e.key !== 'End') return;
+          e.preventDefault();
+          if (e.key === 'Home') setFromValue(min, true);
+          else if (e.key === 'End') setFromValue(max, true);
+          else setFromValue((Number(input.value) || min) + by, true);
+        });
+
+        input.addEventListener('input', paint);
+        slider._paint = paint;
+        paint();
+      });
     }
-    window.stepNumber = stepNumber;
+    window.initSliders = initSliders;
+    document.addEventListener('DOMContentLoaded', initSliders);
+
+    /* When something else writes a slider's input — a saved setting on load,
+       the setup wizard — the thumb has to follow. */
+    function syncSliders() {
+      document.querySelectorAll('.pf-v6-c-slider[data-slider-input]')
+        .forEach(function (s) { if (s._paint) s._paint(); });
+    }
+    window.syncSliders = syncSliders;
+
 
     function toggleSetupNav() {
       const toggle = document.getElementById('setupToggle');

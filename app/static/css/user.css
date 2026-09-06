@@ -15,6 +15,16 @@
  * Every value is a PatternFly token, so light and dark come for free.
  */
 
+
+/* A plain icon button that is a switch needs to look switched: PatternFly has
+   no "pressed" modifier for a plain button, so the state is read from
+   aria-pressed, which is where it belongs anyway. */
+.masthead-action[aria-pressed="true"] {
+  color: var(--pf-t--global--icon--color--brand--default);
+  background: var(--pf-t--global--background--color--action--plain--clicked);
+  border-radius: var(--pf-t--global--border--radius--small);
+}
+
 /* ── page ─────────────────────────────────────────────────────────────── */
 
 /* PatternFly sets `display` on its components, and any author rule beats the
@@ -63,6 +73,13 @@ html.pf-v6-theme-dark .icon-moon {
 
 .pf-v6-c-page {
   --pf-v6-c-page__main-container--AlignSelf: stretch;
+}
+
+/* The icon sprite is an empty inline SVG, and an inline element still opens a
+   line box: it was pushing the whole page down 21px and giving the window a
+   scrollbar it had no content for. */
+.pf-sprite {
+  position: absolute;
 }
 
 /* ── masthead ─────────────────────────────────────────────────────────── */
@@ -197,14 +214,20 @@ html.pf-v6-theme-dark .icon-moon {
   border-radius: var(--pf-t--global--border--radius--medium);
 }
 
-/* The card's own header puts its actions on the right; the time reads better
-   on the left, where the eye starts. */
-.card-header {
-  align-items: center;
+/* The card is the text and one quiet row under it. A header row of its own
+   gave a timestamp more of the card than the sentence had, which is exactly
+   backwards: the sentence is what the reader came for. */
+.translation-body {
+  display: flex;
+  flex-direction: column;
 }
 
-.card-header .pf-v6-c-card__header-main {
-  order: -1;
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--sm);
+  align-items: center;
+  margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
 .card-time {
@@ -213,8 +236,7 @@ html.pf-v6-theme-dark .icon-moon {
   color: var(--pf-t--global--text--color--subtle);
 }
 
-/* A card can carry two marks and two buttons; on a narrow card that is more
-   than one line, so the row wraps rather than pushing the speaker off the edge. */
+/* The buttons close the meta row, pushed to its end. */
 .card-actions {
   display: flex;
   flex-wrap: wrap;
@@ -222,9 +244,10 @@ html.pf-v6-theme-dark .icon-moon {
   justify-content: flex-end;
   gap: var(--pf-t--global--spacer--xs);
   min-width: 0;
+  margin-inline-start: auto;
 }
 
-/* The marks lead the body; when there are none the row takes no space. */
+/* When a card carries no mark the row must not open a gap for it. */
 .card-marks {
   display: flex;
   flex-wrap: wrap;
@@ -237,23 +260,13 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 .card-marks:not(:empty) {
-  margin-block-end: var(--pf-t--global--spacer--sm);
+  margin-inline-end: var(--pf-t--global--spacer--xs);
 }
 
-/* The two marks a card can carry: corrected, and served from cache. */
+/* The two marks a card can carry are PatternFly labels; all that is left to
+   say is that they do not wrap mid-word. */
 .card-badge {
-  padding: 0 var(--pf-t--global--spacer--sm);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  color: var(--pf-t--global--text--color--status--success--default);
-  border: var(--pf-t--global--border--width--box--default) solid
-    var(--pf-t--global--border--color--status--success--default);
-  border-radius: var(--pf-t--global--border--radius--pill);
   white-space: nowrap;
-}
-
-.card-badge.cache-hit {
-  color: var(--pf-t--global--text--color--subtle);
-  border-color: var(--pf-t--global--border--color--default);
 }
 
 .copy-btn.copied {
@@ -279,6 +292,16 @@ html.pf-v6-theme-dark .icon-moon {
   overflow-wrap: anywhere;
 }
 
+/* Which language the quiet line is in, set like the Bible version tags so the
+   two read as the same kind of mark. */
+.text-source__lang {
+  margin-inline-end: var(--pf-t--global--spacer--sm);
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  letter-spacing: 0.02em;
+}
+
 .translation-card.translating .text-target {
   opacity: 0.6;
 }
@@ -287,6 +310,30 @@ html.pf-v6-theme-dark .icon-moon {
   background: var(--pf-t--global--color--nonstatus--yellow--default, #f0ab00);
   color: var(--pf-t--global--text--color--on-highlight, inherit);
   border-radius: 2px;
+}
+
+
+/* ── sliders ──────────────────────────────────────────────────────────── */
+/* PatternFly's slider with its value input beside it: the rail takes the room
+   that is left, and the input stays as wide as the numbers it holds. */
+
+.app-slider {
+  width: 100%;
+}
+
+.app-slider .pf-v6-c-slider__value {
+  display: flex;
+  gap: var(--pf-t--global--spacer--xs);
+  align-items: center;
+}
+
+.app-slider .pf-v6-c-slider__value .pf-v6-c-form-control {
+  width: 5rem;
+}
+
+.app-slider__unit {
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
 }
 
 /* ── Bible verses ─────────────────────────────────────────────────────── */
@@ -319,15 +366,18 @@ html.pf-v6-theme-dark .icon-moon {
   line-height: 1.6;
 }
 
-.bible-verse-divider {
-  margin-block: var(--pf-t--global--spacer--sm);
-  border: 0;
-  border-block-start: var(--pf-t--global--border--width--divider--default) solid
-    var(--pf-t--global--border--color--default);
+/* PatternFly's description list holds the versions: the name of the version
+   is the term, its verses the description. A row of badges in the header left
+   the reader to work out which badge belonged to which verse. */
+.bible-verse-versions {
+  --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--sm);
 }
 
 .bible-verse-translation {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--subtle);
+  letter-spacing: 0.02em;
 }
 
 .bible-verse-missing {

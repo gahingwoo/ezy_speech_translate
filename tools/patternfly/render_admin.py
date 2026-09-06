@@ -132,6 +132,41 @@ def text_input(el_id, kind="text", placeholder=None, extra="", indent=10):
                            extra, pad))
 
 
+def details_toggle():
+    """Below lg the details panel is a drawer, so it needs something to open
+    it. From lg the panel is static and this button has nothing to say."""
+    return button("Details", "toggleDetails()", "list", "secondary details-toggle",
+                  el_id="detailsToggle", i18n="details",
+                  extra=' aria-controls="detailsPanel" aria-expanded="false"',
+                  indent=18) + "\n"
+
+
+def password_input(el_id, placeholder=None, extra="", indent=10):
+    """A password field with the eye that reveals it. Somebody typing a
+    password they cannot see has no way to find the typo, so every password
+    field in the app has this; login.html had it first."""
+    pad = " " * indent
+    return ('%s<div class="pf-v6-c-input-group">\n'
+            '%s  <div class="pf-v6-c-input-group__item pf-m-fill">\n'
+            '%s' 
+            '%s  </div>\n'
+            '%s  <div class="pf-v6-c-input-group__item">\n'
+            '%s    <button class="pf-v6-c-button pf-m-control" type="button"\n'
+            '%s            aria-controls="%s" aria-pressed="false"\n'
+            '%s            aria-label="Show password" data-i18n-title="showPassword"\n'
+            '%s            onclick="togglePasswordField(this)">\n'
+            '%s      <span class="pf-v6-c-button__icon">%s%s</span>\n'
+            '%s    </button>\n'
+            '%s  </div>\n'
+            '%s</div>' % (
+                pad, pad,
+                text_input(el_id, "password", placeholder, extra, indent + 4),
+                pad, pad, pad, pad, el_id, pad, pad, pad,
+                icon("eye", "pf-v6-svg icon-eye"),
+                icon("eye-slash", "pf-v6-svg icon-eye-slash"),
+                pad, pad, pad))
+
+
 def field_group(title, body, el_id=None, i18n=None):
     """PatternFly's expandable field group. The sidebar carries seven panels of
     controls and only the first two are used every session, so the rest start
@@ -595,86 +630,82 @@ def qr_section():
     return '<div id="qrSection">\n%s      </div>\n' % body
 
 
-# ── the edit panel ────────────────────────────────────────────────────────
-
-def edit_card():
-    return '''        <div class="pf-v6-c-card">
-          <div class="pf-v6-c-card__header">
-            <div class="pf-v6-c-card__header-main">
-              <h2 class="pf-v6-c-card__title-text" data-i18n="editAndCorrect">Edit &amp; Correct</h2>
-            </div>
-          </div>
-          <div class="pf-v6-c-card__body">
-            <form class="pf-v6-c-form" onsubmit="return false;">
-%s%s            </form>
-          </div>
-          <div class="pf-v6-c-card__footer">
-%s
-%s
-          </div>
-        </div>
-''' % (
-        group(textarea("originalText", 3, readonly=True, indent=16),
-              "Original", "original", "originalText", indent=14),
-        group(textarea("correctedText", 4, "Select an item to edit...",
-                       "selectItemToEdit", indent=16),
-              "Corrected (Edit Here)", "correctedLabel", "correctedText", indent=14),
-        button("Save", "saveCorrection()", "save", "primary", i18n="save", indent=12),
-        button("Cancel", "cancelCorrection()", "times", "link", i18n="cancel", indent=12),
-    )
+# ── the details panel ─────────────────────────────────────────────────────
+# Cockpit's shape, which is PatternFly's Drawer: the list keeps the whole
+# content area and everything about the selected row lives in a panel beside
+# it, separated by the drawer's own border rather than by a stack of floating
+# cards. The three groups inside are sections of one surface divided by rules,
+# so the eye reads one panel instead of three boxes.
 
 
-def system_info_card():
+def panel_section(title, body, i18n=None, el_id=None, extra=""):
+    return ('      <section class="pf-v6-c-drawer__body panel-section"%s%s>\n'
+            '        <h2 class="pf-v6-c-title pf-m-md panel-section__title"%s>%s</h2>\n'
+            '%s'
+            '      </section>\n'
+            % (' id="%s"' % el_id if el_id else "", extra,
+               i18n_attr(i18n), title, body))
+
+
+def edit_section():
+    body = ('        <form class="pf-v6-c-form" onsubmit="return false;">\n'
+            '%s%s        </form>\n'
+            '        <div class="panel-section__actions">\n%s\n%s\n        </div>\n'
+            % (
+                group(textarea("originalText", 2, readonly=True, indent=14),
+                      "Original", "original", "originalText", indent=12),
+                group(textarea("correctedText", 4, "Select an item to edit...",
+                               "selectItemToEdit", indent=14),
+                      "Corrected (Edit Here)", "correctedLabel", "correctedText",
+                      indent=12),
+                button("Save", "saveCorrection()", "save", "primary",
+                       i18n="save", indent=10),
+                button("Cancel", "cancelCorrection()", "times", "link",
+                       i18n="cancel", indent=10),
+            ))
+    return panel_section("Edit &amp; Correct", body, "editAndCorrect")
+
+
+def system_info_section():
     rows = (
-        dl_group("Clients", '<strong id="sys-clients">0</strong>', "clients")
+        dl_group("Clients", '<strong id="sys-clients">0</strong>', "clients", indent=12)
         + dl_group("Transcripts", '<strong id="sys-transcriptions">0</strong>',
-                   "transcriptions")
-        + dl_group("Recording", label("sys-recording", "Stopped", None, "stopped"), "recording")
+                   "transcriptions", indent=12)
+        + dl_group("Recording", label("sys-recording", "Stopped", None, "stopped"),
+                   "recording", indent=12)
         + dl_group("Language",
                    '<span id="sys-language" class="pf-v6-c-label pf-m-blue">'
                    '<span class="pf-v6-c-label__content">'
                    '<span class="pf-v6-c-label__text mono">en-US</span>'
-                   '</span></span>', "language")
+                   '</span></span>', "language", indent=12)
     )
-    return '''        <div class="pf-v6-c-card" id="systemInfo" aria-label="System Info">
-          <div class="pf-v6-c-card__header">
-            <div class="pf-v6-c-card__header-main">
-              <h2 class="pf-v6-c-card__title-text" data-i18n="systemInfo">System Info</h2>
-            </div>
-          </div>
-          <div class="pf-v6-c-card__body">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
-%s            </dl>
-          </div>
-        </div>
-''' % rows
+    body = ('        <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">\n'
+            '%s        </dl>\n' % rows)
+    return panel_section("System Info", body, "systemInfo", "systemInfo",
+                         ' aria-label="System Info"')
 
 
-def analytics_card():
+def analytics_section():
     rows = (
-        dl_group("Duration", '<strong id="stat-duration">—</strong>')
-        + dl_group("Peak Viewers", '<strong id="stat-peak">0</strong>')
-        + dl_group("Total Words", '<strong id="stat-words">0</strong>')
-        + dl_group("Translations", '<strong id="stat-translations">0</strong>')
-        + dl_group("Bible Refs", '<strong id="stat-bible-refs">0</strong>')
-        + dl_group("DB Entries", label("stat-db", "—"))
+        dl_group("Duration", '<strong id="stat-duration">—</strong>',
+                 "statDuration", indent=12)
+        + dl_group("Peak Viewers", '<strong id="stat-peak">0</strong>',
+                   "statPeak", indent=12)
+        + dl_group("Total Words", '<strong id="stat-words">0</strong>',
+                   "statWords", indent=12)
+        + dl_group("Translations", '<strong id="stat-translations">0</strong>',
+                   "statTranslations", indent=12)
+        + dl_group("Bible Refs", '<strong id="stat-bible-refs">0</strong>',
+                   "statBibleRefs", indent=12)
+        + dl_group("DB Entries", label("stat-db", "—"), "statDbEntries", indent=12)
     )
-    return '''        <div class="pf-v6-c-card" id="analyticsSection">
-          <div class="pf-v6-c-card__header">
-            <div class="pf-v6-c-card__header-main">
-              <h2 class="pf-v6-c-card__title-text">Session Stats</h2>
-            </div>
-          </div>
-          <div class="pf-v6-c-card__body" id="analyticsCard" aria-label="Session Analytics">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
-%s            </dl>
-          </div>
-          <div class="pf-v6-c-card__footer">
-%s
-          </div>
-        </div>
-''' % (rows, button("Refresh Stats", "refreshAnalytics()", "sync-alt",
-                    "secondary pf-m-block", indent=12))
+    body = ('        <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"\n'
+            '            id="analyticsCard" aria-label="Session Analytics">\n'
+            '%s        </dl>\n'
+            '        <div class="panel-section__actions">\n%s\n        </div>\n'
+            % (rows, button("Refresh Stats", "refreshAnalytics()", "sync-alt",
+                            "secondary", i18n="refreshStats", indent=10)))
+    return panel_section("Session Stats", body, "sessionStats", "analyticsSection")
 
 
 def empty_state(indent=16):
@@ -775,7 +806,7 @@ def room_manager():
 
 
 def config_password_modal():
-    body = text_input("configPasswordInput", "password", "Admin password",
+    body = password_input("configPasswordInput", "Admin password",
                       extra=' aria-label="Admin password"'
                             " onkeydown=\"if(event.key==='Enter')confirmConfigPassword()\"")
     return modal("configPasswordModal", "Confirm identity", body,
@@ -795,7 +826,7 @@ def recording_lock_modal():
               in this room.</p>
           </div>
 %s''' % (icon("exclamation-triangle"),
-         text_input("recordingLockPassword", "password", "Admin password",
+         password_input("recordingLockPassword", "Admin password",
                     extra=' aria-label="Admin password"'))
     return modal("recordingLockModal", "Room already recording", body,
                  "closeRecordingLock()", size="sm", icon_name="lock",
@@ -976,6 +1007,30 @@ PAGE_SCRIPT = '''  <script>
     window.openConfigPasswordGate = openConfigPasswordGate;
     window.closeConfigPasswordGate = closeConfigPasswordGate;
     window.closeRecordingLock = closeRecordingLock;
+
+    /* The details drawer. Static from lg, where the button that opens it is
+       hidden; below that it slides over the list. */
+    function toggleDetails(force) {
+      const drawer = document.getElementById('detailsDrawer');
+      const btn = document.getElementById('detailsToggle');
+      const on = force === undefined ? !drawer.classList.contains('pf-m-expanded') : !!force;
+      drawer.classList.toggle('pf-m-expanded', on);
+      if (btn) btn.setAttribute('aria-expanded', String(on));
+    }
+    window.toggleDetails = toggleDetails;
+
+    /* The eye on a password field. The button holds both eyes and the
+       stylesheet shows the one that matches aria-pressed. */
+    function togglePasswordField(btn) {
+      const input = document.getElementById(btn.getAttribute('aria-controls'));
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', String(show));
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      input.focus();
+    }
+    window.togglePasswordField = togglePasswordField;
   </script>
 '''
 
@@ -1050,16 +1105,15 @@ def build():
         <!-- updateStatus() in admin.js replaces this class list outright, so
              what it writes and what is written here have to agree. The label's
              colour carries the state; an icon as well would say it twice. -->
-        <span class="pf-v6-c-label pf-m-red connection-badge offline" id="statusBadge"
+        <span class="pf-v6-c-label pf-m-danger connection-badge offline" id="statusBadge"
               title="User server" role="status" aria-live="polite">
           <span class="pf-v6-c-label__content">
+            <span class="pf-v6-c-label__icon" id="statusBadgeIcon">%(status_icon)s</span>
             <span class="pf-v6-c-label__text" data-i18n="offline">Offline</span>
           </span>
         </span>
 
-        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
-                id="settingsToggle" aria-label="Settings" title="Settings"
-                data-i18n-title="settings" onclick="showSettings()">%(cog)s</button>
+%(settings)s
 
 %(config)s
 %(logout)s
@@ -1081,41 +1135,62 @@ def build():
 
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
-        <section class="pf-v6-c-page__main-section pf-m-fill">
-          <div class="pf-v6-l-grid pf-m-gutter">
+        <section class="pf-v6-c-page__main-section pf-m-fill pf-m-no-padding admin-board">
 
-            <!-- The list sits in a card, as the editor beside it does, so the
-                 two columns read as one board rather than a list next to a
-                 stack of boxes. -->
-            <div class="pf-v6-l-grid__item pf-m-12-col pf-m-8-col-on-lg">
-              <section class="pf-v6-c-card list-card">
-                <div class="pf-v6-c-card__header">
-                  <div class="pf-v6-c-card__actions pf-m-no-offset">
-                    <p class="pf-v6-c-form__helper-text drag-hint">
-                      %(grip)s <span data-i18n="dragToReorder">Drag to reorder</span>
-                    </p>
-                  </div>
-                  <div class="pf-v6-c-card__header-main">
-                    <h1 class="pf-v6-c-card__title-text">
-                      <span data-i18n="liveTranscriptions">Transcriptions</span>
-                      <span class="pf-v6-c-badge pf-m-read" id="itemCount"
-                            aria-label="Transcription count">0</span>
-                    </h1>
+          <!-- PatternFly's drawer, the shape Cockpit uses for a list and the
+               detail of what is selected in it. From lg the panel is static:
+               always there, in flow, with the drawer's own border between the
+               two. Below lg it is a drawer proper, opened by the Details
+               button and closed by the one in its head. -->
+          <div class="pf-v6-c-drawer pf-m-static-on-lg" id="detailsDrawer">
+            <div class="pf-v6-c-drawer__main">
+
+              <div class="pf-v6-c-drawer__content">
+                <div class="pf-v6-c-drawer__body list-head">
+                  <h1 class="pf-v6-c-title pf-m-md">
+                    <span data-i18n="liveTranscriptions">Transcriptions</span>
+                    <span class="pf-v6-c-badge pf-m-read" id="itemCount"
+                          aria-label="Transcription count">0</span>
+                  </h1>
+                  <p class="pf-v6-c-form__helper-text drag-hint">
+                    %(grip)s <span data-i18n="dragToReorder">Drag to reorder</span>
+                  </p>
+%(details_toggle)s                </div>
+                <hr class="pf-v6-c-divider" />
+                <div class="pf-v6-c-drawer__body pf-m-no-padding list-body">
+                  <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
+                      id="transcriptionsList" role="list" aria-label="Transcriptions">
+%(empty)s                  </ul>
+                </div>
+              </div>
+
+              <div class="pf-v6-c-drawer__panel" id="detailsPanel">
+                <div class="pf-v6-c-drawer__body pf-m-padding details-head">
+                  <div class="pf-v6-c-drawer__head">
+                    <div class="pf-v6-c-drawer__title">
+                      <h2 class="pf-v6-c-title pf-m-md" data-i18n="details">Details</h2>
+                    </div>
+                    <div class="pf-v6-c-drawer__actions">
+                      <div class="pf-v6-c-drawer__close">
+                        <button class="pf-v6-c-button pf-m-plain" type="button"
+                                aria-label="Close the details panel"
+                                onclick="toggleDetails(false)">%(times)s</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
-                    id="transcriptionsList" role="list" aria-label="Transcriptions">
-%(empty)s                </ul>
-              </section>
+                <hr class="pf-v6-c-divider" />
+%(edit)s                <hr class="pf-v6-c-divider" />
+%(sysinfo)s                <hr class="pf-v6-c-divider" />
+%(analytics)s              </div>
+
             </div>
-
-            <div class="pf-v6-l-grid__item pf-m-12-col pf-m-4-col-on-lg edit-panel">
-%(edit)s%(sysinfo)s%(analytics)s            </div>
-
           </div>
+
         </section>
       </main>
     </div>
+
   </div>
 
   <!-- admin.js clones this when it clears the list. -->
@@ -1130,7 +1205,14 @@ def build():
 </html>
 ''' % {
         "sprite": sprite(),
-        "cog": icon("cog"),
+        # The three masthead actions carry their label from md up; the cog
+        # alone showed none, which left the icon to speak for itself.
+        "status_icon": icon("exclamation-circle"),
+        "settings": button("Settings", "showSettings()", "cog",
+                           "plain masthead-action", el_id="settingsToggle",
+                           i18n="settings",
+                           extra=' aria-label="Settings" title="Settings"'
+                                 ' data-i18n-title="settings"', indent=8),
         "bars": btn_icon("bars"),
         "sidebar": sidebar,
         "grip": icon("grip-vertical"),
@@ -1145,9 +1227,11 @@ def build():
         "logout": button("Logout", "logout()", "sign-out-alt",
                          "plain masthead-action", i18n="logout",
                          extra=' aria-label="Logout"', indent=8),
-        "edit": edit_card(),
-        "sysinfo": system_info_card(),
-        "analytics": analytics_card(),
+        "edit": edit_section(),
+        "sysinfo": system_info_section(),
+        "analytics": analytics_section(),
+        "times": btn_icon("times"),
+        "details_toggle": details_toggle(),
         "dialogs": dialogs,
         "script": PAGE_SCRIPT,
     }

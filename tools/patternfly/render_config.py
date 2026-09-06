@@ -14,6 +14,7 @@ The fields, their labels and their help text are in config_schema.py; the help
 comes from config.yaml's own comments.
 """
 import pathlib
+import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -22,6 +23,43 @@ sys.path.insert(0, str(HERE))
 from config_schema import GROUPS                      # noqa: E402
 from render_admin import (ROOT, btn_icon, button,     # noqa: E402
                           icon, sprite)
+
+
+def group_slug(title):
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+
+
+def nav(groups):
+    """PatternFly's navigation, down the page's own sidebar.
+
+    A wizard was the other candidate and is the wrong shape: a wizard is for a
+    task with a beginning and an end, done once. This is a reference surface
+    you come back to, to change one setting out of fifty-nine, and a wizard
+    would make that eleven steps. Navigation gives the same one-group-at-a-time
+    reading with none of the marching."""
+    items = []
+    for i, (title, _desc, _fields) in enumerate(groups):
+        slug = group_slug(title)
+        items.append(
+            '          <li class="pf-v6-c-nav__item">\n'
+            '            <button class="pf-v6-c-nav__link%s" type="button"\n'
+            '                    id="nav-%s" aria-current="%s"\n'
+            '                    onclick="showConfigGroup(\'%s\')">\n'
+            '              <span class="pf-v6-c-nav__link-text">%s</span>\n'
+            '            </button>\n'
+            '          </li>\n'
+            % (" pf-m-current" if i == 0 else "", slug,
+               "page" if i == 0 else "false", slug, title))
+    items.append(
+        '          <li class="pf-v6-c-nav__item">\n'
+        '            <button class="pf-v6-c-nav__link" type="button" id="nav-advanced"\n'
+        '                    aria-current="false" onclick="showConfigGroup(\'advanced\')">\n'
+        '              <span class="pf-v6-c-nav__link-text">The file itself</span>\n'
+        '            </button>\n'
+        '          </li>\n')
+    return ('      <nav class="pf-v6-c-nav" aria-label="Settings groups">\n'
+            '        <ul class="pf-v6-c-nav__list">\n%s        </ul>\n'
+            '      </nav>\n' % "".join(items))
 
 
 def field_id(path):
@@ -55,7 +93,7 @@ def control(path, kind, options):
           </span>''' % ("number" if kind == "number" else "text", el_id, data))
 
 
-def group_card(title, description, fields):
+def group_card(title, description, fields, first=False):
     body = []
     for path, label, kind, help_text, options in fields:
         el_id = field_id(path)
@@ -80,7 +118,7 @@ def group_card(title, description, fields):
         desc = ('      <div class="pf-v6-c-card__body config-card__intro">%s</div>\n'
                 % description)
 
-    return '''    <section class="pf-v6-c-card config-card">
+    return '''    <section class="pf-v6-c-card config-card" data-config-group="%s"%s>
       <div class="pf-v6-c-card__header">
         <div class="pf-v6-c-card__header-main">
           <h2 class="pf-v6-c-card__title-text">%s</h2>
@@ -91,26 +129,20 @@ def group_card(title, description, fields):
 %s        </div>
       </div>
     </section>
-''' % (title, desc, "".join(body))
+''' % (group_slug(title), "" if first else " hidden", title, desc, "".join(body))
 
 
 def advanced_card():
     """The old editor, kept as the way to reach a setting this page does not
     model. It still rewrites the whole file, so it says so."""
-    return '''    <section class="pf-v6-c-card config-card" id="rawEditorCard">
+    return '''    <section class="pf-v6-c-card config-card" id="rawEditorCard"
+             data-config-group="advanced" hidden>
       <div class="pf-v6-c-card__header">
-        <div class="pf-v6-c-card__header-toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="rawEditorToggle"
-                  aria-expanded="false" aria-controls="rawEditorBody"
-                  aria-label="Toggle the file editor" onclick="toggleRawEditor()">
-            <span class="pf-v6-c-card__header-toggle-icon">%s</span>
-          </button>
-        </div>
         <div class="pf-v6-c-card__header-main">
           <h2 class="pf-v6-c-card__title-text">Edit config.yaml directly</h2>
         </div>
       </div>
-      <div class="pf-v6-c-card__expandable-content" id="rawEditorBody" hidden>
+      <div id="rawEditorBody">
         <div class="pf-v6-c-card__body">
           <div class="pf-v6-c-alert pf-m-warning pf-m-inline">
             <div class="pf-v6-c-alert__icon">%s</div>
@@ -130,13 +162,13 @@ def advanced_card():
         </div>
       </div>
     </section>
-''' % (icon("angle-right"), icon("exclamation-triangle"),
+''' % (icon("exclamation-triangle"),
        button("Save the file", "saveRawConfig()", "save", "secondary", indent=10))
 
 
 def build():
-    cards = "".join(group_card(title, description, fields)
-                    for title, description, fields in GROUPS)
+    cards = "".join(group_card(title, description, fields, first=(i == 0))
+                    for i, (title, description, fields) in enumerate(GROUPS))
 
     return '''<!DOCTYPE html>
 <!-- Generated by tools/patternfly/render_config.py. Edit that, not this. -->
@@ -177,10 +209,17 @@ def build():
       </div>
     </header>
 
+    <!-- The groups, down the page's own sidebar: one is shown at a time, so
+         changing one setting is never a scroll through fifty-eight others. -->
+    <div class="pf-v6-c-page__sidebar" id="configSidebar" aria-label="Settings groups">
+      <div class="pf-v6-c-page__sidebar-body">
+%(nav)s      </div>
+    </div>
+
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
         <section class="pf-v6-c-page__main-section">
-          <div class="pf-v6-c-page__main-body config-page">
+          <div class="config-page">
             <div class="content-header">
               <h1 class="pf-v6-c-title pf-m-2xl">Settings</h1>
             </div>
@@ -219,11 +258,23 @@ def build():
       <div class="pf-v6-c-modal-box__body">
         <p class="pf-v6-c-modal-box__description">Enter your admin password to open
           the settings.</p>
-        <span class="pf-v6-c-form-control">
-          <input type="password" id="configPasswordInput" placeholder="Admin password"
-                 aria-label="Admin password"
-                 onkeydown="if(event.key==='Enter')confirmConfigGate()">
-        </span>
+        <div class="pf-v6-c-input-group">
+          <div class="pf-v6-c-input-group__item pf-m-fill">
+            <span class="pf-v6-c-form-control">
+              <input type="password" id="configPasswordInput" placeholder="Admin password"
+                     aria-label="Admin password"
+                     onkeydown="if(event.key==='Enter')confirmConfigGate()">
+            </span>
+          </div>
+          <div class="pf-v6-c-input-group__item">
+            <button class="pf-v6-c-button pf-m-control" type="button"
+                    aria-controls="configPasswordInput" aria-pressed="false"
+                    aria-label="Show password" data-i18n-title="showPassword"
+                    onclick="togglePasswordField(this)">
+              <span class="pf-v6-c-button__icon">%(eye)s%(eyeslash)s</span>
+            </button>
+          </div>
+        </div>
       </div>
       <footer class="pf-v6-c-modal-box__footer">
 %(cancel)s
@@ -240,8 +291,11 @@ def build():
 ''' % {
         "sprite": sprite(),
         "cards": cards,
+        "nav": nav(GROUPS),
         "advanced": advanced_card(),
         "lock": icon("lock"),
+        "eye": icon("eye", "pf-v6-svg icon-eye"),
+        "eyeslash": icon("eye-slash", "pf-v6-svg icon-eye-slash"),
         "back": button("Dashboard", "window.location.href='/admin'", "angle-left",
                        "link pf-m-inline", extra=' aria-label="Back to the dashboard"',
                        indent=8),

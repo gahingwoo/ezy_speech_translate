@@ -543,14 +543,19 @@ function connectWebSocket() {
 
 function updateStatus(connected) {
     const badge = document.getElementById('statusBadge');
+    const icon = document.getElementById('statusBadgeIcon');
+    // PatternFly's status label: the colour and the icon say the state
+    // together, which is what its status variants are for. Short text, because
+    // this sits in a masthead that has to fit a phone; the element's title
+    // says which server it is.
     if (connected) {
-        // Short, because this sits in a masthead that has to fit a phone. The
-        // element's title says which server it is.
-        badge.className = 'pf-v6-c-label pf-m-green connection-badge online';
-        badge.querySelector('.pf-v6-c-label__text').textContent = 'Online';
+        badge.className = 'pf-v6-c-label pf-m-success connection-badge online';
+        badge.querySelector('.pf-v6-c-label__text').textContent = t('online', 'Online');
+        if (icon) icon.innerHTML = svgIcon('check-circle');
     } else {
-        badge.className = 'pf-v6-c-label pf-m-red connection-badge offline';
-        badge.querySelector('.pf-v6-c-label__text').textContent = 'Offline';
+        badge.className = 'pf-v6-c-label pf-m-danger connection-badge offline';
+        badge.querySelector('.pf-v6-c-label__text').textContent = t('offline', 'Offline');
+        if (icon) icon.innerHTML = svgIcon('exclamation-circle');
     }
 }
 
@@ -1074,11 +1079,33 @@ function selectItem(id) {
     const item = translations.find(t => t.id === id);
     if (!item) return;
 
+    // Clicking the row that is already selected clears the selection. A row
+    // that highlights on click and then will not let go reads as stuck.
+    if (selectedItem && selectedItem.id === id) {
+        clearSelection();
+        return;
+    }
+
     selectedItem = item;
 
     document.getElementById('originalText').value = item.original;
     document.getElementById('correctedText').value = item.corrected;
 
+    renderTranscriptions();
+
+    // Below lg the panel is a drawer, so the editor is off screen until it is
+    // asked for; from lg it is already beside the list.
+    if (window.innerWidth < 992 && typeof toggleDetails === 'function') {
+        toggleDetails(true);
+    }
+}
+
+function clearSelection() {
+    selectedItem = null;
+    const original = document.getElementById('originalText');
+    const corrected = document.getElementById('correctedText');
+    if (original) original.value = '';
+    if (corrected) corrected.value = '';
     renderTranscriptions();
 }
 
@@ -1156,10 +1183,7 @@ function saveCorrection() {
 }
 
 function cancelCorrection() {
-    selectedItem = null;
-    document.getElementById('originalText').value = '';
-    document.getElementById('correctedText').value = '';
-    renderTranscriptions();
+    clearSelection();
 }
 
 function clearHistory() {

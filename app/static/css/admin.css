@@ -50,6 +50,13 @@ html.pf-v6-theme-dark .icon-moon {
   display: none;
 }
 
+/* The icon sprite is an empty inline SVG, and an inline element still opens a
+   line box: it was pushing the whole page down 21px and giving the window a
+   scrollbar it had no content for. */
+.pf-sprite {
+  position: absolute;
+}
+
 .mono {
   font-family: var(--pf-t--global--font--family--mono);
 }
@@ -127,6 +134,16 @@ html.pf-v6-theme-dark .icon-moon {
 /* Nothing in the masthead shrinks: a squeezed row turns "main" into "m". */
 .pf-v6-c-masthead__content > * {
   flex-shrink: 0;
+}
+
+/* The backdrop behind the open sidebar covers the viewport, which put a grey
+   film over the masthead and swallowed clicks meant for the buttons in it.
+   The masthead belongs above the backdrop: it is chrome, not content, and the
+   drawer opens under it. */
+/* PatternFly's own `.pf-v6-c-page > .pf-v6-c-masthead` outranks a bare class,
+   so this goes through the token it reads, which is what the token is for. */
+.pf-v6-c-page {
+  --pf-v6-c-page--c-masthead--ZIndex: var(--pf-t--global--z-index--xl);
 }
 
 /* ── sidebar ──────────────────────────────────────────────────────────── */
@@ -271,24 +288,69 @@ html.pf-v6-theme-dark .icon-moon {
   word-break: break-all;
 }
 
-/* ── the list ─────────────────────────────────────────────────────────── */
+/* ── the board ────────────────────────────────────────────────────────── */
+/* The list and the panel of detail beside it are PatternFly's Drawer, which is
+   the shape Cockpit uses for the same job. The section holding it is a bounded
+   flex child so the drawer can be exactly as tall as the sheet: then the list
+   scrolls inside its own region and the panel inside its own, and neither can
+   scroll the other away. */
 
-/* The card's own header puts its actions on the right; the title reads better
-   on the left, where the eye starts. */
-.list-card .pf-v6-c-card__header {
-  align-items: center;
+/* PatternFly's page section does not shrink, so with a long list it grew to
+   23,000px and the panel beside it went with it. Bounding the section is what
+   lets the drawer be exactly the height of the sheet. */
+.admin-board {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.list-card .pf-v6-c-card__header-main {
-  order: -1;
+.admin-board > .pf-v6-c-drawer {
+  height: 100%;
 }
 
-.list-card .pf-v6-c-badge {
+.pf-v6-c-drawer__content {
+  min-height: 0;
+}
+
+/* PatternFly hides a drawer panel until the drawer is expanded, and expects a
+   static drawer to be rendered expanded from the start. Here pf-m-expanded is
+   the small-screen state, so from lg — where the panel is static anyway — the
+   breakpoint shows it instead of the class. */
+@media (min-width: 62rem) {
+  #detailsDrawer > .pf-v6-c-drawer__main > .pf-v6-c-drawer__panel {
+    visibility: visible;
+    /* PatternFly draws this border for a drawer marked static outright; the
+       -on-lg variant leaves the width alone, so the two columns had nothing
+       between them. */
+    --pf-v6-c-drawer__panel--BorderInlineStartWidth:
+      var(--pf-t--global--border--width--divider--default);
+  }
+}
+
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+  align-items: baseline;
+}
+
+.list-head > .pf-v6-c-title {
+  margin-inline-end: auto;
+}
+
+.list-head .pf-v6-c-badge {
   margin-inline-start: var(--pf-t--global--spacer--sm);
 }
 
-/* The list runs the length of the card, so its last row has no rule under it. */
-.list-card .transcription-list > :last-child {
+.list-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The list runs the length of the region, so its last row has no rule under
+   it — the region's own edge is the line. */
+.transcription-list > :last-child {
   --pf-v6-c-data-list__item--BorderBlockEndWidth: 0;
 }
 
@@ -296,6 +358,14 @@ html.pf-v6-theme-dark .icon-moon {
   display: flex;
   gap: var(--pf-t--global--spacer--xs);
   align-items: center;
+}
+
+/* From lg the panel is static and always on screen, so the button that opens
+   it and the one that closes it have nothing left to do. */
+@media (min-width: 62rem) {
+  .details-toggle {
+    display: none;
+  }
 }
 
 /* ── transcription rows ───────────────────────────────────────────────── */
@@ -346,28 +416,34 @@ html.pf-v6-theme-dark .icon-moon {
   line-height: var(--pf-t--global--font--line-height--body);
 }
 
-/* ── edit panel ───────────────────────────────────────────────────────── */
+/* ── the details panel ────────────────────────────────────────────────── */
+/* One surface with its groups divided by rules, not three cards floating in a
+   column. The panel scrolls as a whole; the head above the first rule stays. */
 
-.edit-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--md);
+.pf-v6-c-drawer__panel {
+  min-height: 0;
+  overflow-y: auto;
 }
 
-/* The list beside this can run to thousands of rows, and a grid item stretches
-   to the tallest thing in its row, so the panel was 33,000px tall with its
-   cards at the very top: scroll the list and the editor was gone. From lg it
-   stops stretching and sticks to the top of the scrolling area instead.
-   The 7rem is the masthead plus the page inset above it; being a little short
-   only means the panel starts scrolling sooner than it has to. */
-@media (min-width: 62rem) {
-  .edit-panel {
-    position: sticky;
-    inset-block-start: 0;
-    align-self: start;
-    max-height: calc(100dvh - 7rem);
-    overflow-y: auto;
-  }
+.details-head {
+  flex-shrink: 0;
+}
+
+.panel-section__title {
+  margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.panel-section__actions {
+  display: flex;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: center;
+  margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+/* A description list of one-word terms against short values reads better tight
+   than spread across the panel. */
+.panel-section .pf-v6-c-description-list {
+  --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--sm);
 }
 
 /* ── dialogs ──────────────────────────────────────────────────────────── */
@@ -583,16 +659,24 @@ html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
    here is only what that page adds: a column of cards, a bar that appears when
    something has changed, and a mark against the fields that changed. */
 
+/* The groups are switched, not stacked, so the page is as tall as one group
+   and the fields keep a readable measure inside a wide window. */
 .config-page {
-  max-width: 56rem;
+  max-width: 48rem;
+}
+
+/* This page's sidebar is navigation, so it is a list, not a form: no separators
+   and no padding of its own. */
+#configSidebar .pf-v6-c-nav {
+  --pf-v6-c-nav--BackgroundColor: transparent;
 }
 
 .config-page__intro {
   margin-block-end: var(--pf-t--global--spacer--lg);
 }
 
-.config-card {
-  margin-block-end: var(--pf-t--global--spacer--lg);
+.config-card[hidden] {
+  display: none;
 }
 
 .config-card__intro {
@@ -649,6 +733,20 @@ html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
   display: none;
 }
 
+
+/* ── password reveal ──────────────────────────────────────────────────── */
+/* Both eyes live in the button; this shows the one that matches its state.
+   Typing a password you cannot see leaves no way to find the typo. */
+
+.icon-eye-slash,
+[aria-pressed="true"] > .pf-v6-c-button__icon > .icon-eye {
+  display: none;
+}
+
+[aria-pressed="true"] > .pf-v6-c-button__icon > .icon-eye-slash {
+  display: inline-block;
+}
+
 /* ── toasts ───────────────────────────────────────────────────────────── */
 /* PatternFly's toast alert group is positioned by the component; this only
    lifts it above the dialogs. */
@@ -662,7 +760,7 @@ html.pf-v6-theme-dark .credit-badge .credit-badge__dark {
 @media print {
   .pf-v6-c-masthead,
   .pf-v6-c-toolbar,
-  .edit-panel,
+  .pf-v6-c-drawer__panel,
   .toast-container {
     display: none !important;
   }

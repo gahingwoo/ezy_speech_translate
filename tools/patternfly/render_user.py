@@ -82,40 +82,35 @@ def form_group(label_text, i18n_key, control, for_id=None, group_id=None, help=N
             '      </div>\n' % (' id="%s"' % group_id if group_id else "", label, control))
 
 
-def number_input(el_id, value, unit, aria, oninput, step="1", minimum=None,
-                 maximum=None, indent=10):
-    """PatternFly's number input: minus, a field, plus. The buttons drive the
-    field and then call the same handler it does, so there is one code path,
-    and unlike a range input it can be typed into and hit on a phone."""
-    pad = " " * indent
-    bounds = ""
-    if minimum is not None:
-        bounds += ' min="%s"' % minimum
-    if maximum is not None:
-        bounds += ' max="%s"' % maximum
-    return ('%s<div class="pf-v6-c-number-input">\n'
-            '%s  <div class="pf-v6-c-input-group">\n'
-            '%s    <div class="pf-v6-c-input-group__item">\n'
-            '%s      <button class="pf-v6-c-button pf-m-control" type="button"\n'
-            '%s              aria-label="Less" onclick="stepNumber(\'%s\', -%s)">%s</button>\n'
-            '%s    </div>\n'
-            '%s    <div class="pf-v6-c-input-group__item">\n'
-            '%s      <span class="pf-v6-c-form-control">\n'
-            '%s        <input type="number" id="%s" value="%s" step="%s"%s\n'
-            '%s               aria-label="%s" oninput="%s">\n'
-            '%s      </span>\n'
-            '%s    </div>\n'
-            '%s    <div class="pf-v6-c-input-group__item">\n'
-            '%s      <button class="pf-v6-c-button pf-m-control" type="button"\n'
-            '%s              aria-label="More" onclick="stepNumber(\'%s\', %s)">%s</button>\n'
-            '%s    </div>\n'
-            '%s  </div>\n'
-            '%s  <span class="pf-v6-c-number-input__unit">%s</span>\n'
-            '%s</div>'
-            % (pad, pad, pad, pad, pad, el_id, step, btn_icon("minus"), pad, pad,
-               pad, pad, el_id, value, step, bounds, pad, aria, oninput, pad, pad,
-               pad, pad, pad, el_id, step, btn_icon("plus"), pad, pad, pad, unit, pad))
+def slider(el_id, value, unit, aria, oninput, step="1", minimum="0",
+           maximum="100", indent=10):
+    """PatternFly's slider, with its value input beside it.
 
+    The number input alone could be typed into but gave no feel for the range,
+    which is the whole point of a font size or a speaking rate. This keeps the
+    input — and its id, which the rest of user.js reads — and puts the rail and
+    the thumb in front of it. user.js binds the two together in initSliders()."""
+    pad = " " * indent
+    return ('%s<div class="pf-v6-c-slider app-slider" data-slider-input="%s">\n'
+            '%s  <div class="pf-v6-c-slider__main">\n'
+            '%s    <div class="pf-v6-c-slider__rail">\n'
+            '%s      <div class="pf-v6-c-slider__rail-track"></div>\n'
+            '%s    </div>\n'
+            '%s    <div class="pf-v6-c-slider__thumb" role="slider" tabindex="0"\n'
+            '%s         aria-label="%s" aria-valuemin="%s" aria-valuemax="%s"\n'
+            '%s         aria-valuenow="%s"></div>\n'
+            '%s  </div>\n'
+            '%s  <div class="pf-v6-c-slider__value">\n'
+            '%s    <span class="pf-v6-c-form-control">\n'
+            '%s      <input type="number" id="%s" value="%s" step="%s"\n'
+            '%s             min="%s" max="%s" aria-label="%s" oninput="%s">\n'
+            '%s    </span>\n'
+            '%s    <span class="app-slider__unit">%s</span>\n'
+            '%s  </div>\n'
+            '%s</div>'
+            % (pad, el_id, pad, pad, pad, pad, pad, pad, aria, minimum, maximum,
+               pad, value, pad, pad, pad, pad, el_id, value, step,
+               pad, minimum, maximum, aria, oninput, pad, pad, unit, pad, pad))
 
 def select(el_id, onchange, aria, options, extra=""):
     return ('          <span class="pf-v6-c-form-control">\n'
@@ -333,8 +328,8 @@ SETUP_STEPS = (
     ("language", "Your language", "welcome_step_language",
      "Pick the language you want to read, and the language this page is in."),
     ("speech", "Reading aloud", "welcome_step_speech",
-     "Text-to-speech reads each translation out as it arrives. You can turn it "
-     "on now or later."),
+     "Reading aloud speaks each translation as it arrives. Turn it on now, "
+     "or later."),
     ("done", "You are set", "welcome_step_done",
      "Translations appear as the speaker talks. Everything else lives behind "
      "the gear in the top right."),
@@ -525,14 +520,14 @@ def build():
                           '<option value="" data-i18n="tts_autoVoice">Auto (System Default)</option>'),
                    "voiceSelect"),
         form_group("Speed", "speed",
-                   number_input("rateSlider", "1", '<span id="rateValue">&times;</span>',
-                                "Speech rate", "updateRate()", step="0.1",
-                                minimum="0.5", maximum="2"),
+                   slider("rateSlider", "1", '<span id="rateValue">&times;</span>',
+                          "Speech rate", "updateRate()", step="0.1",
+                          minimum="0.5", maximum="2"),
                    "rateSlider", help="How fast the voice reads. 1 is its normal pace."),
         form_group("Volume", "volume",
-                   number_input("volumeSlider", "100", '<span id="volumeValue">%</span>',
-                                "Speech volume", "updateVolume()", step="5",
-                                minimum="0", maximum="100"),
+                   slider("volumeSlider", "100", '<span id="volumeValue">%</span>',
+                          "Speech volume", "updateVolume()", step="5",
+                          minimum="0", maximum="100"),
                    "volumeSlider", help="How loud the voice reads, as a percentage of the device volume."),
     ))
 
@@ -581,9 +576,9 @@ def build():
                           '<option value="elderly" data-i18n="uiMode_elderly">Elderly</option>'),
                    "uiMode", help="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further."),
         form_group("Font Size", "fontSize",
-                   number_input("fontSizeSlider", "18", '<span id="fontSizeValue">px</span>',
-                                "Translation font size", "updateFontSize()",
-                                step="1", minimum="12", maximum="24"),
+                   slider("fontSizeSlider", "18", '<span id="fontSizeValue">px</span>',
+                          "Translation font size", "updateFontSize()",
+                          step="1", minimum="12", maximum="24"),
                    "fontSizeSlider", help="The size of the translated line, in pixels."),
         sidebar_button("sourceTextToggle", "toggleSourceText()", "Toggle source text display",
                        "book", "sourceTextText", "Show Source"),
@@ -953,20 +948,88 @@ def build():
       window.addEventListener('scroll', hide, true);
     })();
 
-    /* The minus and plus of a number input: nudge the field, keep it inside its
-       bounds, then let its own handler run. */
-    function stepNumber(id, by) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const step = Number(el.step) || 1;
-      const decimals = (String(step).split('.')[1] || '').length;
-      let next = (Number(el.value) || 0) + Number(by);
-      if (el.min !== '') next = Math.max(Number(el.min), next);
-      if (el.max !== '') next = Math.min(Number(el.max), next);
-      el.value = next.toFixed(decimals);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
+    /* PatternFly's slider is markup plus a --value custom property; the drag,
+       the keys and the bounds are the page's job. Each slider names the number
+       input it drives, so the two are one control: drag the thumb or type the
+       number, and the same oninput handler runs either way. */
+    function initSliders() {
+      document.querySelectorAll('.pf-v6-c-slider[data-slider-input]').forEach(function (slider) {
+        const input = document.getElementById(slider.dataset.sliderInput);
+        const thumb = slider.querySelector('.pf-v6-c-slider__thumb');
+        const rail = slider.querySelector('.pf-v6-c-slider__rail');
+        if (!input || !thumb || !rail) return;
+
+        const min = Number(input.min), max = Number(input.max);
+        const step = Number(input.step) || 1;
+        const decimals = (String(step).split('.')[1] || '').length;
+
+        function paint() {
+          const v = Math.min(max, Math.max(min, Number(input.value) || min));
+          const pct = max === min ? 0 : ((v - min) / (max - min)) * 100;
+          slider.style.setProperty('--pf-v6-c-slider--value', pct + '%%');
+          thumb.setAttribute('aria-valuenow', String(v));
+        }
+
+        function setFromValue(v, fire) {
+          const stepped = Math.round((v - min) / step) * step + min;
+          const clamped = Math.min(max, Math.max(min, stepped));
+          const next = clamped.toFixed(decimals);
+          if (next === input.value) { paint(); return; }
+          input.value = next;
+          paint();
+          if (fire) input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function setFromPointer(clientX) {
+          const box = rail.getBoundingClientRect();
+          if (!box.width) return;
+          const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+          setFromValue(min + ratio * (max - min), true);
+        }
+
+        slider.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('.pf-v6-c-slider__value')) return;
+          e.preventDefault();
+          thumb.focus();
+          slider.setPointerCapture(e.pointerId);
+          setFromPointer(e.clientX);
+          const move = ev => setFromPointer(ev.clientX);
+          const up = () => {
+            slider.removeEventListener('pointermove', move);
+            slider.removeEventListener('pointerup', up);
+            slider.removeEventListener('pointercancel', up);
+          };
+          slider.addEventListener('pointermove', move);
+          slider.addEventListener('pointerup', up);
+          slider.addEventListener('pointercancel', up);
+        });
+
+        thumb.addEventListener('keydown', function (e) {
+          const by = { ArrowLeft: -step, ArrowDown: -step,
+                       ArrowRight: step, ArrowUp: step }[e.key];
+          if (by === undefined && e.key !== 'Home' && e.key !== 'End') return;
+          e.preventDefault();
+          if (e.key === 'Home') setFromValue(min, true);
+          else if (e.key === 'End') setFromValue(max, true);
+          else setFromValue((Number(input.value) || min) + by, true);
+        });
+
+        input.addEventListener('input', paint);
+        slider._paint = paint;
+        paint();
+      });
     }
-    window.stepNumber = stepNumber;
+    window.initSliders = initSliders;
+    document.addEventListener('DOMContentLoaded', initSliders);
+
+    /* When something else writes a slider's input — a saved setting on load,
+       the setup wizard — the thumb has to follow. */
+    function syncSliders() {
+      document.querySelectorAll('.pf-v6-c-slider[data-slider-input]')
+        .forEach(function (s) { if (s._paint) s._paint(); });
+    }
+    window.syncSliders = syncSliders;
+
 
     function toggleSetupNav() {
       const toggle = document.getElementById('setupToggle');

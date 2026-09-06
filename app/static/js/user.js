@@ -310,12 +310,13 @@ function toggleSourceText() {
             const textTarget = card.querySelector('.text-target');
             
             if (showSourceText && !existingSource && textTarget) {
-                // Add text-source element before text-target
+                // The source line sits under the translation, so it goes in
+                // after it — that is the order the card is built in.
                 const sourceDiv = document.createElement('div');
                 sourceDiv.className = 'text-source';
                 sourceDiv.setAttribute('data-original-text', '');
                 sourceDiv.textContent = ''; // Will be populated by realtime_transcription
-                card.insertBefore(sourceDiv, textTarget);
+                textTarget.insertAdjacentElement('afterend', sourceDiv);
                 console.log('Added text-source to interim card');
             } else if (!showSourceText && existingSource) {
                 // Remove text-source element
@@ -673,7 +674,10 @@ function attachBiblePanel(card, refs) {
         const block = document.createElement('div');
         block.className = 'bible-verse-block';
 
-        // ── Header: icon + reference display + translation badges ──
+        // ── Header: icon + reference display ──
+        // The version each line is in used to sit up here as a row of badges,
+        // which left the reader to guess which badge went with which verse.
+        // It belongs against the verse it names, so it moved into the rows.
         const head = document.createElement('div');
         head.className = 'bible-verse-head';
         const icon = document.createElement('span');
@@ -684,32 +688,43 @@ function attachBiblePanel(card, refs) {
         title.textContent = ref.display || '';
         head.appendChild(icon);
         head.appendChild(title);
-
-        // Show translation badges for whichever slots are present
-        ['source', 'target'].forEach(slot => {
-            const slot_data = ref[slot];
-            if (slot_data && slot_data.translation) {
-                const tag = document.createElement('span');
-                tag.className = 'bible-verse-translation bible-verse-translation-' + slot;
-                tag.textContent = slot_data.translation.toUpperCase();
-                if (slot === 'target') {
-                    const script = _bibleChineseScript();
-                    if (script) tag.dataset.script = script;
-                }
-                head.appendChild(tag);
-            }
-        });
         block.appendChild(head);
 
-        // ── Helper: build a verse-body div from a list of {n, text} ──
-        function buildVerseBody(verses, slotClass) {
-            const body = document.createElement('div');
-            body.className = 'bible-verse-body ' + slotClass;
+        // PatternFly's description list: the version is the term, the verses
+        // are its description, and the component keeps the two aligned down
+        // the block however many versions there are.
+        const list = document.createElement('dl');
+        list.className = 'pf-v6-c-description-list pf-m-horizontal pf-m-compact '
+            + 'pf-m-fluid bible-verse-versions';
+        block.appendChild(list);
+
+        /* One version: its name, then its verses. */
+        function addVersion(name, verses, slot) {
+            const group = document.createElement('div');
+            group.className = 'pf-v6-c-description-list__group';
+
+            const dt = document.createElement('dt');
+            dt.className = 'pf-v6-c-description-list__term';
+            const dtText = document.createElement('span');
+            dtText.className = 'pf-v6-c-description-list__text bible-verse-translation';
+            dtText.textContent = (name || '').toUpperCase();
+            if (slot === 'target') {
+                const script = _bibleChineseScript();
+                if (script) dtText.dataset.script = script;
+            }
+            dt.appendChild(dtText);
+            group.appendChild(dt);
+
+            const dd = document.createElement('dd');
+            dd.className = 'pf-v6-c-description-list__description';
+            const ddText = document.createElement('div');
+            ddText.className = 'pf-v6-c-description-list__text bible-verse-body '
+                + 'bible-verse-' + slot;
             if (!verses || !verses.length) {
                 const empty = document.createElement('em');
                 empty.className = 'bible-verse-missing';
                 empty.textContent = 'Verse text unavailable';
-                body.appendChild(empty);
+                ddText.appendChild(empty);
             } else {
                 verses.forEach(v => {
                     const line = document.createElement('div');
@@ -719,35 +734,27 @@ function attachBiblePanel(card, refs) {
                     num.textContent = String(v.n);
                     line.appendChild(num);
                     line.appendChild(document.createTextNode(' ' + (v.text || '')));
-                    body.appendChild(line);
+                    ddText.appendChild(line);
                 });
             }
-            return body;
+            dd.appendChild(ddText);
+            group.appendChild(dd);
+            list.appendChild(group);
         }
 
-        // ── Render source (original-language) slot ──
         if (ref.source) {
-            block.appendChild(buildVerseBody(ref.source.verses, 'bible-verse-source'));
+            addVersion(ref.source.translation, ref.source.verses, 'source');
         }
 
-        // ── Render target (translated) slot if present and different ──
+        // The target slot only earns a row when it is a different version.
         if (ref.target && ref.target.translation &&
                 (!ref.source || ref.target.translation !== ref.source.translation)) {
-            const divider = document.createElement('div');
-            divider.className = 'bible-verse-divider';
-            block.appendChild(divider);
-            block.appendChild(buildVerseBody(ref.target.verses, 'bible-verse-target'));
+            addVersion(ref.target.translation, ref.target.verses, 'target');
         }
 
-        // Legacy fallback: old data shape with `verses` array (single translation)
+        // Legacy fallback: old data shape with `verses` array (single version).
         if (!ref.source && !ref.target && ref.verses) {
-            if (ref.translation) {
-                const tag = document.createElement('span');
-                tag.className = 'bible-verse-translation';
-                tag.textContent = ref.translation.toUpperCase();
-                head.appendChild(tag);
-            }
-            block.appendChild(buildVerseBody(ref.verses, 'bible-verse-source'));
+            addVersion(ref.translation, ref.verses, 'source');
         }
 
         panel.appendChild(block);
@@ -1361,6 +1368,10 @@ function loadSettings() {
         document.getElementById('fontSizeSlider').value = fontSize;
         applyFontSize();
     }
+
+    // The three settings above are the inputs of PatternFly sliders; writing
+    // an input does not move a thumb, so the thumbs are told to catch up.
+    if (typeof syncSliders === 'function') syncSliders();
 
     return savedVoice;
 }
@@ -2170,13 +2181,19 @@ window.__translationCacheMeta = window.__translationCacheMeta || {};
 
 function markCacheHit(elem) {
     if (!elem) return;
-    // The marks sit at the head of the body, next to the corrected badge.
+    // The marks sit in the meta row, next to the corrected label.
     const marks = elem.querySelector('.card-marks');
     if (!marks || marks.querySelector('.card-badge.cache-hit')) return;
     const badge = document.createElement('span');
-    badge.className = 'card-badge cache-hit';
-    badge.textContent = t('cacheHit', 'Cached');
+    badge.className = 'pf-v6-c-label pf-m-compact pf-m-outline card-badge cache-hit';
     badge.title = t('cacheHitTooltip', 'Served from translation cache');
+    const content = document.createElement('span');
+    content.className = 'pf-v6-c-label__content';
+    const text = document.createElement('span');
+    text.className = 'pf-v6-c-label__text';
+    text.textContent = t('cacheHit', 'Cached');
+    content.appendChild(text);
+    badge.appendChild(content);
     marks.appendChild(badge);
 }
 
@@ -2991,10 +3008,16 @@ async function speakTextEdge(text) {
    same switch; this keeps the masthead one showing the state. */
 function syncTTSQuickToggle() {
     const quick = document.getElementById('ttsQuickToggle');
-    if (quick) {
-        quick.setAttribute('aria-pressed', String(ttsEnabled));
-        quick.classList.toggle('pf-m-selected', ttsEnabled);
-    }
+    if (!quick) return;
+    // pf-m-selected is not a PatternFly button state, so pressing this changed
+    // nothing anyone could see and the button read as dead. aria-pressed is
+    // the state, and user.css colours the button from it.
+    quick.setAttribute('aria-pressed', String(ttsEnabled));
+    const label = ttsEnabled
+        ? t('textToSpeechOff', 'Stop reading aloud')
+        : t('textToSpeech', 'Read aloud');
+    quick.setAttribute('title', label);
+    quick.setAttribute('aria-label', label);
 }
 
 function toggleTTS() {
@@ -3006,13 +3029,15 @@ function toggleTTS() {
     if (ttsEnabled) {
         btn.classList.add('active');
         btn.setAttribute('aria-pressed', 'true');
-        text.textContent = 'Disable TTS';
+        text.textContent = t('textToSpeechOff', 'Stop reading aloud');
         syncTTSQuickToggle();
+        showToast(t('textToSpeechOn', 'Reading translations aloud'), 'success');
     } else {
         btn.classList.remove('active');
         btn.setAttribute('aria-pressed', 'false');
-        text.textContent = 'Enable TTS';
+        text.textContent = t('enableTTS', 'Read aloud');
         syncTTSQuickToggle();
+        showToast(t('textToSpeechOff', 'Stop reading aloud'), 'info');
         // Clear TTS queue and stop current playback when disabling
         clearTTSQueue();
     }
@@ -3501,6 +3526,28 @@ async function processPendingTranslations() {
     }
 }
 
+/* PatternFly's label, in the green outline the design system uses for a
+   quiet positive mark. The pill this replaces was drawn by hand in the
+   stylesheet and looked like nothing else on the page. */
+/* The short tag that says which language the quiet line under a translation
+   is in. Without it the two lines are just a big one and a small one, and
+   which is the original is anyone's guess. */
+function langTag(code) {
+    const c = String(code || '').toLowerCase();
+    // Typed in by the admin rather than spoken: there is no language to name.
+    if (!c || c === 'manual' || c === 'auto') return '';
+    if (c.startsWith('yue')) return 'YUE';
+    if (c.startsWith('zh-tw') || c.includes('-hant')) return 'ZH-TW';
+    return (c.split('-')[0] || '').toUpperCase();
+}
+
+function correctedLabel() {
+    return '<span class="pf-v6-c-label pf-m-green pf-m-compact pf-m-outline card-badge">'
+        + '<span class="pf-v6-c-label__content">'
+        + '<span class="pf-v6-c-label__text">' + escapeHtml(t('corrected', 'Corrected'))
+        + '</span></span></span>';
+}
+
 function createTranslationHTML(item) {
     const itemId = 'translation-' + item.id;
 
@@ -3509,24 +3556,26 @@ function createTranslationHTML(item) {
 
     // In transcription mode, only show original text
     if (displayMode === 'transcription') {
-        const correctedBadge = item.is_corrected ? '<span class="card-badge">Corrected</span>' : '';
+        const correctedBadge = item.is_corrected ? correctedLabel() : '';
         const correctedClass = item.is_corrected ? 'corrected' : '';
 
+        // The text is what the reader came for, so it leads and it is the only
+        // thing set at reading size. The time, the marks and the two buttons
+        // are one quiet row under it — a header row of its own gave a
+        // timestamp more of the card than the sentence had.
         return '\
             <article class="pf-v6-c-card pf-m-compact translation-card ' + correctedClass + '" id="' + itemId + '">\
-                <div class="pf-v6-c-card__header card-header">\
-                    <div class="pf-v6-c-card__actions pf-m-no-offset card-actions">\
-                        <button class="pf-v6-c-button pf-m-plain copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
-                            <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
-                        </button>\
-                    </div>\
-                    <div class="pf-v6-c-card__header-main">\
-                        <span class="card-time">' + item.timestamp + '</span>\
-                    </div>\
-                </div>\
-                <div class="pf-v6-c-card__body">\
-                    <div class="card-marks">' + correctedBadge + '</div>\
+                <div class="pf-v6-c-card__body translation-body">\
                     <div class="text-target" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>\
+                    <div class="card-meta">\
+                        <span class="card-time">' + item.timestamp + '</span>\
+                        <div class="card-marks">' + correctedBadge + '</div>\
+                        <div class="card-actions">\
+                            <button class="pf-v6-c-button pf-m-plain pf-m-small copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
+                                <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
+                            </button>\
+                        </div>\
+                    </div>\
                 </div>\
             </article>\
         ';
@@ -3582,7 +3631,7 @@ function createTranslationHTML(item) {
         }
     }
 
-    const correctedBadge = item.is_corrected ? '<span class="card-badge">Corrected</span>' : '';
+    const correctedBadge = item.is_corrected ? correctedLabel() : '';
     const correctedClass = item.is_corrected ? 'corrected' : '';
     const isTranslating = displayMode !== 'transcription' && !item.translated;
     const translatedText = item.translated || '';
@@ -3593,29 +3642,35 @@ function createTranslationHTML(item) {
           + '<span class="pf-v6-c-spinner__ball"></span></span>'
         : '';
 
-    // Show source text only if enabled and in translation mode
-    const sourceHtml = (displayMode !== 'transcription' && shouldShowSource) ? 
-        '<div class="text-source" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>' : '';
+    // Show source text only if enabled and in translation mode — and only when
+    // it says something the line above does not. When translation falls back to
+    // the original, printing it twice at two sizes reads as a bug.
+    const sourceDiffers = (item.corrected || '').trim() !== (translatedText || '').trim();
+    const sourceHtml = (displayMode !== 'transcription' && shouldShowSource && sourceDiffers)
+        ? '<div class="text-source" data-original-text="' + escapeHtml(item.corrected) + '">'
+          + (langTag(itemSourceLang)
+              ? '<span class="text-source__lang">' + escapeHtml(langTag(itemSourceLang)) + '</span>'
+              : '')
+          + escapeHtml(item.corrected) + '</div>'
+        : '';
 
     return '\
         <article class="pf-v6-c-card pf-m-compact translation-card ' + correctedClass + '" id="' + itemId + '">\
-            <div class="pf-v6-c-card__header card-header">\
-                <div class="pf-v6-c-card__actions pf-m-no-offset card-actions">\
-                    <button class="pf-v6-c-button pf-m-plain copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
-                        <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
-                    </button>\
-                    <button class="pf-v6-c-button pf-m-plain tts-icon" type="button" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
-                        <span class="pf-v6-c-button__icon">' + svgIcon('volume-up') + '</span>\
-                    </button>\
-                </div>\
-                <div class="pf-v6-c-card__header-main">\
-                    <span class="card-time">' + item.timestamp + '</span>\
-                </div>\
-            </div>\
-            <div class="pf-v6-c-card__body">\
-                <div class="card-marks">' + transatingIndicator + correctedBadge + '</div>\
-                ' + sourceHtml + '\
+            <div class="pf-v6-c-card__body translation-body">\
                 <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '">' + escapeHtml(displayText) + '</div>\
+                ' + sourceHtml + '\
+                <div class="card-meta">\
+                    <span class="card-time">' + item.timestamp + '</span>\
+                    <div class="card-marks">' + transatingIndicator + correctedBadge + '</div>\
+                    <div class="card-actions">\
+                        <button class="pf-v6-c-button pf-m-plain pf-m-small copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
+                            <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
+                        </button>\
+                        <button class="pf-v6-c-button pf-m-plain pf-m-small tts-icon" type="button" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
+                            <span class="pf-v6-c-button__icon">' + svgIcon('volume-up') + '</span>\
+                        </button>\
+                    </div>\
+                </div>\
             </div>\
         </article>\
     ';
@@ -4707,36 +4762,41 @@ function setupSocketEventListeners() {
             // Build via DOM nodes (NOT innerHTML) — data.timestamp / data.text
             // come from a websocket peer and must never reach innerHTML as
             // strings, or a malicious admin could inject script.
-            tempCard = document.createElement('div');
-            tempCard.className = 'translation-card';
+            tempCard = document.createElement('article');
+            tempCard.className = 'pf-v6-c-card pf-m-compact translation-card';
             tempCard.setAttribute('data-temp-id', tempId);
 
-            const header = document.createElement('div');
-            header.className = 'card-header';
+            // Same shape as a finished card, so nothing shifts when the real
+            // one replaces it: the text first, then the quiet meta row.
+            const body = document.createElement('div');
+            body.className = 'pf-v6-c-card__body translation-body';
+            tempCard.appendChild(body);
+
+            const target = document.createElement('div');
+            target.className = 'text-target';
+            body.appendChild(target);
+
+            if (displayMode !== 'transcription' && showSourceText) {
+                const source = document.createElement('div');
+                source.className = 'text-source';
+                source.setAttribute('data-original-text', '');
+                body.appendChild(source);
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'card-meta';
             const timeSpan = document.createElement('span');
             timeSpan.className = 'card-time';
             timeSpan.textContent = data.timestamp || new Date().toLocaleTimeString();
+            const marksDiv = document.createElement('div');
+            marksDiv.className = 'card-marks';
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'card-actions';
-            header.appendChild(timeSpan);
-            header.appendChild(actionsDiv);
-            tempCard.appendChild(header);
+            meta.appendChild(timeSpan);
+            meta.appendChild(marksDiv);
+            meta.appendChild(actionsDiv);
+            body.appendChild(meta);
 
-            if (displayMode === 'transcription') {
-                const target = document.createElement('div');
-                target.className = 'text-target';
-                tempCard.appendChild(target);
-            } else {
-                if (showSourceText) {
-                    const source = document.createElement('div');
-                    source.className = 'text-source';
-                    source.setAttribute('data-original-text', '');
-                    tempCard.appendChild(source);
-                }
-                const target = document.createElement('div');
-                target.className = 'text-target';
-                tempCard.appendChild(target);
-            }
             list.insertBefore(tempCard, list.firstChild);
             
             // Initialize chunk tracking
@@ -4857,8 +4917,8 @@ function setupSocketEventListeners() {
                             sourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
                             sourceDiv.textContent = data.corrected || data.original;
                             console.log('Adding text-source element');
-                            // Insert source before target
-                            tempCard.insertBefore(sourceDiv, currentTextEl);
+                            // The source line reads under the translation.
+                            currentTextEl.insertAdjacentElement('afterend', sourceDiv);
                         } else {
                             // Update existing source div with correct text
                             existingSourceDiv.textContent = data.corrected || data.original;

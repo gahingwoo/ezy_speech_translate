@@ -60,16 +60,17 @@
         <!-- updateStatus() in admin.js replaces this class list outright, so
              what it writes and what is written here have to agree. The label's
              colour carries the state; an icon as well would say it twice. -->
-        <span class="pf-v6-c-label pf-m-red connection-badge offline" id="statusBadge"
+        <span class="pf-v6-c-label pf-m-danger connection-badge offline" id="statusBadge"
               title="User server" role="status" aria-live="polite">
           <span class="pf-v6-c-label__content">
+            <span class="pf-v6-c-label__icon" id="statusBadgeIcon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zm-248 50c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/></svg></span>
             <span class="pf-v6-c-label__text" data-i18n="offline">Offline</span>
           </span>
         </span>
 
-        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
-                id="settingsToggle" aria-label="Settings" title="Settings"
-                data-i18n-title="settings" onclick="showSettings()"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M487.4 315.7l-42.6-24.6c4.3-23.2 4.3-47 0-70.2l42.6-24.6c4.9-2.8 7.1-8.6 5.5-14-11.1-35.6-30-67.8-54.7-94.6-3.8-4.1-10-5.1-14.8-2.3L380.8 110c-17.9-15.4-38.5-27.3-60.8-35.1V25.8c0-5.6-3.9-10.5-9.4-11.7-36.7-8.2-74.3-7.8-109.2 0-5.5 1.2-9.4 6.1-9.4 11.7V75c-22.2 7.9-42.8 19.8-60.8 35.1L88.7 85.5c-4.9-2.8-11-1.9-14.8 2.3-24.7 26.7-43.6 58.9-54.7 94.6-1.7 5.4.6 11.2 5.5 14L67.3 221c-4.3 23.2-4.3 47 0 70.2l-42.6 24.6c-4.9 2.8-7.1 8.6-5.5 14 11.1 35.6 30 67.8 54.7 94.6 3.8 4.1 10 5.1 14.8 2.3l42.6-24.6c17.9 15.4 38.5 27.3 60.8 35.1v49.2c0 5.6 3.9 10.5 9.4 11.7 36.7 8.2 74.3 7.8 109.2 0 5.5-1.2 9.4-6.1 9.4-11.7v-49.2c22.2-7.9 42.8-19.8 60.8-35.1l42.6 24.6c4.9 2.8 11 1.9 14.8-2.3 24.7-26.7 43.6-58.9 54.7-94.6 1.5-5.5-.7-11.3-5.6-14.1zM256 336c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/></svg></button>
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" id="settingsToggle" onclick="showSettings()" aria-label="Settings" title="Settings" data-i18n-title="settings">
+          <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M487.4 315.7l-42.6-24.6c4.3-23.2 4.3-47 0-70.2l42.6-24.6c4.9-2.8 7.1-8.6 5.5-14-11.1-35.6-30-67.8-54.7-94.6-3.8-4.1-10-5.1-14.8-2.3L380.8 110c-17.9-15.4-38.5-27.3-60.8-35.1V25.8c0-5.6-3.9-10.5-9.4-11.7-36.7-8.2-74.3-7.8-109.2 0-5.5 1.2-9.4 6.1-9.4 11.7V75c-22.2 7.9-42.8 19.8-60.8 35.1L88.7 85.5c-4.9-2.8-11-1.9-14.8 2.3-24.7 26.7-43.6 58.9-54.7 94.6-1.7 5.4.6 11.2 5.5 14L67.3 221c-4.3 23.2-4.3 47 0 70.2l-42.6 24.6c-4.9 2.8-7.1 8.6-5.5 14 11.1 35.6 30 67.8 54.7 94.6 3.8 4.1 10 5.1 14.8 2.3l42.6-24.6c17.9 15.4 38.5 27.3 60.8 35.1v49.2c0 5.6 3.9 10.5 9.4 11.7 36.7 8.2 74.3 7.8 109.2 0 5.5-1.2 9.4-6.1 9.4-11.7v-49.2c22.2-7.9 42.8-19.8 60.8-35.1l42.6 24.6c4.9 2.8 11 1.9 14.8-2.3 24.7-26.7 43.6-58.9 54.7-94.6 1.5-5.5-.7-11.3-5.6-14.1zM256 336c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="settings">Settings</span>
+        </button>
 
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="openConfigPasswordGate()" title="Server configuration" aria-label="Server configuration">
           <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg></span><span class="pf-v6-c-button__text">Config</span>
@@ -182,30 +183,34 @@
 
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
-        <section class="pf-v6-c-page__main-section pf-m-fill">
-          <div class="pf-v6-l-grid pf-m-gutter">
+        <section class="pf-v6-c-page__main-section pf-m-fill pf-m-no-padding admin-board">
 
-            <!-- The list sits in a card, as the editor beside it does, so the
-                 two columns read as one board rather than a list next to a
-                 stack of boxes. -->
-            <div class="pf-v6-l-grid__item pf-m-12-col pf-m-8-col-on-lg">
-              <section class="pf-v6-c-card list-card">
-                <div class="pf-v6-c-card__header">
-                  <div class="pf-v6-c-card__actions pf-m-no-offset">
-                    <p class="pf-v6-c-form__helper-text drag-hint">
-                      <svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M96 32H32C14.33 32 0 46.33 0 64v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V64c0-17.67-14.33-32-32-32zm0 160H32c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zm0 160H32c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zM288 32h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V64c0-17.67-14.33-32-32-32zm0 160h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zm0 160h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32z"/></svg> <span data-i18n="dragToReorder">Drag to reorder</span>
-                    </p>
-                  </div>
-                  <div class="pf-v6-c-card__header-main">
-                    <h1 class="pf-v6-c-card__title-text">
-                      <span data-i18n="liveTranscriptions">Transcriptions</span>
-                      <span class="pf-v6-c-badge pf-m-read" id="itemCount"
-                            aria-label="Transcription count">0</span>
-                    </h1>
-                  </div>
+          <!-- PatternFly's drawer, the shape Cockpit uses for a list and the
+               detail of what is selected in it. From lg the panel is static:
+               always there, in flow, with the drawer's own border between the
+               two. Below lg it is a drawer proper, opened by the Details
+               button and closed by the one in its head. -->
+          <div class="pf-v6-c-drawer pf-m-static-on-lg" id="detailsDrawer">
+            <div class="pf-v6-c-drawer__main">
+
+              <div class="pf-v6-c-drawer__content">
+                <div class="pf-v6-c-drawer__body list-head">
+                  <h1 class="pf-v6-c-title pf-m-md">
+                    <span data-i18n="liveTranscriptions">Transcriptions</span>
+                    <span class="pf-v6-c-badge pf-m-read" id="itemCount"
+                          aria-label="Transcription count">0</span>
+                  </h1>
+                  <p class="pf-v6-c-form__helper-text drag-hint">
+                    <svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M96 32H32C14.33 32 0 46.33 0 64v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V64c0-17.67-14.33-32-32-32zm0 160H32c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zm0 160H32c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zM288 32h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32V64c0-17.67-14.33-32-32-32zm0 160h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32zm0 160h-64c-17.67 0-32 14.33-32 32v64c0 17.67 14.33 32 32 32h64c17.67 0 32-14.33 32-32v-64c0-17.67-14.33-32-32-32z"/></svg> <span data-i18n="dragToReorder">Drag to reorder</span>
+                  </p>
+                  <button class="pf-v6-c-button pf-m-secondary details-toggle" type="button" id="detailsToggle" onclick="toggleDetails()" aria-controls="detailsPanel" aria-expanded="false">
+                    <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M80 368H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm0-320H16A16 16 0 0 0 0 64v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm0 160H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm416 176H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zm0-320H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16zm0 160H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="details">Details</span>
+                  </button>
                 </div>
-                <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
-                    id="transcriptionsList" role="list" aria-label="Transcriptions">
+                <hr class="pf-v6-c-divider" />
+                <div class="pf-v6-c-drawer__body pf-m-no-padding list-body">
+                  <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
+                      id="transcriptionsList" role="list" aria-label="Transcriptions">
                 <li class="pf-v6-c-data-list__item empty-row">
                   <div class="pf-v6-c-data-list__item-row">
                     <div class="pf-v6-c-data-list__item-content">
@@ -225,62 +230,67 @@
                     </div>
                   </div>
                 </li>
-                </ul>
-              </section>
-            </div>
+                  </ul>
+                </div>
+              </div>
 
-            <div class="pf-v6-l-grid__item pf-m-12-col pf-m-4-col-on-lg edit-panel">
-        <div class="pf-v6-c-card">
-          <div class="pf-v6-c-card__header">
-            <div class="pf-v6-c-card__header-main">
-              <h2 class="pf-v6-c-card__title-text" data-i18n="editAndCorrect">Edit &amp; Correct</h2>
+              <div class="pf-v6-c-drawer__panel" id="detailsPanel">
+                <div class="pf-v6-c-drawer__body pf-m-padding details-head">
+                  <div class="pf-v6-c-drawer__head">
+                    <div class="pf-v6-c-drawer__title">
+                      <h2 class="pf-v6-c-title pf-m-md" data-i18n="details">Details</h2>
+                    </div>
+                    <div class="pf-v6-c-drawer__actions">
+                      <div class="pf-v6-c-drawer__close">
+                        <button class="pf-v6-c-button pf-m-plain" type="button"
+                                aria-label="Close the details panel"
+                                onclick="toggleDetails(false)"><span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr class="pf-v6-c-divider" />
+      <section class="pf-v6-c-drawer__body panel-section">
+        <h2 class="pf-v6-c-title pf-m-md panel-section__title" data-i18n="editAndCorrect">Edit &amp; Correct</h2>
+        <form class="pf-v6-c-form" onsubmit="return false;">
+            <div class="pf-v6-c-form__group">
+              <div class="pf-v6-c-form__group-label">
+                <label class="pf-v6-c-form__label" for="originalText">
+                  <span class="pf-v6-c-form__label-text" data-i18n="original">Original</span>
+                </label>
+              </div>
+              <div class="pf-v6-c-form__group-control">
+              <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical pf-m-readonly pf-m-plain">
+                <textarea id="originalText" rows="2" readonly></textarea>
+              </span>
+              </div>
             </div>
-          </div>
-          <div class="pf-v6-c-card__body">
-            <form class="pf-v6-c-form" onsubmit="return false;">
-              <div class="pf-v6-c-form__group">
-                <div class="pf-v6-c-form__group-label">
-                  <label class="pf-v6-c-form__label" for="originalText">
-                    <span class="pf-v6-c-form__label-text" data-i18n="original">Original</span>
-                  </label>
-                </div>
-                <div class="pf-v6-c-form__group-control">
-                <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical pf-m-readonly pf-m-plain">
-                  <textarea id="originalText" rows="3" readonly></textarea>
-                </span>
-                </div>
+            <div class="pf-v6-c-form__group">
+              <div class="pf-v6-c-form__group-label">
+                <label class="pf-v6-c-form__label" for="correctedText">
+                  <span class="pf-v6-c-form__label-text" data-i18n="correctedLabel">Corrected (Edit Here)</span>
+                </label>
               </div>
-              <div class="pf-v6-c-form__group">
-                <div class="pf-v6-c-form__group-label">
-                  <label class="pf-v6-c-form__label" for="correctedText">
-                    <span class="pf-v6-c-form__label-text" data-i18n="correctedLabel">Corrected (Edit Here)</span>
-                  </label>
-                </div>
-                <div class="pf-v6-c-form__group-control">
-                <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical">
-                  <textarea id="correctedText" rows="4" placeholder="Select an item to edit..." data-i18n-placeholder="selectItemToEdit"></textarea>
-                </span>
-                </div>
+              <div class="pf-v6-c-form__group-control">
+              <span class="pf-v6-c-form-control pf-m-textarea pf-m-resize-vertical">
+                <textarea id="correctedText" rows="4" placeholder="Select an item to edit..." data-i18n-placeholder="selectItemToEdit"></textarea>
+              </span>
               </div>
-            </form>
-          </div>
-          <div class="pf-v6-c-card__footer">
-            <button class="pf-v6-c-button pf-m-primary" type="button" onclick="saveCorrection()">
-              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M433.941 129.941l-83.882-83.882A48 48 0 0 0 316.118 32H48C21.49 32 0 53.49 0 80v352c0 26.51 21.49 48 48 48h352c26.51 0 48-21.49 48-48V163.882a48 48 0 0 0-14.059-33.941zM224 416c-35.346 0-64-28.654-64-64 0-35.346 28.654-64 64-64s64 28.654 64 64c0 35.346-28.654 64-64 64zm96-304.52V212c0 6.627-5.373 12-12 12H76c-6.627 0-12-5.373-12-12V108c0-6.627 5.373-12 12-12h228.52c3.183 0 6.235 1.264 8.485 3.515l3.48 3.48A11.996 11.996 0 0 1 320 111.48z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="save">Save</span>
-            </button>
-            <button class="pf-v6-c-button pf-m-link" type="button" onclick="cancelCorrection()">
-              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="cancel">Cancel</span>
-            </button>
-          </div>
+            </div>
+        </form>
+        <div class="panel-section__actions">
+          <button class="pf-v6-c-button pf-m-primary" type="button" onclick="saveCorrection()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M433.941 129.941l-83.882-83.882A48 48 0 0 0 316.118 32H48C21.49 32 0 53.49 0 80v352c0 26.51 21.49 48 48 48h352c26.51 0 48-21.49 48-48V163.882a48 48 0 0 0-14.059-33.941zM224 416c-35.346 0-64-28.654-64-64 0-35.346 28.654-64 64-64s64 28.654 64 64c0 35.346-28.654 64-64 64zm96-304.52V212c0 6.627-5.373 12-12 12H76c-6.627 0-12-5.373-12-12V108c0-6.627 5.373-12 12-12h228.52c3.183 0 6.235 1.264 8.485 3.515l3.48 3.48A11.996 11.996 0 0 1 320 111.48z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="save">Save</span>
+          </button>
+          <button class="pf-v6-c-button pf-m-link" type="button" onclick="cancelCorrection()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="cancel">Cancel</span>
+          </button>
         </div>
-        <div class="pf-v6-c-card" id="systemInfo" aria-label="System Info">
-          <div class="pf-v6-c-card__header">
-            <div class="pf-v6-c-card__header-main">
-              <h2 class="pf-v6-c-card__title-text" data-i18n="systemInfo">System Info</h2>
-            </div>
-          </div>
-          <div class="pf-v6-c-card__body">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
+      </section>
+                <hr class="pf-v6-c-divider" />
+      <section class="pf-v6-c-drawer__body panel-section" id="systemInfo" aria-label="System Info">
+        <h2 class="pf-v6-c-title pf-m-md panel-section__title" data-i18n="systemInfo">System Info</h2>
+        <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
                 <span class="pf-v6-c-description-list__text" data-i18n="clients">Clients</span>
@@ -313,20 +323,16 @@
                 <div class="pf-v6-c-description-list__text"><span id="sys-language" class="pf-v6-c-label pf-m-blue"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text mono">en-US</span></span></span></div>
               </dd>
             </div>
-            </dl>
-          </div>
-        </div>
-        <div class="pf-v6-c-card" id="analyticsSection">
-          <div class="pf-v6-c-card__header">
-            <div class="pf-v6-c-card__header-main">
-              <h2 class="pf-v6-c-card__title-text">Session Stats</h2>
-            </div>
-          </div>
-          <div class="pf-v6-c-card__body" id="analyticsCard" aria-label="Session Analytics">
-            <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid">
+        </dl>
+      </section>
+                <hr class="pf-v6-c-divider" />
+      <section class="pf-v6-c-drawer__body panel-section" id="analyticsSection">
+        <h2 class="pf-v6-c-title pf-m-md panel-section__title" data-i18n="sessionStats">Session Stats</h2>
+        <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
+            id="analyticsCard" aria-label="Session Analytics">
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Duration</span>
+                <span class="pf-v6-c-description-list__text" data-i18n="statDuration">Duration</span>
               </dt>
               <dd class="pf-v6-c-description-list__description">
                 <div class="pf-v6-c-description-list__text"><strong id="stat-duration">—</strong></div>
@@ -334,7 +340,7 @@
             </div>
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Peak Viewers</span>
+                <span class="pf-v6-c-description-list__text" data-i18n="statPeak">Peak Viewers</span>
               </dt>
               <dd class="pf-v6-c-description-list__description">
                 <div class="pf-v6-c-description-list__text"><strong id="stat-peak">0</strong></div>
@@ -342,7 +348,7 @@
             </div>
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Total Words</span>
+                <span class="pf-v6-c-description-list__text" data-i18n="statWords">Total Words</span>
               </dt>
               <dd class="pf-v6-c-description-list__description">
                 <div class="pf-v6-c-description-list__text"><strong id="stat-words">0</strong></div>
@@ -350,7 +356,7 @@
             </div>
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Translations</span>
+                <span class="pf-v6-c-description-list__text" data-i18n="statTranslations">Translations</span>
               </dt>
               <dd class="pf-v6-c-description-list__description">
                 <div class="pf-v6-c-description-list__text"><strong id="stat-translations">0</strong></div>
@@ -358,7 +364,7 @@
             </div>
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Bible Refs</span>
+                <span class="pf-v6-c-description-list__text" data-i18n="statBibleRefs">Bible Refs</span>
               </dt>
               <dd class="pf-v6-c-description-list__description">
                 <div class="pf-v6-c-description-list__text"><strong id="stat-bible-refs">0</strong></div>
@@ -366,26 +372,28 @@
             </div>
             <div class="pf-v6-c-description-list__group">
               <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">DB Entries</span>
+                <span class="pf-v6-c-description-list__text" data-i18n="statDbEntries">DB Entries</span>
               </dt>
               <dd class="pf-v6-c-description-list__description">
                 <div class="pf-v6-c-description-list__text"><span id="stat-db" class="pf-v6-c-label"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">—</span></span></span></div>
               </dd>
             </div>
-            </dl>
-          </div>
-          <div class="pf-v6-c-card__footer">
-            <button class="pf-v6-c-button pf-m-secondary pf-m-block" type="button" onclick="refreshAnalytics()">
-              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span><span class="pf-v6-c-button__text">Refresh Stats</span>
-            </button>
-          </div>
+        </dl>
+        <div class="panel-section__actions">
+          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="refreshAnalytics()">
+            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="refreshStats">Refresh Stats</span>
+          </button>
         </div>
-            </div>
+      </section>
+              </div>
 
+            </div>
           </div>
+
         </section>
       </main>
     </div>
+
   </div>
 
   <!-- admin.js clones this when it clears the list. -->
@@ -814,9 +822,20 @@
       </header>
       <div class="pf-v6-c-modal-box__body">
         <p class="pf-v6-c-modal-box__description">Enter your admin password to access the config editor.</p>
-          <span class="pf-v6-c-form-control">
-            <input type="password" id="configPasswordInput" placeholder="Admin password" aria-label="Admin password" onkeydown="if(event.key==='Enter')confirmConfigPassword()">
-          </span>
+          <div class="pf-v6-c-input-group">
+            <div class="pf-v6-c-input-group__item pf-m-fill">
+              <span class="pf-v6-c-form-control">
+                <input type="password" id="configPasswordInput" placeholder="Admin password" aria-label="Admin password" onkeydown="if(event.key==='Enter')confirmConfigPassword()">
+              </span>            </div>
+            <div class="pf-v6-c-input-group__item">
+              <button class="pf-v6-c-button pf-m-control" type="button"
+                      aria-controls="configPasswordInput" aria-pressed="false"
+                      aria-label="Show password" data-i18n-title="showPassword"
+                      onclick="togglePasswordField(this)">
+                <span class="pf-v6-c-button__icon"><svg class="pf-v6-svg icon-eye" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M572.52 241.4C518.29 135.59 410.93 64 288 64S57.68 135.64 3.48 241.41a32.35 32.35 0 0 0 0 29.19C57.71 376.41 165.07 448 288 448s230.32-71.64 284.52-177.41a32.35 32.35 0 0 0 0-29.19zM288 400a144 144 0 1 1 144-144 143.93 143.93 0 0 1-144 144zm0-240a95.31 95.31 0 0 0-25.31 3.79 47.85 47.85 0 0 1-66.9 66.9A95.78 95.78 0 1 0 288 160z"/></svg><svg class="pf-v6-svg icon-eye-slash" viewBox="0 0 640 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M320 400c-75.85 0-137.25-58.71-142.9-133.11L72.2 185.82c-13.79 17.3-26.48 35.59-36.72 55.59a32.35 32.35 0 0 0 0 29.19C89.71 376.41 197.07 448 320 448c26.91 0 52.87-4 77.89-10.46L346 397.39a144.13 144.13 0 0 1-26 2.61zm313.82 58.1l-110.55-85.44a331.25 331.25 0 0 0 81.25-102.07 32.35 32.35 0 0 0 0-29.19C550.29 135.59 442.93 64 320 64a308.15 308.15 0 0 0-147.32 37.7L45.46 3.37A16 16 0 0 0 23 6.18L3.37 31.45A16 16 0 0 0 6.18 53.9l588.36 454.73a16 16 0 0 0 22.46-2.81l19.64-25.27a16 16 0 0 0-2.82-22.45zm-183.72-142l-39.3-30.38A94.75 94.75 0 0 0 416 256a94.76 94.76 0 0 0-121.31-92.21A47.65 47.65 0 0 1 304 192a46.64 46.64 0 0 1-1.54 10l-73.61-56.89A142.31 142.31 0 0 1 320 112a143.92 143.92 0 0 1 144 144c0 21.63-5.29 41.79-13.9 60.11z"/></svg></span>
+              </button>
+            </div>
+          </div>
       </div>
       <footer class="pf-v6-c-modal-box__footer">
         <button class="pf-v6-c-button pf-m-link" type="button" onclick="closeConfigPasswordGate()">
@@ -849,9 +868,20 @@
               <strong id="recordingLockOwner">Another admin</strong> is currently recording
               in this room.</p>
           </div>
-          <span class="pf-v6-c-form-control">
-            <input type="password" id="recordingLockPassword" placeholder="Admin password" aria-label="Admin password">
-          </span>
+          <div class="pf-v6-c-input-group">
+            <div class="pf-v6-c-input-group__item pf-m-fill">
+              <span class="pf-v6-c-form-control">
+                <input type="password" id="recordingLockPassword" placeholder="Admin password" aria-label="Admin password">
+              </span>            </div>
+            <div class="pf-v6-c-input-group__item">
+              <button class="pf-v6-c-button pf-m-control" type="button"
+                      aria-controls="recordingLockPassword" aria-pressed="false"
+                      aria-label="Show password" data-i18n-title="showPassword"
+                      onclick="togglePasswordField(this)">
+                <span class="pf-v6-c-button__icon"><svg class="pf-v6-svg icon-eye" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M572.52 241.4C518.29 135.59 410.93 64 288 64S57.68 135.64 3.48 241.41a32.35 32.35 0 0 0 0 29.19C57.71 376.41 165.07 448 288 448s230.32-71.64 284.52-177.41a32.35 32.35 0 0 0 0-29.19zM288 400a144 144 0 1 1 144-144 143.93 143.93 0 0 1-144 144zm0-240a95.31 95.31 0 0 0-25.31 3.79 47.85 47.85 0 0 1-66.9 66.9A95.78 95.78 0 1 0 288 160z"/></svg><svg class="pf-v6-svg icon-eye-slash" viewBox="0 0 640 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M320 400c-75.85 0-137.25-58.71-142.9-133.11L72.2 185.82c-13.79 17.3-26.48 35.59-36.72 55.59a32.35 32.35 0 0 0 0 29.19C89.71 376.41 197.07 448 320 448c26.91 0 52.87-4 77.89-10.46L346 397.39a144.13 144.13 0 0 1-26 2.61zm313.82 58.1l-110.55-85.44a331.25 331.25 0 0 0 81.25-102.07 32.35 32.35 0 0 0 0-29.19C550.29 135.59 442.93 64 320 64a308.15 308.15 0 0 0-147.32 37.7L45.46 3.37A16 16 0 0 0 23 6.18L3.37 31.45A16 16 0 0 0 6.18 53.9l588.36 454.73a16 16 0 0 0 22.46-2.81l19.64-25.27a16 16 0 0 0-2.82-22.45zm-183.72-142l-39.3-30.38A94.75 94.75 0 0 0 416 256a94.76 94.76 0 0 0-121.31-92.21A47.65 47.65 0 0 1 304 192a46.64 46.64 0 0 1-1.54 10l-73.61-56.89A142.31 142.31 0 0 1 320 112a143.92 143.92 0 0 1 144 144c0 21.63-5.29 41.79-13.9 60.11z"/></svg></span>
+              </button>
+            </div>
+          </div>
       </div>
       <footer class="pf-v6-c-modal-box__footer">
         <button class="pf-v6-c-button pf-m-link" type="button" onclick="closeRecordingLock()">
@@ -1093,6 +1123,30 @@
     window.openConfigPasswordGate = openConfigPasswordGate;
     window.closeConfigPasswordGate = closeConfigPasswordGate;
     window.closeRecordingLock = closeRecordingLock;
+
+    /* The details drawer. Static from lg, where the button that opens it is
+       hidden; below that it slides over the list. */
+    function toggleDetails(force) {
+      const drawer = document.getElementById('detailsDrawer');
+      const btn = document.getElementById('detailsToggle');
+      const on = force === undefined ? !drawer.classList.contains('pf-m-expanded') : !!force;
+      drawer.classList.toggle('pf-m-expanded', on);
+      if (btn) btn.setAttribute('aria-expanded', String(on));
+    }
+    window.toggleDetails = toggleDetails;
+
+    /* The eye on a password field. The button holds both eyes and the
+       stylesheet shows the one that matches aria-pressed. */
+    function togglePasswordField(btn) {
+      const input = document.getElementById(btn.getAttribute('aria-controls'));
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', String(show));
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      input.focus();
+    }
+    window.togglePasswordField = togglePasswordField;
   </script>
 
   <script src="{{ static_url('js/i18n.js') }}"></script>

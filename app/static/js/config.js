@@ -285,17 +285,22 @@ window.discardChanges = discardChanges;
 
 /* ── the file, for anything the fields above do not cover ─────────────── */
 
-function toggleRawEditor() {
-    const card = document.getElementById('rawEditorCard');
-    const body = document.getElementById('rawEditorBody');
-    const toggle = document.getElementById('rawEditorToggle');
-    const open = !card.classList.contains('pf-m-expanded');
-    card.classList.toggle('pf-m-expanded', open);
-    toggle.setAttribute('aria-expanded', String(open));
-    body.hidden = !open;
-    if (open) loadRawConfig();
+/* The settings groups. One card is on screen at a time and the navigation says
+   which; a wizard would have made changing one port an eleven-step march. */
+function showConfigGroup(slug) {
+    document.querySelectorAll('[data-config-group]').forEach(function (card) {
+        card.hidden = card.dataset.configGroup !== slug;
+    });
+    document.querySelectorAll('.pf-v6-c-nav__link').forEach(function (link) {
+        const on = link.id === 'nav-' + slug;
+        link.classList.toggle('pf-m-current', on);
+        link.setAttribute('aria-current', on ? 'page' : 'false');
+    });
+    if (slug === 'advanced') loadRawConfig();
+    const main = document.getElementById('main-content');
+    if (main) main.scrollTop = 0;
 }
-window.toggleRawEditor = toggleRawEditor;
+window.showConfigGroup = showConfigGroup;
 
 async function loadRawConfig() {
     const textarea = document.getElementById('configEditorTextarea');
@@ -349,3 +354,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     showGate();
 });
+
+/* The eye on the password field. Both eyes live in the button and the
+   stylesheet shows the one that matches aria-pressed. */
+function togglePasswordField(btn) {
+    const input = document.getElementById(btn.getAttribute('aria-controls'));
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', String(show));
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    input.focus();
+}
+window.togglePasswordField = togglePasswordField;
