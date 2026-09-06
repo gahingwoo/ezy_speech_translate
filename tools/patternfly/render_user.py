@@ -260,13 +260,28 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
 
 
 # term, its translation key, value, the value's translation key.
+def about_link(href, text, i18n=None):
+    """A link out of the app. PatternFly marks these with the external-link
+    icon after the label, so a reader knows the click leaves the page before
+    they make it."""
+    return ('<a class="about-link" href="%s" rel="noopener noreferrer" target="_blank">'
+            '<span%s>%s</span>%s</a>'
+            % (href, i18n_attr(i18n), text,
+               icon("external-link-alt", "pf-v6-svg about-link__icon")))
+
+
+REPO = "https://github.com/gahingwoo/ezy_speech_translate"
+
 ABOUT_ROWS = (
     ("Version", None, "v4.0.0 - Open Source - MIT License", "version"),
-    ("Source", None, '<a href="https://github.com/gahingwoo/ezy_speech_translate"'
-     ' rel="noopener noreferrer" target="_blank">gahingwoo/ezy_speech_translate</a>',
-     None),
-    ("Feedback", "feedback", '<a href="https://github.com/gahingwoo/ezy_speech_translate/issues/new/choose"'
-     ' rel="noopener noreferrer" target="_blank">Open an issue</a>', None),
+    # Who wrote it. This was in the box the rewrite replaced and went missing
+    # on the way; the credit badge below says the same thing in a logo, and a
+    # logo is not a row anyone can read out.
+    ("Made by", "madeBy", about_link("https://github.com/gahingwoo",
+                                     "Ga Hing Woo (Jiaxing Hu)", "author"), None),
+    ("Source", None, about_link(REPO, "gahingwoo/ezy_speech_translate"), None),
+    ("Feedback", "feedback",
+     about_link(REPO + "/issues/new/choose", "Open an issue"), None),
 )
 
 

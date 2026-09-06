@@ -609,6 +609,15 @@ html.pf-v6-theme-dark .icon-moon {
 
 /* The maker's badge in the about box. Two files, one for each ground; the SVGs
    are loaded as images so nothing in them reaches the network. */
+/* A link out of the app carries the external-link icon after its label, which
+   is how PatternFly says the click leaves the page. The icon rides with the
+   last word so it never wraps onto a line of its own. */
+.about-link__icon {
+  margin-inline-start: var(--pf-t--global--spacer--xs);
+  vertical-align: -0.05em;
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
 .credit-badge {
   margin-block-start: var(--pf-t--global--spacer--lg);
 }
