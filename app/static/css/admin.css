@@ -129,70 +129,61 @@ html.pf-v6-theme-dark .icon-moon {
   flex-shrink: 0;
 }
 
-/* ── toolbar ─────────────────────────────────────────────────────────── */
-/* What drives the list sits above it. A bare select in a bar says nothing, so
-   the two that pick a source keep their labels beside them. */
+/* ── sidebar ──────────────────────────────────────────────────────────── */
+/* This panel is a desktop console, so the sidebar is a column that stays. It
+   holds two groups with a job each: what the panel records with, and what can
+   be done to the list. Everything it is set up with is in the settings dialog. */
 
-.toolbar-field {
+.pf-v6-c-page__sidebar-body {
+  overflow-y: auto;
+}
+
+.pf-v6-c-form__section + .pf-v6-c-form__section {
+  border-block-start: var(--pf-t--global--border--width--divider--default) solid
+    var(--pf-t--global--border--color--default);
+  padding-block-start: var(--pf-t--global--spacer--lg);
+}
+
+/* Two actions to a row while they fit, one when they do not. The sidebar body
+   is about 250px wide, so the basis has to leave room for two and the gap. */
+.sidebar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--pf-t--global--spacer--sm);
-  align-items: center;
+}
+
+.sidebar-actions > .pf-v6-c-button {
+  flex: 1 1 6rem;
   min-width: 0;
 }
 
-.toolbar-field .pf-v6-c-form__label {
-  white-space: nowrap;
+/* The sidebar is PatternFly's, and so is its state: .pf-m-expanded opens the
+   drawer below xl, .pf-m-collapsed folds the column away at xl and above, and
+   the component animates both. All this adds is lifting the open drawer over
+   its own backdrop — the sidebar sits at z-index sm and the backdrop at lg. */
+.pf-v6-c-page__sidebar.pf-m-expanded {
+  z-index: var(--pf-t--global--z-index--xl);
 }
 
-.toolbar-field .pf-v6-c-form-control {
-  min-width: 10rem;
+.sidebar-overlay {
+  display: none;
 }
 
-/* PatternFly's toolbar keeps its row on one line; a phone has room for one
-   control at a time, so below md every item takes the width and the two
-   labelled selects put their label above rather than beside. */
-@media (max-width: 47.99rem) {
-  .pf-v6-c-toolbar__content-section {
-    flex-wrap: wrap;
-  }
-
-  .pf-v6-c-toolbar__item,
-  .pf-v6-c-toolbar__group {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .toolbar-field {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .toolbar-field .pf-v6-c-form-control {
-    min-width: 0;
-  }
-
-  .pf-v6-c-toolbar__group.pf-m-action-group {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--pf-t--global--spacer--sm);
-  }
+.sidebar-overlay.active {
+  display: block;
 }
 
-/* What is being heard right now takes whatever room is left in the row, so a
-   long phrase is readable rather than clipped into a chip. */
-.interim-wrap {
-  flex: 1 1 16rem;
-  min-width: 0;
-}
-
-.interim-wrap .interim-display {
-  width: 100%;
+@media (min-width: 75rem) {
+  .sidebar-overlay.active {
+    display: none;
+  }
 }
 
 /* admin.js shows this with `display: flex`, which would otherwise stretch an
-   inline-flex label the width of the bar. */
+   inline-flex label the width of the sidebar. */
 .auto-restart-badge {
   width: fit-content;
+  margin-block-start: var(--pf-t--global--spacer--sm);
 }
 
 /* ── settings dialog ──────────────────────────────────────────────────── */
@@ -282,17 +273,23 @@ html.pf-v6-theme-dark .icon-moon {
 
 /* ── the list ─────────────────────────────────────────────────────────── */
 
-.content-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--pf-t--global--spacer--sm);
-  align-items: baseline;
-  justify-content: space-between;
-  margin-block-end: var(--pf-t--global--spacer--md);
+/* The card's own header puts its actions on the right; the title reads better
+   on the left, where the eye starts. */
+.list-card .pf-v6-c-card__header {
+  align-items: center;
 }
 
-.content-header .pf-v6-c-badge {
+.list-card .pf-v6-c-card__header-main {
+  order: -1;
+}
+
+.list-card .pf-v6-c-badge {
   margin-inline-start: var(--pf-t--global--spacer--sm);
+}
+
+/* The list runs the length of the card, so its last row has no rule under it. */
+.list-card .transcription-list > :last-child {
+  --pf-v6-c-data-list__item--BorderBlockEndWidth: 0;
 }
 
 .drag-hint {

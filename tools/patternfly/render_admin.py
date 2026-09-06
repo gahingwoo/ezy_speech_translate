@@ -230,85 +230,6 @@ def settings_modal(panels):
 ''' % (btn_icon("times"), "".join(body))
 
 
-def toolbar():
-    """PatternFly's toolbar: what drives the list sits above it, in two rows
-    with a job each. The first is the recording — where the sound comes from,
-    the button that starts it, and what is being heard right now. The second is
-    what can be done to the list. The two selects keep their labels, because a
-    bare select in a bar says nothing."""
-    return '''          <div class="pf-v6-c-toolbar" id="recordingToolbar">
-            <div class="pf-v6-c-toolbar__content">
-              <div class="pf-v6-c-toolbar__content-section">
-                <div class="pf-v6-c-toolbar__item toolbar-field">
-                  <label class="pf-v6-c-form__label" for="sourceLangSelect">
-                    <span class="pf-v6-c-form__label-text"
-                          data-i18n="sourceLanguage">Source Language</span>
-                  </label>
-%s
-                </div>
-                <div class="pf-v6-c-toolbar__item toolbar-field">
-                  <label class="pf-v6-c-form__label" for="deviceSelect">
-                    <span class="pf-v6-c-form__label-text"
-                          data-i18n="audioDevice">Audio Device</span>
-                  </label>
-%s
-                </div>
-                <div class="pf-v6-c-toolbar__item">
-%s
-                </div>
-                <div class="pf-v6-c-toolbar__item">
-                  <span class="pf-v6-c-label pf-m-blue auto-restart-badge"
-                        id="autoRestartBadge" style="display: none;">
-                    <span class="pf-v6-c-label__content">
-                      <span class="pf-v6-c-label__icon">%s</span>
-                      <span class="pf-v6-c-label__text"
-                            data-i18n="autoRestartEnabled">Auto-restart enabled</span>
-                    </span>
-                  </span>
-                </div>
-                <div class="pf-v6-c-toolbar__item interim-wrap">
-                  <div class="interim-display inactive" id="interimDisplay"
-                       role="status" aria-live="polite" data-i18n-title="recognizing"
-                       title="Recognizing...">
-                    <span id="interimText"
-                          data-i18n="waitingForSpeech">Waiting for speech...</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="pf-v6-c-toolbar__content-section">
-                <div class="pf-v6-c-toolbar__group pf-m-action-group">
-%s
-%s
-%s
-%s
-%s
-%s
-                  <input type="file" id="importFileInput" accept=".json" hidden
-                         onchange="handleImportFile(event)">
-                </div>
-              </div>
-            </div>
-          </div>
-''' % (
-        select("sourceLangSelect", SOURCE_LANGS, "Source language",
-               "changeSourceLanguage()", indent=18),
-        select("deviceSelect", '<option data-i18n="loading">Loading...</option>',
-               "Audio device", indent=18),
-        button("Start Recording", "toggleRecording()", "microphone", "primary",
-               el_id="recordBtn", i18n="startRecording",
-               extra=' aria-pressed="false"', indent=18),
-        icon("sync-alt"),
-        button("Add", "addNewItem()", "plus", "primary", i18n="add", indent=18),
-        button("Edit", "editSelected()", "edit", "secondary", i18n="edit", indent=18),
-        button("Delete", "deleteSelected()", "trash", "danger", i18n="delete", indent=18),
-        button("Clear All", "clearHistory()", "times", "secondary", i18n="clearAll", indent=18),
-        button("Export", "exportData()", "download", "secondary", i18n="export", indent=18),
-        button("Import", "document.getElementById(\'importFileInput\').click()",
-               "upload", "secondary", i18n="import", indent=18),
-    )
-
-
 def section(title, body, i18n=None, el_id=None):
     return ('    <section class="pf-v6-c-form__section sidebar-section"%s>\n'
             '      <h2 class="pf-v6-c-form__section-title"%s>%s</h2>\n'
@@ -514,8 +435,8 @@ def audio_section():
           </span>
         </div>
       </div>
-''' % (button("Start Recording", "toggleRecording()", "microphone", "primary",
-              el_id="recordBtn", i18n="startRecording",
+''' % (button("Start Recording", "toggleRecording()", "microphone",
+              "primary pf-m-block", el_id="recordBtn", i18n="startRecording",
               extra=' aria-pressed="false"'),
        icon("sync-alt"))
         + group('''          <div class="interim-display inactive" id="interimDisplay"
@@ -1069,6 +990,8 @@ def build():
         "display": settings_section(),
     }
 
+    sidebar = audio_section() + actions_section()
+
     dialogs = (settings_modal(panels) + room_manager() + config_password_modal()
                + recording_lock_modal() + about_modal() + shortcuts_modal()
                + input_modal() + export_modal())
@@ -1102,12 +1025,17 @@ def build():
   <ul class="pf-v6-c-alert-group pf-m-toast toast-container" id="toastContainer" role="list"
       aria-live="polite" aria-atomic="true"></ul>
 
-  <div class="pf-v6-c-page pf-m-no-sidebar">
+  <div class="pf-v6-c-page">
     <!-- PatternFly stacks the masthead by default: the brand takes its own
          row, the toggle and the actions the next. That is right on a phone;
          from md there is room for one row. -->
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
+        <span class="pf-v6-c-masthead__toggle">
+          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
+                  aria-controls="sidebar" aria-expanded="true" aria-label="Toggle the panel"
+                  onclick="toggleMobileMenu()">%(bars)s</button>
+        </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
                writes a customer's icon and name into. -->
@@ -1138,27 +1066,47 @@ def build():
       </div>
     </header>
 
+    <!-- Backdrop behind the sidebar when it is a drawer, below xl. -->
+    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
+         onclick="toggleMobileMenu()"></div>
+
+    <!-- The panel's own controls: what it records with, and what it can do to
+         the list. Everything it is set up with is in the settings dialog. -->
+    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Recording controls">
+      <div class="pf-v6-c-page__sidebar-body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+%(sidebar)s        </form>
+      </div>
+    </div>
+
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
         <section class="pf-v6-c-page__main-section pf-m-fill">
-%(toolbar)s
           <div class="pf-v6-l-grid pf-m-gutter">
 
+            <!-- The list sits in a card, as the editor beside it does, so the
+                 two columns read as one board rather than a list next to a
+                 stack of boxes. -->
             <div class="pf-v6-l-grid__item pf-m-12-col pf-m-8-col-on-lg">
-              <div class="content-header">
-                <h1 class="pf-v6-c-title pf-m-xl">
-                  <span data-i18n="liveTranscriptions">Transcriptions</span>
-                  <span class="pf-v6-c-badge pf-m-read" id="itemCount"
-                        aria-label="Transcription count">0</span>
-                </h1>
-                <p class="pf-v6-c-form__helper-text drag-hint">
-                  %(grip)s <span data-i18n="dragToReorder">Drag to reorder</span>
-                </p>
-              </div>
-
-              <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
-                  id="transcriptionsList" role="list" aria-label="Transcriptions">
-%(empty)s              </ul>
+              <section class="pf-v6-c-card list-card">
+                <div class="pf-v6-c-card__header">
+                  <div class="pf-v6-c-card__actions pf-m-no-offset">
+                    <p class="pf-v6-c-form__helper-text drag-hint">
+                      %(grip)s <span data-i18n="dragToReorder">Drag to reorder</span>
+                    </p>
+                  </div>
+                  <div class="pf-v6-c-card__header-main">
+                    <h1 class="pf-v6-c-card__title-text">
+                      <span data-i18n="liveTranscriptions">Transcriptions</span>
+                      <span class="pf-v6-c-badge pf-m-read" id="itemCount"
+                            aria-label="Transcription count">0</span>
+                    </h1>
+                  </div>
+                </div>
+                <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
+                    id="transcriptionsList" role="list" aria-label="Transcriptions">
+%(empty)s                </ul>
+              </section>
             </div>
 
             <div class="pf-v6-l-grid__item pf-m-12-col pf-m-4-col-on-lg edit-panel">
@@ -1183,7 +1131,8 @@ def build():
 ''' % {
         "sprite": sprite(),
         "cog": icon("cog"),
-        "toolbar": toolbar(),
+        "bars": btn_icon("bars"),
+        "sidebar": sidebar,
         "grip": icon("grip-vertical"),
         "empty": empty_state(),
         "empty_template": empty_state(6),
