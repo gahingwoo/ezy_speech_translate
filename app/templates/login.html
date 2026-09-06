@@ -75,9 +75,15 @@
                             </div>
                         </div>
 
-                        <!-- The element login.js writes a failed sign-in into.
-                             A live region, so a screen reader hears it. -->
-                        <div class="login-error" id="loginError" role="alert" aria-live="polite"></div>
+                        <!-- PatternFly's helper text in its error state. The inner
+                             span is what login.js writes a failed sign-in into,
+                             and it is a live region so a screen reader hears it. -->
+                        <div class="pf-v6-c-helper-text login-error">
+                          <div class="pf-v6-c-helper-text__item pf-m-error">
+                            <span class="pf-v6-c-helper-text__item-text" id="loginError"
+                                  role="alert" aria-live="polite"></span>
+                          </div>
+                        </div>
 
                         <div class="pf-v6-c-form__group pf-m-action">
                             <div class="pf-v6-c-form__actions">

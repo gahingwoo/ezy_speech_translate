@@ -41,34 +41,28 @@ html.pf-v6-theme-dark .icon-moon {
   display: none;
 }
 
-/* ── the three surfaces ───────────────────────────────────────────────── */
-/* PatternFly gives the masthead and the sidebar the same secondary colour and
-   leaves the border width at 0, which on this page put the top bar, the side
-   panel and the page on one flat sheet with no edges anywhere. Each surface
-   gets its own line so the eye can find them. */
+/* PatternFly separates the page's surfaces by ground, not by rules: the page
+ * is the secondary grey, the main container is the white sheet floating on it
+ * with a radius and a shadow, and the sidebar is transparent over the grey.
+ * Drawing lines between them, and painting the container grey, is what made
+ * this page look flat and made the white stop where the content stopped.
+ * The one thing set below: PatternFly hangs the sheet from the top and lets it
+ * end with its content, so on a page with little in it the ground shows under
+ * the sheet. The sheet is the page here, so it takes the whole height.
+ */
 
-.pf-v6-c-masthead {
-  border-block-end: var(--pf-t--global--border--width--divider--default) solid
-    var(--pf-t--global--border--color--default);
-}
-
-.pf-v6-c-page__sidebar {
-  --pf-v6-c-page__sidebar--BorderInlineEndWidth: var(--pf-t--global--border--width--divider--default);
-  --pf-v6-c-page__sidebar--BorderInlineEndColor: var(--pf-t--global--border--color--default);
-}
-
-/* The content sits on the page colour, and what is in it sits on cards, which
-   is the contrast PatternFly's layouts are built around. */
-.pf-v6-c-page__main-container {
-  background: var(--pf-t--global--background--color--secondary--default);
+.pf-v6-c-page {
+  --pf-v6-c-page__main-container--AlignSelf: stretch;
 }
 
 /* ── masthead ─────────────────────────────────────────────────────────── */
 
-.pf-v6-c-masthead__logo img {
-  height: 1.75rem;
+/* The mark sits on the masthead's own ground, at the size the church site
+   sets it: see .brand .brand-mark in mabc-ws/assets/site.css. No tile behind
+   it — a box around the mark reads as a favicon, not as the brand. */
+.pf-v6-c-masthead__logo .brand-mark {
   width: auto;
-  display: block;
+  height: 1.75rem;
 }
 
 .brand {
@@ -185,11 +179,6 @@ html.pf-v6-theme-dark .icon-moon {
     var(--pf-t--global--border--color--default);
   border-radius: var(--pf-t--global--border--radius--medium);
   box-shadow: var(--pf-t--global--box-shadow--sm);
-}
-
-.translation-card.corrected {
-  border-inline-start: var(--pf-t--global--border--width--strong) solid
-    var(--pf-t--global--border--color--status--success--default);
 }
 
 .card-header {
@@ -367,7 +356,7 @@ html.pf-v6-theme-dark .icon-moon {
   padding: var(--pf-t--global--spacer--xs) var(--pf-t--global--spacer--md);
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--on-brand--default);
-  background: var(--pf-t--global--background--color--brand--default);
+  background: var(--pf-t--global--color--brand--default);
   border-radius: var(--pf-t--global--border--radius--pill);
 }
 
@@ -415,7 +404,7 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 .tour-dot.active {
-  background: var(--pf-t--global--background--color--brand--default);
+  background: var(--pf-t--global--color--brand--default);
 }
 
 .tour-progress {
@@ -471,24 +460,6 @@ html[data-ui-mode="elderly"] .text-source {
   display: block;
 }
 
-/* Toasts. user.js builds each one as a div and fades it in with .show. */
-.toast {
-  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-  margin-block-end: var(--pf-t--global--spacer--sm);
-  background: var(--pf-t--global--background--color--primary--default);
-  border-inline-start: var(--pf-t--global--border--width--strong) solid
-    var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--small);
-  box-shadow: var(--pf-t--global--box-shadow--md);
-  opacity: 0;
-  transition: opacity var(--pf-t--global--motion--duration--fade--default) ease;
-}
-
-.toast.show { opacity: 1; }
-.toast.success { border-inline-start-color: var(--pf-t--global--border--color--status--success--default); }
-.toast.danger  { border-inline-start-color: var(--pf-t--global--border--color--status--danger--default); }
-.toast.warning { border-inline-start-color: var(--pf-t--global--border--color--status--warning--default); }
-.toast.info    { border-inline-start-color: var(--pf-t--global--border--color--status--info--default); }
 
 .sync-indicator.show { display: block; }
 

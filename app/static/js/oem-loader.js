@@ -187,6 +187,14 @@ function applyOEMConfig(oemConfig) {
 
 // Detect current page
 function detectCurrentPage() {
+    // A page can name itself with <body data-page="...">; the admin panel has
+    // to, because it is served at "/" and the path below would read it as the
+    // listener page and relabel its brand.
+    const declared = document.body && document.body.dataset && document.body.dataset.page;
+    if (declared) {
+        window.currentPage = declared;
+        return;
+    }
     const path = window.location.pathname;
     // Check login page first (both /admin/login and /login)
     if (path.includes('/login')) {

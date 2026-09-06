@@ -18,66 +18,23 @@ let currentTempId = null;     // Temporary ID for linking interim->final (per ut
    Toast helper (additive, mirrors user.js)
    =================================== */
 const ADMIN_MAX_TOASTS = 4;
-
-// PatternFly icons for the markup this file builds as strings. The paths are
-// in the page once, as <symbol>s in the sprite render_admin.py emits; this only
-// points at them. Never put an emoji here — the page is PatternFly 6.
-function svgIcon(name, cls) {
-    return '<svg class="pf-v6-svg' + (cls ? ' ' + cls : '') + '" aria-hidden="true"'
-        + ' role="img" width="1em" height="1em" fill="currentColor">'
-        + '<use href="#i-' + name + '"></use></svg>';
-}
 function showToast(message, type, duration) {
     type = type || 'info';
     duration = duration || 3000;
     const container = document.getElementById('toastContainer');
     if (!container) { console.log('[toast]', type, message); return; }
     while (container.children.length >= ADMIN_MAX_TOASTS) container.firstChild.remove();
-
-    // PatternFly's alert, in the toast alert group. The group is a <ul>, so
-    // each alert is wrapped in the group's item.
-    const ICONS = {
-        info: 'info-circle', success: 'check-circle',
-        warning: 'exclamation-triangle', danger: 'exclamation-circle',
-    };
-    const item = document.createElement('li');
-    item.className = 'pf-v6-c-alert-group__item';
-
-    const alert = document.createElement('div');
-    alert.className = 'pf-v6-c-alert pf-m-' + type;
-    alert.setAttribute('role', type === 'danger' ? 'alert' : 'status');
-
-    const icon = document.createElement('div');
-    icon.className = 'pf-v6-c-alert__icon';
-    icon.innerHTML = svgIcon(ICONS[type] || ICONS.info);
-
-    const title = document.createElement('p');
-    title.className = 'pf-v6-c-alert__title';
-    title.textContent = message;
-
-    const action = document.createElement('div');
-    action.className = 'pf-v6-c-alert__action';
-    const close = document.createElement('button');
-    close.className = 'pf-v6-c-button pf-m-plain';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close alert');
-    close.innerHTML = '<span class="pf-v6-c-button__icon">' + svgIcon('times') + '</span>';
-    close.onclick = function () { item.remove(); };
-    action.appendChild(close);
-
-    alert.append(icon, title, action);
-    item.appendChild(alert);
-    container.appendChild(item);
-
-    // The group animates an item in from off-stage and out again.
-    item.classList.add('pf-m-offstage-right');
-    requestAnimationFrame(function () {
-        item.classList.remove('pf-m-offstage-right');
-        item.classList.add('pf-m-incoming');
-    });
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+    toast.textContent = message;
+    container.appendChild(toast);
+    // eslint-disable-next-line no-unused-expressions
+    toast.offsetHeight;
+    toast.classList.add('show');
     setTimeout(function () {
-        item.classList.add('pf-m-outgoing');
-        setTimeout(function () { item.remove(); }, 300);
+        toast.classList.remove('show');
+        setTimeout(function () { toast.remove(); }, 300);
     }, duration);
 }
 
@@ -249,20 +206,21 @@ function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     const newTheme = current === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', newTheme);
-    document.documentElement.classList.toggle('pf-v6-theme-dark', newTheme === 'dark');
     localStorage.setItem('theme', newTheme);
 
     updateThemeUI(newTheme);
 }
 
 function updateThemeUI(theme) {
-    // The sun and the moon are both in the button; the stylesheet shows the
-    // one that matches the theme, so only the label changes here.
+    const icon = document.getElementById('themeIcon');
     const text = document.getElementById('themeText');
-    if (text) {
-        text.textContent = theme === 'dark'
-            ? t('lightMode', 'Light Mode')
-            : t('darkMode', 'Dark Mode');
+
+    if (theme === 'dark') {
+        if (icon) icon.textContent = '☀️';
+        if (text) text.textContent = t('lightMode', 'Light Mode');
+    } else {
+        if (icon) icon.textContent = '🌙';
+        if (text) text.textContent = t('darkMode', 'Dark Mode');
     }
 }
 
@@ -284,7 +242,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme
     const storedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', storedTheme);
-    document.documentElement.classList.toggle('pf-v6-theme-dark', storedTheme === 'dark');
     updateThemeUI(storedTheme);
 
     // Load server config
@@ -531,11 +488,11 @@ function connectWebSocket() {
 function updateStatus(connected) {
     const badge = document.getElementById('statusBadge');
     if (connected) {
-        badge.className = 'pf-v6-c-label pf-m-green connection-badge online';
-        badge.querySelector('.pf-v6-c-label__text').textContent = 'User Server is Online';
+        badge.className = 'connection-badge online';
+        badge.querySelector('span:last-child').textContent = 'User Server is Online';
     } else {
-        badge.className = 'pf-v6-c-label pf-m-red connection-badge offline';
-        badge.querySelector('.pf-v6-c-label__text').textContent = 'User Server is Offline';
+        badge.className = 'connection-badge offline';
+        badge.querySelector('span:last-child').textContent = 'User Server is Offline';
     }
 }
 
@@ -572,8 +529,8 @@ async function loadAudioDevices() {
     const select = document.getElementById('deviceSelect');
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        select.innerHTML = '<option>Not supported</option>';
-        showToast('Web Speech API not supported! — Please use Chrome or Edge.', 'warning');
+        select.innerHTML = '<option>❌ Not supported</option>';
+        showToast('⚠️ Web Speech API not supported! — Please use Chrome or Edge.', 'warning');
         return;
     }
 
@@ -597,8 +554,8 @@ async function loadAudioDevices() {
 
     } catch (error) {
         console.error('Microphone access error:', error);
-        select.innerHTML = '<option>Access denied</option>';
-        showToast('Microphone access denied! — Please allow microphone access.', 'danger');
+        select.innerHTML = '<option>❌ Access denied</option>';
+        showToast('⚠️ Microphone access denied! — Please allow microphone access.', 'danger');
     }
 }
 
@@ -609,7 +566,7 @@ function setupRecognitionHandlers() {
         console.log('Speech recognition started');
         isRecording = true;
         updateRecordButton();
-        updateInterimDisplay('Listening...', true);
+        updateInterimDisplay('🎤 Listening...', true);
         document.getElementById('autoRestartBadge').style.display = 'flex';
     };
 
@@ -656,11 +613,11 @@ function setupRecognitionHandlers() {
         switch (event.error) {
             case 'no-speech':
                 console.log('No speech detected - will auto-restart');
-                updateInterimDisplay('No speech detected...', true);
+                updateInterimDisplay('⚠️ No speech detected...', true);
                 break;
 
             case 'audio-capture':
-                showToast('Cannot access microphone', 'danger');
+                showToast('❌ Cannot access microphone', 'danger');
                 isRecording = false;
                 updateRecordButton();
                 updateInterimDisplay('Error: No microphone', false);
@@ -669,11 +626,11 @@ function setupRecognitionHandlers() {
 
             case 'network':
                 console.error('Network error - will retry');
-                updateInterimDisplay('Network error, retrying...', true);
+                updateInterimDisplay('⚠️ Network error, retrying...', true);
                 break;
 
             case 'not-allowed':
-                showToast('Microphone permission denied', 'danger');
+                showToast('❌ Microphone permission denied', 'danger');
                 isRecording = false;
                 updateRecordButton();
                 updateInterimDisplay('Error: Permission denied', false);
@@ -682,7 +639,7 @@ function setupRecognitionHandlers() {
 
             default:
                 console.error('Unknown error:', event.error);
-                updateInterimDisplay(`Error: ${event.error}`, true);
+                updateInterimDisplay(`⚠️ Error: ${event.error}`, true);
         }
     };
 
@@ -698,10 +655,10 @@ function setupRecognitionHandlers() {
                 // Send final with same temp_id so user-side replaces the interim card
                 sendTranscription(transcript, confidence, true);
                 currentTempId = null;  // Reset for next utterance
-                updateInterimDisplay('Sent: ' + transcript.substring(0, 50) + '...', true);
+                updateInterimDisplay('✓ Sent: ' + transcript.substring(0, 50) + '...', true);
                 setTimeout(() => {
                     if (isRecording) {
-                        updateInterimDisplay('Listening...', true);
+                        updateInterimDisplay('🎤 Listening...', true);
                     }
                 }, 500);
             } else {
@@ -741,7 +698,7 @@ function sendTranscription(text, confidence, isFinal = true) {
     const validation = validateText(text);
     if (!validation.valid) {
         console.error('Invalid input:', validation.error);
-        updateInterimDisplay(validation.error, false);
+        updateInterimDisplay('⚠️ ' + validation.error, false);
         return;
     }
 
@@ -758,7 +715,7 @@ function sendTranscription(text, confidence, isFinal = true) {
     });
 
     if (isFinal) {
-        updateInterimDisplay('Sent: ' + sanitizedText.substring(0, 50) + '...', true);
+        updateInterimDisplay('✓ Sent: ' + sanitizedText.substring(0, 50) + '...', true);
     }
 }
 
@@ -772,16 +729,14 @@ function updateRecordButton() {
     const span = btn.querySelector('[data-i18n]') || btn;
 
     if (isRecording) {
-        const text = (shared[lang] && shared[lang]['stopRecording']) || 'Stop Recording';
+        const text = (shared[lang] && shared[lang]['stopRecording']) || '⏹️ Stop Recording';
         span.textContent = text;
-        btn.className = 'pf-v6-c-button pf-m-danger recording';
-        btn.setAttribute('aria-pressed', 'true');
+        btn.className = 'pf-c-button pf-c-button--danger recording';
         langSelect.disabled = true;
     } else {
-        const text = (shared[lang] && shared[lang]['startRecording']) || 'Start Recording';
+        const text = (shared[lang] && shared[lang]['startRecording']) || '🎙️ Start Recording';
         span.textContent = text;
-        btn.className = 'pf-v6-c-button pf-m-primary';
-        btn.setAttribute('aria-pressed', 'false');
+        btn.className = 'pf-c-button pf-c-button--success';
         langSelect.disabled = false;
     }
 }
@@ -838,7 +793,7 @@ function stopRecording() {
 
 function changeSourceLanguage() {
     if (isRecording) {
-        showToast('Cannot change language while recording. Please stop recording first.', 'danger');
+        showToast('⚠️ Cannot change language while recording. Please stop recording first.', 'danger');
         const select = document.getElementById('sourceLangSelect');
         select.value = recognitionLanguage;
         return;
@@ -866,23 +821,22 @@ function renderTranscriptions() {
     if (translations.length === 0) {
         const noTrans = (shared[lang] && shared[lang]['noTranscriptionsYet']) || 'No transcriptions yet';
         const startHelp = (shared[lang] && shared[lang]['startRecordingHelp']) || 'Start recording to see transcriptions';
-        // PatternFly's empty state, icon and all, is in the template as
-        // #emptyStateTemplate rather than as a string here.
-        list.replaceChildren();
-        const tpl = document.getElementById('emptyStateTemplate');
-        if (tpl) {
-            const empty = tpl.content.cloneNode(true);
-            empty.querySelector('.pf-v6-c-empty-state__title-text').textContent = noTrans;
-            empty.querySelector('.pf-v6-c-empty-state__body').textContent = startHelp;
-            list.appendChild(empty);
-        }
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div>${noTrans}</div>
+                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                    ${startHelp}
+                </small>
+            </div>
+        `;
         return;
     }
 
     // Display in reverse order (newest first)
     const reversed = [...translations].reverse();
     list.innerHTML = reversed.map((item, index) => `
-        <div class="pf-v6-c-card pf-m-compact transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
+        <div class="transcription-card ${selectedItem && selectedItem.id === item.id ? 'selected' : ''}"
              draggable="true"
              data-id="${item.id}"
              data-index="${index}"
@@ -894,19 +848,18 @@ function renderTranscriptions() {
              ontouchstart="handleTouchStart(event, ${index})"
              ontouchmove="handleTouchMove(event)"
              ontouchend="handleTouchEnd(event)">
-            <div class="drag-handle" aria-hidden="true"
+            <div class="drag-handle"
                  onmousedown="event.stopPropagation()"
-                 ontouchstart="event.stopPropagation()"></div>
+                 ontouchstart="event.stopPropagation()">⋮⋮</div>
             <input type="checkbox"
-                   aria-label="Select transcription"
-                   class="pf-v6-c-check__input card-checkbox"
+                   class="card-checkbox"
                    data-id="${item.id}"
                    ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
                    onclick="handleCheckboxClick(event, ${item.id})">
             <div class="card-content">
                 <div class="card-header">
                     <span class="card-time">${escapeHtml(item.timestamp)}</span>
-                    ${item.is_corrected ? `<span class="pf-v6-c-label pf-m-green pf-m-compact card-badge"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${(shared && shared[lang] && shared[lang]['corrected']) || 'Corrected'}</span></span></span>` : ''}
+                    ${item.is_corrected ? `<span class="card-badge">${(shared && shared[lang] && shared[lang]['corrected']) || '✓ Corrected'}</span>` : ''}
                 </div>
                 <div class="card-text">${escapeHtml(item.corrected)}</div>
             </div>
@@ -1054,13 +1007,13 @@ function selectItem(id) {
 
 function addNewItem() {
     showInputModal({
-        title: 'Add Transcription',
+        title: '✏️ Add Transcription',
         label: 'Enter transcription text:',
         onConfirm: function (text) {
             if (!text) return;
             const validation = validateText(text);
             if (!validation.valid) {
-                showToast(validation.error, 'danger');
+                showToast('❌ ' + validation.error, 'danger');
                 return;
             }
             socket.emit('new_transcription', {
@@ -1109,7 +1062,7 @@ function saveCorrection() {
 
     const validation = validateText(corrected);
     if (!validation.valid) {
-        showToast(validation.error, 'danger');
+        showToast('❌ ' + validation.error, 'danger');
         return;
     }
 
@@ -1118,7 +1071,7 @@ function saveCorrection() {
         corrected_text: validation.text
     });
 
-    showToast('Correction saved and broadcasted to all clients!', 'success');
+    showToast('✅ Correction saved and broadcasted to all clients!', 'success');
 
     setTimeout(() => {
         cancelCorrection();
@@ -1133,7 +1086,7 @@ function cancelCorrection() {
 }
 
 function clearHistory() {
-    if (!confirm('Clear all transcriptions?\n\nThis cannot be undone.')) return;
+    if (!confirm('⚠️ Clear all transcriptions?\n\nThis cannot be undone.')) return;
     socket.emit('clear_history');
 }
 
@@ -1151,7 +1104,7 @@ function handleImportFile(event) {
 
     // Validate file type
     if (!file.name.endsWith('.json')) {
-        showToast('Please select a JSON file', 'danger');
+        showToast('❌ Please select a JSON file', 'danger');
         return;
     }
 
@@ -1163,7 +1116,7 @@ function handleImportFile(event) {
             
             // Validate data structure
             if (!data.translations || !Array.isArray(data.translations)) {
-                showToast('Invalid JSON format. Expected {translations: []}', 'danger');
+                showToast('❌ Invalid JSON format. Expected {translations: []}', 'danger');
                 return;
             }
 
@@ -1172,7 +1125,7 @@ function handleImportFile(event) {
             for (const item of data.translations) {
                 for (const field of requiredFields) {
                     if (!(field in item)) {
-                        showToast(`Missing required field: ${field}`, 'danger');
+                        showToast(`❌ Missing required field: ${field}`, 'danger');
                         return;
                     }
                 }
@@ -1180,7 +1133,7 @@ function handleImportFile(event) {
 
             importTranslations(data.translations);
         } catch (error) {
-            showToast(`Error parsing JSON: ${error.message}`, 'danger');
+            showToast(`❌ Error parsing JSON: ${error.message}`, 'danger');
             console.error('JSON parse error:', error);
         }
     };
@@ -1197,7 +1150,7 @@ function importTranslations(translationsToImport) {
     }
 
     const confirmed = confirm(
-        `Ready to import ${translationsToImport.length} translation(s).\n\n` +
+        `📥 Ready to import ${translationsToImport.length} translation(s).\n\n` +
         `This will add them to your transcriptions.\n\n` +
         `Continue?`
     );
@@ -1233,7 +1186,7 @@ function importTranslations(translationsToImport) {
         imported++;
     }
 
-    showToast(`Import completed! — ${imported} transcription(s) imported ${failed > 0 ? `${failed} skipped (validation failed)` : 'No errors'}`, 'danger');
+    showToast(`✅ Import completed! — ${imported} transcription(s) imported ${failed > 0 ? `${failed} skipped (validation failed)` : 'No errors'}`, 'danger');
     
     console.log(`Import completed: ${imported}/${translationsToImport.length}`);
 }
@@ -1283,18 +1236,18 @@ async function updateSystemInfo() {
             const activeText = (shared[lang] && shared[lang]['active']) || 'Active';
             const stoppedText = (shared[lang] && shared[lang]['stopped']) || 'Stopped';
             if (isRecording) {
-                sysRecording.className = 'pf-v6-c-label pf-m-green';
-                sysRecording.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${activeText}</span></span>`;
+                sysRecording.className = 'pf-v5-c-label pf-m-green';
+                sysRecording.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__icon">●</span><span class="pf-v5-c-label__text">${activeText}</span></span>`;
             } else {
-                sysRecording.className = 'pf-v6-c-label';
-                sysRecording.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${stoppedText}</span></span>`;
+                sysRecording.className = 'pf-v5-c-label pf-m-grey';
+                sysRecording.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__icon">○</span><span class="pf-v5-c-label__text">${stoppedText}</span></span>`;
             }
         }
 
         // Language label
         const sysLanguage = document.getElementById('sys-language');
         if (sysLanguage) {
-            sysLanguage.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text mono">${recognitionLanguage || 'en-US'}</span></span>`;
+            sysLanguage.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__text pf-mono">${recognitionLanguage || 'en-US'}</span></span>`;
         }
     } catch (error) {
         console.error('Failed to fetch system info:', error);
@@ -1357,11 +1310,11 @@ async function refreshAnalytics() {
         const dbEl = document.getElementById('stat-db');
         if (dbEl) {
             if (d.db && d.db.enabled) {
-                dbEl.className = 'pf-v6-c-label pf-m-green';
-                dbEl.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${d.db.count} rows</span></span>`;
+                dbEl.className = 'pf-v5-c-label pf-m-green';
+                dbEl.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__text">${d.db.count} rows</span></span>`;
             } else {
-                dbEl.className = 'pf-v6-c-label';
-                dbEl.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">Disabled</span></span>`;
+                dbEl.className = 'pf-v5-c-label pf-m-grey';
+                dbEl.innerHTML = `<span class="pf-v5-c-label__content"><span class="pf-v5-c-label__text">Disabled</span></span>`;
             }
         }
     } catch (err) {
@@ -1395,22 +1348,22 @@ async function refreshTTSCacheStats() {
         // Handle authentication errors
         if (response.status === 401) {
             console.error('Authentication failed for TTS cache stats');
-            cacheItemsEl.textContent = 'Not authenticated';
-            cacheMemoryEl.textContent = 'Not authenticated';
+            cacheItemsEl.textContent = '⚠️ Not authenticated';
+            cacheMemoryEl.textContent = '⚠️ Not authenticated';
             return;
         }
         
         if (response.status === 403) {
             console.error('Access denied for TTS cache stats');
-            cacheItemsEl.textContent = 'Access denied';
-            cacheMemoryEl.textContent = 'Access denied';
+            cacheItemsEl.textContent = '⚠️ Access denied';
+            cacheMemoryEl.textContent = '⚠️ Access denied';
             return;
         }
         
         if (!response.ok) {
             console.error(`Failed to fetch TTS cache stats: HTTP ${response.status}`);
-            cacheItemsEl.textContent = 'Error';
-            cacheMemoryEl.textContent = `HTTP ${response.status}`;
+            cacheItemsEl.textContent = '❌ Error';
+            cacheMemoryEl.textContent = `❌ HTTP ${response.status}`;
             return;
         }
         
@@ -1419,8 +1372,8 @@ async function refreshTTSCacheStats() {
         if (!contentType || !contentType.includes('application/json')) {
             const bodyText = await response.text();
             console.error('Backend returned non-JSON response:', bodyText.substring(0, 200));
-            cacheItemsEl.textContent = 'Server Error';
-            cacheMemoryEl.textContent = 'Invalid response from server';
+            cacheItemsEl.textContent = '❌ Server Error';
+            cacheMemoryEl.textContent = '❌ Invalid response from server';
             console.warn('Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
@@ -1437,20 +1390,20 @@ async function refreshTTSCacheStats() {
         } else {
             const errorMsg = data.error || 'Unknown error';
             console.error('Backend error:', errorMsg);
-            cacheItemsEl.textContent = 'Error';
-            cacheMemoryEl.textContent = `${errorMsg}`;
+            cacheItemsEl.textContent = '❌ Error';
+            cacheMemoryEl.textContent = `❌ ${errorMsg}`;
             console.warn('Tip: Check admin server logs for details about the TTS cache error.');
         }
     } catch (error) {
         console.error('Network error refreshing TTS cache stats:', error);
-        document.getElementById('cache-items').textContent = 'Error';
-        document.getElementById('cache-memory').textContent = (error.message || 'Network error');
+        document.getElementById('cache-items').textContent = '❌ Error';
+        document.getElementById('cache-memory').textContent = '❌ ' + (error.message || 'Network error');
         console.warn('Tip: Check if the admin panel is accessible and the backend is running.');
     }
 }
 
 async function clearTTSCache() {
-    if (!confirm('Are you sure you want to clear all TTS audio cache? This action cannot be undone.')) {
+    if (!confirm('⚠️ Are you sure you want to clear all TTS audio cache? This action cannot be undone.')) {
         return;
     }
     
@@ -1468,19 +1421,19 @@ async function clearTTSCache() {
         // Handle authentication errors
         if (response.status === 401) {
             console.error('Authentication failed for TTS cache clear');
-            showToast('Session expired, please login again', 'danger');
+            showToast('❌ Session expired, please login again', 'danger');
             return;
         }
         
         if (response.status === 403) {
             console.error('Access denied for TTS cache clear');
-            showToast('Admin access required to clear cache', 'danger');
+            showToast('❌ Admin access required to clear cache', 'danger');
             return;
         }
         
         if (!response.ok) {
             console.error(`Failed to clear TTS cache: HTTP ${response.status}`);
-            showToast(`Failed to clear TTS cache (HTTP ${response.status}) — Check browser console and server logs for details.`, 'danger');
+            showToast(`❌ Failed to clear TTS cache (HTTP ${response.status}) — Check browser console and server logs for details.`, 'danger');
             return;
         }
         
@@ -1489,7 +1442,7 @@ async function clearTTSCache() {
         if (!contentType || !contentType.includes('application/json')) {
             const bodyText = await response.text();
             console.error('Backend returned non-JSON response:', bodyText.substring(0, 200));
-            showToast('Invalid response from server. Check browser console for details.', 'danger');
+            showToast('❌ Invalid response from server. Check browser console for details.', 'danger');
             console.warn('Tip: Check if Cloudflare Tunnel is properly configured. Ensure admin server can reach user server via localhost.');
             return;
         }
@@ -1497,18 +1450,18 @@ async function clearTTSCache() {
         const data = await response.json();
         
         if (data.success) {
-            showToast(`TTS Cache Cleared! — Cleared: ${data.cleared_items} items Freed: ${data.freed_mb.toFixed(2)}MB`, 'success');
+            showToast(`✅ TTS Cache Cleared! — Cleared: ${data.cleared_items} items Freed: ${data.freed_mb.toFixed(2)}MB`, 'success');
             console.log('TTS Cache cleared:', data);
             // Refresh stats after clearing
             setTimeout(() => refreshTTSCacheStats(), 500);
         } else {
             const errorMsg = data.error || 'Failed to clear cache';
             console.error('Backend error:', errorMsg);
-            showToast(`${errorMsg} — Check admin server logs for details.`, 'danger');
+            showToast(`❌ ${errorMsg} — Check admin server logs for details.`, 'danger');
         }
     } catch (error) {
         console.error('Network error clearing TTS cache:', error);
-        showToast(`Error: ${error.message} — Check if the admin panel is accessible and the backend is running.`, 'danger');
+        showToast(`❌ Error: ${error.message} — Check if the admin panel is accessible and the backend is running.`, 'danger');
     }
 }
 
@@ -1579,7 +1532,7 @@ async function saveBibleSourceTranslation() {
 
     const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || '';
     if (!token) {
-        if (status) status.textContent = 'Not authenticated';
+        if (status) status.textContent = '⚠️ Not authenticated';
         return;
     }
 
@@ -1594,13 +1547,13 @@ async function saveBibleSourceTranslation() {
         });
         const data = await resp.json();
         if (resp.ok && data.updated) {
-            if (status) status.textContent = `Saved: ${sel.value}`;
-            showToast(`Bible source set to ${sel.value}`, 'success');
+            if (status) status.textContent = `✅ Saved: ${sel.value}`;
+            showToast(`📖 Bible source set to ${sel.value}`, 'success');
         } else {
-            if (status) status.textContent = `${data.error || 'Failed'}`;
+            if (status) status.textContent = `❌ ${data.error || 'Failed'}`;
         }
     } catch (e) {
-        if (status) status.textContent = 'Network error';
+        if (status) status.textContent = '❌ Network error';
         console.warn('saveBibleSourceTranslation failed:', e);
     }
 }
@@ -1819,25 +1772,20 @@ async function renderGlossaryTable() {
     const entries = await loadGlossary();
     tbody.innerHTML = '';
     if (!entries.length) {
-        tbody.innerHTML = '<tr class="pf-v6-c-table__tr"><td class="pf-v6-c-table__td" colspan="6">No glossary entries</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">No glossary entries</td></tr>';
         return;
     }
     entries.forEach(e => {
-        // PatternFly styles rows and cells through :where(.pf-v6-c-table__tr),
-        // so a bare <tr> built here would get no styling at all.
         const tr = document.createElement('tr');
-        tr.className = 'pf-v6-c-table__tr';
         const scope = e.room_id ? e.room_id : '(global)';
-        const flag = (name, colour) =>
-            `<span class="pf-v6-c-label pf-m-${colour} pf-m-compact"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${name}</span></span></span>`;
         tr.innerHTML = `
-            <td class="pf-v6-c-table__td" data-label="Scope">${escapeHTML(scope)}</td>
-            <td class="pf-v6-c-table__td" data-label="Source">${escapeHTML(e.source_term)}</td>
-            <td class="pf-v6-c-table__td" data-label="Lang">${escapeHTML(e.target_lang)}</td>
-            <td class="pf-v6-c-table__td" data-label="Translation">${escapeHTML(e.translation)}</td>
-            <td class="pf-v6-c-table__td" data-label="Flags">${e.case_sensitive ? flag('Case sensitive', 'blue') : ''} ${e.enabled ? '' : flag('Off', 'grey')}</td>
-            <td class="pf-v6-c-table__td pf-v6-c-table__action">
-                <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Remove entry" data-id="${Number(e.id)}" onclick="removeGlossaryEntry(${Number(e.id)})">&times;</button>
+            <td>${escapeHTML(scope)}</td>
+            <td>${escapeHTML(e.source_term)}</td>
+            <td>${escapeHTML(e.target_lang)}</td>
+            <td>${escapeHTML(e.translation)}</td>
+            <td>${e.case_sensitive ? '✓' : ''} ${e.enabled ? '' : '<span class="badge bg-secondary">off</span>'}</td>
+            <td>
+                <button style="padding:2px 8px;border:1px solid #c9190b;border-radius:4px;background:transparent;color:#c9190b;cursor:pointer;font-size:13px;" data-id="${Number(e.id)}" onclick="removeGlossaryEntry(${Number(e.id)})">×</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -2011,11 +1959,11 @@ async function confirmForceRecording() {
     const res = await _tryAcquireRecording(true, hash);
     if (res.ok && res.data.success) {
         window.closeRecordingLock && window.closeRecordingLock();
-        if (typeof showToast === 'function') showToast('Took over recording. Starting…', 'success');
+        if (typeof showToast === 'function') showToast('🔓 Took over recording. Starting…', 'success');
         // Resume normal recording start
         await _startRecognitionAfterLock();
     } else if (res.status === 401) {
-        if (typeof showToast === 'function') showToast('Wrong password', 'danger');
+        if (typeof showToast === 'function') showToast('❌ Wrong password', 'danger');
     } else {
         if (typeof showToast === 'function')
             showToast('Force-stop failed: ' + (res.data.error || res.status), 'danger');
@@ -2098,7 +2046,7 @@ if (typeof socket !== 'undefined' && socket && socket.on) {
         if (!data || data.room_id !== _currentRoomId()) return;
         if (isRecording && _origStopRecording) _origStopRecording();
         if (typeof showToast === 'function')
-            showToast('Your recording was stopped by ' + (data.by || 'another admin'), 'warning');
+            showToast('⚠️ Your recording was stopped by ' + (data.by || 'another admin'), 'warning');
     });
 }
 
@@ -2135,7 +2083,7 @@ async function confirmConfigPassword() {
             window.closeConfigPasswordGate && window.closeConfigPasswordGate();
             window.openConfigEditor && window.openConfigEditor();
         } else {
-            if (typeof showToast === 'function') showToast('Wrong password', 'danger');
+            if (typeof showToast === 'function') showToast('❌ Wrong password', 'danger');
             if (inp) { inp.value = ''; inp.focus(); }
         }
     } catch (e) {

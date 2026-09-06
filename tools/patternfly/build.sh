@@ -19,7 +19,9 @@ COMPONENTS="Login/login Form/form FormControl/form-control \
             EmptyState/empty-state Label/label Badge/badge Slider/slider \
             ModalBox/modal-box Alert/alert Alert/alert-group \
             TextInputGroup/text-input-group Switch/switch Divider/divider \
-            Icon/icon SkipToContent/skip-to-content"
+            Icon/icon SkipToContent/skip-to-content \
+            DescriptionList/description-list Table/table Table/table-grid Check/check \
+            Panel/panel Spinner/spinner DragDrop/drag-drop"
 LAYOUTS="Bullseye/bullseye Stack/stack Flex/flex Grid/grid Split/split Level/level"
 
 OUT=app/static/patternfly

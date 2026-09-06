@@ -31,6 +31,26 @@ def btn_icon(name):
     return '<span class="pf-v6-c-button__icon">%s</span>' % icon(name)
 
 
+# user.js builds cards, tour steps and the announcement banner as HTML strings
+# and used emoji for their icons. It cannot inline a 2,000-character path, so
+# the icons it needs go in the page once as a sprite and it references them by
+# id through svgIcon() — see the helper of that name in user.js.
+SPRITE_ICONS = ("book", "bullhorn", "check", "check-circle", "copy", "edit",
+                "exclamation-circle", "exclamation-triangle", "globe",
+                "info-circle", "keyboard", "microphone", "search", "times",
+                "volume-up", "wheelchair")
+
+
+def sprite():
+    parts = []
+    for name in SPRITE_ICONS:
+        i = ICONS[name]
+        parts.append('    <symbol id="i-%s" viewBox="0 0 %d %d"><path d="%s"/></symbol>'
+                     % (name, i["w"], i["h"], i["d"]))
+    return ('  <svg class="pf-sprite" aria-hidden="true" focusable="false" width="0" height="0">\n'
+            '%s\n  </svg>\n' % "\n".join(parts))
+
+
 def form_group(label_text, i18n_key, control, for_id=None, group_id=None):
     """PatternFly form group: label above, control below."""
     label = ""
@@ -56,14 +76,14 @@ def select(el_id, onchange, aria, options, extra=""):
 
 
 def sidebar_button(el_id, onclick, aria, icon_name, text_id, text, i18n_key=None, extra=""):
-    """A full-width action in the sidebar. PatternFly's link button, which is
-    what a text action in a side panel is, rather than a nav item: these do
-    things, they do not navigate."""
+    """A full-width action in the sidebar. PatternFly's secondary button, not
+    a nav item: these do things, they do not navigate. Not the link button
+    either — a column of underlined links reads as unfinished."""
     label = ('<span id="%s"%s>%s</span>' % (text_id, ' data-i18n="%s"' % i18n_key if i18n_key else "", text)
              if text_id else
              '<span%s>%s</span>' % (' data-i18n="%s"' % i18n_key if i18n_key else "", text))
     return ('      <div class="pf-v6-c-form__group">\n'
-            '        <button class="pf-v6-c-button pf-m-link pf-m-inline sidebar-action" type="button"'
+            '        <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button"'
             '%s aria-label="%s" onclick="%s"%s>\n'
             '          %s\n'
             '          <span class="pf-v6-c-button__text">%s</span>\n'
@@ -86,7 +106,8 @@ LANGS = ('<option value="en">English</option><option value="zh">简体中文</op
          '<option value="mi">Te Reo Māori</option>')
 
 
-def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=None, title_extra=""):
+def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=None,
+          title_icon_id=None, title_text_id=None):
     close = close_fn or ("hide" + el_id.replace("Modal", "").capitalize() + "()")
     # The backdrop closes on a click; a click on the box itself must not reach
     # it, which is what the app's own handlers already expected.
@@ -99,8 +120,8 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
           <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close" onclick="%s">%s</button>
         </div>
         <header class="pf-v6-c-modal-box__header">
-          <h1 class="pf-v6-c-modal-box__title" id="%s">
-            <span class="pf-v6-c-modal-box__title-text" data-i18n="%s">%s</span>
+          <h1 class="pf-v6-c-modal-box__title%s" id="%s">%s
+            <span class="pf-v6-c-modal-box__title-text"%s%s>%s</span>
           </h1>
         </header>
         <div class="pf-v6-c-modal-box__body">
@@ -109,8 +130,17 @@ def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=Non
       </div>
     </div>
   </div>
-''' % (el_id, outer, title_id, close, btn_icon("times"), title_id, title_i18n,
-       title_text + title_extra, body, footer)
+''' % (el_id, outer, title_id, close, btn_icon("times"),
+       " pf-m-icon" if title_icon_id else "", title_id,
+       # An element carrying data-i18n has its textContent replaced wholesale,
+       # so anything the JavaScript writes into has to be a sibling of it, never
+       # a child: nesting the tour's icon inside the title deleted it on the
+       # first language pass.
+       ('\n            <span class="pf-v6-c-modal-box__title-icon" id="%s"'
+        ' aria-hidden="true"></span>' % title_icon_id) if title_icon_id else "",
+       ' id="%s"' % title_text_id if title_text_id else "",
+       ' data-i18n="%s"' % title_i18n if title_i18n else "",
+       title_text, body, footer)
 
 
 def build():
@@ -235,7 +265,7 @@ def build():
         sidebar_button("sourceTextToggle", "toggleSourceText()", "Toggle source text display",
                        "book", "sourceTextText", "Show Source"),
         ('      <div class="pf-v6-c-form__group">\n'
-         '        <button class="pf-v6-c-button pf-m-link pf-m-inline sidebar-action" type="button"'
+         '        <button class="pf-v6-c-button pf-m-secondary pf-m-block sidebar-action" type="button"'
          ' aria-label="Toggle theme" onclick="toggleTheme()">\n'
          '          <span class="pf-v6-c-button__icon" id="themeIcon">%s%s</span>\n'
          '          <span class="pf-v6-c-button__text"><span id="themeText" data-i18n="darkMode">Dark Mode</span></span>\n'
@@ -359,12 +389,17 @@ def build():
      data-i18n="skipToMain">Skip to content</a>
   <div id="google_translate_element" hidden></div>
 
+%(sprite)s
+
   <!-- Toasts. PatternFly's alert group in its toast position. -->
   <ul class="pf-v6-c-alert-group pf-m-toast toast-container" id="toastContainer" role="list"
       aria-live="polite" aria-atomic="true"></ul>
 
   <div class="pf-v6-c-page">
-    <header class="pf-v6-c-masthead" role="banner">
+    <!-- PatternFly stacks the masthead by default: the brand takes its own
+         row, the toggle and the actions the next. That is right on a phone;
+         from md there is room for one row. -->
+    <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
         <span class="pf-v6-c-masthead__toggle">
           <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
@@ -375,7 +410,7 @@ def build():
           <!-- .brand and the order of its two spans are what oem-loader.js
                writes a customer's icon and name into. -->
           <div class="pf-v6-c-masthead__logo brand">
-            <span aria-hidden="true"><img src="{{ static_url('img/mabc-mark.png') }}" alt=""></span>
+            <span aria-hidden="true"><img class="pf-v6-c-brand brand-mark" src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208" alt=""></span>
             <span>EzySpeech User</span>
           </div>
         </div>
@@ -513,6 +548,7 @@ def build():
 
 </html>
 ''' % {
+        "sprite": sprite(),
         "bars": btn_icon("bars"),
         "search": icon("search"),
         "comments": icon("comments"),
@@ -526,10 +562,11 @@ def build():
                            shortcuts_body, close_fn="hideShortcuts()"),
         "welcome": modal("welcomeModal", "welcomeTitle", "welcome_title", "Welcome to EzySpeech",
                          welcome_body, welcome_footer, close_fn="hideWelcome()"),
-        "tour": modal("tourModal", "tourTitle", "userGuide", "User Guide",
+        # user.js fills the tour's icon and title per step, so neither carries
+        # a data-i18n key of its own.
+        "tour": modal("tourModal", "tourTitle", None, "User Guide",
                       tour_body, tour_footer, close_fn="hideTour()",
-                      title_extra='<span id="tourStepIcon" aria-hidden="true"></span>'
-                                  '<span id="tourStepTitle"></span>'),
+                      title_icon_id="tourStepIcon", title_text_id="tourStepTitle"),
     }
 
 

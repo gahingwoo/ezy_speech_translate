@@ -190,15 +190,6 @@ const PREPARING_AUTO_PROGRESS_MS = 6000;     // Auto-progress to 'translating' a
 
 // Animation helpers
 const CURSOR_PULSE = ['▌', '▎', '▍', '▌']; // Typing cursor animation
-
-// PatternFly icons for the markup this file builds as strings. The paths are
-// in the page once, as <symbol>s in the sprite render_user.py emits; this only
-// points at them. Never put an emoji here — the page is PatternFly 6.
-function svgIcon(name, cls) {
-    return '<svg class="pf-v6-svg' + (cls ? ' ' + cls : '') + '" aria-hidden="true"'
-        + ' role="img" width="1em" height="1em" fill="currentColor">'
-        + '<use href="#i-' + name + '"></use></svg>';
-}
 const DOT_PULSE = ['.', '..', '...', '..'];  // Dot animation
 let cursorIndex = 0;
 let dotIndex = 0;
@@ -677,7 +668,7 @@ function attachBiblePanel(card, refs) {
         const head = document.createElement('div');
         head.className = 'bible-verse-head';
         const icon = document.createElement('span');
-        icon.innerHTML = svgIcon('book');
+        icon.textContent = '📖 ';
         icon.setAttribute('aria-hidden', 'true');
         const title = document.createElement('span');
         title.className = 'bible-verse-ref';
@@ -1264,10 +1255,15 @@ function loadSettings() {
         ttsEnabled = savedTTSEnabled === 'true';
         const btn = document.getElementById('toggleTTS');
         if (btn) {
-            const label = btn.querySelector('.pf-v6-c-button__text');
-            btn.classList.toggle('active', ttsEnabled);
-            btn.setAttribute('aria-pressed', String(ttsEnabled));
-            if (label) label.textContent = ttsEnabled ? 'Disable TTS' : 'Enable TTS';
+            if (ttsEnabled) {
+                btn.classList.add('active');
+                btn.querySelector('span:first-child').textContent = '🔇';
+                btn.querySelector('span:last-child').textContent = 'Disable TTS';
+            } else {
+                btn.classList.remove('active');
+                btn.querySelector('span:first-child').textContent = '🔊';
+                btn.querySelector('span:last-child').textContent = 'Enable TTS';
+            }
         }
         console.log('Loaded TTS enabled state:', ttsEnabled);
     }
@@ -1419,7 +1415,7 @@ function loadSystemVoices() {
     // Add auto option
     const autoOption = document.createElement('option');
     autoOption.value = '';
-    autoOption.textContent = 'Auto (System Default)';
+    autoOption.textContent = '🤖 Auto (System Default)';
     voiceSelect.appendChild(autoOption);
 
     // Group voices by language
@@ -1557,7 +1553,7 @@ async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
         // Add auto option
         const autoOption = document.createElement('option');
         autoOption.value = '';
-        autoOption.textContent = 'Auto (Cloud Default)';
+        autoOption.textContent = '🤖 Auto (Cloud Default)';
         voiceSelect.appendChild(autoOption);
         
         if (edgeTTSVoices.length === 0) {
@@ -1904,54 +1900,22 @@ function showToast(message, type, duration) {
         console.log('[toast]', type, message);
         return;
     }
+    // Cap stack
     while (container.children.length >= MAX_VISIBLE_TOASTS) {
         container.firstChild.remove();
     }
-
-    // PatternFly's alert, in the toast alert group. The group is a <ul>, so
-    // each alert is wrapped in the group's item.
-    const ICONS = {
-        info: 'info-circle', success: 'check-circle',
-        warning: 'exclamation-triangle', danger: 'exclamation-circle',
-    };
-    const item = document.createElement('li');
-    item.className = 'pf-v6-c-alert-group__item';
-
-    const alert = document.createElement('div');
-    alert.className = 'pf-v6-c-alert pf-m-' + type;
-    alert.setAttribute('role', type === 'danger' ? 'alert' : 'status');
-
-    const icon = document.createElement('div');
-    icon.className = 'pf-v6-c-alert__icon';
-    icon.innerHTML = svgIcon(ICONS[type] || ICONS.info);
-
-    const title = document.createElement('p');
-    title.className = 'pf-v6-c-alert__title';
-    title.textContent = message;
-
-    const action = document.createElement('div');
-    action.className = 'pf-v6-c-alert__action';
-    const close = document.createElement('button');
-    close.className = 'pf-v6-c-button pf-m-plain';
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close alert');
-    close.innerHTML = '<span class="pf-v6-c-button__icon">' + svgIcon('times') + '</span>';
-    close.onclick = function () { item.remove(); };
-    action.appendChild(close);
-
-    alert.append(icon, title, action);
-    item.appendChild(alert);
-    container.appendChild(item);
-
-    // The group animates an item in from off-stage and out again.
-    item.classList.add('pf-m-offstage-right');
-    requestAnimationFrame(function () {
-        item.classList.remove('pf-m-offstage-right');
-        item.classList.add('pf-m-incoming');
-    });
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+    toast.textContent = message;
+    container.appendChild(toast);
+    // Force reflow then add .show for transition
+    // eslint-disable-next-line no-unused-expressions
+    toast.offsetHeight;
+    toast.classList.add('show');
     setTimeout(function () {
-        item.classList.add('pf-m-outgoing');
-        setTimeout(function () { item.remove(); }, 300);
+        toast.classList.remove('show');
+        setTimeout(function () { toast.remove(); }, 300);
     }, duration);
 }
 function t(key, fallback) {
@@ -2041,19 +2005,19 @@ function hideWelcome(event) {
 let __tourStep = 0;
 function __tourSteps() {
     return [
-        { icon: 'microphone', titleKey: 'tour_s1_title', titleFb: 'Live Translation', bodyKey: 'tour_s1_body',
+        { icon: '🎙️', titleKey: 'tour_s1_title', titleFb: 'Live Translation', bodyKey: 'tour_s1_body',
           bodyFb: 'As the host speaks, transcriptions and translations appear here in real time. Newer cards stack at the top.' },
-        { icon: 'globe', titleKey: 'tour_s2_title', titleFb: 'Choose Your Language', bodyKey: 'tour_s2_body',
+        { icon: '🌐', titleKey: 'tour_s2_title', titleFb: 'Choose Your Language', bodyKey: 'tour_s2_body',
           bodyFb: 'Use "Display Language" in the sidebar to change the interface, and "Target Language" to control the translation output.' },
-        { icon: 'volume-up', titleKey: 'tour_s3_title', titleFb: 'Listen with TTS', bodyKey: 'tour_s3_body',
+        { icon: '🔊', titleKey: 'tour_s3_title', titleFb: 'Listen with TTS', bodyKey: 'tour_s3_body',
           bodyFb: 'Enable Text-to-Speech to hear translations read aloud automatically. Adjust voice, speed and volume in the sidebar.' },
-        { icon: 'edit', titleKey: 'tour_s4_title', titleFb: 'Cards & Actions', bodyKey: 'tour_s4_body',
-          bodyFb: 'Each card has a copy button and a replay button. The Cached badge means the result was served instantly from cache.' },
-        { icon: 'search', titleKey: 'tour_s5_title', titleFb: 'Search & Export', bodyKey: 'tour_s5_body',
+        { icon: '📝', titleKey: 'tour_s4_title', titleFb: 'Cards & Actions', bodyKey: 'tour_s4_body',
+          bodyFb: 'Each card has a copy button and a replay button. The ⚡ badge means the result was served instantly from cache.' },
+        { icon: '🔍', titleKey: 'tour_s5_title', titleFb: 'Search & Export', bodyKey: 'tour_s5_body',
           bodyFb: 'Use the search bar to filter the visible list. Export keeps your full history as TXT, JSON, CSV or SRT subtitles.' },
-        { icon: 'wheelchair', titleKey: 'tour_s6_title', titleFb: 'View Modes', bodyKey: 'tour_s6_body',
+        { icon: '♿', titleKey: 'tour_s6_title', titleFb: 'View Modes', bodyKey: 'tour_s6_body',
           bodyFb: 'Switch between Standard, Accessibility (larger focus, bigger tap targets) and Elderly (large text and buttons) in Settings.' },
-        { icon: 'keyboard', titleKey: 'tour_s7_title', titleFb: 'Shortcuts', bodyKey: 'tour_s7_body',
+        { icon: '⌨️', titleKey: 'tour_s7_title', titleFb: 'Shortcuts', bodyKey: 'tour_s7_body',
           bodyFb: 'Press "?" anytime to see keyboard shortcuts. Press "/" to focus search, "g" to scroll to top, "Esc" to close dialogs.' }
     ];
 }
@@ -2071,7 +2035,7 @@ function __renderTour() {
     const prevBtn = document.getElementById('tourPrev');
     const nextBtn = document.getElementById('tourNext');
     if (!bodyEl) return;
-    if (iconEl) iconEl.innerHTML = svgIcon(step.icon);
+    if (iconEl) iconEl.textContent = step.icon;
     if (titleEl) titleEl.textContent = t(step.titleKey, step.titleFb);
     bodyEl.innerHTML = '';
     const p = document.createElement('p');
@@ -2130,7 +2094,7 @@ function markCacheHit(elem) {
     if (cardActions.querySelector('.card-badge.cache-hit')) return;
     const badge = document.createElement('span');
     badge.className = 'card-badge cache-hit';
-    badge.textContent = t('cacheHit', 'Cached');
+    badge.textContent = t('cacheHit', '⚡');
     badge.title = t('cacheHitTooltip', 'Served from translation cache');
     cardActions.insertBefore(badge, cardActions.firstChild);
 }
@@ -2947,15 +2911,16 @@ function toggleTTS() {
     ttsEnabled = !ttsEnabled;
     localStorage.setItem('ttsEnabled', ttsEnabled);
     const btn = document.getElementById('toggleTTS');
-    const text = btn.querySelector('.pf-v6-c-button__text');
+    const icon = btn.querySelector('span:first-child');
+    const text = btn.querySelector('span:last-child');
 
     if (ttsEnabled) {
         btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
+        icon.textContent = '🔇';
         text.textContent = 'Disable TTS';
     } else {
         btn.classList.remove('active');
-        btn.setAttribute('aria-pressed', 'false');
+        icon.textContent = '🔊';
         text.textContent = 'Enable TTS';
         // Clear TTS queue and stop current playback when disabling
         clearTTSQueue();
@@ -3044,14 +3009,14 @@ function copyWithFallback(id, text) {
 function showCopyFeedback(id) {
     const btn = document.getElementById('copy-btn-' + id);
     if (btn) {
-        const span = btn.querySelector('span') || btn;
-        const original = span.innerHTML;
+        const span = btn.querySelector('span');
+        const originalText = span.textContent;
 
-        span.innerHTML = svgIcon('check');
+        span.textContent = '✓';
         btn.classList.add('copied');
 
         setTimeout(function () {
-            span.innerHTML = original;
+            span.textContent = originalText;
             btn.classList.remove('copied');
         }, 2000);
     }
@@ -3455,7 +3420,7 @@ function createTranslationHTML(item) {
 
     // In transcription mode, only show original text
     if (displayMode === 'transcription') {
-        const correctedBadge = item.is_corrected ? '<span class="card-badge">Corrected</span>' : '';
+        const correctedBadge = item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : '';
         const correctedClass = item.is_corrected ? 'corrected' : '';
 
         return '\
@@ -3465,7 +3430,7 @@ function createTranslationHTML(item) {
                     <div class="card-actions">\
                         ' + correctedBadge + '\
                         <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
-                            <span>' + svgIcon('copy') + '</span>\
+                            <span>📋</span>\
                         </button>\
                     </div>\
                 </div>\
@@ -3518,16 +3483,12 @@ function createTranslationHTML(item) {
         }
     }
 
-    const correctedBadge = item.is_corrected ? '<span class="card-badge">Corrected</span>' : '';
+    const correctedBadge = item.is_corrected ? '<span class="card-badge">✓ Corrected</span>' : '';
     const correctedClass = item.is_corrected ? 'corrected' : '';
     const isTranslating = displayMode !== 'transcription' && !item.translated;
     const translatedText = item.translated || '';
     const displayText = displayMode === 'transcription' ? (item.corrected || '') : (isTranslating ? (i18n[displayLanguage]?.translating || 'Translating...') : translatedText);
-    const transatingIndicator = (displayMode !== 'transcription' && isTranslating)
-        ? '<span class="pf-v6-c-spinner pf-m-sm translating-indicator" role="progressbar" aria-label="Translating">'
-          + '<span class="pf-v6-c-spinner__clipper"></span><span class="pf-v6-c-spinner__lead-ball"></span>'
-          + '<span class="pf-v6-c-spinner__ball"></span></span>'
-        : '';
+    const transatingIndicator = (displayMode !== 'transcription' && isTranslating) ? '⏳' : '';  // Hourglass for translating status
 
     // Show source text only if enabled and in translation mode
     const sourceHtml = (displayMode !== 'transcription' && shouldShowSource) ? 
@@ -3541,9 +3502,9 @@ function createTranslationHTML(item) {
                     ' + transatingIndicator + '\
                     ' + correctedBadge + '\
                     <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
-                        <span>' + svgIcon('copy') + '</span>\
+                        <span>📋</span>\
                     </button>\
-                    <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">' + svgIcon('volume-up') + '</button>\
+                    <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">🔊</button>\
                 </div>\
             </div>\
             ' + sourceHtml + '\
@@ -3949,12 +3910,14 @@ async function translateInBackground(item, itemId, textEl) {
                 console.log('Stopped AI thinking machine, showing translation');
             }
             
-            // Remove the translating spinner from card-actions
+            // Remove hourglass (⏳) indicator from card-actions
             const cardActions = elem2.querySelector('.card-actions');
             if (cardActions) {
-                const spinner = cardActions.querySelector('.translating-indicator');
-                if (spinner) {
-                    spinner.remove();
+                const hourglassSpan = Array.from(cardActions.childNodes).find(
+                    node => node.nodeType === Node.TEXT_NODE && node.textContent.includes('⏳')
+                );
+                if (hourglassSpan) {
+                    hourglassSpan.remove();
                 }
             }
 
@@ -4150,9 +4113,7 @@ async function shareForAI(service) {
     // Show loading state
     const btn = document.getElementById('ai-summary-btn');
     const origLabel = btn ? btn.innerHTML : '';
-    if (btn) btn.innerHTML = '<span class="pf-v6-c-spinner pf-m-sm" role="progressbar" aria-label="Loading">'
-        + '<span class="pf-v6-c-spinner__clipper"></span><span class="pf-v6-c-spinner__lead-ball"></span>'
-        + '<span class="pf-v6-c-spinner__ball"></span></span> Loading…';
+    if (btn) btn.innerHTML = '<span aria-hidden="true">⏳</span> Loading…';
 
     // Fetch ALL translations from server (not just what's in memory) to avoid
     // missing early-sermon content lost to lazy loading
@@ -4358,7 +4319,7 @@ function exportAsTXT() {
     translations.forEach((item, index) => {
         content += '[' + String(index + 1).padStart(3, '0') + '] ' + item.timestamp + '\n';
         if (item.is_corrected) {
-            content += '      [CORRECTED]\n';
+            content += '      [✓ CORRECTED]\n';
         }
 
         if (displayMode === 'transcription') {
@@ -4798,8 +4759,8 @@ function setupSocketEventListeners() {
                     // Add copy + TTS buttons to card-actions
                     const actions = tempCard.querySelector('.card-actions');
                     if (actions) {
-                        actions.innerHTML = '<button class="copy-btn" id="copy-btn-' + data.id + '" data-translation-id="' + data.id + '" onclick="copyTranslationFromButton(this)" title="Copy"><span>' + svgIcon('copy') + '</span></button>' +
-                            '<button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="" title="Speak">' + svgIcon('volume-up') + '</button>';
+                        actions.innerHTML = '<button class="copy-btn" id="copy-btn-' + data.id + '" data-translation-id="' + data.id + '" onclick="copyTranslationFromButton(this)" title="Copy"><span>📋</span></button>' +
+                            '<button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="" title="Speak">🔊</button>';
                     }
 
                     // Add to translations array
@@ -4917,10 +4878,10 @@ document.addEventListener('DOMContentLoaded', function () {
 let _announcementTimer = null;
 
 const _ANNOUNCEMENT_ICONS = {
-    info:    'bullhorn',
-    success: 'check-circle',
-    warning: 'exclamation-triangle',
-    danger:  'exclamation-circle',
+    info:    '📢',
+    success: '✅',
+    warning: '⚠️',
+    danger:  '🚨',
 };
 
 function showAnnouncement(text, duration, type) {
@@ -4935,7 +4896,7 @@ function showAnnouncement(text, duration, type) {
         _announcementTimer = null;
     }
 
-    if (iconEl) iconEl.innerHTML = svgIcon(_ANNOUNCEMENT_ICONS[type] || 'bullhorn');
+    if (iconEl) iconEl.textContent = _ANNOUNCEMENT_ICONS[type] || '📢';
     msgEl.textContent = text;
 
     // Map type to banner colour via data attribute

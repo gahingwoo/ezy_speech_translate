@@ -33,16 +33,8 @@ body { margin: 0; }
 }
 .login-logo-icon img { max-width: 100%; }
 
-/* The message login.js writes on a failed sign-in. Empty until then, so it
- * takes no space and draws no border while the form is untouched. */
-.login-error {
-  color: var(--pf-t--global--text--color--status--danger--default);
-  font-size: var(--pf-t--global--font--size--body--sm);
-}
-.login-error:not(:empty) {
-  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-  border-inline-start: var(--pf-t--global--border--width--strong) solid
-    var(--pf-t--global--border--color--status--danger--default);
-  background: var(--pf-t--global--background--color--status--danger--default);
-  border-radius: var(--pf-t--global--border--radius--small);
+/* PatternFly's helper text carries the colour and the icon; all this does is
+ * keep the row out of the form until login.js writes into it. */
+.login-error:has(#loginError:empty) {
+  display: none;
 }
