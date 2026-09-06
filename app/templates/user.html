@@ -188,6 +188,12 @@
     </div>
   </div>
 
+  <!-- One tooltip for the whole page; anything with data-tooltip borrows it. -->
+  <div class="pf-v6-c-tooltip app-tooltip" id="appTooltip" role="tooltip" hidden>
+    <div class="pf-v6-c-tooltip__arrow"></div>
+    <div class="pf-v6-c-tooltip__content" id="appTooltipText"></div>
+  </div>
+
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
@@ -255,9 +261,11 @@
       <h2 class="pf-v6-c-form__section-title" data-i18n="room">Room</h2>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="userRoomSelect">
-            <span class="pf-v6-c-form__label-text" data-i18n="currentRoom">Current room</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="userRoomSelect">
+              <span class="pf-v6-c-form__label-text" data-i18n="currentRoom">Current room</span>
+            </label>
+          </div>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -271,9 +279,11 @@
     </section>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="displayLanguage">
-            <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Display Language</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="displayLanguage">
+              <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Display Language</span>
+            </label>
+          </div>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -286,9 +296,15 @@
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="displayMode">
-            <span class="pf-v6-c-form__label-text" data-i18n="displayMode">Display Mode</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="displayMode">
+              <span class="pf-v6-c-form__label-text" data-i18n="displayMode">Display Mode</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="Translation shows what the speaker said in your language. Transcription shows their own words." data-tooltip="Translation shows what the speaker said in your language. Transcription shows their own words."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -301,9 +317,15 @@
       </div>
       <div class="pf-v6-c-form__group" id="languageSelectGroup">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="targetLang">
-            <span class="pf-v6-c-form__label-text" data-i18n="targetLanguage">Target Language</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="targetLang">
+              <span class="pf-v6-c-form__label-text" data-i18n="targetLanguage">Target Language</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="The language every line is translated into." data-tooltip="The language every line is translated into."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -331,9 +353,15 @@
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="ttsEngine">
-            <span class="pf-v6-c-form__label-text" data-i18n="ttsEngine">TTS Engine</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="ttsEngine">
+              <span class="pf-v6-c-form__label-text" data-i18n="ttsEngine">TTS Engine</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection." data-tooltip="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -346,9 +374,11 @@
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="voiceSelect">
-            <span class="pf-v6-c-form__label-text" data-i18n="voice">Voice</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="voiceSelect">
+              <span class="pf-v6-c-form__label-text" data-i18n="voice">Voice</span>
+            </label>
+          </div>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -361,35 +391,69 @@
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="rateSlider">
-            <span class="pf-v6-c-form__label-text" data-i18n="speed">Speed</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="rateSlider">
+              <span class="pf-v6-c-form__label-text" data-i18n="speed">Speed</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="How fast the voice reads. 1 is its normal pace." data-tooltip="How fast the voice reads. 1 is its normal pace."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-slider">
-            <div class="pf-v6-c-slider__main">
-              <input class="pf-v6-c-slider__rail slider" id="rateSlider" type="range"
-                     min="0.5" max="2" step="0.1" value="1" aria-label="Speech rate"
-                     oninput="updateRate()">
+          <div class="pf-v6-c-number-input">
+            <div class="pf-v6-c-input-group">
+              <div class="pf-v6-c-input-group__item">
+                <button class="pf-v6-c-button pf-m-control" type="button"
+                        aria-label="Less" onclick="stepNumber('rateSlider', -0.1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+              </div>
+              <div class="pf-v6-c-input-group__item">
+                <span class="pf-v6-c-form-control">
+                  <input type="number" id="rateSlider" value="1" step="0.1" min="0.5" max="2"
+                         aria-label="Speech rate" oninput="updateRate()">
+                </span>
+              </div>
+              <div class="pf-v6-c-input-group__item">
+                <button class="pf-v6-c-button pf-m-control" type="button"
+                        aria-label="More" onclick="stepNumber('rateSlider', 0.1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+              </div>
             </div>
-            <div class="pf-v6-c-slider__value"><span class="slider-value" id="rateValue">1.0x</span></div>
+            <span class="pf-v6-c-number-input__unit"><span id="rateValue">&times;</span></span>
           </div>
         </div>
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="volumeSlider">
-            <span class="pf-v6-c-form__label-text" data-i18n="volume">Volume</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="volumeSlider">
+              <span class="pf-v6-c-form__label-text" data-i18n="volume">Volume</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="How loud the voice reads, as a percentage of the device volume." data-tooltip="How loud the voice reads, as a percentage of the device volume."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-slider">
-            <div class="pf-v6-c-slider__main">
-              <input class="pf-v6-c-slider__rail slider" id="volumeSlider" type="range"
-                     min="0" max="1" step="0.05" value="1" aria-label="Speech volume"
-                     oninput="updateVolume()">
+          <div class="pf-v6-c-number-input">
+            <div class="pf-v6-c-input-group">
+              <div class="pf-v6-c-input-group__item">
+                <button class="pf-v6-c-button pf-m-control" type="button"
+                        aria-label="Less" onclick="stepNumber('volumeSlider', -5)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+              </div>
+              <div class="pf-v6-c-input-group__item">
+                <span class="pf-v6-c-form-control">
+                  <input type="number" id="volumeSlider" value="100" step="5" min="0" max="100"
+                         aria-label="Speech volume" oninput="updateVolume()">
+                </span>
+              </div>
+              <div class="pf-v6-c-input-group__item">
+                <button class="pf-v6-c-button pf-m-control" type="button"
+                        aria-label="More" onclick="stepNumber('volumeSlider', 5)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+              </div>
             </div>
-            <div class="pf-v6-c-slider__value"><span class="slider-value" id="volumeValue">100%</span></div>
+            <span class="pf-v6-c-number-input__unit"><span id="volumeValue">%</span></span>
           </div>
         </div>
       </div>
@@ -411,9 +475,15 @@
       <div class="pf-v6-c-form__group" id="bibleVerseToggleWrap">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="bibleTargetTranslation">
-            <span class="pf-v6-c-form__label-text" data-i18n="yourBible">Your Bible</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="bibleTargetTranslation">
+              <span class="pf-v6-c-form__label-text" data-i18n="yourBible">Your Bible</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="Which Bible the verses are quoted from, in your language." data-tooltip="Which Bible the verses are quoted from, in your language."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -439,9 +509,15 @@
 
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="exportFormat">
-            <span class="pf-v6-c-form__label-text" data-i18n="format">Format</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="exportFormat">
+              <span class="pf-v6-c-form__label-text" data-i18n="format">Format</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording." data-tooltip="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -451,6 +527,13 @@
             </span>
           </span>
         </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <button class="pf-v6-c-button pf-m-secondary pf-m-block" type="button"
+                aria-label="Copy translations to the clipboard" onclick="copyExport()">
+          <span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M320 448v40c0 13.255-10.745 24-24 24H24c-13.255 0-24-10.745-24-24V120c0-13.255 10.745-24 24-24h72v296c0 30.879 25.121 56 56 56h168zm0-344V0H152c-13.255 0-24 10.745-24 24v368c0 13.255 10.745 24 24 24h272c13.255 0 24-10.745 24-24V128H344c-13.2 0-24-10.8-24-24zm120.971-31.029L375.029 7.029A24 24 0 0 0 358.059 0H352v96h96v-6.059a24 24 0 0 0-7.029-16.97z"/></svg></span>
+          <span class="pf-v6-c-button__text" data-i18n="copy">Copy to clipboard</span>
+        </button>
       </div>
       <div class="pf-v6-c-form__group">
         <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button"
@@ -483,9 +566,15 @@
 
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="uiMode">
-            <span class="pf-v6-c-form__label-text" data-i18n="uiMode">View Mode</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="uiMode">
+              <span class="pf-v6-c-form__label-text" data-i18n="uiMode">View Mode</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further." data-tooltip="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -498,18 +587,35 @@
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="fontSizeSlider">
-            <span class="pf-v6-c-form__label-text" data-i18n="fontSize">Font Size</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="fontSizeSlider">
+              <span class="pf-v6-c-form__label-text" data-i18n="fontSize">Font Size</span>
+            </label>
+          </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="The size of the translated line, in pixels." data-tooltip="The size of the translated line, in pixels."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-slider">
-            <div class="pf-v6-c-slider__main">
-              <input class="pf-v6-c-slider__rail slider" id="fontSizeSlider" type="range"
-                     min="12" max="24" step="1" value="18" aria-label="Translation font size"
-                     oninput="updateFontSize()">
+          <div class="pf-v6-c-number-input">
+            <div class="pf-v6-c-input-group">
+              <div class="pf-v6-c-input-group__item">
+                <button class="pf-v6-c-button pf-m-control" type="button"
+                        aria-label="Less" onclick="stepNumber('fontSizeSlider', -1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+              </div>
+              <div class="pf-v6-c-input-group__item">
+                <span class="pf-v6-c-form-control">
+                  <input type="number" id="fontSizeSlider" value="18" step="1" min="12" max="24"
+                         aria-label="Translation font size" oninput="updateFontSize()">
+                </span>
+              </div>
+              <div class="pf-v6-c-input-group__item">
+                <button class="pf-v6-c-button pf-m-control" type="button"
+                        aria-label="More" onclick="stepNumber('fontSizeSlider', 1)"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span></button>
+              </div>
             </div>
-            <div class="pf-v6-c-slider__value"><span id="fontSizeValue">18px</span></div>
+            <span class="pf-v6-c-number-input__unit"><span id="fontSizeValue">px</span></span>
           </div>
         </div>
       </div>
@@ -695,9 +801,11 @@
             <form class="pf-v6-c-form" onsubmit="return false;">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="setupDisplayLanguage">
-            <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Display Language</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="setupDisplayLanguage">
+              <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Display Language</span>
+            </label>
+          </div>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -710,9 +818,11 @@
       </div>
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
-          <label class="pf-v6-c-form__label" for="setupTargetLanguage">
-            <span class="pf-v6-c-form__label-text" data-i18n="targetLanguage">Target Language</span>
-          </label>
+          <div class="pf-v6-c-form__group-label-main">
+            <label class="pf-v6-c-form__label" for="setupTargetLanguage">
+              <span class="pf-v6-c-form__label-text" data-i18n="targetLanguage">Target Language</span>
+            </label>
+          </div>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
@@ -837,6 +947,73 @@
 
     const SETUP_STEPS = ['language', 'speech', 'done'];
     let setupStep = 0;
+
+    /* One tooltip, borrowed by anything carrying data-tooltip. PatternFly
+       draws it; this only says where to put it and when. */
+    (function () {
+      const tip = () => document.getElementById('appTooltip');
+      let anchor = null;
+
+      function place() {
+        const box = tip();
+        if (!anchor || !box) return;
+        const a = anchor.getBoundingClientRect();
+        const b = box.getBoundingClientRect();
+        const above = a.top > b.height + 12;
+        box.classList.toggle('pf-m-top', above);
+        box.classList.toggle('pf-m-bottom', !above);
+        box.style.top = (above ? a.top - b.height - 8 : a.bottom + 8) + 'px';
+        box.style.left =
+          Math.min(Math.max(8, a.left + a.width / 2 - b.width / 2),
+                   window.innerWidth - b.width - 8) + 'px';
+      }
+
+      function show(el) {
+        const box = tip();
+        if (!box) return;
+        anchor = el;
+        document.getElementById('appTooltipText').textContent = el.dataset.tooltip;
+        box.hidden = false;
+        place();
+      }
+
+      function hide() {
+        const box = tip();
+        anchor = null;
+        if (box) box.hidden = true;
+      }
+
+      ['mouseover', 'focusin'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+          const el = e.target.closest && e.target.closest('[data-tooltip]');
+          if (el) show(el);
+        });
+      });
+      ['mouseout', 'focusout'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+          if (e.target.closest && e.target.closest('[data-tooltip]')) hide();
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hide();
+      });
+      window.addEventListener('scroll', hide, true);
+    })();
+
+    /* The minus and plus of a number input: nudge the field, keep it inside its
+       bounds, then let its own handler run. */
+    function stepNumber(id, by) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const step = Number(el.step) || 1;
+      const decimals = (String(step).split('.')[1] || '').length;
+      let next = (Number(el.value) || 0) + Number(by);
+      if (el.min !== '') next = Math.max(Number(el.min), next);
+      if (el.max !== '') next = Math.min(Number(el.max), next);
+      el.value = next.toFixed(decimals);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    window.stepNumber = stepNumber;
 
     function toggleSetupNav() {
       const toggle = document.getElementById('setupToggle');

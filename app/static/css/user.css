@@ -197,21 +197,14 @@ html.pf-v6-theme-dark .icon-moon {
   border-radius: var(--pf-t--global--border--radius--medium);
 }
 
-.translation-card {
-  padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
-  background: var(--pf-t--global--background--color--primary--default);
-  border: var(--pf-t--global--border--width--box--default) solid
-    var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--medium);
-  box-shadow: var(--pf-t--global--box-shadow--sm);
+/* The card's own header puts its actions on the right; the time reads better
+   on the left, where the eye starts. */
+.card-header {
+  align-items: center;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--pf-t--global--spacer--sm);
-  margin-block-end: var(--pf-t--global--spacer--sm);
+.card-header .pf-v6-c-card__header-main {
+  order: -1;
 }
 
 .card-time {
@@ -220,12 +213,34 @@ html.pf-v6-theme-dark .icon-moon {
   color: var(--pf-t--global--text--color--subtle);
 }
 
+/* A card can carry two marks and two buttons; on a narrow card that is more
+   than one line, so the row wraps rather than pushing the speaker off the edge. */
 .card-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--pf-t--global--spacer--sm);
+  justify-content: flex-end;
+  gap: var(--pf-t--global--spacer--xs);
+  min-width: 0;
 }
 
+/* The marks lead the body; when there are none the row takes no space. */
+.card-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--xs);
+  align-items: center;
+}
+
+.card-marks:empty {
+  display: none;
+}
+
+.card-marks:not(:empty) {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+/* The two marks a card can carry: corrected, and served from cache. */
 .card-badge {
   padding: 0 var(--pf-t--global--spacer--sm);
   font-size: var(--pf-t--global--font--size--body--sm);
@@ -233,28 +248,12 @@ html.pf-v6-theme-dark .icon-moon {
   border: var(--pf-t--global--border--width--box--default) solid
     var(--pf-t--global--border--color--status--success--default);
   border-radius: var(--pf-t--global--border--radius--pill);
+  white-space: nowrap;
 }
 
 .card-badge.cache-hit {
   color: var(--pf-t--global--text--color--subtle);
   border-color: var(--pf-t--global--border--color--default);
-}
-
-.copy-btn,
-.tts-icon {
-  padding: var(--pf-t--global--spacer--xs);
-  color: var(--pf-t--global--icon--color--subtle);
-  background: none;
-  border: 0;
-  border-radius: var(--pf-t--global--border--radius--small);
-  cursor: pointer;
-  line-height: 1;
-}
-
-.copy-btn:hover,
-.tts-icon:hover {
-  color: var(--pf-t--global--icon--color--regular);
-  background: var(--pf-t--global--background--color--action--plain--hover);
 }
 
 .copy-btn.copied {
@@ -411,6 +410,24 @@ html.pf-v6-theme-dark .icon-moon {
 
 .setup-step[hidden] {
   display: none;
+}
+
+/* PatternFly styles the help button in a form group's label but leaves the
+   label a block, so the two stack. They belong on one line. */
+.pf-v6-c-form__group-label:has(.pf-v6-c-form__group-label-help) {
+  display: flex;
+  gap: var(--pf-t--global--spacer--xs);
+  align-items: center;
+}
+
+/* ── tooltip ──────────────────────────────────────────────────────────── */
+/* PatternFly draws it; the page owns one and moves it to whatever is hovered. */
+
+.app-tooltip {
+  position: fixed;
+  z-index: var(--pf-t--global--z-index--2xl);
+  max-width: 20rem;
+  pointer-events: none;
 }
 
 /* ── settings dialog ──────────────────────────────────────────────────── */

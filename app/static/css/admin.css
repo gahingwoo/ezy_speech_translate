@@ -286,14 +286,11 @@ html.pf-v6-theme-dark .icon-moon {
   cursor: pointer;
 }
 
-.transcription-card.dragging {
-  opacity: 0.5;
-}
-
-.transcription-card.drag-over {
-  outline: var(--pf-t--global--border--width--strong) dashed
+/* PatternFly's draggable draws the row being dragged; this is only the line
+   showing where it would land. */
+.transcription-card.pf-m-drag-over {
+  box-shadow: inset 0 var(--pf-t--global--border--width--strong) 0
     var(--pf-t--global--border--color--brand--default);
-  outline-offset: calc(-1 * var(--pf-t--global--border--width--strong));
 }
 
 /* The empty state stands in for the whole list, so it has no row furniture. */

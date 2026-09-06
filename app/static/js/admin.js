@@ -900,7 +900,7 @@ function renderTranscriptions() {
     // .transcription-card stays on the row because admin.js's drag handlers
     // find rows by that class.
     list.innerHTML = reversed.map((item, index) => `
-        <li class="pf-v6-c-data-list__item transcription-card ${selectedItem && selectedItem.id === item.id ? 'pf-m-selected selected' : ''}"
+        <li class="pf-v6-c-data-list__item pf-v6-c-draggable transcription-card ${selectedItem && selectedItem.id === item.id ? 'pf-m-selected selected' : ''}"
             draggable="true"
             data-id="${item.id}"
             data-index="${index}"
@@ -947,15 +947,15 @@ function renderTranscriptions() {
 function handleDragStart(event, index) {
     draggedElement = event.target;
     draggedIndex = index;
-    event.target.classList.add('dragging');
+    event.target.classList.add('pf-m-dragging', 'dragging');
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/html', event.target.innerHTML);
 }
 
 function handleDragEnd(event) {
-    event.target.classList.remove('dragging');
+    event.target.classList.remove('pf-m-dragging', 'dragging');
     document.querySelectorAll('.transcription-card').forEach(card => {
-        card.classList.remove('drag-over');
+        card.classList.remove('pf-m-drag-over', 'drag-over');
     });
 }
 
@@ -967,7 +967,7 @@ function handleDragOver(event) {
 
     const target = event.target.closest('.transcription-card');
     if (target && target !== draggedElement) {
-        target.classList.add('drag-over');
+        target.classList.add('pf-m-drag-over', 'drag-over');
     }
 
     return false;
@@ -978,7 +978,7 @@ function handleDrop(event, dropIndex) {
         event.stopPropagation();
     }
 
-    event.target.closest('.transcription-card')?.classList.remove('drag-over');
+    event.target.closest('.transcription-card')?.classList.remove('pf-m-drag-over', 'drag-over');
 
     if (draggedIndex !== dropIndex) {
         reorderTranslations(draggedIndex, dropIndex);
@@ -997,7 +997,7 @@ function handleTouchStart(event, index) {
     draggedIndex = index;
     touchStartY = event.touches[0].clientY;
 
-    touchElement.classList.add('dragging');
+    touchElement.classList.add('pf-m-dragging', 'dragging');
 }
 
 function handleTouchMove(event) {
@@ -1018,10 +1018,10 @@ function handleTouchMove(event) {
         const cardMiddle = rect.top + rect.height / 2;
 
         if (touch.clientY < cardMiddle && idx > 0) {
-            card.classList.add('drag-over');
+            card.classList.add('pf-m-drag-over', 'drag-over');
             targetIndex = idx;
         } else {
-            card.classList.remove('drag-over');
+            card.classList.remove('pf-m-drag-over', 'drag-over');
         }
     });
 }
@@ -1033,7 +1033,7 @@ function handleTouchEnd(event) {
 
     touchElement.style.transform = '';
     touchElement.style.zIndex = '';
-    touchElement.classList.remove('dragging');
+    touchElement.classList.remove('pf-m-dragging', 'dragging');
 
     const cards = document.querySelectorAll('.transcription-card');
     let dropIndex = -1;
@@ -1041,7 +1041,7 @@ function handleTouchEnd(event) {
     cards.forEach((card, idx) => {
         if (card.classList.contains('drag-over')) {
             dropIndex = idx;
-            card.classList.remove('drag-over');
+            card.classList.remove('pf-m-drag-over', 'drag-over');
         }
     });
 

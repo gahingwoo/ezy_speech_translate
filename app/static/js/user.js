@@ -1344,13 +1344,11 @@ function loadSettings() {
     if (savedRate) {
         ttsRate = parseFloat(savedRate);
         document.getElementById('rateSlider').value = ttsRate;
-        document.getElementById('rateValue').textContent = ttsRate.toFixed(1) + 'x';
     }
 
     if (savedVolume) {
         ttsVolume = parseFloat(savedVolume);
-        document.getElementById('volumeSlider').value = ttsVolume;
-        document.getElementById('volumeValue').textContent = Math.round(ttsVolume * 100) + '%';
+        document.getElementById('volumeSlider').value = Math.round(ttsVolume * 100);
     }
 
     if (savedTheme) {
@@ -1361,7 +1359,6 @@ function loadSettings() {
     if (savedFontSize) {
         fontSize = parseInt(savedFontSize);
         document.getElementById('fontSizeSlider').value = fontSize;
-        document.getElementById('fontSizeValue').textContent = fontSize + 'px';
         applyFontSize();
     }
 
@@ -2173,20 +2170,19 @@ window.__translationCacheMeta = window.__translationCacheMeta || {};
 
 function markCacheHit(elem) {
     if (!elem) return;
-    const cardActions = elem.querySelector('.card-actions');
-    if (!cardActions) return;
-    if (cardActions.querySelector('.card-badge.cache-hit')) return;
+    // The marks sit at the head of the body, next to the corrected badge.
+    const marks = elem.querySelector('.card-marks');
+    if (!marks || marks.querySelector('.card-badge.cache-hit')) return;
     const badge = document.createElement('span');
     badge.className = 'card-badge cache-hit';
     badge.textContent = t('cacheHit', 'Cached');
     badge.title = t('cacheHitTooltip', 'Served from translation cache');
-    cardActions.insertBefore(badge, cardActions.firstChild);
+    marks.appendChild(badge);
 }
 
 
 function updateFontSize() {
     fontSize = parseInt(document.getElementById('fontSizeSlider').value);
-    document.getElementById('fontSizeValue').textContent = fontSize + 'px';
     localStorage.setItem('fontSize', fontSize);
     applyFontSize();
 }
@@ -3024,13 +3020,11 @@ function toggleTTS() {
 
 function updateRate() {
     ttsRate = parseFloat(document.getElementById('rateSlider').value);
-    document.getElementById('rateValue').textContent = ttsRate.toFixed(1) + 'x';
     localStorage.setItem('ttsRate', ttsRate);
 }
 
 function updateVolume() {
-    ttsVolume = parseFloat(document.getElementById('volumeSlider').value);
-    document.getElementById('volumeValue').textContent = Math.round(ttsVolume * 100) + '%';
+    ttsVolume = parseFloat(document.getElementById('volumeSlider').value) / 100;
     localStorage.setItem('ttsVolume', ttsVolume);
 }
 
@@ -3519,18 +3513,22 @@ function createTranslationHTML(item) {
         const correctedClass = item.is_corrected ? 'corrected' : '';
 
         return '\
-            <div class="translation-card ' + correctedClass + '" id="' + itemId + '">\
-                <div class="card-header">\
-                    <span class="card-time">' + item.timestamp + '</span>\
-                    <div class="card-actions">\
-                        ' + correctedBadge + '\
-                        <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
-                            <span>' + svgIcon('copy') + '</span>\
+            <article class="pf-v6-c-card pf-m-compact translation-card ' + correctedClass + '" id="' + itemId + '">\
+                <div class="pf-v6-c-card__header card-header">\
+                    <div class="pf-v6-c-card__actions pf-m-no-offset card-actions">\
+                        <button class="pf-v6-c-button pf-m-plain copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
+                            <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
                         </button>\
                     </div>\
+                    <div class="pf-v6-c-card__header-main">\
+                        <span class="card-time">' + item.timestamp + '</span>\
+                    </div>\
                 </div>\
-                <div class="text-target" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>\
-            </div>\
+                <div class="pf-v6-c-card__body">\
+                    <div class="card-marks">' + correctedBadge + '</div>\
+                    <div class="text-target" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>\
+                </div>\
+            </article>\
         ';
     }
 
@@ -3600,21 +3598,26 @@ function createTranslationHTML(item) {
         '<div class="text-source" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>' : '';
 
     return '\
-        <div class="translation-card ' + correctedClass + '" id="' + itemId + '">\
-            <div class="card-header">\
-                <span class="card-time">' + item.timestamp + '</span>\
-                <div class="card-actions">\
-                    ' + transatingIndicator + '\
-                    ' + correctedBadge + '\
-                    <button class="copy-btn" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
-                        <span>' + svgIcon('copy') + '</span>\
+        <article class="pf-v6-c-card pf-m-compact translation-card ' + correctedClass + '" id="' + itemId + '">\
+            <div class="pf-v6-c-card__header card-header">\
+                <div class="pf-v6-c-card__actions pf-m-no-offset card-actions">\
+                    <button class="pf-v6-c-button pf-m-plain copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
+                        <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
                     </button>\
-                    <button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">' + svgIcon('volume-up') + '</button>\
+                    <button class="pf-v6-c-button pf-m-plain tts-icon" type="button" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
+                        <span class="pf-v6-c-button__icon">' + svgIcon('volume-up') + '</span>\
+                    </button>\
+                </div>\
+                <div class="pf-v6-c-card__header-main">\
+                    <span class="card-time">' + item.timestamp + '</span>\
                 </div>\
             </div>\
-            ' + sourceHtml + '\
-            <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '">' + escapeHtml(displayText) + '</div>\
-        </div>\
+            <div class="pf-v6-c-card__body">\
+                <div class="card-marks">' + transatingIndicator + correctedBadge + '</div>\
+                ' + sourceHtml + '\
+                <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '">' + escapeHtml(displayText) + '</div>\
+            </div>\
+        </article>\
     ';
 }
 
@@ -4351,6 +4354,28 @@ function clearLocal() {
         clearSearch();
     }
 }
+
+/* The same text the download would hold, on the clipboard instead. Some
+   listeners want to paste a few lines into a message, not keep a file. */
+async function copyExport() {
+    if (translations.length === 0) {
+        showToast(t('toast_exportEmpty', 'No translations to export'), 'warning');
+        return;
+    }
+    const format = document.getElementById('exportFormat').value;
+    const content = format === 'json' ? exportAsJSON()
+        : format === 'csv' ? exportAsCSV()
+        : format === 'srt' ? exportAsSRT()
+        : exportAsTXT();
+    try {
+        await navigator.clipboard.writeText(content);
+        showToast(t('toast_copied', 'Copied to clipboard'), 'success');
+    } catch (err) {
+        console.error('copyExport failed', err);
+        showToast(t('toast_copyFailed', 'Failed to copy to clipboard'), 'danger');
+    }
+}
+window.copyExport = copyExport;
 
 function exportData() {
     if (translations.length === 0) {

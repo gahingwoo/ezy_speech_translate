@@ -996,7 +996,7 @@ def build():
                 </p>
               </div>
 
-              <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag transcription-list"
+              <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
                   id="transcriptionsList" role="list" aria-label="Transcriptions">
 %(empty)s              </ul>
             </div>

@@ -55,19 +55,66 @@ def sprite():
             '%s\n  </svg>\n' % "\n".join(parts))
 
 
-def form_group(label_text, i18n_key, control, for_id=None, group_id=None):
-    """PatternFly form group: label above, control below."""
+def form_group(label_text, i18n_key, control, for_id=None, group_id=None, help=None):
+    """PatternFly form group: label above, control below, and an optional hint
+    in the label's help slot."""
     label = ""
     if label_text is not None:
+        help_button = ""
+        if help:
+            help_button = (
+                '            <span class="pf-v6-c-form__group-label-help">\n'
+                '              <button class="pf-v6-c-button pf-m-plain" type="button"\n'
+                '                      aria-label="%s" data-tooltip="%s">%s</button>\n'
+                '            </span>\n' % (help, help, icon("info-circle")))
         label = ('        <div class="pf-v6-c-form__group-label">\n'
-                 '          <label class="pf-v6-c-form__label"%s>\n'
-                 '            <span class="pf-v6-c-form__label-text" data-i18n="%s">%s</span>\n'
-                 '          </label>\n'
-                 '        </div>\n' % (' for="%s"' % for_id if for_id else "", i18n_key, label_text))
+                 '          <div class="pf-v6-c-form__group-label-main">\n'
+                 '            <label class="pf-v6-c-form__label"%s>\n'
+                 '              <span class="pf-v6-c-form__label-text" data-i18n="%s">%s</span>\n'
+                 '            </label>\n'
+                 '          </div>\n'
+                 '%s'
+                 '        </div>\n' % (' for="%s"' % for_id if for_id else "",
+                                       i18n_key, label_text, help_button))
     return ('      <div class="pf-v6-c-form__group"%s>\n%s'
             '        <div class="pf-v6-c-form__group-control">\n%s\n'
             '        </div>\n'
             '      </div>\n' % (' id="%s"' % group_id if group_id else "", label, control))
+
+
+def number_input(el_id, value, unit, aria, oninput, step="1", minimum=None,
+                 maximum=None, indent=10):
+    """PatternFly's number input: minus, a field, plus. The buttons drive the
+    field and then call the same handler it does, so there is one code path,
+    and unlike a range input it can be typed into and hit on a phone."""
+    pad = " " * indent
+    bounds = ""
+    if minimum is not None:
+        bounds += ' min="%s"' % minimum
+    if maximum is not None:
+        bounds += ' max="%s"' % maximum
+    return ('%s<div class="pf-v6-c-number-input">\n'
+            '%s  <div class="pf-v6-c-input-group">\n'
+            '%s    <div class="pf-v6-c-input-group__item">\n'
+            '%s      <button class="pf-v6-c-button pf-m-control" type="button"\n'
+            '%s              aria-label="Less" onclick="stepNumber(\'%s\', -%s)">%s</button>\n'
+            '%s    </div>\n'
+            '%s    <div class="pf-v6-c-input-group__item">\n'
+            '%s      <span class="pf-v6-c-form-control">\n'
+            '%s        <input type="number" id="%s" value="%s" step="%s"%s\n'
+            '%s               aria-label="%s" oninput="%s">\n'
+            '%s      </span>\n'
+            '%s    </div>\n'
+            '%s    <div class="pf-v6-c-input-group__item">\n'
+            '%s      <button class="pf-v6-c-button pf-m-control" type="button"\n'
+            '%s              aria-label="More" onclick="stepNumber(\'%s\', %s)">%s</button>\n'
+            '%s    </div>\n'
+            '%s  </div>\n'
+            '%s  <span class="pf-v6-c-number-input__unit">%s</span>\n'
+            '%s</div>'
+            % (pad, pad, pad, pad, pad, el_id, step, btn_icon("minus"), pad, pad,
+               pad, pad, el_id, value, step, bounds, pad, aria, oninput, pad, pad,
+               pad, pad, pad, el_id, step, btn_icon("plus"), pad, pad, pad, unit, pad))
 
 
 def select(el_id, onchange, aria, options, extra=""):
@@ -450,10 +497,10 @@ def build():
                    select("displayMode", "changeDisplayMode()", "Select display mode",
                           '<option value="translation" data-i18n="translation">Translation</option>'
                           '<option value="transcription" data-i18n="transcriptionOnly">Transcription</option>'),
-                   "displayMode"),
+                   "displayMode", help="Translation shows what the speaker said in your language. Transcription shows their own words."),
         form_group("Target Language", "targetLanguage",
                    select("targetLang", "changeLanguage()", "Select target language", LANGS),
-                   "targetLang", group_id="languageSelectGroup"),
+                   "targetLang", group_id="languageSelectGroup", help="The language every line is translated into."),
     ))
 
     # Text to speech
@@ -472,34 +519,33 @@ def build():
                    select("ttsEngine", "changeTTSEngine()", "Select TTS engine",
                           '<option value="system" data-i18n="tts_system">System (Local)</option>'
                           '<option value="edge" data-i18n="tts_edge">Edge (Server)</option>'),
-                   "ttsEngine"),
+                   "ttsEngine", help="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection."),
         form_group("Voice", "voice",
                    select("voiceSelect", "changeVoice()", "Select voice",
                           '<option value="" data-i18n="tts_autoVoice">Auto (System Default)</option>'),
                    "voiceSelect"),
         form_group("Speed", "speed",
-                   '''          <div class="pf-v6-c-slider">
-            <div class="pf-v6-c-slider__main">
-              <input class="pf-v6-c-slider__rail slider" id="rateSlider" type="range"
-                     min="0.5" max="2" step="0.1" value="1" aria-label="Speech rate"
-                     oninput="updateRate()">
-            </div>
-            <div class="pf-v6-c-slider__value"><span class="slider-value" id="rateValue">1.0x</span></div>
-          </div>''', "rateSlider"),
+                   number_input("rateSlider", "1", '<span id="rateValue">&times;</span>',
+                                "Speech rate", "updateRate()", step="0.1",
+                                minimum="0.5", maximum="2"),
+                   "rateSlider", help="How fast the voice reads. 1 is its normal pace."),
         form_group("Volume", "volume",
-                   '''          <div class="pf-v6-c-slider">
-            <div class="pf-v6-c-slider__main">
-              <input class="pf-v6-c-slider__rail slider" id="volumeSlider" type="range"
-                     min="0" max="1" step="0.05" value="1" aria-label="Speech volume"
-                     oninput="updateVolume()">
-            </div>
-            <div class="pf-v6-c-slider__value"><span class="slider-value" id="volumeValue">100%</span></div>
-          </div>''', "volumeSlider"),
+                   number_input("volumeSlider", "100", '<span id="volumeValue">%</span>',
+                                "Speech volume", "updateVolume()", step="5",
+                                minimum="0", maximum="100"),
+                   "volumeSlider", help="How loud the voice reads, as a percentage of the device volume."),
     ))
 
     # Export
     panels["export"] = ('''
 %s      <div class="pf-v6-c-form__group">
+        <button class="pf-v6-c-button pf-m-secondary pf-m-block" type="button"
+                aria-label="Copy translations to the clipboard" onclick="copyExport()">
+          %s
+          <span class="pf-v6-c-button__text" data-i18n="copy">Copy to clipboard</span>
+        </button>
+      </div>
+      <div class="pf-v6-c-form__group">
         <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button"
                 aria-label="Download translations" onclick="exportData()">
           %s
@@ -514,7 +560,8 @@ def build():
                           '<option value="json" data-i18n="format_json">JSON</option>'
                           '<option value="csv" data-i18n="format_csv">CSV</option>'
                           '<option value="srt" data-i18n="format_srt">Subtitle (SRT)</option>'),
-                   "exportFormat"),
+                   "exportFormat", help="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording."),
+        btn_icon("copy"),
         btn_icon("download"),
         sidebar_button("ai-summary-btn", "shareForAI('chatgpt')", "Share for AI", "share-alt",
                        None, "AI sermon summary", "aiSermonSummary") +
@@ -532,16 +579,12 @@ def build():
                           '<option value="standard" data-i18n="uiMode_standard">Standard</option>'
                           '<option value="accessibility" data-i18n="uiMode_accessibility">Accessibility</option>'
                           '<option value="elderly" data-i18n="uiMode_elderly">Elderly</option>'),
-                   "uiMode"),
+                   "uiMode", help="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further."),
         form_group("Font Size", "fontSize",
-                   '''          <div class="pf-v6-c-slider">
-            <div class="pf-v6-c-slider__main">
-              <input class="pf-v6-c-slider__rail slider" id="fontSizeSlider" type="range"
-                     min="12" max="24" step="1" value="18" aria-label="Translation font size"
-                     oninput="updateFontSize()">
-            </div>
-            <div class="pf-v6-c-slider__value"><span id="fontSizeValue">18px</span></div>
-          </div>''', "fontSizeSlider"),
+                   number_input("fontSizeSlider", "18", '<span id="fontSizeValue">px</span>',
+                                "Translation font size", "updateFontSize()",
+                                step="1", minimum="12", maximum="24"),
+                   "fontSizeSlider", help="The size of the translated line, in pixels."),
         sidebar_button("sourceTextToggle", "toggleSourceText()", "Toggle source text display",
                        "book", "sourceTextText", "Show Source"),
         ('      <div class="pf-v6-c-form__group">\n'
@@ -572,7 +615,7 @@ def build():
                    select("bibleTargetTranslation", "onBibleTranslationChange()",
                           "Select Bible translation for your language",
                           '<option value="" data-i18n="bibleLoading">— Loading... —</option>'),
-                   "bibleTargetTranslation"),
+                   "bibleTargetTranslation", help="Which Bible the verses are quoted from, in your language."),
     ))
 
 
@@ -807,6 +850,12 @@ def build():
     </div>
   </div>
 
+  <!-- One tooltip for the whole page; anything with data-tooltip borrows it. -->
+  <div class="pf-v6-c-tooltip app-tooltip" id="appTooltip" role="tooltip" hidden>
+    <div class="pf-v6-c-tooltip__arrow"></div>
+    <div class="pf-v6-c-tooltip__content" id="appTooltipText"></div>
+  </div>
+
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
@@ -851,6 +900,73 @@ def build():
 
     const SETUP_STEPS = ['language', 'speech', 'done'];
     let setupStep = 0;
+
+    /* One tooltip, borrowed by anything carrying data-tooltip. PatternFly
+       draws it; this only says where to put it and when. */
+    (function () {
+      const tip = () => document.getElementById('appTooltip');
+      let anchor = null;
+
+      function place() {
+        const box = tip();
+        if (!anchor || !box) return;
+        const a = anchor.getBoundingClientRect();
+        const b = box.getBoundingClientRect();
+        const above = a.top > b.height + 12;
+        box.classList.toggle('pf-m-top', above);
+        box.classList.toggle('pf-m-bottom', !above);
+        box.style.top = (above ? a.top - b.height - 8 : a.bottom + 8) + 'px';
+        box.style.left =
+          Math.min(Math.max(8, a.left + a.width / 2 - b.width / 2),
+                   window.innerWidth - b.width - 8) + 'px';
+      }
+
+      function show(el) {
+        const box = tip();
+        if (!box) return;
+        anchor = el;
+        document.getElementById('appTooltipText').textContent = el.dataset.tooltip;
+        box.hidden = false;
+        place();
+      }
+
+      function hide() {
+        const box = tip();
+        anchor = null;
+        if (box) box.hidden = true;
+      }
+
+      ['mouseover', 'focusin'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+          const el = e.target.closest && e.target.closest('[data-tooltip]');
+          if (el) show(el);
+        });
+      });
+      ['mouseout', 'focusout'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+          if (e.target.closest && e.target.closest('[data-tooltip]')) hide();
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hide();
+      });
+      window.addEventListener('scroll', hide, true);
+    })();
+
+    /* The minus and plus of a number input: nudge the field, keep it inside its
+       bounds, then let its own handler run. */
+    function stepNumber(id, by) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const step = Number(el.step) || 1;
+      const decimals = (String(step).split('.')[1] || '').length;
+      let next = (Number(el.value) || 0) + Number(by);
+      if (el.min !== '') next = Math.max(Number(el.min), next);
+      if (el.max !== '') next = Math.min(Number(el.max), next);
+      el.value = next.toFixed(decimals);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    window.stepNumber = stepNumber;
 
     function toggleSetupNav() {
       const toggle = document.getElementById('setupToggle');
