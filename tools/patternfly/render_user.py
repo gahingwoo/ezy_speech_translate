@@ -225,6 +225,99 @@ LANGS = ('<option value="en">English</option><option value="zh">简体中文</op
          '<option value="mi">Te Reo Māori</option>')
 
 
+# The 22 languages, with the English name beside the native one. The design
+# spec is explicit that the English name stays on the same line: someone is
+# often setting a phone up for a newcomer and may not read the script.
+LANG_NAMES = (
+    ("en", "English", "English"),
+    ("zh", "简体中文", "Chinese, Simplified"),
+    ("zh-tw", "繁體中文", "Chinese, Traditional"),
+    ("yue", "粵語", "Cantonese"),
+    ("ja", "日本語", "Japanese"),
+    ("ko", "한국어", "Korean"),
+    ("es", "Español", "Spanish"),
+    ("fr", "Français", "French"),
+    ("de", "Deutsch", "German"),
+    ("pt", "Português", "Portuguese"),
+    ("ru", "Русский", "Russian"),
+    ("ar", "العربية", "Arabic"),
+    ("hi", "हिन्दी", "Hindi"),
+    ("th", "ไทย", "Thai"),
+    ("vi", "Tiếng Việt", "Vietnamese"),
+    ("id", "Bahasa Indonesia", "Indonesian"),
+    ("ms", "Bahasa Melayu", "Malay"),
+    ("tl", "Tagalog", "Tagalog"),
+    ("sm", "Gagana Samoa", "Samoan"),
+    ("to", "Lea faka-Tonga", "Tongan"),
+    ("mi", "Te Reo Māori", "Maori"),
+)
+
+
+def language_dialog():
+    """One language, not two.
+
+    The app had a Display Language and a Target Language that looked identical
+    and did different things. Here the reading language sets both, and the
+    escape hatch — keeping the page in English — is a checkbox at the foot
+    rather than a second list.
+
+    The rows are built by user.js from LANG_NAMES so the search can filter
+    them; what is here is the frame."""
+    return '''  <div class="pf-v6-c-backdrop app-modal language-backdrop" id="languageModal"
+       onclick="if(event.target===this)hideLanguageDialog()">
+    <div class="pf-v6-l-bullseye">
+      <div class="pf-v6-c-modal-box pf-m-md" role="dialog" aria-modal="true"
+           aria-labelledby="languageTitle" aria-describedby="languageDesc">
+        <div class="pf-v6-c-modal-box__close">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
+                  onclick="hideLanguageDialog()">%(times)s</button>
+        </div>
+        <header class="pf-v6-c-modal-box__header">
+          <h1 class="pf-v6-c-modal-box__title" id="languageTitle">
+            <span class="pf-v6-c-modal-box__title-text" data-i18n="language">Language</span></h1>
+          <div class="pf-v6-c-modal-box__description" id="languageDesc"
+               data-i18n="languageDialogDesc">Choose the language this service is translated
+            into. The page follows it.</div>
+        </header>
+        <div class="pf-v6-c-modal-box__body lang-body">
+          <div class="pf-v6-c-text-input-group lang-search">
+            <div class="pf-v6-c-text-input-group__main pf-m-icon">
+              <span class="pf-v6-c-text-input-group__text">
+                <span class="pf-v6-c-text-input-group__icon">%(search)s</span>
+                <input class="pf-v6-c-text-input-group__text-input" type="text"
+                       id="languageSearch" autocomplete="off"
+                       aria-label="Search languages" data-i18n-placeholder="searchLanguages"
+                       placeholder="Search 21 languages" oninput="filterLanguages(this.value)">
+              </span>
+            </div>
+          </div>
+          <div class="pf-v6-c-menu lang-list">
+            <div class="pf-v6-c-menu__content" id="languageList"></div>
+          </div>
+          <p class="lang-escape">
+            <label class="pf-v6-c-check">
+              <input class="pf-v6-c-check__input" type="checkbox" id="keepPageEnglish">
+              <span class="pf-v6-c-check__label" data-i18n="keepPageEnglish">Keep the page in
+                English</span>
+            </label>
+            <span class="meta" data-i18n="keepPageEnglishHelp">The buttons and headings stay in
+              English; only the sermon is translated.</span>
+          </p>
+        </div>
+        <footer class="pf-v6-c-modal-box__footer">
+          <div class="modal-actions">
+            <button class="pf-v6-c-button pf-m-primary" type="button" onclick="applyLanguage()">
+              <span class="pf-v6-c-button__text" data-i18n="select">Select</span></button>
+            <button class="pf-v6-c-button pf-m-link" type="button" onclick="hideLanguageDialog()">
+              <span class="pf-v6-c-button__text" data-i18n="cancel">Cancel</span></button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+''' % {"times": btn_icon("times"), "search": icon("search")}
+
+
 def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=None,
           title_icon_id=None, title_text_id=None, size="md"):
     close = close_fn or ("hide" + el_id.replace("Modal", "").capitalize() + "()")
@@ -491,6 +584,29 @@ def settings_modal(panels):
 ''' % (btn_icon("times"), "".join(body))
 
 
+def empty_group():
+    """The empty state as a group of the stream's description list, so the
+    list has one shape whether or not anything has been said yet."""
+    return '''                      <div class="pf-v6-c-description-list__group empty-row">
+                        <dd class="pf-v6-c-description-list__description">
+                          <div class="pf-v6-c-description-list__text">
+                            <div class="pf-v6-c-empty-state empty-state">
+                              <div class="pf-v6-c-empty-state__content">
+                                <div class="pf-v6-c-empty-state__icon">%s</div>
+                                <div class="pf-v6-c-empty-state__title">
+                                  <h3 class="pf-v6-c-empty-state__title-text"
+                                      data-i18n="waitingTranslations">Waiting for translations...</h3>
+                                </div>
+                                <div class="pf-v6-c-empty-state__body" data-i18n="waitingDesc">
+                                  Translations will appear here in real-time</div>
+                              </div>
+                            </div>
+                          </div>
+                        </dd>
+                      </div>
+''' % icon("comments")
+
+
 def build():
     panels = {}
 
@@ -705,6 +821,10 @@ def build():
   <!-- PatternFly carries Red Hat Text, Display and Mono itself, so the fonts
        no longer come from Google. -->
   <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+  <!-- The house layer both pages sit in, then the design's own classes, then
+       what is left that is only this page's. -->
+  <link href="{{ static_url('css/shell.css') }}" rel="stylesheet">
+  <link href="{{ static_url('css/ezyspeech.css') }}" rel="stylesheet">
   <link href="{{ static_url('css/user.css') }}" rel="stylesheet">
   <script src="{{ static_url('js/oem-loader.js') }}"></script>
 </head>
@@ -720,12 +840,17 @@ def build():
   <ul class="pf-v6-c-alert-group pf-m-toast toast-container" id="toastContainer" role="list"
       aria-live="polite" aria-atomic="true"></ul>
 
-  <div class="pf-v6-c-page pf-m-no-sidebar">
+  <div class="pf-v6-c-page">
     <!-- PatternFly stacks the masthead by default: the brand takes its own
          row, the toggle and the actions the next. That is right on a phone;
          from md there is room for one row. -->
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
+        <span class="pf-v6-c-masthead__toggle">
+          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
+                  aria-controls="sidebar" aria-expanded="true" data-i18n-aria-label="toggleMenu"
+                  aria-label="Toggle the menu" onclick="toggleMobileMenu()">%(bars)s</button>
+        </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
                writes a customer's icon and name into. -->
@@ -803,30 +928,173 @@ def build():
       </div>
     </header>
 
-    <div class="pf-v6-c-page__main-container">
-      <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
-        <section class="pf-v6-c-page__main-section pf-m-fill" aria-label="Translation list">
-          <div class="pf-v6-c-page__main-body">
-            <div class="content-header">
-              <h1 class="pf-v6-c-title pf-m-xl" id="mainTitle">
-                <span id="mainTitleText" data-i18n="liveTranslations">Live Translations</span>
-                <span class="pf-v6-c-badge pf-m-read count-badge" id="itemCount"
-                      aria-label="Translation count">0</span>
-              </h1>
-            </div>
+    <!-- The site's own navigation, as the design spec has it: three groups and
+         no more. Everything under Reading opens a dialog rather than going
+         somewhere, which is why those are buttons. -->
+    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Site">
+      <div class="pf-v6-c-page__sidebar-body">
+        <nav class="pf-v6-c-nav" aria-label="Site">
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-service-title">
+            <h2 class="pf-v6-c-nav__section-title" id="nav-service-title"
+                data-i18n="nav_thisService">This service</h2>
+            <ul class="pf-v6-c-nav__list" role="list">
+              <li class="pf-v6-c-nav__item">
+                <a href="#now" class="pf-v6-c-nav__link pf-m-current" aria-current="page">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="nav_liveTranslation">Live translation</span></a></li>
+              <li class="pf-v6-c-nav__item">
+                <a href="#scripture" class="pf-v6-c-nav__link">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="bibleVerses">Scripture</span></a></li>
+            </ul>
+          </section>
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-reading-title">
+            <h2 class="pf-v6-c-nav__section-title" id="nav-reading-title"
+                data-i18n="nav_reading">Reading</h2>
+            <ul class="pf-v6-c-nav__list" role="list">
+              <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="showLanguageDialog()">
+                  <span class="pf-v6-c-nav__link-text"><span data-i18n="language">Language</span>
+                    &middot; <span id="navLangName">English</span></span></button></li>
+              <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="showSettings('view')">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="nav_textAndAudio">Text and audio</span></button></li>
+              <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="showSettings('export')">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="nav_saveCopy">Save a copy</span></button></li>
+            </ul>
+          </section>
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-elsewhere-title">
+            <h2 class="pf-v6-c-nav__section-title" id="nav-elsewhere-title"
+                data-i18n="nav_elsewhere">Elsewhere</h2>
+            <ul class="pf-v6-c-nav__list" role="list">
+              <li class="pf-v6-c-nav__item">
+                <a href="https://new.mabc.org.nz/" class="pf-v6-c-nav__link"
+                   rel="noopener noreferrer" target="_blank">
+                  <span class="pf-v6-c-nav__link-text">Mt Albert Baptist</span></a></li>
+            </ul>
+          </section>
+        </nav>
+      </div>
+    </div>
 
-            <div class="translation-list" id="translationsList" role="list">
-              <div class="pf-v6-c-empty-state empty-state">
-                <div class="pf-v6-c-empty-state__content">
-                  <div class="pf-v6-c-empty-state__icon">%(comments)s</div>
-                  <div class="pf-v6-c-empty-state__title">
-                    <h2 class="pf-v6-c-empty-state__title-text" data-i18n="waitingTranslations">
-                      Waiting for translations...</h2>
+    <div class="pf-v6-c-page__main-container">
+      <main class="pf-v6-c-page__main doc-page with-rail" id="main-content" tabindex="-1">
+        <section class="pf-v6-c-page__main-section pf-m-limit-width pf-m-fill"
+                 aria-label="Translation list">
+          <div class="pf-v6-c-page__main-body">
+
+            <!-- The sections of this page, as patternfly.org rails its own
+                 documentation. Expandable below xl, a sticky list above it. -->
+            <aside class="page-rail no-print">
+              <nav class="pf-v6-c-jump-links pf-m-vertical pf-m-expandable pf-m-non-expandable-on-xl"
+                   aria-label="On this page" id="jumpNav">
+                <div class="pf-v6-c-jump-links__header" id="jumpHeader">
+                  <div class="pf-v6-c-jump-links__toggle">
+                    <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                            onclick="toggleJumpLinks(this)">
+                      <span class="pf-v6-c-button__icon pf-m-start">
+                        <span class="pf-v6-c-jump-links__toggle-icon">%(angle_right)s</span></span>
+                      <span class="pf-v6-c-button__text" data-i18n="onThisPage">On this page</span>
+                    </button>
                   </div>
-                  <div class="pf-v6-c-empty-state__body" data-i18n="waitingDesc">
-                    Translations will appear here in real-time</div>
+                  <div class="pf-v6-c-jump-links__label" data-i18n="onThisPage">On this page</div>
+                </div>
+                <ul class="pf-v6-c-jump-links__list" role="list" aria-labelledby="jumpHeader">
+                  <li class="pf-v6-c-jump-links__item pf-m-current">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#now">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="now">Now</span></span></a></span></li>
+                  <li class="pf-v6-c-jump-links__item">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#scripture">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="bibleVerses">Scripture</span></span></a></span></li>
+                  <li class="pf-v6-c-jump-links__item">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#reading">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="readingThis">Reading this</span></span></a></span></li>
+                </ul>
+              </nav>
+            </aside>
+
+            <div class="page-content">
+              <div class="page-head">
+                <h1 class="page-title" id="mainTitle">
+                  <span id="mainTitleText" data-i18n="liveTranslations">Live translation</span>
+                  <span class="subtitle" id="mainSubtitle"></span>
+                </h1>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        onclick="showSettings('export')">
+                  <span class="pf-v6-c-button__text" data-i18n="nav_saveCopy">Save a copy</span>
+                </button>
+              </div>
+
+              <div class="section">
+                <div class="pf-v6-c-card" id="now">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text">
+                      <span data-i18n="now">Now</span>
+                      <span class="pf-v6-c-badge pf-m-read count-badge" id="itemCount"
+                            aria-label="Translation count">0</span>
+                    </h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <!-- user.js builds every row in here. The design spec's
+                         stream: the timestamp is the term, the translation the
+                         value, the English the quiet line under it. -->
+                    <dl class="pf-v6-c-description-list kv stream translation-list"
+                        id="translationsList">
+%(empty)s                    </dl>
+                  </div>
                 </div>
               </div>
+
+              <div class="section">
+                <div class="pf-v6-c-card" id="reading">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text" data-i18n="readingThis">Reading this</h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <dl class="pf-v6-c-description-list pf-m-horizontal-on-sm kv">
+                      <div class="pf-v6-c-description-list__group">
+                        <dt class="pf-v6-c-description-list__term">
+                          <span class="pf-v6-c-description-list__text" data-i18n="language">Language</span></dt>
+                        <dd class="pf-v6-c-description-list__description">
+                          <div class="pf-v6-c-description-list__text">
+                            <span id="readingLangName">English</span>.
+                            <button class="pf-v6-c-button pf-m-inline pf-m-link" type="button"
+                                    onclick="showLanguageDialog()">
+                              <span class="pf-v6-c-button__text" data-i18n="change">Change</span></button>
+                            <span class="meta" data-i18n="readingLangHelp">Sets what the sermon is
+                              translated into, and the page follows it.</span></div></dd>
+                      </div>
+                      <div class="pf-v6-c-description-list__group" id="readingBibleRow">
+                        <dt class="pf-v6-c-description-list__term">
+                          <span class="pf-v6-c-description-list__text" data-i18n="yourBible">Your Bible</span></dt>
+                        <dd class="pf-v6-c-description-list__description">
+                          <div class="pf-v6-c-description-list__text">
+                            <span id="readingBibleName">—</span>
+                            <span class="meta" data-i18n="readingBibleHelp">Matches the script the
+                              rest of the page is in.</span></div></dd>
+                      </div>
+                      <div class="pf-v6-c-description-list__group">
+                        <dt class="pf-v6-c-description-list__term">
+                          <span class="pf-v6-c-description-list__text" data-i18n="textToSpeech">Read aloud</span></dt>
+                        <dd class="pf-v6-c-description-list__description">
+                          <div class="pf-v6-c-description-list__text">
+                            <span id="readingTtsState" data-i18n="off">Off</span>.
+                            <span class="meta" data-i18n="readingTtsHelp">Your own device speaks each
+                              line. Please use headphones.</span></div></dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div class="pf-v6-c-card__footer">
+                    <button class="pf-v6-c-button pf-m-inline pf-m-link" type="button"
+                            onclick="showSettings('view')">
+                      <span class="pf-v6-c-button__text" data-i18n="nav_textAndAudio">Text and audio settings</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
@@ -871,7 +1139,7 @@ def build():
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
-%(settings)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
+%(settings)s%(language)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
           aria-label="Scroll to top" onclick="scrollToTop()">%(expand)s</button>
 
@@ -1108,6 +1376,160 @@ def build():
     }
     window.setupBack = setupBack;
 
+    /* The rail is PatternFly's expandable jump links: a toggle below xl, a
+       plain sticky list above it. */
+    function toggleJumpLinks(btn) {
+      const nav = document.getElementById('jumpNav');
+      const open = !nav.classList.contains('pf-m-expanded');
+      nav.classList.toggle('pf-m-expanded', open);
+      btn.setAttribute('aria-expanded', String(open));
+    }
+    window.toggleJumpLinks = toggleJumpLinks;
+
+    /* ── the language dialog ──────────────────────────────────────────────
+       One choice, not two. The app used to carry a Display Language and a
+       Target Language that looked identical and did different things; the
+       reading language now sets both, and "keep the page in English" is the
+       one escape from that. */
+    const LANGUAGES = %(lang_names)s;
+    let langPending = null;
+
+    /* The reading language, read off the select that owns it. Not
+       window.targetLang: an element with that id makes a global of its own,
+       and it is the element, not the code. */
+    function currentReadingLanguage() {
+      const select = document.getElementById('targetLang');
+      return (select && select.value) || 'en';
+    }
+    window.currentReadingLanguage = currentReadingLanguage;
+
+    function renderLanguageList() {
+      const host = document.getElementById('languageList');
+      const q = (document.getElementById('languageSearch').value || '').trim().toLowerCase();
+      const current = langPending || currentReadingLanguage();
+      const rows = LANGUAGES.filter(function (l) {
+        return !q || l.native.toLowerCase().includes(q)
+            || l.english.toLowerCase().includes(q) || l.code.includes(q);
+      });
+      if (!rows.length) {
+        host.innerHTML = '<p class="lang-empty"></p>';
+        host.firstChild.textContent =
+          (window.sharedI18n && window.sharedI18n[window.displayLanguage] || {}).noLanguageMatch
+          || 'No language matches that.';
+        return;
+      }
+      host.innerHTML = '<section class="pf-v6-c-menu__group">'
+        + '<ul class="pf-v6-c-menu__list" role="menu" id="languageListItems"></ul></section>';
+      const list = document.getElementById('languageListItems');
+      rows.forEach(function (l) {
+        const li = document.createElement('li');
+        li.className = 'pf-v6-c-menu__list-item';
+        li.setAttribute('role', 'none');
+        const btn = document.createElement('button');
+        btn.className = 'pf-v6-c-menu__item' + (l.code === current ? ' pf-m-selected' : '');
+        btn.type = 'button';
+        btn.setAttribute('role', 'menuitem');
+        if (l.code === current) btn.setAttribute('aria-selected', 'true');
+        btn.onclick = function () { langPending = l.code; renderLanguageList(); };
+        const main = document.createElement('span');
+        main.className = 'pf-v6-c-menu__item-main';
+        const text = document.createElement('span');
+        text.className = 'pf-v6-c-menu__item-text';
+        text.textContent = l.native;
+        const en = document.createElement('span');
+        en.className = 'lang-en';
+        en.textContent = l.english;
+        text.appendChild(en);
+        main.appendChild(text);
+        if (l.code === current) {
+          const tick = document.createElement('span');
+          tick.className = 'pf-v6-c-menu__item-select-icon';
+          tick.innerHTML = svgIcon('check');
+          main.appendChild(tick);
+        }
+        btn.appendChild(main);
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+    }
+    window.renderLanguageList = renderLanguageList;
+
+    function filterLanguages() { renderLanguageList(); }
+    window.filterLanguages = filterLanguages;
+
+    function showLanguageDialog() {
+      langPending = currentReadingLanguage();
+      document.getElementById('languageSearch').value = '';
+      const keep = document.getElementById('keepPageEnglish');
+      if (keep) keep.checked = localStorage.getItem('keepPageEnglish') === 'true';
+      renderLanguageList();
+      document.getElementById('languageModal').classList.add('active');
+      setTimeout(function () { document.getElementById('languageSearch').focus(); }, 60);
+    }
+    window.showLanguageDialog = showLanguageDialog;
+
+    function hideLanguageDialog() {
+      document.getElementById('languageModal').classList.remove('active');
+    }
+    window.hideLanguageDialog = hideLanguageDialog;
+
+    /* Explicit Select, as Cockpit's Display language does it: picking a row
+       marks it, and nothing changes until this. */
+    function applyLanguage() {
+      const keep = document.getElementById('keepPageEnglish');
+      const keepEnglish = !!(keep && keep.checked);
+      localStorage.setItem('keepPageEnglish', String(keepEnglish));
+      if (langPending) {
+        const select = document.getElementById('targetLang');
+        if (select) { select.value = langPending; }
+        if (typeof changeLanguage === 'function') changeLanguage();
+        // The page follows the reading language unless told to stay English.
+        if (typeof changeDisplayLanguage === 'function') {
+          changeDisplayLanguage(keepEnglish ? 'en' : langPending);
+        }
+      }
+      hideLanguageDialog();
+      if (typeof refreshReadingCard === 'function') refreshReadingCard();
+    }
+    window.applyLanguage = applyLanguage;
+
+    /* The "Reading this" card restates the three settings that matter most,
+       so a reader never has to open a dialog to find out where they stand. */
+    function refreshReadingCard() {
+      const code = currentReadingLanguage();
+      const entry = LANGUAGES.find(function (l) { return l.code === code; });
+      const name = entry ? entry.native + ' ' + entry.english : code;
+      ['navLangName', 'readingLangName'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = entry ? entry.native : code;
+      });
+      const reading = document.getElementById('readingLangName');
+      if (reading) reading.textContent = name;
+      const subtitle = document.getElementById('mainSubtitle');
+      if (subtitle) subtitle.textContent = entry ? 'English → ' + entry.native : '';
+      const tts = document.getElementById('readingTtsState');
+      if (tts) {
+        const on = localStorage.getItem('ttsEnabled') === 'true';
+        const dict = (window.sharedI18n || {})[window.displayLanguage] || {};
+        tts.textContent = on ? (dict.on || 'On') : (dict.off || 'Off');
+      }
+      const bible = document.getElementById('readingBibleName');
+      const row = document.getElementById('readingBibleRow');
+      if (bible && row) {
+        const chosen = document.getElementById('bibleTranslation');
+        const label = chosen && chosen.selectedOptions.length
+          ? chosen.selectedOptions[0].textContent.trim() : '';
+        row.hidden = !label;
+        bible.textContent = label;
+      }
+    }
+    window.refreshReadingCard = refreshReadingCard;
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(refreshReadingCard, 400);
+    });
+
+
+
     function showSettings(key) {
       const first = document.querySelector('.settings-tabs .pf-v6-c-tabs__item');
       showSettingsTab(key || (first && first.id.replace('settings-tabitem-', '')) || 'language');
@@ -1202,11 +1624,18 @@ def build():
         "share": icon("share-alt"),
         "info": icon("info-circle"),
         "search": icon("search"),
+        "bars": icon("bars"),
+        "angle_right": icon("angle-right"),
+        "empty": empty_group(),
         "comments": icon("comments"),
         "info": icon("info-circle"),
         "times": btn_icon("times"),
         "expand": btn_icon("angle-down"),
         "settings": settings_modal(panels),
+        "language": language_dialog(),
+        "lang_names": json.dumps([
+            {"code": c, "native": n, "english": e} for c, n, e in LANG_NAMES
+        ], ensure_ascii=False),
         "about": about_modal(),
         "shortcuts": modal("shortcutsModal", "shortcutsTitle", "shortcuts_title", "Keyboard Shortcuts",
                            shortcuts_body, close_fn="hideShortcuts()"),

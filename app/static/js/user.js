@@ -309,19 +309,15 @@ function toggleSourceText() {
             const existingSource = card.querySelector('.text-source');
             const textTarget = card.querySelector('.text-target');
             
-            if (showSourceText && !existingSource && textTarget) {
-                // The source line sits under the translation, so it goes in
-                // after it — that is the order the card is built in.
-                const sourceDiv = document.createElement('div');
-                sourceDiv.className = 'text-source';
+            if (existingSource) {
+                // The row always carries the line; showing the English is only
+                // ever a question of whether it is hidden.
+                existingSource.hidden = !showSourceText;
+            } else if (showSourceText && textTarget) {
+                const sourceDiv = document.createElement('span');
+                sourceDiv.className = 'meta text-source';
                 sourceDiv.setAttribute('data-original-text', '');
-                sourceDiv.textContent = ''; // Will be populated by realtime_transcription
                 textTarget.insertAdjacentElement('afterend', sourceDiv);
-                console.log('Added text-source to interim card');
-            } else if (!showSourceText && existingSource) {
-                // Remove text-source element
-                existingSource.remove();
-                console.log('Removed text-source from interim card');
             }
         });
     }
@@ -3550,128 +3546,104 @@ function correctedLabel() {
 
 function createTranslationHTML(item) {
     const itemId = 'translation-' + item.id;
-
-    // Get source language from item
     const itemSourceLang = item.source_language || item.language || 'en';
 
-    // In transcription mode, only show original text
+    // ── transcription mode: the spoken words are the answer ──────────────
     if (displayMode === 'transcription') {
-        const correctedBadge = item.is_corrected ? correctedLabel() : '';
-        const correctedClass = item.is_corrected ? 'corrected' : '';
-
-        // The text is what the reader came for, so it leads and it is the only
-        // thing set at reading size. The time, the marks and the two buttons
-        // are one quiet row under it — a header row of its own gave a
-        // timestamp more of the card than the sentence had.
-        return '\
-            <article class="pf-v6-c-card pf-m-compact translation-card ' + correctedClass + '" id="' + itemId + '">\
-                <div class="pf-v6-c-card__body translation-body">\
-                    <div class="text-target" data-original-text="' + escapeHtml(item.corrected) + '">' + escapeHtml(item.corrected) + '</div>\
-                    <div class="card-meta">\
-                        <span class="card-time">' + item.timestamp + '</span>\
-                        <div class="card-marks">' + correctedBadge + '</div>\
-                        <div class="card-actions">\
-                            <button class="pf-v6-c-button pf-m-plain pf-m-small copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy transcription">\
-                                <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
-                            </button>\
-                        </div>\
-                    </div>\
-                </div>\
-            </article>\
-        ';
+        return streamGroup({
+            id: itemId,
+            timestamp: item.timestamp,
+            tag: '',
+            body: '<p class="stream-zh text-target">' + escapeHtml(item.corrected || '') + '</p>',
+            meta: '',
+            marks: item.is_corrected ? correctedLabel() : '',
+            itemNo: item.id,
+            speakText: item.corrected || '',
+            playing: false
+        });
     }
 
-    // Translation mode logic
-    // Map source language codes
+    // ── translation mode ─────────────────────────────────────────────────
     const langMap = {
-        'en': 'en',
-        'zh': 'zh',
-        'yue': 'yue',
-        'ja': 'ja',
-        'ko': 'ko',
-        'es': 'es',
-        'fr': 'fr',
-        'de': 'de',
-        'ru': 'ru',
-        'ar': 'ar',
-        'pt': 'pt',
-        'it': 'it',
-        'nl': 'nl',
-        'pl': 'pl',
-        'tr': 'tr',
-        'vi': 'vi',
-        'th': 'th',
-        'id': 'id',
-        'ms': 'ms',
-        'hi': 'hi',
-        'ta': 'ta'
+        en: 'en', zh: 'zh', yue: 'yue', ja: 'ja', ko: 'ko', es: 'es', fr: 'fr',
+        de: 'de', ru: 'ru', ar: 'ar', pt: 'pt', it: 'it', nl: 'nl', pl: 'pl',
+        tr: 'tr', vi: 'vi', th: 'th', id: 'id', ms: 'ms', hi: 'hi', ta: 'ta'
     };
-
     const normalizedSourceLang = langMap[itemSourceLang] || itemSourceLang;
-    const normalizedTargetLang = targetLang;
 
-    // Show source text if: (1) showSourceText is enabled AND (2) source language differs from target
-    const shouldShowSource = showSourceText
-        && !sameLanguage(normalizedSourceLang, normalizedTargetLang);
-
-    if (displayMode !== 'transcription') {
+    if (sameLanguage(itemSourceLang, targetLang)) {
         // Nothing to translate when the listener is reading the language being
         // spoken: the original is the answer.
-        if (sameLanguage(itemSourceLang, targetLang)) {
-            item.translated = item.corrected;
-            item.currentLang = targetLang;
-        } else if (item.translated && item.translated_lang === targetLang) {
-            // Use the server's translation when it is already in this language
-            item.currentLang = targetLang;
-        } else if (!item.translated || item.currentLang !== targetLang) {
-            item.currentLang = targetLang;
-            item.translated = null;  // Mark as pending
-            // Fire-and-forget: translate in background, update DOM when done
-            translateInBackground(item, itemId);
-        }
+        item.translated = item.corrected;
+        item.currentLang = targetLang;
+    } else if (item.translated && item.translated_lang === targetLang) {
+        item.currentLang = targetLang;
+    } else if (!item.translated || item.currentLang !== targetLang) {
+        item.currentLang = targetLang;
+        item.translated = null;
+        translateInBackground(item, itemId);
     }
 
-    const correctedBadge = item.is_corrected ? correctedLabel() : '';
-    const correctedClass = item.is_corrected ? 'corrected' : '';
-    const isTranslating = displayMode !== 'transcription' && !item.translated;
+    const isTranslating = !item.translated;
     const translatedText = item.translated || '';
-    const displayText = displayMode === 'transcription' ? (item.corrected || '') : (isTranslating ? (i18n[displayLanguage]?.translating || 'Translating...') : translatedText);
-    // No spinner. The status line already says the translation is coming and
-    // the held space already shows it; a spinner only draws the eye to the
-    // wait. Kept as a name because the markup below reads better for it.
-    const transatingIndicator = '';
 
-    // Show source text only if enabled and in translation mode — and only when
-    // it says something the line above does not. When translation falls back to
-    // the original, printing it twice at two sizes reads as a bug.
+    // The English under the line, when it says something the line does not.
     const sourceDiffers = (item.corrected || '').trim() !== (translatedText || '').trim();
-    const sourceHtml = (displayMode !== 'transcription' && shouldShowSource && sourceDiffers)
-        ? '<div class="text-source" data-original-text="' + escapeHtml(item.corrected) + '">'
-          + (langTag(itemSourceLang)
-              ? '<span class="text-source__lang">' + escapeHtml(langTag(itemSourceLang)) + '</span>'
-              : '')
-          + escapeHtml(item.corrected) + '</div>'
-        : '';
+    const showSource = showSourceText
+        && !sameLanguage(normalizedSourceLang, targetLang)
+        && (isTranslating || sourceDiffers);
+    const meta = showSource ? escapeHtml(item.corrected || '') : '';
 
+    // While the round trip is out, the row holds a bar the width of a line
+    // rather than a spinner: the space is what carries the wait.
+    const body = isTranslating
+        ? '<p class="stream-zh text-target stream-pending"><span class="wait-bar"></span>'
+          + '<span class="wait">' + escapeHtml(t('translating', 'Translating…')) + '</span></p>'
+        : '<p class="stream-zh text-target">' + escapeHtml(translatedText) + '</p>';
+
+    return streamGroup({
+        id: itemId,
+        timestamp: item.timestamp,
+        tag: '',
+        body: body,
+        meta: meta,
+        marks: item.is_corrected ? correctedLabel() : '',
+        itemNo: item.id,
+        speakText: translatedText,
+        playing: false
+    });
+}
+
+/* One row of the stream, as the design spec lays it out: the timestamp is the
+   term, the translation the value, the English the quiet line under it, and
+   the two buttons sit at the end of the row. Everything user.js used to build
+   as a card goes through here, so there is one shape to keep right. */
+function streamGroup(o) {
     return '\
-        <article class="pf-v6-c-card pf-m-compact translation-card ' + correctedClass + '" id="' + itemId + '">\
-            <div class="pf-v6-c-card__body translation-body">\
-                <div class="text-target' + (isTranslating ? ' translating' : '') + '" data-original-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '">' + escapeHtml(displayText) + '</div>\
-                ' + sourceHtml + '\
-                <div class="card-meta">\
-                    <span class="card-time">' + item.timestamp + '</span>\
-                    <div class="card-marks">' + transatingIndicator + correctedBadge + '</div>\
-                    <div class="card-actions">\
-                        <button class="pf-v6-c-button pf-m-plain pf-m-small copy-btn" type="button" id="copy-btn-' + item.id + '" data-translation-id="' + item.id + '" onclick="copyTranslationFromButton(this)" title="Copy' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
+        <div class="pf-v6-c-description-list__group translation-card' + (o.playing ? ' is-playing' : '') + '" id="' + o.id + '">\
+            <dt class="pf-v6-c-description-list__term">\
+                <span class="pf-v6-c-description-list__text">\
+                    <span class="card-time">' + escapeHtml(o.timestamp || '') + '</span>' + (o.tag || '') + '\
+                </span>\
+            </dt>\
+            <dd class="pf-v6-c-description-list__description">\
+                <div class="pf-v6-c-description-list__text stream-row">\
+                    <div class="stream-text">\
+                        ' + o.body + '\
+                        <span class="meta text-source"' + (o.meta ? ' data-original-text="' + o.meta + '"' : '') + '>' + (o.meta || '') + '</span>\
+                        <div class="card-marks">' + (o.marks || '') + '</div>\
+                    </div>\
+                    <div class="stream-actions card-actions">\
+                        <button class="pf-v6-c-button pf-m-plain copy-btn" type="button" id="copy-btn-' + o.itemNo + '" data-translation-id="' + o.itemNo + '" onclick="copyTranslationFromButton(this)" aria-label="Copy this line">\
                             <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
                         </button>\
-                        <button class="pf-v6-c-button pf-m-plain pf-m-small tts-icon" type="button" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(displayMode === 'transcription' ? item.corrected : translatedText) + '" title="Speak' + (displayMode === 'transcription' ? ' transcription' : ' translation') + '">\
+                        <button class="pf-v6-c-button pf-m-plain tts-icon" type="button" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(o.speakText || '') + '" aria-label="Read this line aloud">\
                             <span class="pf-v6-c-button__icon">' + svgIcon('volume-up') + '</span>\
                         </button>\
                     </div>\
                 </div>\
-            </div>\
-        </article>\
+            </dd>\
+        </div>\
     ';
 }
 
@@ -4790,40 +4762,52 @@ function setupSocketEventListeners() {
             // Build via DOM nodes (NOT innerHTML) — data.timestamp / data.text
             // come from a websocket peer and must never reach innerHTML as
             // strings, or a malicious admin could inject script.
-            tempCard = document.createElement('article');
-            tempCard.className = 'pf-v6-c-card pf-m-compact translation-card';
+            // The same shape as a finished row, so nothing shifts when the
+            // real one replaces it. Built as nodes, never innerHTML: the
+            // timestamp and text come from a websocket peer.
+            tempCard = document.createElement('div');
+            tempCard.className = 'pf-v6-c-description-list__group translation-card';
             tempCard.setAttribute('data-temp-id', tempId);
 
-            // Same shape as a finished card, so nothing shifts when the real
-            // one replaces it: the text first, then the quiet meta row.
-            const body = document.createElement('div');
-            body.className = 'pf-v6-c-card__body translation-body';
-            tempCard.appendChild(body);
-
-            const target = document.createElement('div');
-            target.className = 'text-target';
-            body.appendChild(target);
-
-            if (displayMode !== 'transcription' && showSourceText) {
-                const source = document.createElement('div');
-                source.className = 'text-source';
-                source.setAttribute('data-original-text', '');
-                body.appendChild(source);
-            }
-
-            const meta = document.createElement('div');
-            meta.className = 'card-meta';
+            const dt = document.createElement('dt');
+            dt.className = 'pf-v6-c-description-list__term';
+            const dtText = document.createElement('span');
+            dtText.className = 'pf-v6-c-description-list__text';
             const timeSpan = document.createElement('span');
             timeSpan.className = 'card-time';
             timeSpan.textContent = data.timestamp || new Date().toLocaleTimeString();
+            dtText.appendChild(timeSpan);
+            dt.appendChild(dtText);
+            tempCard.appendChild(dt);
+
+            const dd = document.createElement('dd');
+            dd.className = 'pf-v6-c-description-list__description';
+            const row = document.createElement('div');
+            row.className = 'pf-v6-c-description-list__text stream-row';
+            dd.appendChild(row);
+            tempCard.appendChild(dd);
+
+            const body = document.createElement('div');
+            body.className = 'stream-text';
+            row.appendChild(body);
+
+            const target = document.createElement('p');
+            target.className = 'stream-zh text-target';
+            body.appendChild(target);
+
+            const source = document.createElement('span');
+            source.className = 'meta text-source';
+            source.setAttribute('data-original-text', '');
+            if (displayMode === 'transcription' || !showSourceText) source.hidden = true;
+            body.appendChild(source);
+
             const marksDiv = document.createElement('div');
             marksDiv.className = 'card-marks';
+            body.appendChild(marksDiv);
+
             const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'card-actions';
-            meta.appendChild(timeSpan);
-            meta.appendChild(marksDiv);
-            meta.appendChild(actionsDiv);
-            body.appendChild(meta);
+            actionsDiv.className = 'stream-actions card-actions';
+            row.appendChild(actionsDiv);
 
             list.insertBefore(tempCard, list.firstChild);
             
@@ -4939,9 +4923,8 @@ function setupSocketEventListeners() {
                     
                     if (shouldShowSource) {
                         if (!existingSourceDiv) {
-                            // Create text-source element before text-target for source language display
-                            const sourceDiv = document.createElement('div');
-                            sourceDiv.className = 'text-source';
+                            const sourceDiv = document.createElement('span');
+                            sourceDiv.className = 'meta text-source';
                             sourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
                             sourceDiv.textContent = data.corrected || data.original;
                             console.log('Adding text-source element');
@@ -4949,16 +4932,13 @@ function setupSocketEventListeners() {
                             currentTextEl.insertAdjacentElement('afterend', sourceDiv);
                         } else {
                             // Update existing source div with correct text
+                            existingSourceDiv.hidden = false;
                             existingSourceDiv.textContent = data.corrected || data.original;
                             existingSourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
                             console.log('Updating existing text-source element');
                         }
-                    } else {
-                        // Remove source div if we shouldn't show it
-                        if (existingSourceDiv) {
-                            existingSourceDiv.remove();
-                            console.log('Removing text-source element');
-                        }
+                    } else if (existingSourceDiv) {
+                        existingSourceDiv.hidden = true;
                     }
                     
                     // Start AI thinking status machine (replaces old rotation)

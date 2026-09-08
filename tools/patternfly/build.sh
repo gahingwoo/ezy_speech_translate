@@ -26,8 +26,9 @@ COMPONENTS="Login/login Form/form FormControl/form-control \
             InputGroup/input-group ProgressStepper/progress-stepper \
             DataList/data-list Tabs/tabs TabContent/tab-content Wizard/wizard \
             NumberInput/number-input Tooltip/tooltip Toolbar/toolbar \
-            Drawer/drawer"
-LAYOUTS="Bullseye/bullseye Stack/stack Flex/flex Grid/grid Split/split Level/level"
+            Drawer/drawer JumpLinks/jump-links Menu/menu"
+LAYOUTS="Bullseye/bullseye Stack/stack Flex/flex Grid/grid Split/split Level/level \
+         Gallery/gallery"
 
 OUT=app/static/patternfly
 WORK=$(mktemp -d)

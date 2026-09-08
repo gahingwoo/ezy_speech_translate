@@ -1,0 +1,216 @@
+/* EzySpeech — the classes this design adds on top of PatternFly 6.
+   Append to assets/site.css. Every value is a PatternFly token; there are no
+   literal colours, sizes or radii here on purpose, so the file follows the
+   theme and the design system rather than sitting beside them.
+
+   Nothing below changes PatternFly's density. site.css already records why:
+   "The design system's density is the design, so it is left alone." */
+
+/* ---- masthead ---------------------------------------------------------- */
+/* The current language, as a button. Steps aside on a phone exactly as
+   .masthead-give does; the sidebar carries the trigger there instead. */
+.masthead-lang { white-space: nowrap; }
+@media (max-width: 35.99rem) { .masthead-lang { display: none; } }
+
+/* ---- the stream --------------------------------------------------------
+   A description list in .kv, stacked rather than horizontal: the timestamp is
+   the term, the translation the value, the English source the .meta line. */
+.stream .pf-v6-c-description-list__term .pf-v6-c-description-list__text {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}
+.stream .pf-v6-c-description-list__group { padding-block: var(--pf-t--global--spacer--md); }
+.stream .meta { font-size: var(--pf-t--global--font--size--body--default); }
+.stream-tag {
+  font-family: var(--pf-t--global--font--family--body);
+  color: var(--pf-t--global--text--color--disabled);
+  margin-inline-start: var(--pf-t--global--spacer--sm);
+}
+.stream-row { display: flex; align-items: flex-start; gap: var(--pf-t--global--spacer--md); }
+.stream-text { flex: 1 1 auto; min-width: 0; }
+.stream-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: var(--pf-t--global--spacer--xs);
+  margin-block-start: calc(var(--pf-t--global--spacer--xs) * -1);
+}
+.stream-zh {
+  margin: 0 0 var(--pf-t--global--spacer--xs);
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: var(--pf-t--global--text--color--regular);
+  text-wrap: pretty;
+}
+/* The line currently being spoken by the device. */
+.is-playing .stream-zh { color: var(--pf-t--global--text--color--brand--default); }
+
+/* ---- waiting for the translation ---------------------------------------
+   There is no streaming translation API, so a line arrives in stages. The
+   space is reserved at the right height before the text lands: nothing on the
+   page moves when it does, and that stillness is most of what makes the delay
+   acceptable. No spinner — a spinner only draws attention to the wait. */
+.stream-pending {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--md);
+  min-height: 2.25rem;
+}
+.wait-bar {
+  display: block;
+  width: 58%;
+  height: 0.5em;
+  border-radius: var(--pf-t--global--border--radius--small);
+  background: var(--pf-t--global--background--color--secondary--default);
+}
+.wait {
+  color: var(--pf-t--global--text--color--disabled);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+
+/* ---- scripture ---------------------------------------------------------
+   A verse is a citation, not machine output: it is looked up in the reader's
+   own Bible. The brand rule marks that difference. */
+.sc-verse {
+  border-inline-start: 2px solid var(--pf-t--global--border--color--brand--default);
+  padding-inline-start: var(--pf-t--global--spacer--md);
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+.sc-line {
+  margin: 0 0 var(--pf-t--global--spacer--xs);
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: var(--pf-t--global--text--color--regular);
+  text-wrap: pretty;
+}
+.sc-line:last-child { margin-block-end: 0; }
+.sc-dim { color: var(--pf-t--global--text--color--subtle); }   /* context, not the verse read */
+.sc-n {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--disabled);
+  margin-inline-end: var(--pf-t--global--spacer--sm);
+  vertical-align: 0.15em;
+}
+.sc-elide {
+  margin: 0 0 var(--pf-t--global--spacer--xs);
+  font-size: var(--pf-t--global--font--size--body--default);
+  color: var(--pf-t--global--text--color--disabled);
+}
+.sc-elide span { font-size: var(--pf-t--global--font--size--body--sm); }
+.sc-elide:last-child { margin-block-end: 0; }
+.sc-more { margin: 0 0 var(--pf-t--global--spacer--xs); }
+.sc-offer { display: block; font-size: var(--pf-t--global--font--size--body--default); color: var(--pf-t--global--text--color--subtle); }
+/* On the Scripture page the reference is the term. */
+.scripture .pf-v6-c-description-list__term .pf-v6-c-description-list__text {
+  font-family: var(--pf-t--global--font--family--heading);
+  font-size: 1.0625rem;
+  color: var(--pf-t--global--text--color--regular);
+}
+.sc-time {
+  display: block;
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  margin-block-start: 2px;
+}
+
+/* ---- the passage dialog -------------------------------------------------
+   Follows .sermon-backdrop in site.css, at a reading measure rather than the
+   player's 64rem. */
+.scripture-backdrop .pf-v6-c-modal-box {
+  width: min(44rem, calc(100vw - 2 * var(--pf-t--global--spacer--lg)));
+  max-height: calc(100dvh - 2 * var(--pf-t--global--spacer--lg));
+  border-radius: var(--pf-t--global--border--radius--large);
+  overflow-y: auto;
+}
+.scripture-backdrop .pf-v6-c-modal-box__title-text { font-weight: 400; }
+.modal-sub {
+  display: block;
+  font-family: var(--pf-t--global--font--family--body);
+  font-size: var(--pf-t--global--font--size--body--default);
+  color: var(--pf-t--global--text--color--subtle);
+  margin-block-start: var(--pf-t--global--spacer--xs);
+}
+.modal-verses .sc-line { font-size: 1.3125rem; line-height: 1.75; margin-block-end: var(--pf-t--global--spacer--sm); }
+.modal-actions { display: flex; align-items: center; gap: var(--pf-t--global--spacer--sm); }
+
+/* ---- the language dialog ------------------------------------------------
+   PatternFly's Menu at its own row density. Do not put the English name on a
+   second line and do not wrap the list in a card: that spacing is what made an
+   earlier version stop reading as PatternFly. */
+.language-backdrop .pf-v6-c-modal-box {
+  width: min(30rem, calc(100vw - 2 * var(--pf-t--global--spacer--lg)));
+  max-height: calc(100dvh - 2 * var(--pf-t--global--spacer--lg));
+  border-radius: var(--pf-t--global--border--radius--large);
+}
+.language-backdrop .pf-v6-c-modal-box__title-text { font-weight: 400; }
+.lang-search { margin-block-end: var(--pf-t--global--spacer--md); }
+.lang-list {
+  max-height: 20rem;
+  overflow-y: auto;
+  border: 1px solid var(--pf-t--global--border--color--default);
+  border-radius: var(--pf-t--global--border--radius--small);
+}
+.lang-en { color: var(--pf-t--global--text--color--subtle); margin-inline-start: var(--pf-t--global--spacer--sm); }
+
+/* ---- on a phone --------------------------------------------------------
+   The two row buttons would take a third of the measure, so they drop under
+   the line and the translation keeps the full width. */
+@media (max-width: 47.99rem) {
+  .stream-row { flex-direction: column; gap: var(--pf-t--global--spacer--sm); }
+  .stream-actions { align-self: flex-end; margin-block-start: 0; }
+  .stream-pending { min-height: 1.9rem; }
+  .sc-line { font-size: 1.125rem; }
+}
+
+/* ---- the projection screen ---------------------------------------------
+   The one surface that leaves the app shell: no masthead, no sidebar. */
+.proj { display: flex; flex-direction: column; height: 100%; padding: var(--pf-t--global--spacer--xl) var(--pf-t--global--spacer--2xl); box-sizing: border-box; gap: var(--pf-t--global--spacer--xl); }
+.proj-top { display: flex; align-items: center; justify-content: space-between; gap: var(--pf-t--global--spacer--lg); }
+.proj-top-end { display: flex; align-items: baseline; gap: var(--pf-t--global--spacer--lg); color: var(--pf-t--global--text--color--subtle); font-size: var(--pf-t--global--font--size--body--lg); }
+.proj-clock { font-family: var(--pf-t--global--font--family--mono); }
+.proj-stage { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--pf-t--global--spacer--md); min-height: 0; }
+.proj-past { margin: 0; font-size: 1.75rem; line-height: 1.4; }
+.proj-past-2 { color: var(--pf-t--global--text--color--disabled); }
+.proj-past-1 { color: var(--pf-t--global--text--color--subtle); font-size: 2rem; }
+.proj-now { margin: var(--pf-t--global--spacer--lg) 0 0; font-size: 4.25rem; line-height: 1.3; font-weight: 400; color: var(--pf-t--global--text--color--regular); text-wrap: pretty; }
+.proj-source { margin: 0; font-size: 1.5rem; line-height: 1.4; color: var(--pf-t--global--text--color--subtle); }
+.proj-verse { padding: var(--pf-t--global--spacer--lg) var(--pf-t--global--spacer--xl); background: var(--pf-t--global--background--color--secondary--default); border-radius: var(--pf-t--global--border--radius--medium); }
+.proj-verse-ref { margin: 0 0 var(--pf-t--global--spacer--sm); font-family: var(--pf-t--global--font--family--heading); font-size: var(--pf-t--global--font--size--heading--sm); color: var(--pf-t--global--text--color--subtle); }
+.proj-verse-ver { color: var(--pf-t--global--text--color--disabled); margin-inline-start: var(--pf-t--global--spacer--sm); }
+.proj-verse-text { margin: 0; font-size: 2rem; line-height: 1.45; color: var(--pf-t--global--text--color--regular); }
+.proj-foot { display: flex; align-items: baseline; justify-content: space-between; gap: var(--pf-t--global--spacer--lg); padding-block-start: var(--pf-t--global--spacer--md); border-block-start: 1px solid var(--pf-t--global--border--color--default); font-size: var(--pf-t--global--font--size--body--lg); color: var(--pf-t--global--text--color--subtle); }
+.proj-join strong { font-weight: 500; color: var(--pf-t--global--text--color--regular); }
+
+/* ---- the language dialog, continued -------------------------------------
+   The escape hatch under the list: the page follows the reading language
+   unless this says otherwise. It is one checkbox, not a second list of the
+   same 21 languages. */
+.lang-escape {
+  margin: var(--pf-t--global--spacer--md) 0 0;
+}
+.lang-empty {
+  margin: 0;
+  padding: var(--pf-t--global--spacer--md);
+  color: var(--pf-t--global--text--color--subtle);
+}
+/* The dialogs open the way the rest of the app's do, on .active. */
+.language-backdrop,
+.scripture-backdrop {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--accelerate),
+    visibility 0s linear var(--pf-t--global--motion--duration--fade--default);
+}
+.language-backdrop.active,
+.scripture-backdrop.active {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--decelerate),
+    visibility 0s;
+}
