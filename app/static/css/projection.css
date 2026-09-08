@@ -1,0 +1,55 @@
+/* The projection screen — the frame around the design's .proj classes.
+ *
+ * Those classes are in ezyspeech.css and carry the type sizes. What is here is
+ * only what a screen at the front of a room needs and no other page does: a
+ * page that cannot scroll, a ground that suits a dim auditorium, and a cursor
+ * that gets out of the way.
+ */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--pf-t--global--background--color--primary--default);
+  color: var(--pf-t--global--text--color--regular);
+  /* Nothing on this screen is pressed, and a pointer left on a projector is
+     a white arrow on the wall for an hour. */
+  cursor: none;
+}
+
+.brand {
+  display: flex;
+  gap: var(--pf-t--global--spacer--md);
+  align-items: center;
+  font-family: var(--pf-t--global--font--family--heading);
+  font-size: var(--pf-t--global--font--size--heading--md);
+}
+
+.brand-mark {
+  width: auto;
+  height: 2.5rem;
+}
+
+.proj-verse[hidden] {
+  display: none;
+}
+
+/* A line the room has not been given yet leaves its space rather than
+   collapsing it: the big line must not move up and down between sentences. */
+.proj-now {
+  min-height: 1.3em;
+}
+
+.proj-source {
+  min-height: 1.4em;
+}
+
+/* If the feed drops, the screen says so once, quietly, at the foot — it does
+   not throw a dialog in front of a congregation. */
+.is-offline .proj-foot {
+  color: var(--pf-t--global--text--color--status--warning--default);
+}

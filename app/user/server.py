@@ -991,6 +991,21 @@ def captions():
     """
     return render_template('captions.html')
 
+@app.route('/projection')
+@limiter.limit("60 per minute")
+@check_client_access
+def projection():
+    """The screen at the front of the room.
+
+    Read-only, and outside the app shell: no masthead, no sidebar, nothing to
+    press. It follows one room's feed and shows the line being said now with
+    the two before it.
+
+    Query params (read by projection.js, not here):
+        /projection?room=main&lang=yue&join=ezyspeech.mabc.qzz.io
+    """
+    return render_template('projection.html')
+
 @app.route('/admin')
 def admin_route():
     """Admin interface route"""
