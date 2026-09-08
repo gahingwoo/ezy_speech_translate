@@ -721,7 +721,8 @@ function attachBiblePanel(card, refs) {
 }
 
 function substituteVerse(card, text, ref) {
-    const slot = pickVersion(ref);
+    const both = pickVersions(ref);
+    const slot = both.primary;
     if (!slot || !slot.verses || !slot.verses.length) return;
 
     const holder = text.querySelector('.sc-verse') || text.querySelector('.stream-zh');
@@ -729,7 +730,7 @@ function substituteVerse(card, text, ref) {
 
     const verse = document.createElement('div');
     verse.className = 'sc-verse';
-    renderWindow(verse, slot.verses, ref);
+    renderWindow(verse, slot.verses, ref, both.secondary);
     holder.replaceWith(verse);
 
     text.querySelectorAll('.sc-more').forEach(el => el.remove());
@@ -745,7 +746,9 @@ function substituteVerse(card, text, ref) {
         const tag = document.createElement('span');
         tag.className = 'stream-tag';
         const bits = [ref.display];
-        if (slot.translation) bits.push(slot.translation.toUpperCase());
+        const names = [slot.translation, both.secondary && both.secondary.translation]
+            .filter(Boolean).map(n => n.toUpperCase());
+        if (names.length) bits.push(names.join(' / '));
         bits.push(ref.match === 'wording'
             ? t('sc_byWording', 'matched by wording')
             : t('sc_fromBible', 'from the Bible, not translated'));
@@ -754,16 +757,27 @@ function substituteVerse(card, text, ref) {
     }
 }
 
-/* The reader's own Bible, and only that one. Showing two versions side by side
-   turns a verse into a comparison table; the English that was actually said is
-   already under the line, where it is for every other row. */
-function pickVersion(ref) {
-    if (ref.target && ref.target.verses && ref.target.verses.length) return ref.target;
-    if (ref.source && ref.source.verses && ref.source.verses.length) return ref.source;
-    if (ref.verses && ref.verses.length) {
-        return { translation: ref.translation, verses: ref.verses };
+/* The two Bibles this verse is read in, in the order the page reads: the
+   reader's own first, the English under it — the same shape as every other row,
+   where the translation leads and the English sits quietly beneath. */
+function pickVersions(ref) {
+    const has = slot => slot && slot.verses && slot.verses.length;
+    const target = has(ref.target) ? ref.target : null;
+    const source = has(ref.source) ? ref.source : null;
+    const legacy = (!target && !source && ref.verses && ref.verses.length)
+        ? { translation: ref.translation, verses: ref.verses } : null;
+
+    const primary = target || source || legacy;
+    let secondary = null;
+    if (target && source && target.translation !== source.translation) {
+        secondary = source;
     }
-    return null;
+    return { primary: primary, secondary: secondary };
+}
+
+/* Kept for the callers that only ever need one. */
+function pickVersion(ref) {
+    return pickVersions(ref).primary;
 }
 
 function buildShowAll(ref, total) {
@@ -844,11 +858,12 @@ function addToScripture(ref, timestamp) {
     const ddText = document.createElement('div');
     ddText.className = 'pf-v6-c-description-list__text';
 
-    const slot = pickVersion(ref);
+    const both = pickVersions(ref);
+    const slot = both.primary;
     if (slot && slot.verses && slot.verses.length) {
         const verse = document.createElement('div');
         verse.className = 'sc-verse';
-        renderWindow(verse, slot.verses, ref);
+        renderWindow(verse, slot.verses, ref, both.secondary);
         ddText.appendChild(verse);
         if (slot.verses.length > VERSE_WINDOW) {
             ddText.appendChild(buildShowAll(ref, slot.verses.length));
@@ -868,7 +883,9 @@ function addToScripture(ref, timestamp) {
         offer: t('sc_maybe', 'This may be'),
         cited: t('sc_cited', 'Mentioned')
     }[ref.match] || ''];
-    if (slot && slot.translation) parts.push(slot.translation.toUpperCase());
+    const names = [slot && slot.translation, both.secondary && both.secondary.translation]
+        .filter(Boolean).map(n => n.toUpperCase());
+    if (names.length) parts.push(names.join(' / '));
     if (ref.verse_start && ref.verse_end === ref.verse_start
             && slot && slot.verses && slot.verses.length > 1) {
         parts.push(t('sc_verseRead', 'verse %n was the one read aloud')
@@ -904,13 +921,23 @@ function verseWindow(verses, ref) {
     return { start: start, verses: verses.slice(start, start + VERSE_WINDOW) };
 }
 
-function renderWindow(host, verses, ref) {
+function renderWindow(host, verses, ref, secondary) {
     const win = verseWindow(verses, ref);
     const above = win.start;
     const below = verses.length - win.start - win.verses.length;
 
+    // The other version, indexed by verse number: the two Bibles do not always
+    // return the same run, and a line pairs with its own number or with
+    // nothing at all.
+    const other = new Map();
+    (secondary && secondary.verses || []).forEach(v => other.set(String(v.n), v));
+
     if (above > 0) host.appendChild(elide(above));
-    win.verses.forEach(v => host.appendChild(verseLine(v, ref)));
+    win.verses.forEach(v => {
+        host.appendChild(verseLine(v, ref));
+        const pair = other.get(String(v.n));
+        if (pair) host.appendChild(verseLine(pair, ref, true));
+    });
     if (below > 0) host.appendChild(elide(below));
 }
 
@@ -935,19 +962,28 @@ function tidyVerseText(text) {
         .trim();
 }
 
-function verseLine(v, ref) {
+function verseLine(v, ref, paired) {
     const line = document.createElement('p');
-    line.className = 'sc-line';
+    line.className = paired ? 'sc-line sc-pair' : 'sc-line';
     // Context around the verse that was read is dimmed, so the eye lands on
     // the one the speaker actually said.
     if (ref && ref.verse_start && ref.verse_end === ref.verse_start
             && Number(v.n) !== Number(ref.verse_start)) {
         line.classList.add('sc-dim');
     }
-    const num = document.createElement('sup');
-    num.className = 'sc-n';
-    num.textContent = String(v.n);
-    line.appendChild(num);
+    if (paired) {
+        // The number is already on the line above; repeating it would make a
+        // pair look like two verses.
+        const spacer = document.createElement('sup');
+        spacer.className = 'sc-n';
+        spacer.setAttribute('aria-hidden', 'true');
+        line.appendChild(spacer);
+    } else {
+        const num = document.createElement('sup');
+        num.className = 'sc-n';
+        num.textContent = String(v.n);
+        line.appendChild(num);
+    }
     line.appendChild(document.createTextNode(' ' + tidyVerseText(v.text)));
     return line;
 }
@@ -959,6 +995,14 @@ async function showPassage(ref) {
     const modal = document.getElementById('passageModal');
     if (!modal) return;
     document.getElementById('passageTitle').textContent = ref.display || '';
+    const sub = document.querySelector('#passageModal .modal-sub');
+    if (sub) {
+        const names = [ref.target && ref.target.translation, ref.source && ref.source.translation]
+            .filter(Boolean).map(n => n.toUpperCase());
+        sub.textContent = names.length
+            ? names.join(' / ') + ' · ' + t('sc_fromBible', 'from the Bible, not translated')
+            : t('sc_fromBible', 'from the Bible, not translated');
+    }
     const body = document.getElementById('passageBody');
     body.replaceChildren();
     const loading = document.createElement('p');
@@ -979,19 +1023,19 @@ async function showPassage(ref) {
     }
 
     body.replaceChildren();
-    [['source', full.source], ['target', full.target]].forEach(([slot, data]) => {
-        if (!data || !data.verses || !data.verses.length) return;
-        if (slot === 'target' && full.source
-                && data.translation === full.source.translation) return;
-        const head = document.createElement('p');
-        head.className = 'bible-verse-translation';
-        head.textContent = (data.translation || '').toUpperCase();
-        body.appendChild(head);
+    const both = pickVersions(full);
+    if (both.primary) {
+        const other = new Map();
+        (both.secondary && both.secondary.verses || []).forEach(v => other.set(String(v.n), v));
         const wrap = document.createElement('div');
         wrap.className = 'modal-verses';
-        data.verses.forEach(v => wrap.appendChild(verseLine(v, null)));
+        both.primary.verses.forEach(v => {
+            wrap.appendChild(verseLine(v, null));
+            const pair = other.get(String(v.n));
+            if (pair) wrap.appendChild(verseLine(pair, null, true));
+        });
         body.appendChild(wrap);
-    });
+    }
     if (!body.childNodes.length) {
         const empty = document.createElement('p');
         empty.className = 'bible-verse-missing';
@@ -1067,19 +1111,11 @@ function sameLanguage(a, b) {
 }
 window.sameLanguage = sameLanguage;
 
-async function translateText(text, target) {
-    if (!text) return '';
-    try {
-        const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=' + encodeURIComponent(target) + '&dt=t&q=' + encodeURIComponent(text);
-        const res = await fetch(url);
-        const j = await res.json();
-        if (j && j[0] && j[0][0] && j[0][0][0]) return j[0][0][0];
-        return text;
-    } catch (err) {
-        console.error('translateText error', err);
-        return text;
-    }
-}
+/* There were two functions called translateText here. JavaScript keeps the
+   last one, so this one — which asked the endpoint directly and would have
+   worked — was dead the moment it was written. It is gone; the live one is
+   below, and its fallback now does what this did.
+*/
 
 /* =========================
    TTS
@@ -2804,11 +2840,46 @@ function releaseTranslationSlot() {
     translationConcurrency = Math.max(0, translationConcurrency - 1);
 }
 
+/* The reader's own browser, asking directly.
+ *
+ * The server cannot reach this endpoint: it is Google's undocumented gtx one,
+ * and it answers a browser but refuses Python's TLS stack with 429 — measured
+ * side by side on one machine, 200 in 0.9s from the browser against 429 every
+ * time from requests and urllib. So every translation went to the server,
+ * waited out three retries and 30 seconds, and came back as the English it
+ * started with.
+ *
+ * The browser can simply ask. That is the whole fallback, and it is what this
+ * function always claimed to be — what was here tried a browser API that does
+ * not exist and then a table of word replacements.
+ */
 async function translateViaClientFallback(text, targetLang, cacheKey) {
+    try {
+        const url = 'https://translate.googleapis.com/translate_a/single'
+            + '?client=gtx&sl=auto&dt=t&tl=' + encodeURIComponent(targetLang)
+            + '&q=' + encodeURIComponent(text);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (response.ok) {
+            const data = await response.json();
+            // The response is [[[chunk, source, ...], ...], ...]; a long
+            // sentence comes back in several chunks and they join in order.
+            const chunks = (data && data[0]) || [];
+            const translated = chunks.map(c => (c && c[0]) || '').join('').trim();
+            if (translated && translated !== text) {
+                translationCache[cacheKey] = translated;
+                return translated;
+            }
+        }
+    } catch (e) {
+        console.warn('Direct translation failed:', e.message);
+    }
+
     try {
         const clientTranslated = await tryClientTranslation(text, targetLang);
         if (clientTranslated && clientTranslated !== text) {
-            console.log('Client-side translation:', clientTranslated.substring(0, 80));
             translationCache[cacheKey] = clientTranslated;
             return clientTranslated;
         }
@@ -3805,6 +3876,37 @@ function correctedLabel() {
         + '</span></span></span>';
 }
 
+/* Said plainly, on the line the translation should have been on. The words
+   above it are the English that was spoken — all the app has — and a reader
+   who cannot read them is entitled to know that is why, and to ask again. */
+function failedNote(id) {
+    return '<p class="sc-offer translate-failed">'
+        + '<span>' + escapeHtml(t('translateFailed', 'Could not translate this line'))
+        + ' — </span>'
+        + '<button class="pf-v6-c-button pf-m-inline pf-m-link" type="button"'
+        + ' onclick="retryTranslation(' + id + ')">'
+        + '<span class="pf-v6-c-button__text">' + escapeHtml(t('retry', 'Try again'))
+        + '</span></button></p>';
+}
+
+function retryTranslation(id) {
+    const item = translations.find(t => String(t.id) === String(id));
+    if (!item) return;
+    item.translated = null;
+    item.translationFailed = false;
+    renderTranslations();
+    translateInBackground(item, 'translation-' + item.id);
+}
+window.retryTranslation = retryTranslation;
+
+/* A stored "translation" that is word for word the English it came from is not
+   a translation — it is the fallback a failed call returned, saved as though
+   it had worked. Lines translated while the server could not reach the
+   endpoint are all like this, and they would never try again. */
+function echoesSource(item) {
+    return (item.translated || '').trim() === (item.corrected || '').trim();
+}
+
 function createTranslationHTML(item) {
     const itemId = 'translation-' + item.id;
     const itemSourceLang = item.source_language || item.language || 'en';
@@ -3837,9 +3939,11 @@ function createTranslationHTML(item) {
         // spoken: the original is the answer.
         item.translated = item.corrected;
         item.currentLang = targetLang;
-    } else if (item.translated && item.translated_lang === targetLang) {
+    } else if (item.translated && item.translated_lang === targetLang
+               && !echoesSource(item)) {
         item.currentLang = targetLang;
-    } else if (!item.translated || item.currentLang !== targetLang) {
+    } else if (!item.translated || item.currentLang !== targetLang
+               || echoesSource(item)) {
         item.currentLang = targetLang;
         item.translated = null;
         translateInBackground(item, itemId);
@@ -3860,7 +3964,8 @@ function createTranslationHTML(item) {
     const body = isTranslating
         ? '<p class="stream-zh text-target stream-pending"><span class="wait-bar"></span>'
           + '<span class="wait">' + escapeHtml(t('translating', 'Translating…')) + '</span></p>'
-        : '<p class="stream-zh text-target">' + escapeHtml(translatedText) + '</p>';
+        : '<p class="stream-zh text-target">' + escapeHtml(translatedText) + '</p>'
+          + (item.translationFailed ? failedNote(item.id) : '');
 
     return streamGroup({
         id: itemId,
@@ -4306,11 +4411,19 @@ async function translateInBackground(item, itemId, textEl) {
         }
         
         const spoken = item.source_language || item.language || '';
-        const translated = sameLanguage(spoken, lang)
+        const sameTongue = sameLanguage(spoken, lang);
+        const translated = sameTongue
             ? item.corrected
             : await translateText(item.corrected, lang);
         item.translated = translated || item.corrected;
         item.currentLang = lang;
+
+        // translateText hands back the original when the call times out or the
+        // service refuses, so a failure and a success look identical: a reader
+        // on 简体中文 just sees an English line and no reason for it. Two
+        // different languages and the same words back is not a translation.
+        item.translationFailed = !sameTongue
+            && (item.translated || '').trim() === (item.corrected || '').trim();
 
         // Fire-and-forget: cache translation on server so future clients skip this call
         if (translated && item.id != null) {

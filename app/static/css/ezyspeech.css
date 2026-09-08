@@ -84,6 +84,27 @@
   text-wrap: pretty;
 }
 .sc-line:last-child { margin-block-end: 0; }
+
+/* The other Bible, on the line under its own verse. It is the same verse, so
+   it keeps the verse's indent and drops the number — repeating the number
+   would make a pair read as two verses. Quieter and a size down, the way the
+   English under a translation is quieter everywhere else on the page. */
+.sc-pair {
+  margin-block-start: 0;
+  font-size: var(--pf-t--global--font--size--body--default);
+  line-height: 1.5;
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+/* The pair belongs to the verse above it, so the gap after a pair is the gap
+   between verses and the gap before it is none. */
+.sc-line + .sc-pair {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.sc-pair .sc-n {
+  visibility: hidden;
+}
 .sc-dim { color: var(--pf-t--global--text--color--subtle); }   /* context, not the verse read */
 .sc-n {
   font-family: var(--pf-t--global--font--family--mono);
@@ -213,4 +234,12 @@
     opacity var(--pf-t--global--motion--duration--fade--default)
       var(--pf-t--global--motion--timing-function--decelerate),
     visibility 0s;
+}
+
+/* ---- a translation that did not come through ---------------------------
+   The line above is the English that was spoken, because it is all the app
+   has. Saying so is the difference between a failure and a page that looks
+   like it simply ignored the reader's language. */
+.translate-failed {
+  color: var(--pf-t--global--text--color--status--warning--default);
 }

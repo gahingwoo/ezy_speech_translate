@@ -4542,6 +4542,41 @@ window.sharedAiStatusLibrary = {
     });
 })();
 
+// When a translation does not come through, the row says so.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { translateFailed: "Could not translate this line", retry: "Try again" },
+        zh: { translateFailed: "这句翻译不出来", retry: "再试一次" },
+        yue: { translateFailed: "呢句翻譯唔到", retry: "再試一次" },
+        "zh-tw": { translateFailed: "這句翻譯不了", retry: "再試一次" },
+        es: { translateFailed: "No se pudo traducir esta línea", retry: "Reintentar" },
+        fr: { translateFailed: "Impossible de traduire cette ligne", retry: "Réessayer" },
+        de: { translateFailed: "Diese Zeile konnte nicht übersetzt werden", retry: "Erneut versuchen" },
+        ru: { translateFailed: "Не удалось перевести эту строку", retry: "Повторить" },
+        pl: { translateFailed: "Nie udało się przetłumaczyć tej linii", retry: "Spróbuj ponownie" },
+        tr: { translateFailed: "Bu satır çevrilemedi", retry: "Yeniden dene" },
+        ja: { translateFailed: "この行は翻訳できませんでした", retry: "再試行" },
+        ko: { translateFailed: "이 줄은 번역하지 못했습니다", retry: "다시 시도" },
+        vi: { translateFailed: "Không dịch được dòng này", retry: "Thử lại" },
+        th: { translateFailed: "แปลบรรทัดนี้ไม่ได้", retry: "ลองอีกครั้ง" },
+        id: { translateFailed: "Baris ini tidak bisa diterjemahkan", retry: "Coba lagi" },
+        ms: { translateFailed: "Baris ini tidak dapat diterjemahkan", retry: "Cuba lagi" },
+        hi: { translateFailed: "इस पंक्ति का अनुवाद नहीं हो सका", retry: "फिर कोशिश करें" },
+        ar: { translateFailed: "تعذّرت ترجمة هذا السطر", retry: "أعد المحاولة" },
+        pt: { translateFailed: "Não foi possível traduzir esta linha", retry: "Tentar de novo" },
+        it: { translateFailed: "Non è stato possibile tradurre questa riga", retry: "Riprova" },
+        nl: { translateFailed: "Deze regel kon niet vertaald worden", retry: "Opnieuw proberen" },
+        ta: { translateFailed: "இந்த வரியை மொழிபெயர்க்க முடியவில்லை", retry: "மீண்டும் முயற்சி" },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
+
 // Lightweight runtime helpers for applying the shared i18n to any page.
 window.detectDisplayLanguage = function () {
     const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();

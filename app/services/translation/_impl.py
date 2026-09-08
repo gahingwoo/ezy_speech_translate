@@ -278,14 +278,17 @@ class GoogleTranslateService:
                     time.sleep(wait_time)
 
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 429:
-                    logger.warning(f"Rate limited (attempt {attempt + 1}/{self.retry_attempts})")
-                    wait_time = (2 ** attempt) * 10
-                    if attempt < self.retry_attempts - 1:
-                        logger.info(f"Waiting {wait_time}s before retry...")
-                        time.sleep(wait_time)
-                else:
-                    raise
+                if e.response is not None and e.response.status_code == 429:
+                    # Give up at once. This endpoint does not rate-limit this
+                    # server by volume — it answers a browser and refuses a
+                    # Python client outright, so waiting ten seconds and then
+                    # twenty changes nothing except holding a worker for
+                    # thirty of them while the listener's own timeout expires.
+                    # The browser asks directly when this returns nothing.
+                    logger.warning("Translation endpoint refused this client (429); "
+                                   "the listener will translate in the browser")
+                    break
+                raise
 
             except Exception as e:
                 logger.error(f"Translation error (attempt {attempt + 1}): {e}")
