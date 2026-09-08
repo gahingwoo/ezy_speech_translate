@@ -76,6 +76,19 @@
   padding-inline-start: var(--pf-t--global--spacer--md);
   margin-block-end: var(--pf-t--global--spacer--sm);
 }
+
+/* When the speaker said something of their own as well as naming a passage,
+   the row carries both: what they said, and the passage. Those are two
+   different things and they were touching. This is the gap between one group
+   of content and the next, which has its own token for exactly this.
+
+   Only when the verse is not leading the row: where it stands in place of the
+   translation it comes first and has nothing to be separated from. Position,
+   not an adjacent sibling — the marks sit between the two, so + never
+   matched. */
+.stream-text > .sc-verse:not(:first-child) {
+  margin-block-start: var(--pf-t--global--spacer--gap--group-to-group--vertical--default);
+}
 .sc-line {
   margin: 0 0 var(--pf-t--global--spacer--xs);
   font-size: 1.25rem;
