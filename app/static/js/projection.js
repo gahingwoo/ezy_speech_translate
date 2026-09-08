@@ -61,6 +61,15 @@ function push(text, source) {
    A verse stays up after the line that carried it has moved on: the room is
    still looking at it. It goes when the next verse comes, not when the next
    line does. */
+/* Some Chinese Bibles are stored with a space between every character. That is
+   typesetting, not reading, and on a projector it doubles the width of a
+   verse. Same rule as the listener's. */
+function tidyVerse(v) {
+    return String((v && v.text) || '')
+        .replace(/([\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef])[ \t]+(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef])/g, '$1')
+        .trim();
+}
+
 function showVerse(ref) {
     if (!ref) return;
     const slot = ref.target && ref.target.verses && ref.target.verses.length
@@ -74,7 +83,7 @@ function showVerse(ref) {
         el('projVerseRef').appendChild(document.createTextNode(' '));
         el('projVerseRef').appendChild(version);
     }
-    el('projVerseText').textContent = slot.verses.map(v => v.text).join(' ');
+    el('projVerseText').textContent = slot.verses.map(tidyVerse).join(' ');
     el('projVerse').hidden = false;
 }
 

@@ -924,6 +924,17 @@ function elide(count) {
     return line;
 }
 
+/* Some Chinese Bibles are stored with a space between every character —
+   "我 雖 然 行 過 死 蔭 的 幽 谷" — which is how the text was typeset, not how it
+   is read. A space between two Han characters carries no meaning and pulls a
+   verse to twice its width, so it goes; a space beside anything else stays,
+   because there it is doing a job. */
+function tidyVerseText(text) {
+    return String(text || '')
+        .replace(/([\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef])[ \t]+(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef])/g, '$1')
+        .trim();
+}
+
 function verseLine(v, ref) {
     const line = document.createElement('p');
     line.className = 'sc-line';
@@ -937,7 +948,7 @@ function verseLine(v, ref) {
     num.className = 'sc-n';
     num.textContent = String(v.n);
     line.appendChild(num);
-    line.appendChild(document.createTextNode(' ' + (v.text || '')));
+    line.appendChild(document.createTextNode(' ' + tidyVerseText(v.text)));
     return line;
 }
 
@@ -1005,7 +1016,7 @@ function readPassageAloud() {
     const slot = (full.target && full.target.verses && full.target.verses.length)
         ? full.target : full.source;
     if (!slot || !slot.verses) return;
-    speakText(slot.verses.map(v => v.text).join(' '));
+    speakText(slot.verses.map(v => tidyVerseText(v.text)).join(' '));
 }
 window.readPassageAloud = readPassageAloud;
 
