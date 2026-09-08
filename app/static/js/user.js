@@ -605,11 +605,27 @@ async function loadBiblePanel(card, refs) {
     try {
         const enriched = await _fetchBibleVerses(refs, tgt);
         if (!enriched || !enriched.length) return;
+        // The lookup rebuilds each ref around the verse text and drops what it
+        // did not ask about — including `match`, which is the whole of how the
+        // page decides whether to show a verse at all. Put the detector's own
+        // fields back.
+        const merged = enriched.map((found, i) => {
+            const original = refs.find(r => r.display === found.display) || refs[i] || {};
+            return Object.assign({}, original, found, {
+                // Refs stored before there was a `match` came from the
+                // reference detector, and a reference is what they are.
+                match: original.match || found.match || 'reference',
+                verse_start: original.verse_start != null
+                    ? original.verse_start : found.verse_start,
+                verse_end: original.verse_end != null
+                    ? original.verse_end : found.verse_end
+            });
+        });
         // The record of what this service read is kept whether or not the
         // verses are shown in the stream: switching them off is a reading
         // preference, not an instruction to forget the readings.
-        enriched.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
-        if (showBibleVerse && card.isConnected) attachBiblePanel(card, enriched);
+        merged.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
+        if (showBibleVerse && card.isConnected) attachBiblePanel(card, merged);
     } catch (e) {
         console.warn('loadBiblePanel failed:', e);
     }
