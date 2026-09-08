@@ -4613,6 +4613,41 @@ window.sharedAiStatusLibrary = {
     });
 })();
 
+// What this service came to, said once each.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { spoken: "Spoken", words: "words", linesLower: "lines", scriptureRefs: "Scripture references", peakWas: "peak was" },
+        zh: { spoken: "已讲", words: "个词", linesLower: "行", scriptureRefs: "处经文引用", peakWas: "最高" },
+        yue: { spoken: "講咗", words: "個字", linesLower: "行", scriptureRefs: "處經文引用", peakWas: "最高" },
+        "zh-tw": { spoken: "已講", words: "個字", linesLower: "行", scriptureRefs: "處經文引用", peakWas: "最高" },
+        es: { spoken: "Hablado", words: "palabras", linesLower: "líneas", scriptureRefs: "referencias bíblicas", peakWas: "máximo" },
+        fr: { spoken: "Prononcé", words: "mots", linesLower: "lignes", scriptureRefs: "références bibliques", peakWas: "maximum" },
+        de: { spoken: "Gesprochen", words: "Wörter", linesLower: "Zeilen", scriptureRefs: "Bibelstellen", peakWas: "Höchststand" },
+        ru: { spoken: "Сказано", words: "слов", linesLower: "строк", scriptureRefs: "ссылок на Библию", peakWas: "пик" },
+        pl: { spoken: "Wypowiedziano", words: "słów", linesLower: "wierszy", scriptureRefs: "odniesień biblijnych", peakWas: "szczyt" },
+        tr: { spoken: "Konuşulan", words: "kelime", linesLower: "satır", scriptureRefs: "İncil referansı", peakWas: "zirve" },
+        ja: { spoken: "発話", words: "語", linesLower: "行", scriptureRefs: "聖書引用", peakWas: "最大" },
+        ko: { spoken: "말한 내용", words: "단어", linesLower: "줄", scriptureRefs: "성경 참조", peakWas: "최대" },
+        vi: { spoken: "Đã nói", words: "từ", linesLower: "dòng", scriptureRefs: "trích dẫn Kinh Thánh", peakWas: "cao nhất" },
+        th: { spoken: "ที่พูดไป", words: "คำ", linesLower: "บรรทัด", scriptureRefs: "การอ้างพระคัมภีร์", peakWas: "สูงสุด" },
+        id: { spoken: "Diucapkan", words: "kata", linesLower: "baris", scriptureRefs: "referensi Alkitab", peakWas: "puncak" },
+        ms: { spoken: "Diucapkan", words: "perkataan", linesLower: "baris", scriptureRefs: "rujukan Bible", peakWas: "puncak" },
+        hi: { spoken: "बोला गया", words: "शब्द", linesLower: "पंक्तियाँ", scriptureRefs: "बाइबल संदर्भ", peakWas: "अधिकतम" },
+        ar: { spoken: "ما قيل", words: "كلمة", linesLower: "سطر", scriptureRefs: "مرجع كتابي", peakWas: "الذروة" },
+        pt: { spoken: "Falado", words: "palavras", linesLower: "linhas", scriptureRefs: "referências bíblicas", peakWas: "pico" },
+        it: { spoken: "Parlato", words: "parole", linesLower: "righe", scriptureRefs: "riferimenti biblici", peakWas: "picco" },
+        nl: { spoken: "Gesproken", words: "woorden", linesLower: "regels", scriptureRefs: "Bijbelverwijzingen", peakWas: "piek" },
+        ta: { spoken: "பேசியது", words: "சொற்கள்", linesLower: "வரிகள்", scriptureRefs: "பைபிள் குறிப்புகள்", peakWas: "உச்சம்" },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
+
 // Lightweight runtime helpers for applying the shared i18n to any page.
 window.detectDisplayLanguage = function () {
     const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();

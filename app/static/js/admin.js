@@ -961,7 +961,6 @@ function renderTranscriptions() {
     // PatternFly's grid table, as the design spec lays the console out: time,
     // what was recognised, and the correction that was made to it. The row
     // keeps .transcription-card because the drag handlers find rows by it.
-    const correctedText = (shared[lang] && shared[lang]['corrected']) || 'Corrected';
     const correctLabel = (shared[lang] && shared[lang]['correct']) || 'Correct';
     list.innerHTML = reversed.map((item, index) => `
         <tr class="pf-v6-c-table__tr transcription-card ${selectedItem && selectedItem.id === item.id ? 'pf-m-selected selected' : ''}"
@@ -992,8 +991,7 @@ function renderTranscriptions() {
           <td class="pf-v6-c-table__td card-text" role="cell" data-label="Recognised">${escapeHtml(item.original || item.corrected)}</td>
           <td class="pf-v6-c-table__td" role="cell" data-label="Correction">
             ${item.is_corrected
-              ? `<span class="card-text">${escapeHtml(item.corrected)}</span>
-                 <span class="pf-v6-c-label pf-m-green pf-m-compact pf-m-outline card-badge"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${correctedText}</span></span></span>`
+              ? `<span class="card-text">${escapeHtml(item.corrected)}</span>`
               : `<button class="pf-v6-c-button pf-m-inline pf-m-link" type="button" onclick="event.stopPropagation();selectItem(${item.id})"><span class="pf-v6-c-button__text">${correctLabel}</span></button>`}
           </td>
         </tr>

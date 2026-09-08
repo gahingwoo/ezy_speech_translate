@@ -1104,16 +1104,21 @@ def session_stats():
     is whether it is recording."""
     return (dl_group("Running", '<strong id="stat-duration">—</strong>',
                      "running", indent=22)
-            + dl_group("Lines",
-                       '<strong id="stat-translations">0</strong>'
-                       '<span class="meta"><span id="stat-words">0</span> '
-                       '<span data-i18n="wordsSoFar">words so far</span> · '
+            # No line count here. The transcript card above is badged with it,
+            # and saying a number twice on one page is how the two came to
+            # disagree in the first place. This card says what the table
+            # cannot: how long, how much was said, who was reading.
+            + dl_group("Spoken",
+                       '<strong id="stat-words">0</strong> '
+                       '<span data-i18n="words">words</span>'
+                       '<span class="meta"><span id="stat-translations">0</span> '
+                       '<span data-i18n="linesLower">lines</span> · '
                        '<span id="stat-bible-refs">0</span> '
-                       '<span data-i18n="bibleVerses">Scripture</span></span>',
-                       "lines", indent=22)
+                       '<span data-i18n="scriptureRefs">Scripture references</span></span>',
+                       "spoken", indent=22)
             + dl_group("Viewers",
                        '<strong id="sys-clients">0</strong>'
-                       '<span class="meta"><span data-i18n="atPeak">at peak</span> '
+                       '<span class="meta"><span data-i18n="peakWas">peak was</span> '
                        '<span id="stat-peak">0</span></span>',
                        "viewers", indent=22)
             + dl_group("Recording", label("sys-recording", "Stopped", None, "stopped"),

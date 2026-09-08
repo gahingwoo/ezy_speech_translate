@@ -358,18 +358,45 @@ html.pf-v6-theme-dark .icon-moon {
   width: 100%;
 }
 
-.transcript-table .table-drag {
-  width: 2.5rem;
-  padding-inline-end: 0;
+/* Under table-layout: fixed a column with no width stated gets whatever is
+   left over, and the tick column came out six pixels wide. */
+.transcript-table .pf-v6-c-table__check {
+  width: 2.75rem;
 }
 
-.transcript-table th:nth-child(2) {
+.transcript-table .table-drag {
+  width: 2.5rem;
+  padding-inline: var(--pf-t--global--spacer--sm) 0;
+}
+
+/* The handle sat flush against the checkbox, and the two read as one strange
+   control. It is a grip, not an action: quiet until the row is under the
+   pointer, and never louder than the line it moves. */
+.drag-handle {
+  --pf-v6-c-button--m-plain--Color: var(--pf-t--global--icon--color--disabled);
+
+  cursor: grab;
+}
+
+.transcription-card:hover .drag-handle,
+.drag-handle:focus-visible {
+  --pf-v6-c-button--m-plain--Color: var(--pf-t--global--icon--color--subtle);
+}
+
+.transcript-table th:nth-child(3) {
   width: 6rem;
 }
 
-.transcript-table th:nth-child(3),
+/* Recognised carries the whole line; Correction is a short link on most rows
+   and only fills out when someone has actually corrected one. Splitting the
+   remaining width evenly left half the table empty and stacked a long
+   sentence twenty lines deep. */
 .transcript-table th:nth-child(4) {
-  width: auto;
+  width: 55%;
+}
+
+.transcript-table th:nth-child(5) {
+  width: 45%;
 }
 
 /* Below the grid breakpoint PatternFly stacks each row into labelled lines,
@@ -378,10 +405,6 @@ html.pf-v6-theme-dark .icon-moon {
   .transcript-table {
     table-layout: auto;
   }
-}
-
-.drag-handle {
-  cursor: grab;
 }
 
 .drag-handle:active {
