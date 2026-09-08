@@ -216,7 +216,7 @@ window.sharedI18n = {
         "madeBy": "制作者",
         "author": "Ga Hing Woo (Jiaxing Hu)",
         "github": "GitHub",
-        "feedback": "問題回饋",
+        "feedback": "问题反馈",
         "version": "v4.0.0 • 开源 • MIT 许可证",
 
         // Buttons and actions
@@ -4639,6 +4639,42 @@ window.sharedAiStatusLibrary = {
         it: { spoken: "Parlato", words: "parole", linesLower: "righe", scriptureRefs: "riferimenti biblici", peakWas: "picco" },
         nl: { spoken: "Gesproken", words: "woorden", linesLower: "regels", scriptureRefs: "Bijbelverwijzingen", peakWas: "piek" },
         ta: { spoken: "பேசியது", words: "சொற்கள்", linesLower: "வரிகள்", scriptureRefs: "பைபிள் குறிப்புகள்", peakWas: "உச்சம்" },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
+
+// The About box: three labels that had no key at all and stayed English in
+// every language.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { versionLabel: "Version", source: "Source", openAnIssue: "Open an issue" },
+        zh: { versionLabel: "版本", source: "源代码", openAnIssue: "提一个问题" },
+        yue: { versionLabel: "版本", source: "原始碼", openAnIssue: "開個 issue" },
+        "zh-tw": { versionLabel: "版本", source: "原始碼", openAnIssue: "開一個 issue" },
+        es: { versionLabel: "Versión", source: "Código fuente", openAnIssue: "Abrir una incidencia" },
+        fr: { versionLabel: "Version", source: "Code source", openAnIssue: "Ouvrir un ticket" },
+        de: { versionLabel: "Version", source: "Quellcode", openAnIssue: "Ein Issue eröffnen" },
+        ru: { versionLabel: "Версия", source: "Исходный код", openAnIssue: "Создать обращение" },
+        pl: { versionLabel: "Wersja", source: "Kod źródłowy", openAnIssue: "Zgłoś problem" },
+        tr: { versionLabel: "Sürüm", source: "Kaynak kodu", openAnIssue: "Sorun bildir" },
+        ja: { versionLabel: "バージョン", source: "ソースコード", openAnIssue: "Issue を作成" },
+        ko: { versionLabel: "버전", source: "소스 코드", openAnIssue: "이슈 열기" },
+        vi: { versionLabel: "Phiên bản", source: "Mã nguồn", openAnIssue: "Mở một issue" },
+        th: { versionLabel: "เวอร์ชัน", source: "ซอร์สโค้ด", openAnIssue: "เปิดประเด็นปัญหา" },
+        id: { versionLabel: "Versi", source: "Kode sumber", openAnIssue: "Buka isu" },
+        ms: { versionLabel: "Versi", source: "Kod sumber", openAnIssue: "Buka isu" },
+        hi: { versionLabel: "संस्करण", source: "सोर्स कोड", openAnIssue: "एक issue खोलें" },
+        ar: { versionLabel: "الإصدار", source: "الشيفرة المصدرية", openAnIssue: "فتح مشكلة" },
+        pt: { versionLabel: "Versão", source: "Código-fonte", openAnIssue: "Abrir uma issue" },
+        it: { versionLabel: "Versione", source: "Codice sorgente", openAnIssue: "Apri una segnalazione" },
+        nl: { versionLabel: "Versie", source: "Broncode", openAnIssue: "Een issue openen" },
+        ta: { versionLabel: "பதிப்பு", source: "மூலக் குறியீடு", openAnIssue: "ஒரு issue திற" },
     };
     Object.keys(extra).forEach(function (lang) {
         if (!map[lang]) map[lang] = {};

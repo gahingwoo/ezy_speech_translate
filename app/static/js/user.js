@@ -2178,34 +2178,25 @@ function closeMobileMenu() {
 }
 
 function toggleMobileSearch() {
-    // The field takes over the masthead's action row rather than opening one
-    // below it. The masthead is already two rows deep on a phone; a third
-    // pushed the reading off the screen.
-    const content = document.querySelector('.pf-v6-c-masthead__content');
-    const searchBar = document.getElementById('mobileSearchBar');
+    // PatternFly's expandable search animates itself: the one class is the
+    // whole of the state, and the component grows the field, fades the icon
+    // out and the close button in. What was here hid one element and showed
+    // another, which happens in a single frame and reads as a jump.
+    const group = document.getElementById('mobileSearchBar');
     const toggle = document.getElementById('mobileSearchToggle');
-    const close = document.getElementById('mobileSearchClose');
-    const isOpen = content.classList.contains('is-searching');
+    if (!group) return;
+    const open = !group.classList.contains('pf-m-expanded');
 
-    content.classList.toggle('is-searching', !isOpen);
-    searchBar.hidden = isOpen;
-    if (close) close.hidden = isOpen;
-    if (toggle) toggle.hidden = !isOpen;
+    group.classList.toggle('pf-m-expanded', open);
+    if (toggle) toggle.setAttribute('aria-expanded', String(open));
 
-    if (isOpen) {
+    const searchInput = document.getElementById('searchInputMobile');
+    if (open) {
+        if (searchInput) setTimeout(() => searchInput.focus(), 100);
+    } else if (searchInput && searchInput.value) {
         // Leaving search puts the list back the way it was.
-        const searchInput = document.getElementById('searchInputMobile');
-        if (searchInput && searchInput.value) {
-            searchInput.value = '';
-            handleSearch();
-        }
-        toggle.classList.remove('active');
-    } else {
-        toggle.classList.add('active');
-        const searchInput = document.getElementById('searchInputMobile');
-        if (searchInput) {
-            setTimeout(() => searchInput.focus(), 100);
-        }
+        searchInput.value = '';
+        handleSearch();
     }
 }
 

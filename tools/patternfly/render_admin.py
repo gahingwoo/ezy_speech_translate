@@ -854,15 +854,15 @@ def about_link(href, text, i18n=None):
 REPO = "https://github.com/gahingwoo/ezy_speech_translate"
 
 ABOUT_ROWS = (
-    ("Version", None, "v4.0.0 - Open Source - MIT License", "version"),
+    ("Version", "versionLabel", "v4.0.0 - Open Source - MIT License", "version"),
     # Who wrote it. This was in the box the rewrite replaced and went missing
     # on the way; the credit badge below says the same thing in a logo, and a
     # logo is not a row anyone can read out.
     ("Made by", "madeBy", about_link("https://gahingwoo.com",
                                      "Ga Hing Woo (Jiaxing Hu)", "author"), None),
-    ("Source", None, about_link(REPO, "gahingwoo/ezy_speech_translate"), None),
+    ("Source", "source", about_link(REPO, "gahingwoo/ezy_speech_translate"), None),
     ("Feedback", "feedback",
-     about_link(REPO + "/issues/new/choose", "Open an issue"), None),
+     about_link(REPO + "/issues/new/choose", "Open an issue", "openAnIssue"), None),
 )
 
 

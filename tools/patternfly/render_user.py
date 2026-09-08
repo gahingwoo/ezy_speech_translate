@@ -415,15 +415,15 @@ def about_link(href, text, i18n=None):
 REPO = "https://github.com/gahingwoo/ezy_speech_translate"
 
 ABOUT_ROWS = (
-    ("Version", None, "v4.0.0 - Open Source - MIT License", "version"),
+    ("Version", "versionLabel", "v4.0.0 - Open Source - MIT License", "version"),
     # Who wrote it. This was in the box the rewrite replaced and went missing
     # on the way; the credit badge below says the same thing in a logo, and a
     # logo is not a row anyone can read out.
     ("Made by", "madeBy", about_link("https://gahingwoo.com",
                                      "Ga Hing Woo (Jiaxing Hu)", "author"), None),
-    ("Source", None, about_link(REPO, "gahingwoo/ezy_speech_translate"), None),
+    ("Source", "source", about_link(REPO, "gahingwoo/ezy_speech_translate"), None),
     ("Feedback", "feedback",
-     about_link(REPO + "/issues/new/choose", "Open an issue"), None),
+     about_link(REPO + "/issues/new/choose", "Open an issue", "openAnIssue"), None),
 )
 
 
@@ -946,27 +946,43 @@ def build():
           </div>
         </div>
 
-        <!-- On a phone the search takes over this row rather than opening
-             one below it: the masthead is already two rows deep on a small
-             screen and a third pushed the reading down. The button that opens
-             it is the one that closes it. -->
-        <div class="pf-v6-c-text-input-group mobile-search-bar" id="mobileSearchBar" hidden>
-          <div class="pf-v6-c-text-input-group__main pf-m-icon">
-            <span class="pf-v6-c-text-input-group__text">
-              <span class="pf-v6-c-text-input-group__icon">%(search)s</span>
-              <input class="pf-v6-c-text-input-group__text-input" type="search"
-                     id="searchInputMobile" aria-label="Search translations"
-                     data-i18n-placeholder="searchTranslations"
-                     placeholder="Search translations..." oninput="handleSearch()">
-            </span>
+        <!-- PatternFly's expandable search: an icon that grows into a field
+             and shrinks back, which the component animates itself. What was
+             here hid one element and showed another, so it appeared and
+             vanished in a single frame.
+
+             Copied from the shape gahingwoo.com uses, which is the same
+             component: the group lifts out of the flex row while it is open
+             and lies over the other actions, so expanding it can never reflow
+             the masthead. -->
+        <div class="search-slot">
+          <div class="pf-v6-c-input-group pf-m-search-expandable pf-m-plain mobile-search-bar"
+               id="mobileSearchBar">
+            <div class="pf-v6-c-input-group__item pf-m-search-input">
+              <div class="pf-v6-c-text-input-group">
+                <div class="pf-v6-c-text-input-group__main pf-m-icon">
+                  <span class="pf-v6-c-text-input-group__text">
+                    <span class="pf-v6-c-text-input-group__icon">%(search)s</span>
+                    <input class="pf-v6-c-text-input-group__text-input" type="search"
+                           id="searchInputMobile" aria-label="Search translations"
+                           data-i18n-placeholder="searchTranslations"
+                           placeholder="Search translations..." oninput="handleSearch()">
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="pf-v6-c-input-group__item pf-m-search-expand pf-m-plain">
+              <button class="pf-v6-c-button pf-m-plain mobile-search-toggle" type="button"
+                      id="mobileSearchToggle" aria-label="Toggle search" aria-expanded="false"
+                      onclick="toggleMobileSearch()">%(search)s</button>
+            </div>
+            <div class="pf-v6-c-input-group__item pf-m-search-action pf-m-plain">
+              <button class="pf-v6-c-button pf-m-plain mobile-search-close" type="button"
+                      id="mobileSearchClose" aria-label="Close search"
+                      onclick="toggleMobileSearch()">%(times_plain)s</button>
+            </div>
           </div>
         </div>
-        <button class="pf-v6-c-button pf-m-plain mobile-search-toggle" type="button"
-                id="mobileSearchToggle" aria-label="Toggle search"
-                onclick="toggleMobileSearch()">%(search)s</button>
-        <button class="pf-v6-c-button pf-m-plain mobile-search-close" type="button"
-                id="mobileSearchClose" aria-label="Close search" hidden
-                onclick="toggleMobileSearch()">%(times_plain)s</button>
 
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
                 id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
@@ -1469,6 +1485,21 @@ def build():
       btn.setAttribute('aria-expanded', String(open));
     }
     window.toggleJumpLinks = toggleJumpLinks;
+
+    /* On a phone the sidebar is a drawer, and choosing something from a drawer
+       is the end of using it. It used to stay open on top of the dialog it had
+       just opened — the language list arrived underneath the menu that asked
+       for it. */
+    document.addEventListener('click', function (event) {
+      const link = event.target.closest('#sidebar .pf-v6-c-nav__link');
+      if (!link) return;
+      const sidebar = document.getElementById('sidebar');
+      if (window.innerWidth < 1200 && sidebar
+          && sidebar.classList.contains('pf-m-expanded')) {
+        toggleMobileMenu();
+      }
+    });
+
 
     /* ── the language dialog ──────────────────────────────────────────────
        One choice, not two. The app used to carry a Display Language and a

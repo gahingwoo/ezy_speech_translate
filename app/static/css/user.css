@@ -119,9 +119,9 @@ html.pf-v6-theme-dark .icon-moon {
   flex: 0 1 22rem;
 }
 
-.mobile-search-toggle,
-.mobile-search-close,
-.mobile-search-bar {
+/* Above the phone breakpoint the masthead carries the full search box, so
+   the expandable one is not there at all. */
+.search-slot {
   display: none;
 }
 
@@ -651,6 +651,15 @@ html[data-ui-mode="elderly"] .text-source {
   z-index: var(--pf-t--global--z-index--xl);
 }
 
+/* A dialog opened from the drawer has to come out in front of it. The drawer
+   is lifted above its own backdrop, which put it above every modal as well:
+   the language list arrived underneath the menu that asked for it. */
+.app-modal,
+.language-backdrop,
+.scripture-backdrop {
+  z-index: var(--pf-t--global--z-index--2xl);
+}
+
 .sidebar-overlay {
   display: none;
 }
@@ -687,6 +696,7 @@ html[data-ui-mode="elderly"] .text-source {
 /* The masthead's content row: the state label, then the search taking what is
    left, then the icon that replaces it on a phone. */
 .pf-v6-c-masthead__content {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -708,16 +718,15 @@ html[data-ui-mode="elderly"] .text-source {
     display: none;
   }
 
-  .mobile-search-toggle {
-    display: inline-flex;
-  }
-
-  .mobile-search-close {
-    display: inline-flex;
-  }
-
-  .mobile-search-bar {
-    display: block;
+  /* The slot is not positioned: the expanded group measures itself against the
+     masthead's content row, so it spans the row instead of hanging off the
+     slot's own edge and running past the left of the screen. It keeps the
+     icon's width while the group is out of the flow, so nothing beside it
+     shifts as the field opens. */
+  .search-slot {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 2.3rem;
   }
 
   .pf-v6-c-masthead__content {
@@ -728,23 +737,35 @@ html[data-ui-mode="elderly"] .text-source {
     display: none;
   }
 
-  /* Searching takes the row over. Everything else in it steps aside for as
-     long as the field is open, and the field takes the width they were
-     using — no third row, and nothing moves underneath. */
-  .pf-v6-c-masthead__content.is-searching > :not(.mobile-search-bar):not(.mobile-search-close) {
-    display: none;
-  }
-
-  /* The field takes what is left after the close button, not everything —
-     with flex-basis auto it claimed the whole row and pushed the × on to a
-     line of its own, which is the thing this was meant to stop. */
+  /* Collapsed, the group is one icon sitting in the row. Expanded, it lifts
+     out of the flex row and lies over the other actions rather than competing
+     with them for space, so opening it can never reflow the masthead or push
+     anything on to a second line. It hangs off the end of the slot the icon
+     occupied, so the button under the thumb does not move as it opens. */
   .mobile-search-bar {
-    flex: 1 1 0;
+    width: auto;
+    flex: 0 0 auto;
     min-width: 0;
   }
 
-  .mobile-search-close {
-    flex: 0 0 auto;
+  .mobile-search-bar .pf-v6-c-text-input-group__text-input {
+    min-width: 0;
+  }
+
+  /* Anchored to the row, not to the slot the icon sat in: measuring a width
+     from the slot's own edge sent the field off the left of the screen,
+     because the slot is in the middle of the row. Spanning the row cannot
+     overflow, and it covers exactly what it is replacing. */
+  .mobile-search-bar.pf-m-expanded {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline: 0;
+    z-index: 2;
+    transform: translateY(-50%);
+  }
+
+  .mobile-search-bar.pf-m-expanded .pf-v6-c-input-group__item.pf-m-search-input {
+    --pf-v6-c-input-group__item--m-search-text-input--MaxWidth: 100%;
   }
 }
 
