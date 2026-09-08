@@ -726,7 +726,13 @@ html[data-ui-mode="elderly"] .text-source {
   .search-slot {
     display: flex;
     flex: 0 0 auto;
+    /* The slot holds the group's footprint whether the group is standing in
+       it or floating over the row. Without the height, opening the search
+       took the tallest thing out of the flow and the masthead shrank seven
+       pixels, then grew back on closing — the row twitched every time. */
     min-width: 2.3rem;
+    min-height: 2.3125rem;
+    align-items: center;
   }
 
   .pf-v6-c-masthead__content {
