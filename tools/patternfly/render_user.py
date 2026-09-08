@@ -946,6 +946,26 @@ def build():
           </div>
         </div>
 
+
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
+                data-i18n-title="textToSpeech" title="Text-to-Speech"
+                onclick="toggleTTS()">%(volume)s</button>
+
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="shareToggle" aria-label="Share and export"
+                data-i18n-title="export" title="Export"
+                onclick="showSettings('export')">%(share)s</button>
+
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
+                id="aboutToggle" aria-label="About"
+                data-i18n-title="about" title="About"
+                onclick="showAbout()">%(info)s</button>
+
+        <button class="pf-v6-c-button pf-m-plain" type="button" id="settingsToggle"
+                aria-label="Settings" data-i18n-title="settings" title="Settings"
+                onclick="showSettings()">%(cog)s</button>
+
         <!-- PatternFly's expandable search: an icon that grows into a field
              and shrinks back, which the component animates itself. What was
              here hid one element and showed another, so it appeared and
@@ -983,25 +1003,6 @@ def build():
             </div>
           </div>
         </div>
-
-        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
-                id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
-                data-i18n-title="textToSpeech" title="Text-to-Speech"
-                onclick="toggleTTS()">%(volume)s</button>
-
-        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
-                id="shareToggle" aria-label="Share and export"
-                data-i18n-title="export" title="Export"
-                onclick="showSettings('export')">%(share)s</button>
-
-        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
-                id="aboutToggle" aria-label="About"
-                data-i18n-title="about" title="About"
-                onclick="showAbout()">%(info)s</button>
-
-        <button class="pf-v6-c-button pf-m-plain" type="button" id="settingsToggle"
-                aria-label="Settings" data-i18n-title="settings" title="Settings"
-                onclick="showSettings()">%(cog)s</button>
       </div>
 
       <div class="search-results-info" id="searchResultsInfo" role="status"
