@@ -2178,15 +2178,29 @@ function closeMobileMenu() {
 }
 
 function toggleMobileSearch() {
+    // The field takes over the masthead's action row rather than opening one
+    // below it. The masthead is already two rows deep on a phone; a third
+    // pushed the reading off the screen.
+    const content = document.querySelector('.pf-v6-c-masthead__content');
     const searchBar = document.getElementById('mobileSearchBar');
     const toggle = document.getElementById('mobileSearchToggle');
-    const isOpen = searchBar.classList.contains('active');
+    const close = document.getElementById('mobileSearchClose');
+    const isOpen = content.classList.contains('is-searching');
+
+    content.classList.toggle('is-searching', !isOpen);
+    searchBar.hidden = isOpen;
+    if (close) close.hidden = isOpen;
+    if (toggle) toggle.hidden = !isOpen;
 
     if (isOpen) {
-        searchBar.classList.remove('active');
+        // Leaving search puts the list back the way it was.
+        const searchInput = document.getElementById('searchInputMobile');
+        if (searchInput && searchInput.value) {
+            searchInput.value = '';
+            handleSearch();
+        }
         toggle.classList.remove('active');
     } else {
-        searchBar.classList.add('active');
         toggle.classList.add('active');
         const searchInput = document.getElementById('searchInputMobile');
         if (searchInput) {
@@ -2382,6 +2396,14 @@ function setConnectionStatus(state) {
     badge.className = 'pf-v6-c-label ' + mod[cls] + ' connection-badge ' + cls;
     const sp = badge.querySelector('.pf-v6-c-label__text');
     if (sp) sp.textContent = t(cls, sp.textContent || cls);
+    // The icon says the state too, so the word can step aside on a narrow
+    // masthead without the label going silent. The title carries it either way.
+    const ico = document.getElementById('statusBadgeIcon');
+    if (ico) {
+        ico.innerHTML = svgIcon({ online: 'check-circle', offline: 'exclamation-circle',
+                                  waiting: 'info-circle' }[cls]);
+    }
+    badge.title = t(cls, cls);
 }
 
 /* ===================================

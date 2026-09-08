@@ -119,37 +119,19 @@ html.pf-v6-theme-dark .icon-moon {
   flex: 0 1 22rem;
 }
 
-.mobile-search-toggle {
+.mobile-search-toggle,
+.mobile-search-close,
+.mobile-search-bar {
   display: none;
 }
 
-/* The masthead is a grid, and it orders the brand (-1) then the content (1).
-   The bar it reveals has to come after both and span the whole width, or it
-   lands in the first column beside the actions. */
-.mobile-search-bar {
-  grid-column: 1 / -1;
-  order: 2;
-  display: none;
-  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-  background: var(--pf-t--global--background--color--primary--default);
-  border-block-end: var(--pf-t--global--border--width--divider--default) solid
-    var(--pf-t--global--border--color--default);
-}
+/* The search field is an item in the masthead's action row, not a row of its
+   own; what it looks like when it is open is in the phone block below. */
 
 .search-results-info {
   margin-block-start: var(--pf-t--global--spacer--xs);
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--subtle);
-}
-
-@media (max-width: 47.99rem) {
-  .header-search-desktop {
-    display: none;
-  }
-
-  .mobile-search-toggle {
-    display: inline-flex;
-  }
 }
 
 /* ── sidebar ──────────────────────────────────────────────────────────── */
@@ -685,10 +667,6 @@ html[data-ui-mode="elderly"] .text-source {
 
 /* The rest of what user.js toggles. Each of these was written with a hidden
    attribute the JavaScript never clears, which kept them shut for good. */
-.mobile-search-bar.active {
-  display: block;
-}
-
 .sync-indicator.show,
 .scroll-to-top.show {
   display: block;
@@ -715,3 +693,75 @@ html[data-ui-mode="elderly"] .text-source {
   gap: var(--pf-t--global--spacer--md);
   min-width: 0;
 }
+
+/* On a phone the masthead had six controls and a spelled-out state in a row
+   274px wide, needing 321px: it wrapped, the gear dropped to a line of its
+   own, and the chrome took a fifth of the screen before anything was read.
+
+   Two things give the row back its width. The gap goes to the small spacer —
+   these are icons in a row, not sections of a page. And the state label keeps
+   its icon and drops its word: the icon and the colour both say it, the title
+   and the live region still read it out, and it stops the row's width
+   depending on how long "Waiting" happens to be in the reader's language. */
+@media (max-width: 47.99rem) {
+  .header-search-desktop {
+    display: none;
+  }
+
+  .mobile-search-toggle {
+    display: inline-flex;
+  }
+
+  .mobile-search-close {
+    display: inline-flex;
+  }
+
+  .mobile-search-bar {
+    display: block;
+  }
+
+  .pf-v6-c-masthead__content {
+    gap: var(--pf-t--global--spacer--sm);
+  }
+
+  .connection-badge .pf-v6-c-label__text {
+    display: none;
+  }
+
+  /* Searching takes the row over. Everything else in it steps aside for as
+     long as the field is open, and the field takes the width they were
+     using — no third row, and nothing moves underneath. */
+  .pf-v6-c-masthead__content.is-searching > :not(.mobile-search-bar):not(.mobile-search-close) {
+    display: none;
+  }
+
+  /* The field takes what is left after the close button, not everything —
+     with flex-basis auto it claimed the whole row and pushed the × on to a
+     line of its own, which is the thing this was meant to stop. */
+  .mobile-search-bar {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .mobile-search-close {
+    flex: 0 0 auto;
+  }
+}
+
+/* On the narrowest phones still in use — 320px, an old SE or a budget Android —
+   the row needs 233px and has 219. Closing the gaps entirely would buy the
+   fourteen and leave the icons touching, so one control leaves instead.
+
+   Share goes, because it is the only one of the six that is already somewhere
+   else: "Save a copy" sits in the sidebar under Reading, one tap from the
+   hamburger that is right there. The buttons keep their tap targets. */
+@media (max-width: 25rem) {
+  .pf-v6-c-masthead__content {
+    gap: var(--pf-t--global--spacer--xs);
+  }
+
+  #shareToggle {
+    display: none;
+  }
+}
+

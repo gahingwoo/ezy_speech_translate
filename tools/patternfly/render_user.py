@@ -922,9 +922,13 @@ def build():
       <div class="pf-v6-c-masthead__content">
         <!-- setConnectionStatus() in user.js owns this class list and sets the
              label modifier that carries the state colour. -->
+        <!-- PatternFly's status label. The icon carries the state as well as
+             the colour, which is what lets the word step aside on a phone
+             without the label stopping saying anything. -->
         <span class="pf-v6-c-label pf-m-orange connection-badge waiting" id="statusBadge"
               role="status" aria-live="polite">
           <span class="pf-v6-c-label__content">
+            <span class="pf-v6-c-label__icon" id="statusBadgeIcon">%(status_icon)s</span>
             <span class="pf-v6-c-label__text" data-i18n="waiting">Waiting</span>
           </span>
         </span>
@@ -942,9 +946,27 @@ def build():
           </div>
         </div>
 
+        <!-- On a phone the search takes over this row rather than opening
+             one below it: the masthead is already two rows deep on a small
+             screen and a third pushed the reading down. The button that opens
+             it is the one that closes it. -->
+        <div class="pf-v6-c-text-input-group mobile-search-bar" id="mobileSearchBar" hidden>
+          <div class="pf-v6-c-text-input-group__main pf-m-icon">
+            <span class="pf-v6-c-text-input-group__text">
+              <span class="pf-v6-c-text-input-group__icon">%(search)s</span>
+              <input class="pf-v6-c-text-input-group__text-input" type="search"
+                     id="searchInputMobile" aria-label="Search translations"
+                     data-i18n-placeholder="searchTranslations"
+                     placeholder="Search translations..." oninput="handleSearch()">
+            </span>
+          </div>
+        </div>
         <button class="pf-v6-c-button pf-m-plain mobile-search-toggle" type="button"
                 id="mobileSearchToggle" aria-label="Toggle search"
                 onclick="toggleMobileSearch()">%(search)s</button>
+        <button class="pf-v6-c-button pf-m-plain mobile-search-close" type="button"
+                id="mobileSearchClose" aria-label="Close search" hidden
+                onclick="toggleMobileSearch()">%(times_plain)s</button>
 
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
                 id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
@@ -966,21 +988,8 @@ def build():
                 onclick="showSettings()">%(cog)s</button>
       </div>
 
-      <!-- Mobile search, revealed by the button above. Inside the masthead, so
-           it sits under it rather than in a grid row of its own. -->
-      <div class="pf-v6-c-masthead__expandable-content mobile-search-bar" id="mobileSearchBar">
-      <div class="pf-v6-c-text-input-group">
-        <div class="pf-v6-c-text-input-group__main pf-m-icon">
-          <span class="pf-v6-c-text-input-group__text">
-            <span class="pf-v6-c-text-input-group__icon">%(search)s</span>
-            <input class="pf-v6-c-text-input-group__text-input" type="search" id="searchInputMobile"
-                   aria-label="Search translations" data-i18n-placeholder="searchTranslations"
-                   placeholder="Search translations..." oninput="handleSearch()">
-          </span>
-        </div>
-      </div>
-        <div class="search-results-info" id="searchResultsInfo" role="status" aria-live="polite" hidden></div>
-      </div>
+      <div class="search-results-info" id="searchResultsInfo" role="status"
+           aria-live="polite" hidden></div>
     </header>
 
     <!-- The site's own navigation, as the design spec has it: three groups and
@@ -1734,6 +1743,8 @@ def build():
         "share": icon("share-alt"),
         "info": icon("info-circle"),
         "search": icon("search"),
+        "status_icon": icon("exclamation-circle"),
+        "times_plain": icon("times"),
         "bars": icon("bars"),
         "angle_right": icon("angle-right"),
         "empty": empty_group(),
