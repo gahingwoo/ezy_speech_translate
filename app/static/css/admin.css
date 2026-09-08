@@ -288,105 +288,85 @@ html.pf-v6-theme-dark .icon-moon {
   word-break: break-all;
 }
 
-/* ── the board ────────────────────────────────────────────────────────── */
-/* The list and the panel of detail beside it are PatternFly's Drawer, which is
-   the shape Cockpit uses for the same job. The section holding it is a bounded
-   flex child so the drawer can be exactly as tall as the sheet: then the list
-   scrolls inside its own region and the panel inside its own, and neither can
-   scroll the other away. */
+/* ── the console ──────────────────────────────────────────────────────── */
+/* The design spec's shape: what the microphone is hearing, the transcript, and
+   what this service has come to. Three cards down a reading column with the
+   sections railed beside them. */
 
-/* PatternFly's page section does not shrink, so with a long list it grew to
-   23,000px and the panel beside it went with it. Bounding the section is what
-   lets the drawer be exactly the height of the sheet. */
-.admin-board {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
+/* What the room is saying right now, in the words the recogniser has so far.
+   Set apart from the controls under it because it is the one thing on the
+   page that changes while you watch. */
+.interim-display {
+  min-height: 3rem;
+  padding: var(--pf-t--global--spacer--md);
+  font-size: var(--pf-t--global--font--size--body--lg);
+  line-height: var(--pf-t--global--font--line-height--body);
+  color: var(--pf-t--global--text--color--regular);
+  background: var(--pf-t--global--background--color--secondary--default);
+  border-radius: var(--pf-t--global--border--radius--small);
 }
 
-.admin-board > .pf-v6-c-drawer {
-  height: 100%;
+.interim-display.inactive {
+  color: var(--pf-t--global--text--color--subtle);
 }
 
-.pf-v6-c-drawer__content {
-  min-height: 0;
-}
-
-/* PatternFly hides a drawer panel until the drawer is expanded, and expects a
-   static drawer to be rendered expanded from the start. Here pf-m-expanded is
-   the small-screen state, so from lg — where the panel is static anyway — the
-   breakpoint shows it instead of the class. */
-@media (min-width: 62rem) {
-  #detailsDrawer > .pf-v6-c-drawer__main > .pf-v6-c-drawer__panel {
-    visibility: visible;
-    /* PatternFly draws this border for a drawer marked static outright; the
-       -on-lg variant leaves the width alone, so the two columns had nothing
-       between them. */
-    --pf-v6-c-drawer__panel--BorderInlineStartWidth:
-      var(--pf-t--global--border--width--divider--default);
-  }
-}
-
-.list-head {
+/* The two selects sit side by side while there is room for them. */
+.hearing-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-  align-items: baseline;
+  gap: var(--pf-t--global--spacer--md);
+  margin-block-start: var(--pf-t--global--spacer--md);
 }
 
-.list-head > .pf-v6-c-title {
-  margin-inline-end: auto;
+.hearing-controls > .pf-v6-c-form__group {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
-.list-head .pf-v6-c-badge {
-  margin-inline-start: var(--pf-t--global--spacer--sm);
+/* admin.js shows this with the hidden attribute; it must not stretch. */
+.auto-restart-badge {
+  width: fit-content;
+  margin-block-start: var(--pf-t--global--spacer--md);
 }
 
-.list-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* The list runs the length of the region, so its last row has no rule under
-   it — the region's own edge is the line. */
-.transcription-list > :last-child {
-  --pf-v6-c-data-list__item--BorderBlockEndWidth: 0;
-}
-
-.drag-hint {
+.console-actions {
   display: flex;
-  gap: var(--pf-t--global--spacer--xs);
-  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  margin-block-start: var(--pf-t--global--spacer--md);
 }
 
-/* From lg the panel is static and always on screen, so the button that opens
-   it and the one that closes it have nothing left to do. */
-@media (min-width: 62rem) {
-  .details-toggle {
-    display: none;
+/* ── the transcript table ─────────────────────────────────────────────── */
+
+/* The drag column holds a handle and nothing else, so it takes the width of
+   one and no more; the time takes what a timestamp needs; and the two text
+   columns split what is left. Without this the correction column collapsed to
+   about one word per line. */
+.transcript-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.transcript-table .table-drag {
+  width: 2.5rem;
+  padding-inline-end: 0;
+}
+
+.transcript-table th:nth-child(2) {
+  width: 6rem;
+}
+
+.transcript-table th:nth-child(3),
+.transcript-table th:nth-child(4) {
+  width: auto;
+}
+
+/* Below the grid breakpoint PatternFly stacks each row into labelled lines,
+   where fixed columns make no sense. */
+@media (max-width: 47.99rem) {
+  .transcript-table {
+    table-layout: auto;
   }
-}
-
-/* ── transcription rows ───────────────────────────────────────────────── */
-/* admin.js builds these as PatternFly data list rows. The class names below
-   are a contract with that code: it finds rows by .transcription-card and
-   marks them .selected, .dragging and .drag-over. */
-
-.transcription-card {
-  cursor: pointer;
-}
-
-/* PatternFly's draggable draws the row being dragged; this is only the line
-   showing where it would land. */
-.transcription-card.pf-m-drag-over {
-  box-shadow: inset 0 var(--pf-t--global--border--width--strong) 0
-    var(--pf-t--global--border--color--brand--default);
-}
-
-/* The empty state stands in for the whole list, so it has no row furniture. */
-.empty-row {
-  --pf-v6-c-data-list__item--BorderBlockEndWidth: 0;
 }
 
 .drag-handle {
@@ -397,53 +377,40 @@ html.pf-v6-theme-dark .icon-moon {
   cursor: grabbing;
 }
 
-.card-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--pf-t--global--spacer--sm);
-  align-items: center;
-  margin-block-end: var(--pf-t--global--spacer--xs);
-}
-
-.card-time {
+.transcript-table .card-time {
   font-family: var(--pf-t--global--font--family--mono);
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--subtle);
+  white-space: nowrap;
 }
 
-.card-text {
+.transcript-table .card-text {
   overflow-wrap: anywhere;
-  line-height: var(--pf-t--global--font--line-height--body);
 }
 
-/* ── the details panel ────────────────────────────────────────────────── */
-/* One surface with its groups divided by rules, not three cards floating in a
-   column. The panel scrolls as a whole; the head above the first rule stays. */
-
-.pf-v6-c-drawer__panel {
-  min-height: 0;
-  overflow-y: auto;
+/* The empty state stands in for the whole table, so it sits under it rather
+   than inside a row that would have to span every column. */
+.empty-slot:empty {
+  display: none;
 }
 
-.details-head {
-  flex-shrink: 0;
+/* ── transcript rows ─────────────────────────────────────────────────── */
+/* admin.js builds these as table rows. The class names below are a contract
+   with that code: it finds rows by .transcription-card and marks them
+   .selected, .dragging and .drag-over. */
+
+.transcription-card {
+  cursor: pointer;
 }
 
-.panel-section__title {
-  margin-block-end: var(--pf-t--global--spacer--md);
+.transcription-card.pf-m-dragging {
+  opacity: 0.5;
 }
 
-.panel-section__actions {
-  display: flex;
-  gap: var(--pf-t--global--spacer--sm);
-  align-items: center;
-  margin-block-start: var(--pf-t--global--spacer--md);
-}
-
-/* A description list of one-word terms against short values reads better tight
-   than spread across the panel. */
-.panel-section .pf-v6-c-description-list {
-  --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--sm);
+/* Not a box around the row — only the line showing where it would land. */
+.transcription-card.pf-m-drag-over > .pf-v6-c-table__td {
+  box-shadow: inset 0 var(--pf-t--global--border--width--strong) 0
+    var(--pf-t--global--border--color--brand--default);
 }
 
 /* ── dialogs ──────────────────────────────────────────────────────────── */

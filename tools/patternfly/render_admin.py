@@ -1048,8 +1048,99 @@ PAGE_SCRIPT = '''  <script>
       input.focus();
     }
     window.togglePasswordField = togglePasswordField;
+
+    /* The rail is PatternFly's expandable jump links: a toggle below xl, a
+       plain sticky list above it. */
+    function toggleJumpLinks(btn) {
+      const nav = document.getElementById('jumpNav');
+      const open = !nav.classList.contains('pf-m-expanded');
+      nav.classList.toggle('pf-m-expanded', open);
+      btn.setAttribute('aria-expanded', String(open));
+    }
+    window.toggleJumpLinks = toggleJumpLinks;
+
   </script>
 '''
+
+
+def hearing_controls():
+    """What the console is hearing with. The design spec keeps the console for
+    watching and correcting, so this is the whole of its setup: the language
+    being spoken and the microphone it comes in on. Everything else is in the
+    settings dialog."""
+    return (group(select("sourceLangSelect", SOURCE_LANGS, "Source language",
+                         "changeSourceLanguage()", indent=26),
+                  "Source Language", "sourceLanguage", "sourceLangSelect", indent=22)
+            + group(select("deviceSelect", '<option data-i18n="loading">Loading...</option>',
+                           "Audio device", indent=26),
+                    "Audio Device", "audioDevice", "deviceSelect", indent=22))
+
+
+def console_actions():
+    """Everything that can be done to the list, in the transcript's own footer
+    rather than in a column of its own."""
+    return ('                    <div class="console-actions">\n%s\n%s\n%s\n%s\n%s\n%s\n'
+            '                      <input type="file" id="importFileInput" accept=".json" hidden\n'
+            '                             onchange="handleImportFile(event)">\n'
+            '                    </div>\n'
+            % (button("Add", "addNewItem()", "plus", "secondary", i18n="add", indent=22),
+               button("Edit", "editSelected()", "edit", "secondary", i18n="edit", indent=22),
+               # Deleting is the destructive one, and PatternFly's rule is one
+               # red action: it is the only button here that gets it.
+               button("Delete", "deleteSelected()", "trash", "danger", i18n="delete", indent=22),
+               button("Clear All", "clearHistory()", "times", "secondary",
+                      i18n="clearAll", indent=22),
+               button("Export", "exportData()", "download", "secondary",
+                      i18n="export", indent=22),
+               button("Import", "document.getElementById('importFileInput').click()",
+                      "upload", "secondary", i18n="import", indent=22)))
+
+
+def session_stats():
+    return (dl_group("Duration", '<strong id="stat-duration">—</strong>',
+                     "statDuration", indent=22)
+            + dl_group("Peak Viewers", '<strong id="stat-peak">0</strong>',
+                       "statPeak", indent=22)
+            + dl_group("Total Words", '<strong id="stat-words">0</strong>',
+                       "statWords", indent=22)
+            + dl_group("Translations", '<strong id="stat-translations">0</strong>',
+                       "statTranslations", indent=22)
+            + dl_group("Bible Refs", '<strong id="stat-bible-refs">0</strong>',
+                       "statBibleRefs", indent=22)
+            + dl_group("DB Entries", label("stat-db", "—"), "statDbEntries", indent=22)
+            + dl_group("Clients", '<strong id="sys-clients">0</strong>', "clients", indent=22)
+            + dl_group("Transcripts", '<strong id="sys-transcriptions">0</strong>',
+                       "transcriptions", indent=22)
+            + dl_group("Recording", label("sys-recording", "Stopped", None, "stopped"),
+                       "recording", indent=22)
+            + dl_group("Language",
+                       '<span id="sys-language" class="pf-v6-c-label pf-m-blue">'
+                       '<span class="pf-v6-c-label__content">'
+                       '<span class="pf-v6-c-label__text mono">en-US</span>'
+                       '</span></span>', "language", indent=22))
+
+
+def correction_modal():
+    """Correcting a line is a dialog, not a panel.
+
+    The console's job is watching; correcting is something you stop and do. A
+    panel held open beside the list spent its whole life empty, and the design
+    spec puts the correction against the line it belongs to instead — the
+    Correction column opens this."""
+    body = (group(textarea("originalText", 2, readonly=True, indent=12),
+                  "Recognised", "recognised", "originalText", indent=10)
+            + group(textarea("correctedText", 4, "Select an item to edit...",
+                             "selectItemToEdit", indent=12),
+                    "Correction", "correction", "correctedText", indent=10)
+            + '        <p class="pf-v6-c-form__helper-text" data-i18n="correctionHelp">A correction'
+              ' is re-translated and pushed to every viewer.</p>\n')
+    return modal("correctionModal", "Correct this line", body,
+                 "cancelCorrection()", size="md", icon_name="edit",
+                 backdrop_onclick="if(event.target===this)cancelCorrection()",
+                 footer=footer(
+                     button("Cancel", "cancelCorrection()", None, "link", indent=8),
+                     button("Save", "saveCorrection()", "save", "primary",
+                            i18n="save", indent=8)))
 
 
 def build():
@@ -1085,6 +1176,10 @@ def build():
   <!-- PatternFly carries Red Hat Text, Display and Mono itself, so the fonts
        no longer come from Google. -->
   <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+  <!-- The house layer both pages sit in, then the design's own classes, then
+       what is left that is only this page's. -->
+  <link href="{{ static_url('css/shell.css') }}" rel="stylesheet">
+  <link href="{{ static_url('css/ezyspeech.css') }}" rel="stylesheet">
   <link href="{{ static_url('css/admin.css') }}" rel="stylesheet">
   <script src="{{ static_url('js/oem-loader.js') }}"></script>
 </head>
@@ -1141,80 +1236,196 @@ def build():
     <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
          onclick="toggleMobileMenu()"></div>
 
-    <!-- The panel's own controls: what it records with, and what it can do to
-         the list. Everything it is set up with is in the settings dialog. -->
-    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Recording controls">
+    <!-- The site's own navigation, the same three groups the viewer has.
+         Everything under Setup opens a dialog rather than going somewhere. -->
+    <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Site">
       <div class="pf-v6-c-page__sidebar-body">
-        <form class="pf-v6-c-form" onsubmit="return false;">
-%(sidebar)s        </form>
+        <nav class="pf-v6-c-nav" aria-label="Site">
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-service-title">
+            <h2 class="pf-v6-c-nav__section-title" id="nav-service-title"
+                data-i18n="nav_thisService">This service</h2>
+            <ul class="pf-v6-c-nav__list" role="list">
+              <li class="pf-v6-c-nav__item">
+                <a href="#hearing" class="pf-v6-c-nav__link pf-m-current" aria-current="page">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="hearing">Hearing</span></a></li>
+              <li class="pf-v6-c-nav__item">
+                <a href="#transcript" class="pf-v6-c-nav__link">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="transcript">Transcript</span></a></li>
+            </ul>
+          </section>
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-setup-title">
+            <h2 class="pf-v6-c-nav__section-title" id="nav-setup-title"
+                data-i18n="setup">Setup</h2>
+            <ul class="pf-v6-c-nav__list" role="list">
+              <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="showSettings()">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="settings">Settings</span></button></li>
+              <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="openRoomManager()">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="rooms">Rooms</span></button></li>
+              <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="openConfigPasswordGate()">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="serverConfig">Server configuration</span></button></li>
+            </ul>
+          </section>
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-elsewhere-title">
+            <h2 class="pf-v6-c-nav__section-title" id="nav-elsewhere-title"
+                data-i18n="nav_elsewhere">Elsewhere</h2>
+            <ul class="pf-v6-c-nav__list" role="list">
+              <li class="pf-v6-c-nav__item">
+                <a href="/" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="nav_liveTranslation">Live translation</span></a></li>
+              <li class="pf-v6-c-nav__item">
+                <a href="/projection" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="projection">Projection screen</span></a></li>
+            </ul>
+          </section>
+        </nav>
       </div>
     </div>
 
     <div class="pf-v6-c-page__main-container">
-      <main class="pf-v6-c-page__main" id="main-content" tabindex="-1">
-        <section class="pf-v6-c-page__main-section pf-m-fill pf-m-no-padding admin-board">
+      <main class="pf-v6-c-page__main doc-page with-rail" id="main-content" tabindex="-1">
+        <section class="pf-v6-c-page__main-section pf-m-limit-width pf-m-fill"
+                 aria-label="Live console">
+          <div class="pf-v6-c-page__main-body">
 
-          <!-- PatternFly's drawer, the shape Cockpit uses for a list and the
-               detail of what is selected in it. From lg the panel is static:
-               always there, in flow, with the drawer's own border between the
-               two. Below lg it is a drawer proper, opened by the Details
-               button and closed by the one in its head. -->
-          <div class="pf-v6-c-drawer pf-m-static-on-lg" id="detailsDrawer">
-            <div class="pf-v6-c-drawer__main">
+            <aside class="page-rail no-print">
+              <nav class="pf-v6-c-jump-links pf-m-vertical pf-m-expandable pf-m-non-expandable-on-xl"
+                   aria-label="On this page" id="jumpNav">
+                <div class="pf-v6-c-jump-links__header" id="jumpHeader">
+                  <div class="pf-v6-c-jump-links__toggle">
+                    <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                            onclick="toggleJumpLinks(this)">
+                      <span class="pf-v6-c-button__icon pf-m-start">
+                        <span class="pf-v6-c-jump-links__toggle-icon">%(angle_right)s</span></span>
+                      <span class="pf-v6-c-button__text" data-i18n="onThisPage">On this page</span>
+                    </button>
+                  </div>
+                  <div class="pf-v6-c-jump-links__label" data-i18n="onThisPage">On this page</div>
+                </div>
+                <ul class="pf-v6-c-jump-links__list" role="list" aria-labelledby="jumpHeader">
+                  <li class="pf-v6-c-jump-links__item pf-m-current">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#hearing">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="hearing">Hearing</span></span></a></span></li>
+                  <li class="pf-v6-c-jump-links__item">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#transcript">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="transcript">Transcript</span></span></a></span></li>
+                  <li class="pf-v6-c-jump-links__item">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#session">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="nav_thisService">This service</span></span></a></span></li>
+                </ul>
+              </nav>
+            </aside>
 
-              <div class="pf-v6-c-drawer__content">
-                <div class="pf-v6-c-drawer__body list-head">
-                  <h1 class="pf-v6-c-title pf-m-md">
-                    <span data-i18n="liveTranscriptions">Transcriptions</span>
-                    <span class="pf-v6-c-badge pf-m-read" id="itemCount"
-                          aria-label="Transcription count">0</span>
-                  </h1>
-                  <p class="pf-v6-c-form__helper-text drag-hint">
-                    %(grip)s <span data-i18n="dragToReorder">Drag to reorder</span>
-                  </p>
-%(details_toggle)s                </div>
-                <hr class="pf-v6-c-divider" />
-                <div class="pf-v6-c-drawer__body pf-m-no-padding list-body">
-                  <ul class="pf-v6-c-data-list pf-m-compact pf-m-drag pf-v6-c-droppable transcription-list"
-                      id="transcriptionsList" role="list" aria-label="Transcriptions">
-%(empty)s                  </ul>
+            <div class="page-content">
+              <div class="page-head">
+                <h1 class="page-title">
+                  <span data-i18n="liveConsole">Live console</span>
+                  <span class="subtitle" id="consoleSubtitle"></span>
+                </h1>
+%(record)s              </div>
+
+              <!-- What the microphone is picking up right now. It is one card
+                   because it is one question: is this thing hearing me. -->
+              <div class="section">
+                <div class="pf-v6-c-card" id="hearing">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text" data-i18n="hearing">Hearing</h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <div class="interim-display inactive" id="interimDisplay"
+                         role="status" aria-live="polite">
+                      <span id="interimText" data-i18n="waitingForSpeech">Waiting for speech...</span>
+                    </div>
+                    <form class="pf-v6-c-form hearing-controls" onsubmit="return false;">
+%(audio)s                    </form>
+                    <span class="pf-v6-c-label pf-m-blue auto-restart-badge" id="autoRestartBadge"
+                          hidden>
+                      <span class="pf-v6-c-label__content">
+                        <span class="pf-v6-c-label__icon">%(sync)s</span>
+                        <span class="pf-v6-c-label__text" data-i18n="autoRestartEnabled">Auto-restart enabled</span>
+                      </span>
+                    </span>
+                  </div>
+                  <div class="pf-v6-c-card__footer" data-i18n="hearingHelp">Interim text. It becomes
+                    a line below once the speaker pauses.</div>
                 </div>
               </div>
 
-              <div class="pf-v6-c-drawer__panel" id="detailsPanel">
-                <div class="pf-v6-c-drawer__body pf-m-padding details-head">
-                  <div class="pf-v6-c-drawer__head">
-                    <div class="pf-v6-c-drawer__title">
-                      <h2 class="pf-v6-c-title pf-m-md" data-i18n="details">Details</h2>
-                    </div>
-                    <div class="pf-v6-c-drawer__actions">
-                      <div class="pf-v6-c-drawer__close">
-                        <button class="pf-v6-c-button pf-m-plain" type="button"
-                                aria-label="Close the details panel"
-                                onclick="toggleDetails(false)">%(times)s</button>
-                      </div>
-                    </div>
+              <!-- Every line, and the correction made to it. A correction is
+                   re-translated and pushed to everyone reading. -->
+              <div class="section">
+                <div class="pf-v6-c-card" id="transcript">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text">
+                      <span data-i18n="transcript">Transcript</span>
+                      <span class="pf-v6-c-badge pf-m-read" id="itemCount"
+                            aria-label="Transcription count">0</span>
+                    </h2>
                   </div>
+                  <div class="pf-v6-c-card__body">
+                    <table class="pf-v6-c-table pf-m-grid-md transcript-table" role="grid"
+                           aria-label="Transcript">
+                      <thead class="pf-v6-c-table__thead">
+                        <tr class="pf-v6-c-table__tr" role="row">
+                          <th class="pf-v6-c-table__th table-drag" role="columnheader" scope="col">
+                            <span class="pf-v6-screen-reader" data-i18n="dragToReorder">Drag to reorder</span></th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col"
+                              data-i18n="time">Time</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col"
+                              data-i18n="recognised">Recognised</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col"
+                              data-i18n="correction">Correction</th>
+                        </tr>
+                      </thead>
+                      <tbody class="pf-v6-c-table__tbody" role="rowgroup" id="transcriptionsList">
+                      </tbody>
+                    </table>
+                    <div class="empty-slot" id="emptySlot"></div>
+                  </div>
+                  <div class="pf-v6-c-card__footer">
+                    <p class="meta" data-i18n="correctionHelp">A correction is re-translated and
+                      pushed to every viewer.</p>
+%(actions)s                  </div>
                 </div>
-                <hr class="pf-v6-c-divider" />
-%(edit)s                <hr class="pf-v6-c-divider" />
-%(sysinfo)s                <hr class="pf-v6-c-divider" />
-%(analytics)s              </div>
+              </div>
+
+              <div class="section">
+                <div class="pf-v6-c-card" id="session">
+                  <!-- systemInfo and analyticsSection were two cards; they are
+                       one now, and keep both ids so nothing that reaches for
+                       either comes back empty. -->
+                  <span id="systemInfo" hidden></span>
+                  <span id="analyticsSection" hidden></span>
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text" data-i18n="nav_thisService">This service</h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <dl class="pf-v6-c-description-list pf-m-horizontal-on-sm kv"
+                        id="analyticsCard" aria-label="Session Analytics">
+%(stats)s                    </dl>
+                  </div>
+                  <div class="pf-v6-c-card__footer">
+%(refresh)s                  </div>
+                </div>
+              </div>
 
             </div>
           </div>
-
         </section>
       </main>
     </div>
-
   </div>
 
   <!-- admin.js clones this when it clears the list. -->
   <template id="emptyStateTemplate">
 %(empty_template)s  </template>
 
-%(dialogs)s%(script)s
+%(correction)s%(dialogs)s%(script)s
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/admin.js') }}"></script>
 </body>
@@ -1231,7 +1442,16 @@ def build():
                            extra=' aria-label="Settings" title="Settings"'
                                  ' data-i18n-title="settings"', indent=8),
         "bars": btn_icon("bars"),
-        "sidebar": sidebar,
+        "angle_right": icon("angle-right"),
+        "sync": icon("sync-alt"),
+        "audio": hearing_controls(),
+        "actions": console_actions(),
+        "stats": session_stats(),
+        "record": button("Start Recording", "toggleRecording()", "microphone",
+                         "primary", el_id="recordBtn", i18n="startRecording",
+                         extra=' aria-pressed="false"', indent=16) + "\n",
+        "refresh": button("Refresh Stats", "refreshAnalytics()", "sync-alt",
+                          "secondary", i18n="refreshStats", indent=20) + "\n",
         "grip": icon("grip-vertical"),
         "empty": empty_state(),
         "empty_template": empty_state(6),
@@ -1249,6 +1469,7 @@ def build():
         "analytics": analytics_section(),
         "times": btn_icon("times"),
         "details_toggle": details_toggle(),
+        "correction": correction_modal(),
         "dialogs": dialogs,
         "script": PAGE_SCRIPT,
     }

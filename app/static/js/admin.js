@@ -901,11 +901,14 @@ function renderTranscriptions() {
 
     // Display in reverse order (newest first)
     const reversed = [...translations].reverse();
-    // PatternFly's data list: a row with a drag handle, a check and a cell.
-    // .transcription-card stays on the row because admin.js's drag handlers
-    // find rows by that class.
+    // PatternFly's grid table, as the design spec lays the console out: time,
+    // what was recognised, and the correction that was made to it. The row
+    // keeps .transcription-card because the drag handlers find rows by it.
+    const correctedText = (shared[lang] && shared[lang]['corrected']) || 'Corrected';
+    const correctLabel = (shared[lang] && shared[lang]['correct']) || 'Correct';
     list.innerHTML = reversed.map((item, index) => `
-        <li class="pf-v6-c-data-list__item pf-v6-c-draggable transcription-card ${selectedItem && selectedItem.id === item.id ? 'pf-m-selected selected' : ''}"
+        <tr class="pf-v6-c-table__tr transcription-card ${selectedItem && selectedItem.id === item.id ? 'pf-m-selected selected' : ''}"
+            role="row"
             draggable="true"
             data-id="${item.id}"
             data-index="${index}"
@@ -917,35 +920,21 @@ function renderTranscriptions() {
             ontouchstart="handleTouchStart(event, ${index})"
             ontouchmove="handleTouchMove(event)"
             ontouchend="handleTouchEnd(event)">
-          <div class="pf-v6-c-data-list__item-row">
-            <div class="pf-v6-c-data-list__item-control">
-              <div class="pf-v6-c-data-list__item-draggable-button">
-                <button class="pf-v6-c-button pf-m-plain drag-handle" type="button"
-                        aria-label="Reorder this transcription"
-                        onmousedown="event.stopPropagation()"
-                        ontouchstart="event.stopPropagation()">
-                  <span class="pf-v6-c-data-list__item-draggable-icon">${svgIcon('grip-vertical')}</span>
-                </button>
-              </div>
-              <div class="pf-v6-c-data-list__check">
-                <input type="checkbox" class="pf-v6-c-check__input card-checkbox"
-                       aria-label="Select transcription"
-                       data-id="${item.id}"
-                       ${selectedItem && selectedItem.id === item.id ? 'checked' : ''}
-                       onclick="handleCheckboxClick(event, ${item.id})">
-              </div>
-            </div>
-            <div class="pf-v6-c-data-list__item-content">
-              <div class="pf-v6-c-data-list__cell">
-                <div class="card-header">
-                  <span class="card-time">${escapeHtml(item.timestamp)}</span>
-                  ${item.is_corrected ? `<span class="pf-v6-c-label pf-m-green pf-m-compact card-badge"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${(shared && shared[lang] && shared[lang]['corrected']) || 'Corrected'}</span></span></span>` : ''}
-                </div>
-                <div class="card-text">${escapeHtml(item.corrected)}</div>
-              </div>
-            </div>
-          </div>
-        </li>
+          <td class="pf-v6-c-table__td table-drag" role="cell">
+            <button class="pf-v6-c-button pf-m-plain drag-handle" type="button"
+                    aria-label="Reorder this line"
+                    onmousedown="event.stopPropagation()"
+                    ontouchstart="event.stopPropagation()">${svgIcon('grip-vertical')}</button>
+          </td>
+          <td class="pf-v6-c-table__td card-time" role="cell" data-label="Time">${escapeHtml(item.timestamp)}</td>
+          <td class="pf-v6-c-table__td card-text" role="cell" data-label="Recognised">${escapeHtml(item.original || item.corrected)}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="Correction">
+            ${item.is_corrected
+              ? `<span class="card-text">${escapeHtml(item.corrected)}</span>
+                 <span class="pf-v6-c-label pf-m-green pf-m-compact pf-m-outline card-badge"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${correctedText}</span></span></span>`
+              : `<button class="pf-v6-c-button pf-m-inline pf-m-link" type="button" onclick="event.stopPropagation();selectItem(${item.id})"><span class="pf-v6-c-button__text">${correctLabel}</span></button>`}
+          </td>
+        </tr>
     `).join('');
 }
 
@@ -1093,14 +1082,18 @@ function selectItem(id) {
 
     renderTranscriptions();
 
-    // Below lg the panel is a drawer, so the editor is off screen until it is
-    // asked for; from lg it is already beside the list.
-    if (window.innerWidth < 992 && typeof toggleDetails === 'function') {
-        toggleDetails(true);
+    // Correcting is a dialog now, opened from the line it belongs to. A panel
+    // held open beside the list spent most of its life empty.
+    const dialog = document.getElementById('correctionModal');
+    if (dialog) {
+        dialog.classList.add('modal-overlay--open');
+        setTimeout(() => document.getElementById('correctedText').focus(), 60);
     }
 }
 
 function clearSelection() {
+    const dialog = document.getElementById('correctionModal');
+    if (dialog) dialog.classList.remove('modal-overlay--open');
     selectedItem = null;
     const original = document.getElementById('originalText');
     const corrected = document.getElementById('correctedText');
