@@ -433,6 +433,22 @@ function _zhScriptOf(t) {
  * putting the user's matched language group first, then everything else.
  * Auto-selects the best default for the given langCode.
  */
+/* Editions that do not belong in the same list as the rest.
+ *
+ * 思高聖經 is a Catholic translation whose book names and verse numbering do
+ * not line up with 和合本. A reader who picks it by accident gets references
+ * that do not resolve — and in a live service they have no way of knowing
+ * that is why. It is left out rather than explained.
+ */
+const _EXCLUDED_BIBLES = ['CHISB'];
+
+function _excludedBible(t) {
+    const code = String(t.short_name || '').toUpperCase();
+    const name = String(t.full_name || '');
+    return _EXCLUDED_BIBLES.includes(code)
+        || name.includes('思高') || /studium biblicum/i.test(name);
+}
+
 async function loadBibleTranslationOptions(langCode) {
     const sel = document.getElementById('bibleTargetTranslation');
     if (!sel) return;
@@ -453,7 +469,9 @@ async function loadBibleTranslationOptions(langCode) {
     // Only show translations for the user's matched language — no giant global list.
     const matched = langData.filter(g =>
         ppLangName && g.language.toLowerCase().startsWith(ppLangName.toLowerCase())
-    );
+    ).map(g => Object.assign({}, g, {
+        translations: (g.translations || []).filter(t => !_excludedBible(t))
+    }));
 
     // Build options for the matched language group.
     const allMatchedCodes = [];

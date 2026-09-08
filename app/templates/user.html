@@ -1457,8 +1457,11 @@
           || 'No language matches that.';
         return;
       }
-      host.innerHTML = '<section class="pf-v6-c-menu__group">'
-        + '<ul class="pf-v6-c-menu__list" role="menu" id="languageListItems"></ul></section>';
+      // One list, not groups. The design called for the languages this
+      // congregation picks most sitting above the rest, but nobody has the
+      // usage data to say which those are, and a guess at the top of the list
+      // is worse than no guess: it tells a newcomer their language is unusual.
+      host.innerHTML = '<ul class="pf-v6-c-menu__list" role="menu" id="languageListItems"></ul>';
       const list = document.getElementById('languageListItems');
       rows.forEach(function (l) {
         const li = document.createElement('li');
