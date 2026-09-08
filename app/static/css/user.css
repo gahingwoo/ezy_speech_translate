@@ -746,6 +746,10 @@ html[data-ui-mode="elderly"] .text-source {
     width: auto;
     flex: 0 0 auto;
     min-width: 0;
+    /* The group is as tall as the field it will grow into, so its items sat
+       at the top of that height and the magnifier rode four pixels above the
+       icons beside it. */
+    align-items: center;
   }
 
   .mobile-search-bar .pf-v6-c-text-input-group__text-input {
