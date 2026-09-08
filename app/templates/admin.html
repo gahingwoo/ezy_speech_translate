@@ -246,18 +246,43 @@
                    re-translated and pushed to everyone reading. -->
               <div class="section">
                 <div class="pf-v6-c-card" id="transcript">
-                  <div class="pf-v6-c-card__title">
-                    <h2 class="pf-v6-c-card__title-text">
-                      <span data-i18n="transcript">Transcript</span>
-                      <span class="pf-v6-c-badge pf-m-read" id="itemCount"
-                            aria-label="Transcription count">0</span>
-                    </h2>
+                  <!-- Export and Delete live here and appear only once rows
+                       are ticked: a destructive button with nothing to act on
+                       should not be sitting there armed. The header says how
+                       many are ticked, so Delete always has a subject. -->
+                  <div class="pf-v6-c-card__header">
+                    <div class="pf-v6-c-card__actions pf-m-no-offset">
+                      <div class="pf-v6-c-action-list selection-actions" id="selectionActions"
+                           hidden>
+                        <div class="pf-v6-c-action-list__group">
+                          <span class="meta" id="selectionCount" role="status"
+                                aria-live="polite"></span>
+                          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="exportSelected()">
+                            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="exportSelected">Export selected</span>
+                          </button>
+                          <button class="pf-v6-c-button pf-m-danger pf-m-secondary" type="button" onclick="deleteSelected()">
+                            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="delete">Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="pf-v6-c-card__header-main">
+                      <h2 class="pf-v6-c-card__title-text">
+                        <span data-i18n="transcript">Transcript</span>
+                        <span class="pf-v6-c-badge pf-m-read" id="itemCount"
+                              aria-label="Transcription count">0</span>
+                      </h2>
+                    </div>
                   </div>
                   <div class="pf-v6-c-card__body">
                     <table class="pf-v6-c-table pf-m-grid-md transcript-table" role="grid"
                            aria-label="Transcript">
                       <thead class="pf-v6-c-table__thead">
                         <tr class="pf-v6-c-table__tr" role="row">
+                          <td class="pf-v6-c-table__check" role="columnheader">
+                            <input type="checkbox" id="selectAllRows" aria-label="Select all lines"
+                                   onchange="toggleSelectAll(this.checked)">
+                          </td>
                           <th class="pf-v6-c-table__th table-drag" role="columnheader" scope="col">
                             <span class="pf-v6-screen-reader" data-i18n="dragToReorder">Drag to reorder</span></th>
                           <th class="pf-v6-c-table__th" role="columnheader" scope="col"
@@ -276,27 +301,15 @@
                   <div class="pf-v6-c-card__footer">
                     <p class="meta" data-i18n="correctionHelp">A correction is re-translated and
                       pushed to every viewer.</p>
-                    <div class="console-actions">
-                      <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="addNewItem()">
-                        <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="add">Add</span>
-                      </button>
-                      <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="editSelected()">
-                        <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 576 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M402.6 83.2l90.2 90.2c3.8 3.8 3.8 10 0 13.8L274.4 405.6l-92.8 10.3c-12.4 1.4-22.9-9.1-21.5-21.5l10.3-92.8L388.8 83.2c3.8-3.8 10-3.8 13.8 0zm162-22.9l-48.8-48.8c-15.2-15.2-39.9-15.2-55.2 0l-35.4 35.4c-3.8 3.8-3.8 10 0 13.8l90.2 90.2c3.8 3.8 10 3.8 13.8 0l35.4-35.4c15.2-15.3 15.2-40 0-55.2zM384 346.2V448H64V128h229.8c3.2 0 6.2-1.3 8.5-3.5l40-40c7.6-7.6 2.2-20.5-8.5-20.5H48C21.5 64 0 85.5 0 112v352c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V306.2c0-10.7-12.9-16-20.5-8.5l-40 40c-2.2 2.3-3.5 5.3-3.5 8.5z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="edit">Edit</span>
-                      </button>
-                      <button class="pf-v6-c-button pf-m-danger" type="button" onclick="deleteSelected()">
-                        <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="delete">Delete</span>
-                      </button>
-                      <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="clearHistory()">
-                        <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="clearAll">Clear All</span>
-                      </button>
-                      <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="exportData()">
-                        <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="export">Export</span>
-                      </button>
-                      <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="document.getElementById('importFileInput').click()">
-                        <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M296 384h-80c-13.3 0-24-10.7-24-24V192h-87.7c-17.8 0-26.7-21.5-14.1-34.1L242.3 5.7c7.5-7.5 19.8-7.5 27.3 0l152.2 152.2c12.6 12.6 3.7 34.1-14.1 34.1H320v168c0 13.3-10.7 24-24 24zm216-8v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h136v8c0 30.9 25.1 56 56 56h80c30.9 0 56-25.1 56-56v-8h136c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="import">Import</span>
-                      </button>
-                      <input type="file" id="importFileInput" accept=".json" hidden
-                             onchange="handleImportFile(event)">
+                    <div class="pf-v6-c-action-list">
+                      <div class="pf-v6-c-action-list__group">
+                        <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="addNewItem()">
+                          <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="addLine">Add a line</span>
+                        </button>
+                        <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="exportData()">
+                          <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="export">Export</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -317,7 +330,7 @@
                         id="analyticsCard" aria-label="Session Analytics">
                       <div class="pf-v6-c-description-list__group">
                         <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="statDuration">Duration</span>
+                          <span class="pf-v6-c-description-list__text" data-i18n="running">Running</span>
                         </dt>
                         <dd class="pf-v6-c-description-list__description">
                           <div class="pf-v6-c-description-list__text"><strong id="stat-duration">—</strong></div>
@@ -325,58 +338,18 @@
                       </div>
                       <div class="pf-v6-c-description-list__group">
                         <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="statPeak">Peak Viewers</span>
+                          <span class="pf-v6-c-description-list__text" data-i18n="lines">Lines</span>
                         </dt>
                         <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><strong id="stat-peak">0</strong></div>
+                          <div class="pf-v6-c-description-list__text"><strong id="stat-translations">0</strong><span class="meta"><span id="stat-words">0</span> <span data-i18n="wordsSoFar">words so far</span> · <span id="stat-bible-refs">0</span> <span data-i18n="bibleVerses">Scripture</span></span></div>
                         </dd>
                       </div>
                       <div class="pf-v6-c-description-list__group">
                         <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="statWords">Total Words</span>
+                          <span class="pf-v6-c-description-list__text" data-i18n="viewers">Viewers</span>
                         </dt>
                         <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><strong id="stat-words">0</strong></div>
-                        </dd>
-                      </div>
-                      <div class="pf-v6-c-description-list__group">
-                        <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="statTranslations">Translations</span>
-                        </dt>
-                        <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><strong id="stat-translations">0</strong></div>
-                        </dd>
-                      </div>
-                      <div class="pf-v6-c-description-list__group">
-                        <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="statBibleRefs">Bible Refs</span>
-                        </dt>
-                        <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><strong id="stat-bible-refs">0</strong></div>
-                        </dd>
-                      </div>
-                      <div class="pf-v6-c-description-list__group">
-                        <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="statDbEntries">DB Entries</span>
-                        </dt>
-                        <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><span id="stat-db" class="pf-v6-c-label"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">—</span></span></span></div>
-                        </dd>
-                      </div>
-                      <div class="pf-v6-c-description-list__group">
-                        <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="clients">Clients</span>
-                        </dt>
-                        <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><strong id="sys-clients">0</strong></div>
-                        </dd>
-                      </div>
-                      <div class="pf-v6-c-description-list__group">
-                        <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="transcriptions">Transcripts</span>
-                        </dt>
-                        <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><strong id="sys-transcriptions">0</strong></div>
+                          <div class="pf-v6-c-description-list__text"><strong id="sys-clients">0</strong><span class="meta"><span data-i18n="atPeak">at peak</span> <span id="stat-peak">0</span></span></div>
                         </dd>
                       </div>
                       <div class="pf-v6-c-description-list__group">
@@ -387,20 +360,14 @@
                           <div class="pf-v6-c-description-list__text"><span id="sys-recording" class="pf-v6-c-label"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text" data-i18n="stopped">Stopped</span></span></span></div>
                         </dd>
                       </div>
-                      <div class="pf-v6-c-description-list__group">
-                        <dt class="pf-v6-c-description-list__term">
-                          <span class="pf-v6-c-description-list__text" data-i18n="language">Language</span>
-                        </dt>
-                        <dd class="pf-v6-c-description-list__description">
-                          <div class="pf-v6-c-description-list__text"><span id="sys-language" class="pf-v6-c-label pf-m-blue"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text mono">en-US</span></span></span></div>
-                        </dd>
-                      </div>
                     </dl>
                   </div>
+                  <!-- No refresh button: a console that has to be asked is
+                       not live. This says when it last heard from the server
+                       instead. -->
                   <div class="pf-v6-c-card__footer">
-                    <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="refreshAnalytics()">
-                      <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="refreshStats">Refresh Stats</span>
-                    </button>
+                    <p class="meta"><span data-i18n="updated">Updated</span>
+                      <span id="statsUpdated">—</span></p>
                   </div>
                 </div>
               </div>
@@ -535,6 +502,13 @@
                 id="settings-tab-cache" aria-controls="settings-cache"
                 aria-selected="false" onclick="showSettingsTab('cache')">
           <span class="pf-v6-c-tabs__item-text">TTS cache</span>
+        </button>
+      </li>
+      <li class="pf-v6-c-tabs__item" id="settings-tabitem-service">
+        <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                id="settings-tab-service" aria-controls="settings-service"
+                aria-selected="false" onclick="showSettingsTab('service')">
+          <span class="pf-v6-c-tabs__item-text">The whole service</span>
         </button>
       </li>
       <li class="pf-v6-c-tabs__item" id="settings-tabitem-display">
@@ -743,6 +717,25 @@
           </button>
         </div>
       </div>
+        </form>
+      </div>
+    </section>
+    <section class="pf-v6-c-tab-content settings-panel" id="settings-service"
+             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-service" hidden>
+      <div class="pf-v6-c-tab-content__body">
+        <form class="pf-v6-c-form" onsubmit="return false;">
+        <div class="pf-v6-c-action-list">
+          <div class="pf-v6-c-action-list__group">
+            <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="document.getElementById('importFileInput').click()">
+              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M296 384h-80c-13.3 0-24-10.7-24-24V192h-87.7c-17.8 0-26.7-21.5-14.1-34.1L242.3 5.7c7.5-7.5 19.8-7.5 27.3 0l152.2 152.2c12.6 12.6 3.7 34.1-14.1 34.1H320v168c0 13.3-10.7 24-24 24zm216-8v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h136v8c0 30.9 25.1 56 56 56h80c30.9 0 56-25.1 56-56v-8h136c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="import">Import a transcript</span>
+            </button>
+            <button class="pf-v6-c-button pf-m-danger pf-m-secondary" type="button" onclick="clearHistory()">
+              <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="clearAll">Clear this service</span>
+            </button>
+          </div>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" hidden
+               onchange="handleImportFile(event)">
         </form>
       </div>
     </section>

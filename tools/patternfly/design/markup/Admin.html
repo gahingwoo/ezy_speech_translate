@@ -9,7 +9,7 @@
       </span>
       <div class="pf-v6-c-masthead__brand">
         <a class="pf-v6-c-masthead__logo brand" href="/">
-          <img class="pf-v6-c-brand brand-mark" src="/assets/brand/mark.png" width="208" height="208" alt="">
+          <img class="pf-v6-c-brand brand-mark" src="/static/img/mark.png" width="208" height="208" alt="">
           <span class="brand-name">EzySpeech</span>
         </a>
       </div>
@@ -44,6 +44,7 @@
           <ul class="pf-v6-c-nav__list" role="list">
             <li class="pf-v6-c-nav__item"><a href="#" class="pf-v6-c-nav__link"><span class="pf-v6-c-nav__link-text">Voices and audio</span></a></li>
             <li class="pf-v6-c-nav__item"><a href="#" class="pf-v6-c-nav__link"><span class="pf-v6-c-nav__link-text">Bible translation</span></a></li>
+            <li class="pf-v6-c-nav__item"><a href="#" class="pf-v6-c-nav__link"><span class="pf-v6-c-nav__link-text">Import and export</span></a></li>
             <li class="pf-v6-c-nav__item"><a href="#" class="pf-v6-c-nav__link"><span class="pf-v6-c-nav__link-text">Configuration</span></a></li>
           </ul>
         </section>
@@ -91,7 +92,7 @@
     <div class="pf-v6-c-card__body">
       <div class="pf-v6-c-content">
         <p>&ldquo;and the offering will be taken up during the last&hellip;&rdquo;</p>
-        <p class="pf-v6-u-text-color-subtle">Yeti Nano &middot; English (US) &middot; 1 viewer reading in 粵語 Cantonese</p>
+        <p class="pf-v6-u-text-color-subtle">Yeti Nano &middot; English (US) &middot; 2 viewers reading in 粵語 Cantonese</p>
       </div>
     </div>
     <div class="pf-v6-c-card__footer">Interim text. It becomes a line below once the speaker pauses.</div>
@@ -100,51 +101,67 @@
 
 <div class="section">
   <div class="pf-v6-c-card" id="transcript" data-rail="Transcript">
-    <div class="pf-v6-c-card__title"><h2 class="pf-v6-c-card__title-text">Transcript</h2></div>
+    <div class="pf-v6-c-card__header">
+      <div class="pf-v6-c-card__header-main">
+        <div class="pf-v6-c-card__title"><h2 class="pf-v6-c-card__title-text">Transcript</h2></div>
+      </div>
+      <div class="pf-v6-c-card__actions">
+        <span class="adm-sel">2 selected</span>
+        <button class="pf-v6-c-button pf-m-secondary" type="button"><span class="pf-v6-c-button__text">Export</span></button>
+        <button class="pf-v6-c-button pf-m-danger pf-m-secondary" type="button"><span class="pf-v6-c-button__text">Delete</span></button>
+      </div>
+    </div>
     <div class="pf-v6-c-card__body">
       <table class="pf-v6-c-table pf-m-grid-md" role="grid" aria-label="Transcript">
   <thead class="pf-v6-c-table__thead">
     <tr class="pf-v6-c-table__tr" role="row">
+      <td class="pf-v6-c-table__check" role="cell"><input type="checkbox" name="all" aria-label="Select all"></td>
       <th class="pf-v6-c-table__th" role="columnheader" scope="col">Time</th>
       <th class="pf-v6-c-table__th" role="columnheader" scope="col">Recognised</th>
       <th class="pf-v6-c-table__th" role="columnheader" scope="col">Correction</th>
+      <td class="pf-v6-c-table__td" role="cell"></td>
     </tr>
   </thead>
   <tbody class="pf-v6-c-table__tbody" role="rowgroup">
-      <tr class="pf-v6-c-table__tr" role="row">
-        <td class="pf-v6-c-table__td" role="cell" data-label="Time">12:51:34</td>
-        <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">Make his face shine upon.</td>
+      <tr class="pf-v6-c-table__tr pf-m-selected" role="row">
+        <td class="pf-v6-c-table__check" role="cell"><input type="checkbox" name="row" aria-label="Select 12:51:34" checked></td>
+        <td class="pf-v6-c-table__td adm-time" role="cell" data-label="Time">12:51:34</td>
+        <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">Make his face shine upon.<span class="adm-tag">民數記 6:25</span></td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Correction"><a href="#">The Lord make his face shine upon you.</a></td>
+        <td class="pf-v6-c-table__action" role="cell"><button class="pf-v6-c-button pf-m-plain" type="button" aria-label="More actions for 12:51:34"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 9c2.206 0 4-1.794 4-4s-1.794-4-4-4-4 1.794-4 4 1.794 4 4 4Zm0-6c1.103 0 2 .897 2 2s-.897 2-2 2-2-.897-2-2 .897-2 2-2Zm0 9c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Zm0 5c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Z"/></svg></span></button></td>
       </tr>
-      <tr class="pf-v6-c-table__tr" role="row">
-        <td class="pf-v6-c-table__td" role="cell" data-label="Time">11:19:22</td>
+      <tr class="pf-v6-c-table__tr pf-m-selected" role="row">
+        <td class="pf-v6-c-table__check" role="cell"><input type="checkbox" name="row" aria-label="Select 11:19:22" checked></td>
+        <td class="pf-v6-c-table__td adm-time" role="cell" data-label="Time">11:19:22</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">Starting at 12:45.</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Correction"><a href="#">Correct</a></td>
+        <td class="pf-v6-c-table__action" role="cell"><button class="pf-v6-c-button pf-m-plain" type="button" aria-label="More actions for 11:19:22"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 9c2.206 0 4-1.794 4-4s-1.794-4-4-4-4 1.794-4 4 1.794 4 4 4Zm0-6c1.103 0 2 .897 2 2s-.897 2-2 2-2-.897-2-2 .897-2 2-2Zm0 9c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Zm0 5c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Z"/></svg></span></button></td>
       </tr>
       <tr class="pf-v6-c-table__tr" role="row">
-        <td class="pf-v6-c-table__td" role="cell" data-label="Time">11:19:18</td>
+        <td class="pf-v6-c-table__check" role="cell"><input type="checkbox" name="row" aria-label="Select 11:19:18"></td>
+        <td class="pf-v6-c-table__td adm-time" role="cell" data-label="Time">11:19:18</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">1st Sunday of the month after the second service.</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Correction"><a href="#">Correct</a></td>
+        <td class="pf-v6-c-table__action" role="cell"><button class="pf-v6-c-button pf-m-plain" type="button" aria-label="More actions for 11:19:18"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 9c2.206 0 4-1.794 4-4s-1.794-4-4-4-4 1.794-4 4 1.794 4 4 4Zm0-6c1.103 0 2 .897 2 2s-.897 2-2 2-2-.897-2-2 .897-2 2-2Zm0 9c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Zm0 5c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Z"/></svg></span></button></td>
       </tr>
       <tr class="pf-v6-c-table__tr" role="row">
-        <td class="pf-v6-c-table__td" role="cell" data-label="Time">11:19:12</td>
+        <td class="pf-v6-c-table__check" role="cell"><input type="checkbox" name="row" aria-label="Select 11:19:12"></td>
+        <td class="pf-v6-c-table__td adm-time" role="cell" data-label="Time">11:19:12</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">Something that is also important, but it&rsquo;s going to be happening every month and that is our global missions prayer time.</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Correction"><a href="#">Correct</a></td>
+        <td class="pf-v6-c-table__action" role="cell"><button class="pf-v6-c-button pf-m-plain" type="button" aria-label="More actions for 11:19:12"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 9c2.206 0 4-1.794 4-4s-1.794-4-4-4-4 1.794-4 4 1.794 4 4 4Zm0-6c1.103 0 2 .897 2 2s-.897 2-2 2-2-.897-2-2 .897-2 2-2Zm0 9c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Zm0 5c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Z"/></svg></span></button></td>
       </tr>
       <tr class="pf-v6-c-table__tr" role="row">
-        <td class="pf-v6-c-table__td" role="cell" data-label="Time">11:19:05</td>
+        <td class="pf-v6-c-table__check" role="cell"><input type="checkbox" name="row" aria-label="Select 11:19:05"></td>
+        <td class="pf-v6-c-table__td adm-time" role="cell" data-label="Time">11:19:05</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">All right. Those are the two major events, annual events also coming up.</td>
         <td class="pf-v6-c-table__td" role="cell" data-label="Correction"><a href="#">Correct</a></td>
-      </tr>
-      <tr class="pf-v6-c-table__tr" role="row">
-        <td class="pf-v6-c-table__td" role="cell" data-label="Time">11:18:59</td>
-        <td class="pf-v6-c-table__td" role="cell" data-label="Recognised">$5 per person or $180 for a table, and they&rsquo;re available in the cafe after the service.</td>
-        <td class="pf-v6-c-table__td" role="cell" data-label="Correction"><a href="#">Correct</a></td>
+        <td class="pf-v6-c-table__action" role="cell"><button class="pf-v6-c-button pf-m-plain" type="button" aria-label="More actions for 11:19:05"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" fill="currentColor" viewBox="0 0 32 32" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 9c2.206 0 4-1.794 4-4s-1.794-4-4-4-4 1.794-4 4 1.794 4 4 4Zm0-6c1.103 0 2 .897 2 2s-.897 2-2 2-2-.897-2-2 .897-2 2-2Zm0 9c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Zm0 5c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4Zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2Z"/></svg></span></button></td>
       </tr>
   </tbody>
 </table>
     </div>
-    <div class="pf-v6-c-card__footer">A correction is re-translated and pushed to every viewer. 81 lines. <a href="#">Export</a></div>
+    <div class="pf-v6-c-card__footer">353 lines. <a href="#">Add a line by hand</a> &middot; <a href="#">Export the whole transcript</a></div>
   </div>
 </div>
 
@@ -159,22 +176,19 @@
         </div>
         <div class="pf-v6-c-description-list__group">
           <dt class="pf-v6-c-description-list__term"><span class="pf-v6-c-description-list__text">Lines</span></dt>
-          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">81<span class="meta">11,391 words recognised</span></div></dd>
+          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">81<span class="meta">What the viewers have read. 11,391 words.</span></div></dd>
         </div>
         <div class="pf-v6-c-description-list__group">
           <dt class="pf-v6-c-description-list__term"><span class="pf-v6-c-description-list__text">Scripture</span></dt>
-          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">19 references<span class="meta">Matched against 新标点和合本</span></div></dd>
+          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">19 references<span class="meta">Matched against 新標點和合本</span></div></dd>
         </div>
         <div class="pf-v6-c-description-list__group">
           <dt class="pf-v6-c-description-list__term"><span class="pf-v6-c-description-list__text">Viewers</span></dt>
-          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">1 now<span class="meta">Peak 3 this service</span></div></dd>
-        </div>
-        <div class="pf-v6-c-description-list__group">
-          <dt class="pf-v6-c-description-list__term"><span class="pf-v6-c-description-list__text">Voice cache</span></dt>
-          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">0 of 1000<span class="meta">Cleared between services</span></div></dd>
+          <dd class="pf-v6-c-description-list__description"><div class="pf-v6-c-description-list__text">1 now, 3 at peak</div></dd>
         </div>
       </dl>
     </div>
+    <div class="pf-v6-c-card__footer">Updates as the service runs.</div>
   </div>
 </div>
           </div>

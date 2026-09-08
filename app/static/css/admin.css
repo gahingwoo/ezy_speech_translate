@@ -329,11 +329,22 @@ html.pf-v6-theme-dark .icon-moon {
   margin-block-start: var(--pf-t--global--spacer--md);
 }
 
-.console-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--pf-t--global--spacer--sm);
-  margin-block-start: var(--pf-t--global--spacer--md);
+/* The buttons are in PatternFly's action list now, which owns the gap between
+   them through --pf-t--global--spacer--gap--action-to-action--default. The
+   hand-written gap that was here is exactly the kind of thing that made the
+   spacing look arbitrary. */
+.selection-actions {
+  align-items: center;
+}
+
+.selection-actions .meta {
+  margin-block-start: 0;
+  margin-inline-end: var(--pf-t--global--spacer--sm);
+  white-space: nowrap;
+}
+
+.selection-actions[hidden] {
+  display: none;
 }
 
 /* ── the transcript table ─────────────────────────────────────────────── */

@@ -26,7 +26,8 @@ COMPONENTS="Login/login Form/form FormControl/form-control \
             InputGroup/input-group ProgressStepper/progress-stepper \
             DataList/data-list Tabs/tabs TabContent/tab-content Wizard/wizard \
             NumberInput/number-input Tooltip/tooltip Toolbar/toolbar \
-            Drawer/drawer JumpLinks/jump-links Menu/menu"
+            Drawer/drawer JumpLinks/jump-links Menu/menu \
+            ActionList/action-list"
 LAYOUTS="Bullseye/bullseye Stack/stack Flex/flex Grid/grid Split/split Level/level \
          Gallery/gallery"
 

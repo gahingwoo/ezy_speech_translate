@@ -4577,6 +4577,42 @@ window.sharedAiStatusLibrary = {
     });
 })();
 
+// The console after the control panel was taken apart: ticked rows, and a
+// stats card that says one number once.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { addLine: "Add a line", exportSelected: "Export selected", selectedCount: "%n selected", confirmDelete: "Delete %n line(s)?", nothingToExport: "Nothing to export", running: "Running", lines: "Lines", viewers: "Viewers", wordsSoFar: "words so far", atPeak: "at peak", updated: "Updated" },
+        zh: { addLine: "加一行", exportSelected: "导出所选", selectedCount: "已选 %n 行", confirmDelete: "要删除 %n 行吗？", nothingToExport: "没有可导出的内容", running: "已进行", lines: "行数", viewers: "在看的人", wordsSoFar: "个词", atPeak: "最高", updated: "更新于" },
+        yue: { addLine: "加一行", exportSelected: "匯出揀咗嘅", selectedCount: "揀咗 %n 行", confirmDelete: "要刪除 %n 行？", nothingToExport: "冇嘢可以匯出", running: "已行咗", lines: "行數", viewers: "睇緊嘅人", wordsSoFar: "個字", atPeak: "最高", updated: "更新於" },
+        "zh-tw": { addLine: "加一行", exportSelected: "匯出所選", selectedCount: "已選 %n 行", confirmDelete: "要刪除 %n 行嗎？", nothingToExport: "沒有可匯出的內容", running: "已進行", lines: "行數", viewers: "在看的人", wordsSoFar: "個字", atPeak: "最高", updated: "更新於" },
+        es: { addLine: "Añadir una línea", exportSelected: "Exportar selección", selectedCount: "%n seleccionadas", confirmDelete: "¿Eliminar %n línea(s)?", nothingToExport: "Nada que exportar", running: "En marcha", lines: "Líneas", viewers: "Espectadores", wordsSoFar: "palabras hasta ahora", atPeak: "máximo", updated: "Actualizado" },
+        fr: { addLine: "Ajouter une ligne", exportSelected: "Exporter la sélection", selectedCount: "%n sélectionnées", confirmDelete: "Supprimer %n ligne(s) ?", nothingToExport: "Rien à exporter", running: "En cours", lines: "Lignes", viewers: "Auditeurs", wordsSoFar: "mots jusqu'ici", atPeak: "au maximum", updated: "Mis à jour" },
+        de: { addLine: "Zeile hinzufügen", exportSelected: "Auswahl exportieren", selectedCount: "%n ausgewählt", confirmDelete: "%n Zeile(n) löschen?", nothingToExport: "Nichts zu exportieren", running: "Läuft seit", lines: "Zeilen", viewers: "Zuschauer", wordsSoFar: "Wörter bisher", atPeak: "in der Spitze", updated: "Aktualisiert" },
+        ru: { addLine: "Добавить строку", exportSelected: "Экспорт выбранного", selectedCount: "Выбрано: %n", confirmDelete: "Удалить строк: %n?", nothingToExport: "Нечего экспортировать", running: "Идёт", lines: "Строки", viewers: "Зрители", wordsSoFar: "слов пока", atPeak: "на пике", updated: "Обновлено" },
+        pl: { addLine: "Dodaj wiersz", exportSelected: "Eksportuj zaznaczone", selectedCount: "Zaznaczono %n", confirmDelete: "Usunąć %n wiersz(y)?", nothingToExport: "Nie ma czego eksportować", running: "Trwa", lines: "Wiersze", viewers: "Widzowie", wordsSoFar: "słów jak dotąd", atPeak: "w szczycie", updated: "Zaktualizowano" },
+        tr: { addLine: "Satır ekle", exportSelected: "Seçileni dışa aktar", selectedCount: "%n seçildi", confirmDelete: "%n satır silinsin mi?", nothingToExport: "Dışa aktarılacak bir şey yok", running: "Süre", lines: "Satır", viewers: "İzleyiciler", wordsSoFar: "kelime şu ana kadar", atPeak: "zirvede", updated: "Güncellendi" },
+        ja: { addLine: "行を追加", exportSelected: "選択を書き出す", selectedCount: "%n 件を選択", confirmDelete: "%n 行を削除しますか？", nothingToExport: "書き出すものがありません", running: "経過", lines: "行数", viewers: "視聴者", wordsSoFar: "語", atPeak: "最大", updated: "更新" },
+        ko: { addLine: "줄 추가", exportSelected: "선택 항목 내보내기", selectedCount: "%n개 선택됨", confirmDelete: "%n개 줄을 삭제할까요?", nothingToExport: "내보낼 항목이 없습니다", running: "진행 시간", lines: "줄 수", viewers: "보는 사람", wordsSoFar: "단어", atPeak: "최대", updated: "업데이트" },
+        vi: { addLine: "Thêm một dòng", exportSelected: "Xuất mục đã chọn", selectedCount: "Đã chọn %n", confirmDelete: "Xóa %n dòng?", nothingToExport: "Không có gì để xuất", running: "Đã chạy", lines: "Số dòng", viewers: "Người xem", wordsSoFar: "từ tính đến giờ", atPeak: "cao nhất", updated: "Cập nhật" },
+        th: { addLine: "เพิ่มบรรทัด", exportSelected: "ส่งออกที่เลือก", selectedCount: "เลือกแล้ว %n", confirmDelete: "ลบ %n บรรทัด?", nothingToExport: "ไม่มีสิ่งที่จะส่งออก", running: "ดำเนินมาแล้ว", lines: "จำนวนบรรทัด", viewers: "ผู้ชม", wordsSoFar: "คำจนถึงตอนนี้", atPeak: "สูงสุด", updated: "อัปเดตเมื่อ" },
+        id: { addLine: "Tambah baris", exportSelected: "Ekspor yang dipilih", selectedCount: "%n dipilih", confirmDelete: "Hapus %n baris?", nothingToExport: "Tidak ada yang diekspor", running: "Berjalan", lines: "Baris", viewers: "Penonton", wordsSoFar: "kata sejauh ini", atPeak: "puncak", updated: "Diperbarui" },
+        ms: { addLine: "Tambah baris", exportSelected: "Eksport yang dipilih", selectedCount: "%n dipilih", confirmDelete: "Padam %n baris?", nothingToExport: "Tiada apa untuk dieksport", running: "Berjalan", lines: "Baris", viewers: "Penonton", wordsSoFar: "perkataan setakat ini", atPeak: "puncak", updated: "Dikemas kini" },
+        hi: { addLine: "एक पंक्ति जोड़ें", exportSelected: "चयनित निर्यात करें", selectedCount: "%n चयनित", confirmDelete: "%n पंक्तियाँ हटाएँ?", nothingToExport: "निर्यात करने को कुछ नहीं", running: "चल रहा है", lines: "पंक्तियाँ", viewers: "दर्शक", wordsSoFar: "शब्द अब तक", atPeak: "अधिकतम", updated: "अद्यतन" },
+        ar: { addLine: "إضافة سطر", exportSelected: "تصدير المحدد", selectedCount: "تم تحديد %n", confirmDelete: "حذف %n سطر؟", nothingToExport: "لا شيء للتصدير", running: "قيد التشغيل", lines: "الأسطر", viewers: "المشاهدون", wordsSoFar: "كلمة حتى الآن", atPeak: "في الذروة", updated: "تم التحديث" },
+        pt: { addLine: "Adicionar uma linha", exportSelected: "Exportar selecionados", selectedCount: "%n selecionadas", confirmDelete: "Eliminar %n linha(s)?", nothingToExport: "Nada para exportar", running: "A decorrer", lines: "Linhas", viewers: "Espectadores", wordsSoFar: "palavras até agora", atPeak: "no pico", updated: "Atualizado" },
+        it: { addLine: "Aggiungi una riga", exportSelected: "Esporta selezionati", selectedCount: "%n selezionate", confirmDelete: "Eliminare %n riga/righe?", nothingToExport: "Niente da esportare", running: "In corso", lines: "Righe", viewers: "Spettatori", wordsSoFar: "parole finora", atPeak: "al massimo", updated: "Aggiornato" },
+        nl: { addLine: "Regel toevoegen", exportSelected: "Selectie exporteren", selectedCount: "%n geselecteerd", confirmDelete: "%n regel(s) verwijderen?", nothingToExport: "Niets te exporteren", running: "Loopt", lines: "Regels", viewers: "Kijkers", wordsSoFar: "woorden tot nu toe", atPeak: "piek", updated: "Bijgewerkt" },
+        ta: { addLine: "ஒரு வரி சேர்", exportSelected: "தேர்ந்தெடுத்ததை ஏற்றுமதி செய்", selectedCount: "%n தேர்ந்தெடுக்கப்பட்டது", confirmDelete: "%n வரிகளை நீக்கவா?", nothingToExport: "ஏற்றுமதி செய்ய எதுவும் இல்லை", running: "இயங்கி வருகிறது", lines: "வரிகள்", viewers: "பார்வையாளர்கள்", wordsSoFar: "சொற்கள்", atPeak: "உச்சத்தில்", updated: "புதுப்பிக்கப்பட்டது" },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
+
 // Lightweight runtime helpers for applying the shared i18n to any page.
 window.detectDisplayLanguage = function () {
     const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();

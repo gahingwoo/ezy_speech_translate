@@ -248,7 +248,14 @@ function hideExportModal(event) {
 function __doExport(format) {
     hideExportModal();
     if (!format) return;
-    const exportUrl = `${SERVER_URL}/api/export/${format}?token=${encodeURIComponent(authToken)}`;
+    // Ticked rows only, when the header's button asked; the whole service
+    // otherwise. The server does the filtering so each format is written once.
+    const subset = window.__exportSubset;
+    window.__exportSubset = null;
+    const ids = subset ? '&ids=' + subset.map(i => i.id).join(',') : '';
+    const exportUrl = `${SERVER_URL}/api/export/${format}`
+        + `?token=${encodeURIComponent(authToken)}`
+        + `&room=${encodeURIComponent(window.CURRENT_ROOM_ID || 'main')}${ids}`;
     const link = document.createElement('a');
     link.href = exportUrl;
     link.target = '_blank';
@@ -875,6 +882,56 @@ let draggedIndex = null;
 let touchStartY = 0;
 let touchElement = null;
 
+/* ── ticked rows ──────────────────────────────────────────────────────────
+   Ticking is for acting on several lines at once; clicking the row itself
+   still opens the correction. Two gestures, because they do different things.
+
+   Export and Delete live in the card header and are not there at all until
+   something is ticked: a destructive button with no subject should not exist
+   yet, and one that is always armed invites the accident. */
+const bulkSelected = new Set();
+
+function toggleRowSelected(id, on) {
+    if (on) bulkSelected.add(id); else bulkSelected.delete(id);
+    paintSelection();
+}
+window.toggleRowSelected = toggleRowSelected;
+
+function toggleSelectAll(on) {
+    bulkSelected.clear();
+    if (on) translations.forEach(item => bulkSelected.add(item.id));
+    renderTranscriptions();
+}
+window.toggleSelectAll = toggleSelectAll;
+
+function paintSelection() {
+    const bar = document.getElementById('selectionActions');
+    const count = document.getElementById('selectionCount');
+    if (!bar || !count) return;
+    const n = bulkSelected.size;
+    bar.hidden = n === 0;
+    count.textContent = n
+        ? t('selectedCount', '%n selected').replace('%n', String(n))
+        : '';
+    const all = document.getElementById('selectAllRows');
+    if (all) {
+        all.checked = n > 0 && n === translations.length;
+        all.indeterminate = n > 0 && n < translations.length;
+    }
+}
+window.paintSelection = paintSelection;
+
+function selectedItems() {
+    return translations.filter(item => bulkSelected.has(item.id));
+}
+
+function exportSelected() {
+    const chosen = selectedItems();
+    if (!chosen.length) return;
+    exportData(chosen);
+}
+window.exportSelected = exportSelected;
+
 function renderTranscriptions() {
     const list = document.getElementById('transcriptionsList');
     document.getElementById('itemCount').textContent = translations.length;
@@ -920,6 +977,11 @@ function renderTranscriptions() {
             ontouchstart="handleTouchStart(event, ${index})"
             ontouchmove="handleTouchMove(event)"
             ontouchend="handleTouchEnd(event)">
+          <td class="pf-v6-c-table__check" role="cell">
+            <input type="checkbox" aria-label="Select this line" data-select-id="${item.id}"
+                   ${bulkSelected.has(item.id) ? 'checked' : ''}
+                   onclick="event.stopPropagation();toggleRowSelected(${item.id}, this.checked)">
+          </td>
           <td class="pf-v6-c-table__td table-drag" role="cell">
             <button class="pf-v6-c-button pf-m-plain drag-handle" type="button"
                     aria-label="Reorder this line"
@@ -936,6 +998,12 @@ function renderTranscriptions() {
           </td>
         </tr>
     `).join('');
+
+    // A line that has gone cannot stay ticked.
+    bulkSelected.forEach(id => {
+        if (!translations.some(item => item.id === id)) bulkSelected.delete(id);
+    });
+    paintSelection();
 }
 
 function handleDragStart(event, index) {
@@ -1130,23 +1198,17 @@ function editSelected() {
 }
 
 function deleteSelected() {
-    const checkboxes = document.querySelectorAll('.card-checkbox:checked');
-    if (checkboxes.length === 0) {
-        showToast('Please select items to delete', 'warning');
+    // The button is not on screen unless something is ticked, so this is a
+    // guard rather than a message anyone should ever see.
+    const ids = [...bulkSelected];
+    if (!ids.length) return;
+
+    if (!confirm(t('confirmDelete', 'Delete %n line(s)?').replace('%n', String(ids.length)))) {
         return;
     }
-
-    if (!confirm(`Delete ${checkboxes.length} item(s)?`)) return;
-
-    // Get all checked item IDs
-    const itemsToDelete = Array.from(checkboxes).map(checkbox => {
-        return parseInt(checkbox.getAttribute('data-id'));
-    });
-
-    // Emit delete event to server
-    socket.emit('delete_items', {
-        ids: itemsToDelete
-    });
+    socket.emit('delete_items', { ids: ids });
+    bulkSelected.clear();
+    paintSelection();
 }
 
 function saveCorrection() {
@@ -1184,11 +1246,15 @@ function clearHistory() {
     socket.emit('clear_history');
 }
 
-function exportData() {
-    if (translations.length === 0) {
-        showToast('No data to export', 'warning');
+function exportData(subset) {
+    // Called with nothing from the action list, meaning the whole transcript;
+    // called with the ticked rows from the card header.
+    const rows = subset && subset.length ? subset : translations;
+    if (!rows.length) {
+        showToast(t('nothingToExport', 'No data to export'), 'warning');
         return;
     }
+    window.__exportSubset = subset && subset.length ? subset : null;
     showExportModal();
 }
 
@@ -1401,15 +1467,14 @@ async function refreshAnalytics() {
         set('stat-translations', d.total_transcriptions);
         set('stat-bible-refs',   d.total_bible_refs);
 
-        const dbEl = document.getElementById('stat-db');
-        if (dbEl) {
-            if (d.db && d.db.enabled) {
-                dbEl.className = 'pf-v6-c-label pf-m-green';
-                dbEl.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${d.db.count} rows</span></span>`;
-            } else {
-                dbEl.className = 'pf-v6-c-label';
-                dbEl.innerHTML = `<span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">Disabled</span></span>`;
-            }
+        // The database row count was a third way of saying the same number,
+        // wearing a pill that made storage look like a status. What the card
+        // says instead is when it last heard anything.
+        const stamp = document.getElementById('statsUpdated');
+        if (stamp) {
+            stamp.textContent = new Date().toLocaleTimeString([], {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            });
         }
     } catch (err) {
         console.debug('Analytics fetch error:', err);

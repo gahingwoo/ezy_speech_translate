@@ -517,6 +517,7 @@ _sid_last_seen: dict = {}           # sid -> datetime of last heartbeat (user cl
 _session_start_time = datetime.now()
 _peak_clients       = 0             # peak concurrent user-type listeners
 _total_words        = 0             # running word count across all final transcriptions
+_session_lines      = 0             # lines this service, as against every line ever
 _total_bible_refs   = 0             # running count of bible references detected
 _total_tts_plays    = 0             # incremented by /api/tts/synthesize
 _total_translations = 0             # incremented by /api/translate
@@ -590,7 +591,7 @@ def _sid_room(sid: str) -> str:
 
 def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
     """Add translation to the given room with size limit, DB persistence, and session stats."""
-    global _total_words, _total_bible_refs
+    global _total_words, _total_bible_refs, _session_lines
     room_id = normalize_room_id(room_id)
     state = _room(room_id)
 
@@ -624,6 +625,7 @@ def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
     if ANALYTICS_ENABLED:
         text_for_stats = data.get('corrected') or data.get('original') or ''
         _total_words    += len(text_for_stats.split())
+        _session_lines  += 1
         _total_bible_refs += len(data.get('bible_refs') or [])
 
     # ── SQLite persistence ─────────────────────────────────────────
@@ -1409,7 +1411,11 @@ def get_analytics():
         'duration_display': duration_str,
         'current_clients':  _all_listener_count(),
         'peak_clients':     _peak_clients,
-        'total_transcriptions': _all_history_count(),
+        # This is the card headed "This service", so it is this service:
+        # the lifetime row count sat in the same column as a word count
+        # that resets on restart, and the two disagreed by hundreds.
+        'total_transcriptions': _session_lines,
+        'all_time_transcriptions': _all_history_count(),
         'total_words':      _total_words,
         'total_bible_refs': _total_bible_refs,
         'total_translations': _total_translations,
@@ -1431,11 +1437,12 @@ def get_analytics():
 @require_admin_auth
 def reset_analytics():
     """Reset session analytics counters (admin only)."""
-    global _session_start_time, _peak_clients, _total_words
+    global _session_start_time, _peak_clients, _total_words, _session_lines
     global _total_bible_refs, _total_translations, _total_tts_plays
     _session_start_time = datetime.now()
     _peak_clients = _all_listener_count()
     _total_words = 0
+    _session_lines = 0
     _total_bible_refs = 0
     _total_translations = 0
     _total_tts_plays = 0
@@ -1457,6 +1464,20 @@ def export_translations(export_format):
     room_id = normalize_room_id(request.args.get('room'))
     max_export = 5000
     export_data = _room(room_id)['history'][-max_export:]
+
+    # The console can export the lines the operator ticked rather than the
+    # whole service. Filtering here rather than in the browser keeps one
+    # implementation of each format; an id that is not in this room is simply
+    # not found, which is also the access check.
+    wanted = (request.args.get('ids') or '').strip()
+    if wanted:
+        try:
+            ids = {int(part) for part in wanted.split(',') if part.strip()}
+        except ValueError:
+            return jsonify({'error': 'Bad ids'}), 400
+        if len(ids) > max_export:
+            return jsonify({'error': 'Too many ids'}), 400
+        export_data = [item for item in export_data if item.get('id') in ids]
 
     if export_format == 'json':
         import json as json_module

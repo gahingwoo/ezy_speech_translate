@@ -200,6 +200,7 @@ SETTINGS_TABS = (
     ("qr", "Audience QR code", None),
     ("bible", "Bible", None),
     ("cache", "TTS cache", None),
+    ("service", "The whole service", None),
     # No translation key: "settings" would render this "Settings" inside a
     # dialog already titled Settings.
     ("display", "Display", None),
@@ -1079,45 +1080,44 @@ def hearing_controls():
 def console_actions():
     """Everything that can be done to the list, in the transcript's own footer
     rather than in a column of its own."""
-    return ('                    <div class="console-actions">\n%s\n%s\n%s\n%s\n%s\n%s\n'
-            '                      <input type="file" id="importFileInput" accept=".json" hidden\n'
-            '                             onchange="handleImportFile(event)">\n'
+    return ('                    <div class="pf-v6-c-action-list">\n'
+            '                      <div class="pf-v6-c-action-list__group">\n%s\n%s\n'
+            '                      </div>\n'
             '                    </div>\n'
-            % (button("Add", "addNewItem()", "plus", "secondary", i18n="add", indent=22),
-               button("Edit", "editSelected()", "edit", "secondary", i18n="edit", indent=22),
-               # Deleting is the destructive one, and PatternFly's rule is one
-               # red action: it is the only button here that gets it.
-               button("Delete", "deleteSelected()", "trash", "danger", i18n="delete", indent=22),
-               button("Clear All", "clearHistory()", "times", "secondary",
-                      i18n="clearAll", indent=22),
+            % (button("Add a line", "addNewItem()", "plus", "secondary",
+                      i18n="addLine", indent=24),
                button("Export", "exportData()", "download", "secondary",
-                      i18n="export", indent=22),
-               button("Import", "document.getElementById('importFileInput').click()",
-                      "upload", "secondary", i18n="import", indent=22)))
+                      i18n="export", indent=24)))
 
 
 def session_stats():
-    return (dl_group("Duration", '<strong id="stat-duration">—</strong>',
-                     "statDuration", indent=22)
-            + dl_group("Peak Viewers", '<strong id="stat-peak">0</strong>',
-                       "statPeak", indent=22)
-            + dl_group("Total Words", '<strong id="stat-words">0</strong>',
-                       "statWords", indent=22)
-            + dl_group("Translations", '<strong id="stat-translations">0</strong>',
-                       "statTranslations", indent=22)
-            + dl_group("Bible Refs", '<strong id="stat-bible-refs">0</strong>',
-                       "statBibleRefs", indent=22)
-            + dl_group("DB Entries", label("stat-db", "—"), "statDbEntries", indent=22)
-            + dl_group("Clients", '<strong id="sys-clients">0</strong>', "clients", indent=22)
-            + dl_group("Transcripts", '<strong id="sys-transcriptions">0</strong>',
-                       "transcriptions", indent=22)
+    """What this service has come to, in four rows.
+
+    There were ten, and three of them were the same number: the session's
+    transcription counter, the length of the list in memory, and the row count
+    in the database all read alike, and two of those named the storage rather
+    than the thing. Lines is the number; the words are what the number is made
+    of. Viewers now and viewers at peak were one idea in two rows.
+
+    Nothing here is a pill. A count is not a status and a locale is not a
+    status — PatternFly's label carries state, and the only state on this card
+    is whether it is recording."""
+    return (dl_group("Running", '<strong id="stat-duration">—</strong>',
+                     "running", indent=22)
+            + dl_group("Lines",
+                       '<strong id="stat-translations">0</strong>'
+                       '<span class="meta"><span id="stat-words">0</span> '
+                       '<span data-i18n="wordsSoFar">words so far</span> · '
+                       '<span id="stat-bible-refs">0</span> '
+                       '<span data-i18n="bibleVerses">Scripture</span></span>',
+                       "lines", indent=22)
+            + dl_group("Viewers",
+                       '<strong id="sys-clients">0</strong>'
+                       '<span class="meta"><span data-i18n="atPeak">at peak</span> '
+                       '<span id="stat-peak">0</span></span>',
+                       "viewers", indent=22)
             + dl_group("Recording", label("sys-recording", "Stopped", None, "stopped"),
-                       "recording", indent=22)
-            + dl_group("Language",
-                       '<span id="sys-language" class="pf-v6-c-label pf-m-blue">'
-                       '<span class="pf-v6-c-label__content">'
-                       '<span class="pf-v6-c-label__text mono">en-US</span>'
-                       '</span></span>', "language", indent=22))
+                       "recording", indent=22))
 
 
 def correction_modal():
@@ -1143,6 +1143,26 @@ def correction_modal():
                             i18n="save", indent=8)))
 
 
+def whole_service_section():
+    """The two that act on a whole service rather than on a line.
+
+    They were in the console's action bar beside Export, which put "wipe this
+    service" one slip away from "save a copy of it". They belong with setting
+    up, and they will move to the Setup page with the rest of it."""
+    body = ('        <div class="pf-v6-c-action-list">\n'
+            '          <div class="pf-v6-c-action-list__group">\n%s\n%s\n'
+            '          </div>\n'
+            '        </div>\n'
+            '        <input type="file" id="importFileInput" accept=".json" hidden\n'
+            '               onchange="handleImportFile(event)">\n'
+            % (button("Import a transcript",
+                      "document.getElementById('importFileInput').click()",
+                      "upload", "secondary", i18n="import", indent=12),
+               button("Clear this service", "clearHistory()", "trash",
+                      "danger pf-m-secondary", i18n="clearAll", indent=12)))
+    return body
+
+
 def build():
     panels = {
         "room": room_section(),
@@ -1150,6 +1170,7 @@ def build():
         "qr": qr_section(),
         "bible": bible_section(),
         "cache": tts_cache_section(),
+        "service": whole_service_section(),
         "display": settings_section(),
     }
 
@@ -1360,18 +1381,39 @@ def build():
                    re-translated and pushed to everyone reading. -->
               <div class="section">
                 <div class="pf-v6-c-card" id="transcript">
-                  <div class="pf-v6-c-card__title">
-                    <h2 class="pf-v6-c-card__title-text">
-                      <span data-i18n="transcript">Transcript</span>
-                      <span class="pf-v6-c-badge pf-m-read" id="itemCount"
-                            aria-label="Transcription count">0</span>
-                    </h2>
+                  <!-- Export and Delete live here and appear only once rows
+                       are ticked: a destructive button with nothing to act on
+                       should not be sitting there armed. The header says how
+                       many are ticked, so Delete always has a subject. -->
+                  <div class="pf-v6-c-card__header">
+                    <div class="pf-v6-c-card__actions pf-m-no-offset">
+                      <div class="pf-v6-c-action-list selection-actions" id="selectionActions"
+                           hidden>
+                        <div class="pf-v6-c-action-list__group">
+                          <span class="meta" id="selectionCount" role="status"
+                                aria-live="polite"></span>
+%(bulk_export)s
+%(bulk_delete)s
+                        </div>
+                      </div>
+                    </div>
+                    <div class="pf-v6-c-card__header-main">
+                      <h2 class="pf-v6-c-card__title-text">
+                        <span data-i18n="transcript">Transcript</span>
+                        <span class="pf-v6-c-badge pf-m-read" id="itemCount"
+                              aria-label="Transcription count">0</span>
+                      </h2>
+                    </div>
                   </div>
                   <div class="pf-v6-c-card__body">
                     <table class="pf-v6-c-table pf-m-grid-md transcript-table" role="grid"
                            aria-label="Transcript">
                       <thead class="pf-v6-c-table__thead">
                         <tr class="pf-v6-c-table__tr" role="row">
+                          <td class="pf-v6-c-table__check" role="columnheader">
+                            <input type="checkbox" id="selectAllRows" aria-label="Select all lines"
+                                   onchange="toggleSelectAll(this.checked)">
+                          </td>
                           <th class="pf-v6-c-table__th table-drag" role="columnheader" scope="col">
                             <span class="pf-v6-screen-reader" data-i18n="dragToReorder">Drag to reorder</span></th>
                           <th class="pf-v6-c-table__th" role="columnheader" scope="col"
@@ -1409,8 +1451,13 @@ def build():
                         id="analyticsCard" aria-label="Session Analytics">
 %(stats)s                    </dl>
                   </div>
+                  <!-- No refresh button: a console that has to be asked is
+                       not live. This says when it last heard from the server
+                       instead. -->
                   <div class="pf-v6-c-card__footer">
-%(refresh)s                  </div>
+                    <p class="meta"><span data-i18n="updated">Updated</span>
+                      <span id="statsUpdated">—</span></p>
+                  </div>
                 </div>
               </div>
 
@@ -1445,13 +1492,17 @@ def build():
         "angle_right": icon("angle-right"),
         "sync": icon("sync-alt"),
         "audio": hearing_controls(),
+        "bulk_export": button("Export selected", "exportSelected()", "download",
+                              "secondary", i18n="exportSelected", indent=26),
+        # Outlined, not filled: nothing on this card should be the
+        # only solid button, least of all the one that destroys.
+        "bulk_delete": button("Delete", "deleteSelected()", "trash",
+                              "danger pf-m-secondary", i18n="delete", indent=26),
         "actions": console_actions(),
         "stats": session_stats(),
         "record": button("Start Recording", "toggleRecording()", "microphone",
                          "primary", el_id="recordBtn", i18n="startRecording",
                          extra=' aria-pressed="false"', indent=16) + "\n",
-        "refresh": button("Refresh Stats", "refreshAnalytics()", "sync-alt",
-                          "secondary", i18n="refreshStats", indent=20) + "\n",
         "grip": icon("grip-vertical"),
         "empty": empty_state(),
         "empty_template": empty_state(6),

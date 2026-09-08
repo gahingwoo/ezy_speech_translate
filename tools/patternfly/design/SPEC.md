@@ -11,15 +11,28 @@ Not "PatternFly-inspired" — the real thing, from the church site's own build:
 - `assets/patternfly/patternfly-site.css` (vendored by `tools/patternfly/build.sh`)
 - `assets/site.css` (the house layer)
 
-**Use only the components that vendor script ships.** The list is in
-`tools/patternfly/build.sh`: Page, Masthead, Button, Card, Backdrop,
-DescriptionList, Table, Nav, BackToTop, SkipToContent, JumpLinks, Brand,
-Content, Title, Hero, Accordion, Spinner, InputGroup, TextInputGroup, Menu,
-AboutModalBox, ModalBox, Avatar; layouts Gallery, Stack, Grid, Flex, Bullseye.
+**Corrected.** The paragraph that stood here listed the church site's
+components and said EzySpeech may use no others. That is the wrong list: it is
+`mabc-ws/tools/patternfly/build.sh`, and EzySpeech has a vendor script of its
+own with a far larger set — Label, Switch, Tabs, Toolbar, DataList, Form,
+FormControl, HelperText, Divider, Badge, Alert, Tooltip, EmptyState,
+NumberInput, Slider, Drawer and the rest are all in it.
 
-There is **no** Toolbar, DataList, Label, Switch, Badge, MenuToggle,
-ToggleGroup, Slider, Drawer or FormControl in that bundle. If a design seems to
-need one, it is the design that is wrong.
+`SPEC-CORRECTIONS.md` says EzySpeech ships the *full* distribution. It does
+not, and the difference matters to whoever reads this next: it ships a trimmed
+build too, just a much larger trim. ActionList was not in it until this design
+asked for it. **Before using a component, check
+`tools/patternfly/build.sh`; if it is not there, add it and rebuild** — that is
+a one-line change and a rebuild, not a reason to hand-roll anything.
+
+Availability is not a licence. Reach for a component when it is the right one,
+not because it exists — and never hand-roll something PatternFly already has.
+Anything drawn by hand that PatternFly ships is a bug.
+
+The house layer on top is `shell.css` (ported from the church site:
+`.doc-page`, `.with-rail`, `.page-rail`, `.page-head`, `.kv`, `.meta`,
+`.section`), plus `ezyspeech.css` and the per-page stylesheets. Those are
+existing vocabulary — use them, do not copy them.
 
 ## Rules that are not negotiable
 
@@ -135,3 +148,29 @@ already does, and the trigger sits in the sidebar under Reading.
 - The Cantonese in the mockups is machine-assisted and needs a native speaker.
 - The join address and QR on the projection screen are a proposal; the app does
   not do this today.
+
+
+---
+
+# Corrections applied
+
+`SPEC-CORRECTIONS.md` is in this directory and has been merged into the text
+above and into the app. Two notes on it, from checking its claims against the
+code:
+
+1. **The component constraint** was wrong here and is corrected above, but not
+   for the reason given: this is a trimmed build, not the full distribution.
+   ActionList was missing and had to be vendored.
+
+2. **`Current: NLT`** is not in `app/templates/admin.html`. Nothing to remove.
+
+3. **The data bug** — "353 translations in a 53-second session, about 6.7 rows
+   a second, interim results being persisted" — is a misreading. The database
+   holds 353 rows and 351 distinct originals, accumulated over every session
+   the app has ever run; the 53 seconds is the *current* session, whose
+   counter resets on restart. Nothing is being written 6.7 times a second.
+
+   The design conclusion still holds, for a different reason: a lifetime row
+   count sitting under a heading that says **This service** is not a data bug,
+   it is a card telling two different stories in one column. That is what the
+   four-row rewrite fixes.
