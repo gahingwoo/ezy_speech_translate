@@ -333,48 +333,11 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 /* ── Bible verses ─────────────────────────────────────────────────────── */
-
-.bible-verse-panel {
-  margin-block-start: var(--pf-t--global--spacer--sm);
-  padding: var(--pf-t--global--spacer--md);
-  background: var(--pf-t--global--background--color--secondary--default);
-  border-radius: var(--pf-t--global--border--radius--small);
-}
-
-.bible-verse-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--pf-t--global--spacer--sm);
-  margin-block-end: var(--pf-t--global--spacer--xs);
-}
-
-.bible-verse-ref {
-  font-weight: var(--pf-t--global--font--weight--body--bold);
-}
-
-.bible-verse-num {
-  font-size: var(--pf-t--global--font--size--body--sm);
-  color: var(--pf-t--global--text--color--subtle);
-  vertical-align: super;
-}
-
-.bible-verse-line {
-  line-height: 1.6;
-}
-
-/* PatternFly's description list holds the versions: the name of the version
-   is the term, its verses the description. A row of badges in the header left
-   the reader to work out which badge belonged to which verse. */
-.bible-verse-versions {
-  --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--sm);
-}
-
-.bible-verse-translation {
-  font-family: var(--pf-t--global--font--family--mono);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  color: var(--pf-t--global--text--color--subtle);
-  letter-spacing: 0.02em;
-}
+/* The verse itself is the design's .sc-verse, in ezyspeech.css: a brand rule
+   down its leading edge and nothing else. What was here — a grey panel, a book
+   icon and a description list of two versions — was a second block bolted
+   under the row, when the point of looking a verse up in the reader's own
+   Bible is that it stands in place of the translation. */
 
 .bible-verse-missing {
   font-style: italic;

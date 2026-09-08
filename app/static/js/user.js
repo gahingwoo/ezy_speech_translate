@@ -275,7 +275,7 @@ function applyFontSize() {
         style.id = 'dynamicFontStyle';
         document.head.appendChild(style);
     }
-    style.textContent = `.text-target { font-size: ${fontSize}px !important; }`;
+    style.textContent = `.text-target, .sc-line { font-size: ${fontSize}px !important; }`;
 }
 
 function applyDisplayMode() {
@@ -598,19 +598,18 @@ async function _fetchBibleVerses(refs, tgt) {
  */
 async function loadBiblePanel(card, refs) {
     if (!card || !refs || !refs.length) return;
-    // The record of what was read is kept whether or not the verses are shown
-    // in the stream: turning the verses off is a reading preference, not an
-    // instruction to forget what the service went through.
-    const when = card.querySelector('.card-time');
-    refs.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
-    if (!showBibleVerse || !bibleFeatureAvailable) return;
+    if (!bibleFeatureAvailable) return;
     // In transcription mode show source text only (no target translation).
     const tgt = displayMode === 'transcription' ? '' : bibleTargetTrans;
+    const when = card.querySelector('.card-time');
     try {
         const enriched = await _fetchBibleVerses(refs, tgt);
-        if (enriched && enriched.length && card.isConnected) {
-            attachBiblePanel(card, enriched);
-        }
+        if (!enriched || !enriched.length) return;
+        // The record of what this service read is kept whether or not the
+        // verses are shown in the stream: switching them off is a reading
+        // preference, not an instruction to forget the readings.
+        enriched.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
+        if (showBibleVerse && card.isConnected) attachBiblePanel(card, enriched);
     } catch (e) {
         console.warn('loadBiblePanel failed:', e);
     }
@@ -671,7 +670,10 @@ function toggleBibleVerse() {
             }
         });
     } else {
-        document.querySelectorAll('.bible-verse-panel').forEach(el => el.remove());
+        // The verse stood in for the translation, so putting the verses away
+        // has to put the translation back: rendering the list again is the one
+        // path that rebuilds every row from what the item actually holds.
+        renderTranslations();
     }
 }
 
@@ -701,26 +703,84 @@ function _bibleChineseScript() {
  */
 function attachBiblePanel(card, refs) {
     if (!card || !refs || !refs.length) return;
-    const old = card.querySelector('.bible-verse-panel');
-    if (old) old.remove();
 
-    const panel = document.createElement('div');
-    panel.className = 'bible-verse-panel';
+    const text = card.querySelector('.stream-text');
+    if (!text) return;
+    text.querySelectorAll('.sc-offer').forEach(el => el.remove());
 
-    refs.forEach(ref => {
-        // A doubtful match is offered, never substituted. Below the line the
-        // ordinary translation stands and this is one quiet line saying the
-        // verse is there if you want it — a wrong verse in a service is worse
-        // than no verse. A chapter that was named but not read is the same
-        // case: a live stream is no place to paste a chapter into.
-        if (ref.match === 'offer' || ref.match === 'cited') {
-            panel.appendChild(buildOffer(ref));
-            return;
-        }
-        panel.appendChild(buildVerseBlock(ref));
-    });
+    // A verse the speaker cited or quoted goes where the machine translation
+    // would have been. It is not an extra block under the line: it IS the
+    // line, which is the whole point of looking it up in the reader's own
+    // Bible rather than translating it.
+    const shown = refs.find(r => r.match === 'reference' || r.match === 'wording');
+    if (shown) substituteVerse(card, text, shown);
 
-    card.appendChild(panel);
+    // Anything doubtful is offered instead, on one quiet line under the row.
+    refs.filter(r => r.match === 'offer' || r.match === 'cited')
+        .forEach(r => text.appendChild(buildOffer(r)));
+}
+
+function substituteVerse(card, text, ref) {
+    const slot = pickVersion(ref);
+    if (!slot || !slot.verses || !slot.verses.length) return;
+
+    const holder = text.querySelector('.sc-verse') || text.querySelector('.stream-zh');
+    if (!holder) return;
+
+    const verse = document.createElement('div');
+    verse.className = 'sc-verse';
+    renderWindow(verse, slot.verses, ref);
+    holder.replaceWith(verse);
+
+    text.querySelectorAll('.sc-more').forEach(el => el.remove());
+    if (slot.verses.length > VERSE_WINDOW) {
+        verse.insertAdjacentElement('afterend', buildShowAll(ref, slot.verses.length));
+    }
+
+    // The reference and how it was found belong against the timestamp, not in
+    // a header of their own: the row already has a place for what a line is.
+    const term = card.querySelector('.pf-v6-c-description-list__text');
+    if (term) {
+        term.querySelectorAll('.stream-tag').forEach(el => el.remove());
+        const tag = document.createElement('span');
+        tag.className = 'stream-tag';
+        const bits = [ref.display];
+        if (slot.translation) bits.push(slot.translation.toUpperCase());
+        bits.push(ref.match === 'wording'
+            ? t('sc_byWording', 'matched by wording')
+            : t('sc_fromBible', 'from the Bible, not translated'));
+        tag.textContent = bits.join(' · ');
+        term.appendChild(tag);
+    }
+}
+
+/* The reader's own Bible, and only that one. Showing two versions side by side
+   turns a verse into a comparison table; the English that was actually said is
+   already under the line, where it is for every other row. */
+function pickVersion(ref) {
+    if (ref.target && ref.target.verses && ref.target.verses.length) return ref.target;
+    if (ref.source && ref.source.verses && ref.source.verses.length) return ref.source;
+    if (ref.verses && ref.verses.length) {
+        return { translation: ref.translation, verses: ref.verses };
+    }
+    return null;
+}
+
+function buildShowAll(ref, total) {
+    const more = document.createElement('p');
+    more.className = 'sc-more';
+    const btn = document.createElement('button');
+    btn.className = 'pf-v6-c-button pf-m-inline pf-m-link';
+    btn.type = 'button';
+    btn.setAttribute('aria-haspopup', 'dialog');
+    btn.onclick = () => showPassage(ref);
+    const label = document.createElement('span');
+    label.className = 'pf-v6-c-button__text';
+    label.textContent = t('sc_showAll', 'Show all %n verses').replace('%n', String(total))
+        + ' — ' + (ref.display || '');
+    btn.appendChild(label);
+    more.appendChild(btn);
+    return more;
 }
 
 /* One quiet line: the reference, and a way to read it. */
@@ -728,9 +788,9 @@ function buildOffer(ref) {
     const line = document.createElement('p');
     line.className = 'sc-offer';
     const label = document.createElement('span');
-    label.textContent = ref.match === 'cited'
-        ? t('sc_cited', 'Mentioned') + ' — '
-        : t('sc_maybe', 'This may be') + ' — ';
+    label.textContent = (ref.match === 'cited'
+        ? t('sc_cited', 'Mentioned')
+        : t('sc_maybe', 'This may be')) + ' — ';
     line.appendChild(label);
     const open = document.createElement('button');
     open.className = 'pf-v6-c-button pf-m-inline pf-m-link';
@@ -743,104 +803,6 @@ function buildOffer(ref) {
     open.appendChild(openText);
     line.appendChild(open);
     return line;
-}
-
-/* The verse itself, with the version against each line and a window over a
-   long passage. */
-function buildVerseBlock(ref) {
-    const block = document.createElement('div');
-    block.className = 'bible-verse-block';
-
-    const head = document.createElement('div');
-    head.className = 'bible-verse-head';
-    const icon = document.createElement('span');
-    icon.innerHTML = svgIcon('book');
-    icon.setAttribute('aria-hidden', 'true');
-    const title = document.createElement('span');
-    title.className = 'bible-verse-ref';
-    title.textContent = ref.display || '';
-    head.appendChild(icon);
-    head.appendChild(title);
-
-    // How this verse was found, said plainly. A verse looked up because the
-    // reference was spoken is a different thing from one recognised by its
-    // wording, and the reader is entitled to know which they are reading.
-    const how = document.createElement('span');
-    how.className = 'stream-tag';
-    how.textContent = ref.match === 'wording'
-        ? t('sc_byWording', 'matched by wording')
-        : t('sc_fromBible', 'from the Bible, not translated');
-    head.appendChild(how);
-    block.appendChild(head);
-
-    const list = document.createElement('dl');
-    list.className = 'pf-v6-c-description-list pf-m-horizontal pf-m-compact '
-        + 'pf-m-fluid bible-verse-versions';
-    block.appendChild(list);
-
-    let total = 0;
-    function addVersion(name, verses, slot) {
-        const group = document.createElement('div');
-        group.className = 'pf-v6-c-description-list__group';
-
-        const dt = document.createElement('dt');
-        dt.className = 'pf-v6-c-description-list__term';
-        const dtText = document.createElement('span');
-        dtText.className = 'pf-v6-c-description-list__text bible-verse-translation';
-        dtText.textContent = (name || '').toUpperCase();
-        if (slot === 'target') {
-            const script = _bibleChineseScript();
-            if (script) dtText.dataset.script = script;
-        }
-        dt.appendChild(dtText);
-        group.appendChild(dt);
-
-        const dd = document.createElement('dd');
-        dd.className = 'pf-v6-c-description-list__description';
-        const ddText = document.createElement('div');
-        ddText.className = 'pf-v6-c-description-list__text bible-verse-body '
-            + 'bible-verse-' + slot;
-        if (!verses || !verses.length) {
-            const empty = document.createElement('em');
-            empty.className = 'bible-verse-missing';
-            empty.textContent = t('sc_unavailable', 'Verse text unavailable');
-            ddText.appendChild(empty);
-        } else {
-            total = Math.max(total, verses.length);
-            renderWindow(ddText, verses, ref);
-        }
-        dd.appendChild(ddText);
-        group.appendChild(dd);
-        list.appendChild(group);
-    }
-
-    if (ref.source) addVersion(ref.source.translation, ref.source.verses, 'source');
-    if (ref.target && ref.target.translation &&
-            (!ref.source || ref.target.translation !== ref.source.translation)) {
-        addVersion(ref.target.translation, ref.target.verses, 'target');
-    }
-    if (!ref.source && !ref.target && ref.verses) {
-        addVersion(ref.translation, ref.verses, 'source');
-    }
-
-    if (total > VERSE_WINDOW) {
-        const more = document.createElement('p');
-        more.className = 'sc-more';
-        const btn = document.createElement('button');
-        btn.className = 'pf-v6-c-button pf-m-inline pf-m-link';
-        btn.type = 'button';
-        btn.setAttribute('aria-haspopup', 'dialog');
-        btn.onclick = () => showPassage(ref);
-        const text = document.createElement('span');
-        text.className = 'pf-v6-c-button__text';
-        text.textContent = t('sc_showAll', 'Show all %n verses').replace('%n', String(total))
-            + ' — ' + (ref.display || '');
-        btn.appendChild(text);
-        more.appendChild(btn);
-        block.appendChild(more);
-    }
-
-    return block;
 }
 
 /* ── the Scripture section ────────────────────────────────────────────────
@@ -863,6 +825,8 @@ function addToScripture(ref, timestamp) {
     const group = document.createElement('div');
     group.className = 'pf-v6-c-description-list__group';
 
+    // The reference is the term here, with the time under it — this page is
+    // read by passage, not by clock.
     const dt = document.createElement('dt');
     dt.className = 'pf-v6-c-description-list__term';
     const dtText = document.createElement('span');
@@ -879,25 +843,38 @@ function addToScripture(ref, timestamp) {
     dd.className = 'pf-v6-c-description-list__description';
     const ddText = document.createElement('div');
     ddText.className = 'pf-v6-c-description-list__text';
-    const open = document.createElement('button');
-    open.className = 'pf-v6-c-button pf-m-inline pf-m-link';
-    open.type = 'button';
-    open.setAttribute('aria-haspopup', 'dialog');
-    open.onclick = () => showPassage(ref);
-    const openText = document.createElement('span');
-    openText.className = 'pf-v6-c-button__text';
-    openText.textContent = t('sc_read', 'Read the passage');
-    open.appendChild(openText);
-    ddText.appendChild(open);
 
+    const slot = pickVersion(ref);
+    if (slot && slot.verses && slot.verses.length) {
+        const verse = document.createElement('div');
+        verse.className = 'sc-verse';
+        renderWindow(verse, slot.verses, ref);
+        ddText.appendChild(verse);
+        if (slot.verses.length > VERSE_WINDOW) {
+            ddText.appendChild(buildShowAll(ref, slot.verses.length));
+        }
+    } else {
+        ddText.appendChild(buildOffer(ref));
+    }
+
+    // How it was found, and which verse the speaker actually read — said in
+    // words, because this page is the record and a record has to explain
+    // itself later.
     const how = document.createElement('span');
     how.className = 'meta';
-    how.textContent = {
-        reference: t('sc_fromBible', 'from the Bible, not translated'),
+    const parts = [{
+        reference: t('sc_wasSpoken', 'The reference was spoken'),
         wording: t('sc_byWording', 'matched by wording'),
         offer: t('sc_maybe', 'This may be'),
         cited: t('sc_cited', 'Mentioned')
-    }[ref.match] || '';
+    }[ref.match] || ''];
+    if (slot && slot.translation) parts.push(slot.translation.toUpperCase());
+    if (ref.verse_start && ref.verse_end === ref.verse_start
+            && slot && slot.verses && slot.verses.length > 1) {
+        parts.push(t('sc_verseRead', 'verse %n was the one read aloud')
+            .replace('%n', String(ref.verse_start)));
+    }
+    how.textContent = parts.filter(Boolean).join(' · ');
     ddText.appendChild(how);
 
     dd.appendChild(ddText);
@@ -2476,11 +2453,11 @@ function updateFontSize() {
 function applyFontSize() {
     const style = document.getElementById('dynamicFontStyle');
     if (style) {
-        style.textContent = `.text-target { font-size: ${fontSize}px !important; }`;
+        style.textContent = `.text-target, .sc-line { font-size: ${fontSize}px !important; }`;
     } else {
         const newStyle = document.createElement('style');
         newStyle.id = 'dynamicFontStyle';
-        newStyle.textContent = `.text-target { font-size: ${fontSize}px !important; }`;
+        newStyle.textContent = `.text-target, .sc-line { font-size: ${fontSize}px !important; }`;
         document.head.appendChild(newStyle);
     }
 }

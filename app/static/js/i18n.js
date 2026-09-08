@@ -4507,6 +4507,41 @@ window.sharedAiStatusLibrary = {
     });
 })();
 
+// What the Scripture page says about each passage it lists.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { sc_wasSpoken: "The reference was spoken", sc_verseRead: "verse %n was the one read aloud" },
+        zh: { sc_wasSpoken: "讲员报了出处", sc_verseRead: "读出来的是第 %n 节" },
+        yue: { sc_wasSpoken: "講員報咗出處", sc_verseRead: "讀出嚟嘅係第 %n 節" },
+        "zh-tw": { sc_wasSpoken: "講員報了出處", sc_verseRead: "讀出來的是第 %n 節" },
+        es: { sc_wasSpoken: "Se dijo la referencia", sc_verseRead: "se leyó el versículo %n" },
+        fr: { sc_wasSpoken: "La référence a été annoncée", sc_verseRead: "le verset %n a été lu" },
+        de: { sc_wasSpoken: "Die Stelle wurde genannt", sc_verseRead: "gelesen wurde Vers %n" },
+        ru: { sc_wasSpoken: "Ссылка была названа", sc_verseRead: "вслух читали стих %n" },
+        pl: { sc_wasSpoken: "Odniesienie zostało podane", sc_verseRead: "przeczytano werset %n" },
+        tr: { sc_wasSpoken: "Referans söylendi", sc_verseRead: "%n. ayet okundu" },
+        ja: { sc_wasSpoken: "出典が読み上げられました", sc_verseRead: "読まれたのは %n 節です" },
+        ko: { sc_wasSpoken: "출처를 말했습니다", sc_verseRead: "소리 내어 읽은 것은 %n절입니다" },
+        vi: { sc_wasSpoken: "Người giảng đã đọc xuất xứ", sc_verseRead: "câu %n là câu được đọc" },
+        th: { sc_wasSpoken: "ผู้พูดบอกที่มา", sc_verseRead: "ข้อที่อ่านคือข้อ %n" },
+        id: { sc_wasSpoken: "Referensinya disebutkan", sc_verseRead: "ayat %n yang dibacakan" },
+        ms: { sc_wasSpoken: "Rujukannya disebut", sc_verseRead: "ayat %n yang dibaca" },
+        hi: { sc_wasSpoken: "संदर्भ बोला गया", sc_verseRead: "पढ़ा गया पद %n है" },
+        ar: { sc_wasSpoken: "تمت تلاوة المرجع", sc_verseRead: "الآية المقروءة هي %n" },
+        pt: { sc_wasSpoken: "A referência foi dita", sc_verseRead: "foi lido o versículo %n" },
+        it: { sc_wasSpoken: "Il riferimento è stato detto", sc_verseRead: "è stato letto il versetto %n" },
+        nl: { sc_wasSpoken: "De verwijzing werd genoemd", sc_verseRead: "vers %n werd voorgelezen" },
+        ta: { sc_wasSpoken: "குறிப்பு சொல்லப்பட்டது", sc_verseRead: "வாசிக்கப்பட்டது %n ஆம் வசனம்" },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
+
 // Lightweight runtime helpers for applying the shared i18n to any page.
 window.detectDisplayLanguage = function () {
     const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
