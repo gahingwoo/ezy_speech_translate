@@ -288,11 +288,20 @@ def detect_refs(text: str) -> list[dict]:
             # Range end: must be preceded by hyphen / "to" / "through"
             after_v1 = tail.split(nums[1], 1)[1].split(nums[2], 1)[0]
             if re.search(r"[-–—]|\b(to|through|thru)\b", after_v1, re.IGNORECASE):
+                # "John 3:16 to 3:18" repeats the chapter, which nobody writes
+                # but everybody says. The number after the connector is the
+                # chapter again, and the verse is the one after that.
+                end_index = 2
                 try:
-                    ve = int(nums[2])
+                    if int(nums[2]) == chapter and len(nums) >= 4:
+                        end_index = 3
+                except ValueError:
+                    pass
+                try:
+                    ve = int(nums[end_index])
                     if 0 < ve <= 200 and ve >= verse_start:
                         verse_end = ve
-                except ValueError:
+                except (ValueError, IndexError):
                     pass
 
         if verse_end is None:
