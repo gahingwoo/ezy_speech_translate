@@ -724,16 +724,64 @@ function attachBiblePanel(card, refs) {
     if (!text) return;
     text.querySelectorAll('.sc-offer').forEach(el => el.remove());
 
-    // A verse the speaker cited or quoted goes where the machine translation
-    // would have been. It is not an extra block under the line: it IS the
-    // line, which is the whole point of looking it up in the reader's own
-    // Bible rather than translating it.
+    // A verse the speaker read goes where the machine translation would have
+    // been: it IS the line, which is the whole point of looking it up in the
+    // reader's own Bible rather than translating it.
+    //
+    // But only when the line is the verse. "John 3:16" is; "John 3:16, and
+    // I've told you about this before" is a sentence that happens to name one,
+    // and swallowing it loses everything the speaker actually said. Then the
+    // verse sits under the translation instead of replacing it.
     const shown = refs.find(r => r.match === 'reference' || r.match === 'wording');
-    if (shown) substituteVerse(card, text, shown);
+    if (shown) {
+        if (shown.match === 'wording' || saidNothingElse(card, shown)) {
+            substituteVerse(card, text, shown);
+        } else {
+            alongsideVerse(card, text, shown);
+        }
+    }
 
     // Anything doubtful is offered instead, on one quiet line under the row.
     refs.filter(r => r.match === 'offer' || r.match === 'cited')
         .forEach(r => text.appendChild(buildOffer(r)));
+}
+
+/* Did the speaker say anything besides the reference?
+
+   Take the words out that naming a passage needs — the book, the numbers, and
+   the few words English uses to point at one — and see what is left. Nothing
+   means they read it; a sentence means they were talking, and what they said
+   has to be translated like any other line. */
+function saidNothingElse(card, ref) {
+    const item = translations.find(t => 'translation-' + t.id === card.id);
+    const said = ((item && (item.corrected || item.original)) || '').toLowerCase();
+    if (!said) return true;
+    const rest = said
+        .replace((ref.book || '').toLowerCase(), ' ')
+        .replace(/\d+\s*[:\uff1a]\s*\d+(\s*[-\u2013\u2014]\s*\d+)?/g, ' ')
+        .replace(/\b(chapter|chapters|verse|verses|ch|v|vv)\b/g, ' ')
+        .replace(/[^a-z\u4e00-\u9fff]+/g, ' ')
+        .trim();
+    const words = rest.split(/\s+/).filter(Boolean);
+    return words.length < 3;
+}
+
+/* The verse under the translation rather than in place of it, for a line that
+   named a passage while saying something of its own. */
+function alongsideVerse(card, text, ref) {
+    const both = pickVersions(ref);
+    const slot = both.primary;
+    if (!slot || !slot.verses || !slot.verses.length) return;
+
+    text.querySelectorAll('.sc-verse, .sc-more').forEach(el => el.remove());
+    const verse = document.createElement('div');
+    verse.className = 'sc-verse';
+    renderWindow(verse, slot.verses, ref, both.secondary);
+    text.appendChild(verse);
+    if (slot.verses.length > VERSE_WINDOW) {
+        text.appendChild(buildShowAll(ref, slot.verses.length));
+    }
+    writeVerseTag(card, ref, both);
 }
 
 function substituteVerse(card, text, ref) {
@@ -754,23 +802,27 @@ function substituteVerse(card, text, ref) {
         verse.insertAdjacentElement('afterend', buildShowAll(ref, slot.verses.length));
     }
 
-    // The reference and how it was found belong against the timestamp, not in
-    // a header of their own: the row already has a place for what a line is.
+    writeVerseTag(card, ref, both);
+}
+
+/* The reference and how it was found belong against the timestamp, not in a
+   header of their own: the row already has a place for saying what a line is. */
+function writeVerseTag(card, ref, both) {
     const term = card.querySelector('.pf-v6-c-description-list__text');
-    if (term) {
-        term.querySelectorAll('.stream-tag').forEach(el => el.remove());
-        const tag = document.createElement('span');
-        tag.className = 'stream-tag';
-        const bits = [ref.display];
-        const names = [slot.translation, both.secondary && both.secondary.translation]
-            .filter(Boolean).map(n => n.toUpperCase());
-        if (names.length) bits.push(names.join(' / '));
-        bits.push(ref.match === 'wording'
-            ? t('sc_byWording', 'matched by wording')
-            : t('sc_fromBible', 'from the Bible, not translated'));
-        tag.textContent = bits.join(' · ');
-        term.appendChild(tag);
-    }
+    if (!term) return;
+    term.querySelectorAll('.stream-tag').forEach(el => el.remove());
+    const tag = document.createElement('span');
+    tag.className = 'stream-tag';
+    const bits = [ref.display];
+    const names = [both.primary && both.primary.translation,
+                   both.secondary && both.secondary.translation]
+        .filter(Boolean).map(n => n.toUpperCase());
+    if (names.length) bits.push(names.join(' / '));
+    bits.push(ref.match === 'wording'
+        ? t('sc_byWording', 'matched by wording')
+        : t('sc_fromBible', 'from the Bible, not translated'));
+    tag.textContent = bits.join(' · ');
+    term.appendChild(tag);
 }
 
 /* The two Bibles this verse is read in, in the order the page reads: the
