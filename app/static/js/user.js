@@ -3636,11 +3636,10 @@ function createTranslationHTML(item) {
     const isTranslating = displayMode !== 'transcription' && !item.translated;
     const translatedText = item.translated || '';
     const displayText = displayMode === 'transcription' ? (item.corrected || '') : (isTranslating ? (i18n[displayLanguage]?.translating || 'Translating...') : translatedText);
-    const transatingIndicator = (displayMode !== 'transcription' && isTranslating)
-        ? '<span class="pf-v6-c-spinner pf-m-sm translating-indicator" role="progressbar" aria-label="Translating">'
-          + '<span class="pf-v6-c-spinner__clipper"></span><span class="pf-v6-c-spinner__lead-ball"></span>'
-          + '<span class="pf-v6-c-spinner__ball"></span></span>'
-        : '';
+    // No spinner. The status line already says the translation is coming and
+    // the held space already shows it; a spinner only draws the eye to the
+    // wait. Kept as a name because the markup below reads better for it.
+    const transatingIndicator = '';
 
     // Show source text only if enabled and in translation mode — and only when
     // it says something the line above does not. When translation falls back to
@@ -4021,6 +4020,34 @@ function stopAIThinkingMachine(element) {
     element._thinkingMachine = false;
 }
 
+/* Hold the space a translation will need before it arrives.
+
+   There is no streaming translation API: the English is final seconds before
+   the translation lands. Until now the line was one row of status text that
+   the translation then replaced, so every card below it jumped down the moment
+   it arrived — and on a phone, mid-read. Measuring the English at the target's
+   own size gives a close enough height (a CJK line runs about as wide as the
+   English it came from), so the space is already there and nothing moves.
+
+   Cheap to do and it never shrinks: min-height only ever holds a floor. */
+function reserveTranslationSpace(textEl, sourceText) {
+    if (!textEl || !sourceText) return;
+    const held = textEl.textContent;
+    textEl.style.minHeight = '';
+    textEl.textContent = sourceText;
+    const height = textEl.offsetHeight;
+    const lineHeight = parseFloat(getComputedStyle(textEl).lineHeight) || 0;
+    textEl.textContent = held;
+    if (!height) return;
+    // Capped at two lines. Reserving the full predicted height would hold the
+    // card perfectly still, but a Chinese line runs shorter than the English it
+    // came from, so a long source would leave a chasm under a short
+    // translation — worse to look at than the shift it prevents. Two lines
+    // covers what most lines turn out to be.
+    const cap = lineHeight ? lineHeight * 2 : height;
+    textEl.style.minHeight = Math.min(height, cap) + 'px';
+}
+
 async function translateInBackground(item, itemId, textEl) {
     // Translate asynchronously and update DOM when done
     try {
@@ -4039,6 +4066,7 @@ async function translateInBackground(item, itemId, textEl) {
             if (textEl) {
                 stopAIThinkingMachine(textEl);
                 textEl.className = 'text-target';
+                reserveTranslationSpace(textEl, item.corrected);
                 startAIThinkingMachine(textEl, 'translated', 30000, item.corrected);
                 console.log('Switched to translated state, showing "即將呈現翻譯"');
             }
