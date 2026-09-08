@@ -625,7 +625,16 @@ async function loadBiblePanel(card, refs) {
         // verses are shown in the stream: switching them off is a reading
         // preference, not an instruction to forget the readings.
         merged.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
-        if (showBibleVerse && card.isConnected) attachBiblePanel(card, merged);
+        if (!showBibleVerse) return;
+        // The lookup takes a few hundred milliseconds, and a line that arrives
+        // while the speaker is talking can be re-rendered inside that window —
+        // the row this was called with is then detached, and the verse used to
+        // be dropped on the floor. It only ever showed up after a reload,
+        // which is the one moment nobody is watching. Find the row again.
+        const live = card.isConnected
+            ? card
+            : (card.id ? document.getElementById(card.id) : null);
+        if (live) attachBiblePanel(live, merged);
     } catch (e) {
         console.warn('loadBiblePanel failed:', e);
     }
