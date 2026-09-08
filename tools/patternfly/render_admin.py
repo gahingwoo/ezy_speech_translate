@@ -1363,9 +1363,14 @@ def build():
                     <h2 class="pf-v6-c-card__title-text" data-i18n="hearing">Hearing</h2>
                   </div>
                   <div class="pf-v6-c-card__body">
-                    <div class="interim-display inactive" id="interimDisplay"
-                         role="status" aria-live="polite">
-                      <span id="interimText" data-i18n="waitingForSpeech">Waiting for speech...</span>
+                    <!-- No box. The card is the box; a panel inside it was a
+                         white surface on a white surface, and an empty one at
+                         that. This is the most important thing on the page, so
+                         it is simply the largest text on it. -->
+                    <div class="pf-v6-c-content interim-display inactive"
+                         id="interimDisplay" role="status" aria-live="polite">
+                      <p id="interimText"
+                         data-i18n="waitingForSpeech">Waiting for speech...</p>
                     </div>
                     <form class="pf-v6-c-form hearing-controls" onsubmit="return false;">
 %(audio)s                    </form>
@@ -1419,8 +1424,11 @@ def build():
                             <input type="checkbox" id="selectAllRows" aria-label="Select all lines"
                                    onchange="toggleSelectAll(this.checked)">
                           </td>
-                          <th class="pf-v6-c-table__th table-drag" role="columnheader" scope="col">
-                            <span class="pf-v6-screen-reader" data-i18n="dragToReorder">Drag to reorder</span></th>
+                          <!-- No heading over the grips: every handle below
+                               carries its own label, and the screen-reader
+                               text that was here was leaking two clipped
+                               characters into the corner of the table. -->
+                          <td class="pf-v6-c-table__td table-drag"></td>
                           <th class="pf-v6-c-table__th" role="columnheader" scope="col"
                               data-i18n="time">Time</th>
                           <th class="pf-v6-c-table__th" role="columnheader" scope="col"
@@ -1434,10 +1442,20 @@ def build():
                     </table>
                     <div class="empty-slot" id="emptySlot"></div>
                   </div>
+                  <!-- Stack, not a margin: the gap between the note and the
+                       buttons is a layout gap and PatternFly has a token for
+                       it. Writing it by hand is what made the spacing look
+                       arbitrary everywhere else. -->
                   <div class="pf-v6-c-card__footer">
-                    <p class="meta" data-i18n="correctionHelp">A correction is re-translated and
-                      pushed to every viewer.</p>
-%(actions)s                  </div>
+                    <div class="pf-v6-l-stack pf-m-gutter">
+                      <div class="pf-v6-l-stack__item">
+                        <p class="meta" data-i18n="correctionHelp">A correction is re-translated
+                          and pushed to every viewer.</p>
+                      </div>
+                      <div class="pf-v6-l-stack__item">
+%(actions)s                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

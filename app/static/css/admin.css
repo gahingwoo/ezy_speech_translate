@@ -237,29 +237,6 @@ html.pf-v6-theme-dark .icon-moon {
   }
 }
 
-/* ── recognition read-out ─────────────────────────────────────────────── */
-/* admin.js replaces this element's whole class list with
-   `interim-display active` or `interim-display inactive`. */
-
-.interim-display {
-  min-height: 3rem;
-  padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  background: var(--pf-t--global--background--color--primary--default);
-  border: var(--pf-t--global--border--width--divider--default) solid
-    var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--small);
-}
-
-.interim-display.inactive {
-  color: var(--pf-t--global--text--color--subtle);
-}
-
-.interim-display.active {
-  color: var(--pf-t--global--text--color--regular);
-  border-color: var(--pf-t--global--border--color--brand--default);
-}
-
 /* ── QR code ──────────────────────────────────────────────────────────── */
 
 .qr-output {
@@ -293,21 +270,31 @@ html.pf-v6-theme-dark .icon-moon {
    what this service has come to. Three cards down a reading column with the
    sections railed beside them. */
 
+/* ── recognition read-out ─────────────────────────────────────────────── */
 /* What the room is saying right now, in the words the recogniser has so far.
-   Set apart from the controls under it because it is the one thing on the
-   page that changes while you watch. */
-.interim-display {
-  min-height: 3rem;
-  padding: var(--pf-t--global--spacer--md);
-  font-size: var(--pf-t--global--font--size--body--lg);
-  line-height: var(--pf-t--global--font--line-height--body);
-  color: var(--pf-t--global--text--color--regular);
-  background: var(--pf-t--global--background--color--secondary--default);
-  border-radius: var(--pf-t--global--border--radius--small);
+   admin.js replaces this element's whole class list with `interim-display
+   active` or `interim-display inactive`, so both states are named here.
+
+   No box. The card already draws a surface, and the bordered one that used to
+   be here was a white box on a white card holding a single line. This is the
+   largest text in the card instead, which is what it is: the thing you are
+   watching. It holds a line's height so the card does not jump when the first
+   words arrive. */
+.interim-display p {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: var(--pf-t--global--font--size--heading--sm);
+  line-height: var(--pf-t--global--font--line-height--heading);
+  text-wrap: pretty;
 }
 
-.interim-display.inactive {
+/* Nothing to hear yet, so it reads as a placeholder rather than as speech. */
+.interim-display.inactive p {
   color: var(--pf-t--global--text--color--subtle);
+}
+
+.interim-display.active p {
+  color: var(--pf-t--global--text--color--regular);
 }
 
 /* The two selects sit side by side while there is room for them. */
@@ -353,20 +340,44 @@ html.pf-v6-theme-dark .icon-moon {
    one and no more; the time takes what a timestamp needs; and the two text
    columns split what is left. Without this the correction column collapsed to
    about one word per line. */
+/* Three narrow columns and two that carry text.
+ *
+ * table-layout: fixed turned out to be the wrong tool: every width had to be
+ * declared, the declared widths had to add up, and when they did not the
+ * browser took the difference out of whichever column was narrowest — which
+ * left the grip one pixel wide underneath its own icon. The old shrink-to-fit
+ * trick does the same job with no arithmetic: a width of 1% on a cell that
+ * cannot wrap makes it exactly as wide as its content, and the two text
+ * columns divide what is left between them by how much text they hold.
+ */
 .transcript-table {
-  table-layout: fixed;
   width: 100%;
 }
 
-/* Under table-layout: fixed a column with no width stated gets whatever is
-   left over, and the tick column came out six pixels wide. */
-.transcript-table .pf-v6-c-table__check {
-  width: 2.75rem;
+.transcript-table .pf-v6-c-table__check,
+.transcript-table .table-drag,
+.transcript-table .card-time {
+  width: 1%;
+  white-space: nowrap;
 }
 
 .transcript-table .table-drag {
-  width: 2.5rem;
   padding-inline: var(--pf-t--global--spacer--sm) 0;
+}
+
+/* Most rows have never been corrected, so auto layout sized the Correction
+   column to the word "Correct" and its own heading came out as "Correcti…".
+   A floor stops that, and a share keeps the recognised line — which carries
+   the whole sentence — the wider of the two. Under auto layout a percentage
+   is a preference the browser reconciles with the narrow columns, which is
+   what makes it work here and not under table-layout: fixed. */
+.transcript-table thead > tr > :nth-child(4) {
+  width: 58%;
+}
+
+.transcript-table thead > tr > :nth-child(5) {
+  width: 42%;
+  min-width: 9rem;
 }
 
 /* The handle sat flush against the checkbox, and the two read as one strange
@@ -381,30 +392,6 @@ html.pf-v6-theme-dark .icon-moon {
 .transcription-card:hover .drag-handle,
 .drag-handle:focus-visible {
   --pf-v6-c-button--m-plain--Color: var(--pf-t--global--icon--color--subtle);
-}
-
-.transcript-table th:nth-child(3) {
-  width: 6rem;
-}
-
-/* Recognised carries the whole line; Correction is a short link on most rows
-   and only fills out when someone has actually corrected one. Splitting the
-   remaining width evenly left half the table empty and stacked a long
-   sentence twenty lines deep. */
-.transcript-table th:nth-child(4) {
-  width: 55%;
-}
-
-.transcript-table th:nth-child(5) {
-  width: 45%;
-}
-
-/* Below the grid breakpoint PatternFly stacks each row into labelled lines,
-   where fixed columns make no sense. */
-@media (max-width: 47.99rem) {
-  .transcript-table {
-    table-layout: auto;
-  }
 }
 
 .drag-handle:active {
