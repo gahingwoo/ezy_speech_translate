@@ -4336,17 +4336,17 @@ window.sharedAiStatusLibrary = {
     const map = window.sharedI18n || {};
     const extra = {
         en: { nav_thisService: "This service", nav_liveTranslation: "Live translation", nav_reading: "Reading", nav_textAndAudio: "Text and audio", nav_saveCopy: "Save a copy", nav_elsewhere: "Elsewhere", onThisPage: "On this page", now: "Now", readingThis: "Reading this", change: "Change", off: "Off", readingLangHelp: "Sets what the sermon is translated into, and the page follows it.", readingBibleHelp: "Matches the script the rest of the page is in.", readingTtsHelp: "Your own device speaks each line. Please use headphones." },
-        zh: { nav_thisService: "本场聚会", nav_liveTranslation: "实时翻译", nav_reading: "阅读", nav_textAndAudio: "文字与语音", nav_saveCopy: "保存一份", nav_elsewhere: "其他", onThisPage: "本页内容", now: "当前", readingThis: "你的设置", change: "更改", off: "已关闭", readingLangHelp: "决定讲道翻译成什么语言，页面也跟着走。", readingBibleHelp: "与页面其余部分的字体一致。", readingTtsHelp: "由你的设备朗读每一句。请戴耳机。" },
-        yue: { nav_thisService: "今場崇拜", nav_liveTranslation: "即時翻譯", nav_reading: "閱讀", nav_textAndAudio: "文字同語音", nav_saveCopy: "儲存一份", nav_elsewhere: "其他", onThisPage: "本頁內容", now: "而家", readingThis: "你嘅設定", change: "更改", off: "已關閉", readingLangHelp: "決定講道翻譯成邊種語言，個頁面都會跟住。", readingBibleHelp: "同頁面其餘部分嘅字體一致。", readingTtsHelp: "由你部機讀出每一句。請戴耳機。" },
-        "zh-tw": { nav_thisService: "本場聚會", nav_liveTranslation: "即時翻譯", nav_reading: "閱讀", nav_textAndAudio: "文字與語音", nav_saveCopy: "儲存一份", nav_elsewhere: "其他", onThisPage: "本頁內容", now: "目前", readingThis: "你的設定", change: "變更", off: "已關閉", readingLangHelp: "決定講道翻譯成什麼語言，頁面也跟著走。", readingBibleHelp: "與頁面其餘部分的字體一致。", readingTtsHelp: "由你的裝置朗讀每一句。請戴耳機。" },
+        zh: { nav_thisService: "本场聚会", nav_liveTranslation: "实时翻译", nav_reading: "阅读", nav_textAndAudio: "文字与语音", nav_saveCopy: "保存一份", nav_elsewhere: "其他", onThisPage: "本页内容", now: "最新", readingThis: "你的设置", change: "更改", off: "已关闭", readingLangHelp: "决定讲道翻译成什么语言，页面也跟着走。", readingBibleHelp: "与页面其余部分的字体一致。", readingTtsHelp: "由你的设备朗读每一句。请戴耳机。" },
+        yue: { nav_thisService: "今場崇拜", nav_liveTranslation: "即時翻譯", nav_reading: "閱讀", nav_textAndAudio: "文字同語音", nav_saveCopy: "儲存一份", nav_elsewhere: "其他", onThisPage: "本頁內容", now: "最新", readingThis: "你嘅設定", change: "更改", off: "已關閉", readingLangHelp: "決定講道翻譯成邊種語言，個頁面都會跟住。", readingBibleHelp: "同頁面其餘部分嘅字體一致。", readingTtsHelp: "由你部機讀出每一句。請戴耳機。" },
+        "zh-tw": { nav_thisService: "本場聚會", nav_liveTranslation: "即時翻譯", nav_reading: "閱讀", nav_textAndAudio: "文字與語音", nav_saveCopy: "儲存一份", nav_elsewhere: "其他", onThisPage: "本頁內容", now: "最新", readingThis: "你的設定", change: "變更", off: "已關閉", readingLangHelp: "決定講道翻譯成什麼語言，頁面也跟著走。", readingBibleHelp: "與頁面其餘部分的字體一致。", readingTtsHelp: "由你的裝置朗讀每一句。請戴耳機。" },
         es: { nav_thisService: "Este servicio", nav_liveTranslation: "Traducción en directo", nav_reading: "Lectura", nav_textAndAudio: "Texto y audio", nav_saveCopy: "Guardar una copia", nav_elsewhere: "En otro lugar", onThisPage: "En esta página", now: "Ahora", readingThis: "Cómo lo lees", change: "Cambiar", off: "Desactivado", readingLangHelp: "Define a qué idioma se traduce el sermón; la página lo sigue.", readingBibleHelp: "Coincide con la escritura del resto de la página.", readingTtsHelp: "Tu propio dispositivo lee cada línea. Usa auriculares, por favor." },
         fr: { nav_thisService: "Ce service", nav_liveTranslation: "Traduction en direct", nav_reading: "Lecture", nav_textAndAudio: "Texte et audio", nav_saveCopy: "Enregistrer une copie", nav_elsewhere: "Ailleurs", onThisPage: "Sur cette page", now: "Maintenant", readingThis: "Votre lecture", change: "Modifier", off: "Désactivé", readingLangHelp: "Détermine la langue de la traduction du sermon; la page suit.", readingBibleHelp: "Correspond à l'écriture du reste de la page.", readingTtsHelp: "Votre appareil lit chaque ligne. Utilisez un casque, s'il vous plaît." },
         de: { nav_thisService: "Dieser Gottesdienst", nav_liveTranslation: "Live-Übersetzung", nav_reading: "Lesen", nav_textAndAudio: "Text und Audio", nav_saveCopy: "Kopie speichern", nav_elsewhere: "Anderswo", onThisPage: "Auf dieser Seite", now: "Jetzt", readingThis: "Deine Einstellungen", change: "Ändern", off: "Aus", readingLangHelp: "Legt fest, in welche Sprache die Predigt übersetzt wird; die Seite folgt.", readingBibleHelp: "Passt zur Schrift des übrigen Seiteninhalts.", readingTtsHelp: "Dein eigenes Gerät liest jede Zeile vor. Bitte Kopfhörer benutzen." },
         ru: { nav_thisService: "Это служение", nav_liveTranslation: "Прямой перевод", nav_reading: "Чтение", nav_textAndAudio: "Текст и звук", nav_saveCopy: "Сохранить копию", nav_elsewhere: "Другое", onThisPage: "На этой странице", now: "Сейчас", readingThis: "Как вы читаете", change: "Изменить", off: "Выключено", readingLangHelp: "Задаёт язык перевода проповеди, страница следует за ним.", readingBibleHelp: "Соответствует письменности остальной страницы.", readingTtsHelp: "Каждую строку читает ваше устройство. Пожалуйста, наденьте наушники." },
         pl: { nav_thisService: "To nabożeństwo", nav_liveTranslation: "Tłumaczenie na żywo", nav_reading: "Czytanie", nav_textAndAudio: "Tekst i dźwięk", nav_saveCopy: "Zapisz kopię", nav_elsewhere: "Gdzie indziej", onThisPage: "Na tej stronie", now: "Teraz", readingThis: "Twoje ustawienia", change: "Zmień", off: "Wyłączone", readingLangHelp: "Ustala język tłumaczenia kazania; strona podąża za nim.", readingBibleHelp: "Zgodne z pismem reszty strony.", readingTtsHelp: "Każdą linię czyta Twoje urządzenie. Prosimy o słuchawki." },
         tr: { nav_thisService: "Bu ibadet", nav_liveTranslation: "Canlı çeviri", nav_reading: "Okuma", nav_textAndAudio: "Metin ve ses", nav_saveCopy: "Bir kopya kaydet", nav_elsewhere: "Başka yerde", onThisPage: "Bu sayfada", now: "Şimdi", readingThis: "Okuma ayarların", change: "Değiştir", off: "Kapalı", readingLangHelp: "Vaazın hangi dile çevrileceğini belirler; sayfa da onu izler.", readingBibleHelp: "Sayfanın geri kalanındaki yazıyla eşleşir.", readingTtsHelp: "Her satırı kendi cihazınız okur. Lütfen kulaklık kullanın." },
-        ja: { nav_thisService: "この礼拝", nav_liveTranslation: "リアルタイム翻訳", nav_reading: "表示", nav_textAndAudio: "文字と音声", nav_saveCopy: "控えを保存", nav_elsewhere: "そのほか", onThisPage: "このページの内容", now: "現在", readingThis: "表示の設定", change: "変更", off: "オフ", readingLangHelp: "説教を何語に翻訳するかを決めます。ページの表示もこれに従います。", readingBibleHelp: "ページの他の部分と同じ字体になります。", readingTtsHelp: "各行はお使いの端末が読み上げます。イヤホンをご使用ください。" },
-        ko: { nav_thisService: "이번 예배", nav_liveTranslation: "실시간 번역", nav_reading: "읽기", nav_textAndAudio: "텍스트와 오디오", nav_saveCopy: "사본 저장", nav_elsewhere: "다른 곳", onThisPage: "이 페이지에서", now: "지금", readingThis: "읽기 설정", change: "변경", off: "꺼짐", readingLangHelp: "설교를 어떤 언어로 번역할지 정합니다. 페이지도 이를 따릅니다.", readingBibleHelp: "페이지의 나머지 부분과 같은 문자를 씁니다.", readingTtsHelp: "각 줄은 본인의 기기가 읽어 줍니다. 이어폰을 사용해 주세요." },
+        ja: { nav_thisService: "この礼拝", nav_liveTranslation: "リアルタイム翻訳", nav_reading: "表示", nav_textAndAudio: "文字と音声", nav_saveCopy: "控えを保存", nav_elsewhere: "そのほか", onThisPage: "このページの内容", now: "最新", readingThis: "表示の設定", change: "変更", off: "オフ", readingLangHelp: "説教を何語に翻訳するかを決めます。ページの表示もこれに従います。", readingBibleHelp: "ページの他の部分と同じ字体になります。", readingTtsHelp: "各行はお使いの端末が読み上げます。イヤホンをご使用ください。" },
+        ko: { nav_thisService: "이번 예배", nav_liveTranslation: "실시간 번역", nav_reading: "읽기", nav_textAndAudio: "텍스트와 오디오", nav_saveCopy: "사본 저장", nav_elsewhere: "다른 곳", onThisPage: "이 페이지에서", now: "최신", readingThis: "읽기 설정", change: "변경", off: "꺼짐", readingLangHelp: "설교를 어떤 언어로 번역할지 정합니다. 페이지도 이를 따릅니다.", readingBibleHelp: "페이지의 나머지 부분과 같은 문자를 씁니다.", readingTtsHelp: "각 줄은 본인의 기기가 읽어 줍니다. 이어폰을 사용해 주세요." },
         vi: { nav_thisService: "Buổi nhóm này", nav_liveTranslation: "Dịch trực tiếp", nav_reading: "Đọc", nav_textAndAudio: "Văn bản và âm thanh", nav_saveCopy: "Lưu một bản", nav_elsewhere: "Nơi khác", onThisPage: "Trên trang này", now: "Bây giờ", readingThis: "Cách bạn đọc", change: "Thay đổi", off: "Tắt", readingLangHelp: "Quyết định bài giảng được dịch sang ngôn ngữ nào; trang cũng theo đó.", readingBibleHelp: "Khớp với chữ viết của phần còn lại của trang.", readingTtsHelp: "Thiết bị của bạn đọc từng dòng. Vui lòng dùng tai nghe." },
         th: { nav_thisService: "การนมัสการนี้", nav_liveTranslation: "การแปลสด", nav_reading: "การอ่าน", nav_textAndAudio: "ข้อความและเสียง", nav_saveCopy: "บันทึกสำเนา", nav_elsewhere: "ที่อื่น", onThisPage: "ในหน้านี้", now: "ตอนนี้", readingThis: "การอ่านของคุณ", change: "เปลี่ยน", off: "ปิด", readingLangHelp: "กำหนดว่าคำเทศนาจะถูกแปลเป็นภาษาใด และหน้าเว็บจะตามนั้น", readingBibleHelp: "ตรงกับอักษรที่ใช้ในส่วนอื่นของหน้า", readingTtsHelp: "อุปกรณ์ของคุณจะอ่านแต่ละบรรทัด กรุณาใช้หูฟัง" },
         id: { nav_thisService: "Ibadah ini", nav_liveTranslation: "Terjemahan langsung", nav_reading: "Membaca", nav_textAndAudio: "Teks dan audio", nav_saveCopy: "Simpan salinan", nav_elsewhere: "Lainnya", onThisPage: "Di halaman ini", now: "Sekarang", readingThis: "Cara Anda membaca", change: "Ubah", off: "Mati", readingLangHelp: "Menentukan bahasa terjemahan khotbah; halaman mengikutinya.", readingBibleHelp: "Sesuai dengan aksara di bagian lain halaman ini.", readingTtsHelp: "Perangkat Anda sendiri membacakan tiap baris. Mohon gunakan headphone." },
@@ -4462,6 +4462,42 @@ window.sharedAiStatusLibrary = {
         it: { sc_fromBible: "dalla Bibbia, non tradotto", sc_byWording: "riconosciuto dal testo", sc_maybe: "Questo potrebbe essere", sc_cited: "Menzionato", sc_showAll: "Mostra tutti i %n versetti", sc_moreVerses: "altri %n versetti", sc_readAloud: "Leggi il passo ad alta voce", sc_read: "Leggi il passo", sc_unavailable: "Testo del versetto non disponibile", sc_none: "I passi letti in questo culto compariranno qui." },
         nl: { sc_fromBible: "uit de Bijbel, niet vertaald", sc_byWording: "herkend aan de bewoording", sc_maybe: "Dit is mogelijk", sc_cited: "Genoemd", sc_showAll: "Toon alle %n verzen", sc_moreVerses: "nog %n verzen", sc_readAloud: "Lees de passage voor", sc_read: "Lees de passage", sc_unavailable: "Verstekst niet beschikbaar", sc_none: "Passages die in deze dienst worden gelezen verschijnen hier." },
         ta: { sc_fromBible: "பைபிளிலிருந்து, மொழிபெயர்ப்பு அல்ல", sc_byWording: "சொற்களால் பொருத்தப்பட்டது", sc_maybe: "இது இதுவாக இருக்கலாம்", sc_cited: "குறிப்பிடப்பட்டது", sc_showAll: "அனைத்து %n வசனங்களையும் காட்டு", sc_moreVerses: "மேலும் %n வசனங்கள்", sc_readAloud: "இப்பகுதியை உரக்க வாசி", sc_read: "இப்பகுதியை வாசி", sc_unavailable: "வசன உரை கிடைக்கவில்லை", sc_none: "இந்த ஆராதனையில் வாசிக்கப்பட்ட பகுதிகள் இங்கே தோன்றும்." },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
+
+// The one setting that is not a second language: whether the page follows the
+// reading language or stays in English.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { pageItself: "The page itself" },
+        zh: { pageItself: "页面本身" },
+        yue: { pageItself: "個頁面本身" },
+        "zh-tw": { pageItself: "頁面本身" },
+        es: { pageItself: "La página" },
+        fr: { pageItself: "La page elle-même" },
+        de: { pageItself: "Die Seite selbst" },
+        ru: { pageItself: "Сама страница" },
+        pl: { pageItself: "Sama strona" },
+        tr: { pageItself: "Sayfanın kendisi" },
+        ja: { pageItself: "ページの表示" },
+        ko: { pageItself: "페이지 자체" },
+        vi: { pageItself: "Bản thân trang" },
+        th: { pageItself: "ตัวหน้าเว็บ" },
+        id: { pageItself: "Halaman ini sendiri" },
+        ms: { pageItself: "Halaman itu sendiri" },
+        hi: { pageItself: "पेज स्वयं" },
+        ar: { pageItself: "الصفحة نفسها" },
+        pt: { pageItself: "A própria página" },
+        it: { pageItself: "La pagina stessa" },
+        nl: { pageItself: "De pagina zelf" },
+        ta: { pageItself: "பக்கம்" },
     };
     Object.keys(extra).forEach(function (lang) {
         if (!map[lang]) map[lang] = {};

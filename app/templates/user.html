@@ -469,18 +469,23 @@
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
           <div class="pf-v6-c-form__group-label-main">
-            <label class="pf-v6-c-form__label" for="displayLanguage">
-              <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Display Language</span>
+            <label class="pf-v6-c-form__label" for="keepPageEnglishSetting">
+              <span class="pf-v6-c-form__label-text" data-i18n="pageItself">The page itself</span>
             </label>
           </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="The buttons and headings follow the language you are reading in." data-tooltip="The buttons and headings follow the language you are reading in."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="displayLanguage" aria-label="Select display language" onchange="changeDisplayLanguageLocal()"><option value="en">English</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="yue">粵語</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="tl">Tagalog</option><option value="sm">Gagana Samoa</option><option value="to">Lea faka-Tonga</option><option value="mi">Te Reo Māori</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
+      <label class="pf-v6-c-check">
+        <input class="pf-v6-c-check__input" type="checkbox"
+               id="keepPageEnglishSetting" onchange="setKeepPageEnglish(this.checked)">
+        <span class="pf-v6-c-check__label" data-i18n="keepPageEnglish">Keep the page in English</span>
+      </label>
+      <select id="displayLanguage" hidden aria-hidden="true"
+              onchange="changeDisplayLanguageLocal()"><option value="en">English</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="yue">粵語</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="tl">Tagalog</option><option value="sm">Gagana Samoa</option><option value="to">Lea faka-Tonga</option><option value="mi">Te Reo Māori</option></select>
         </div>
       </div>
       <div class="pf-v6-c-form__group">
@@ -1525,13 +1530,9 @@
         const select = document.getElementById('targetLang');
         if (select) { select.value = langPending; }
         if (typeof changeLanguage === 'function') changeLanguage();
-        // The page follows the reading language unless told to stay English.
-        if (typeof changeDisplayLanguage === 'function') {
-          changeDisplayLanguage(keepEnglish ? 'en' : langPending);
-        }
       }
       hideLanguageDialog();
-      if (typeof refreshReadingCard === 'function') refreshReadingCard();
+      followReadingLanguage();
     }
     window.applyLanguage = applyLanguage;
 
@@ -1566,6 +1567,42 @@
       }
     }
     window.refreshReadingCard = refreshReadingCard;
+
+    /* ── one language, derived not stored ─────────────────────────────────
+       The page used to keep a Display Language of its own beside the reading
+       language, and the two drifted: a reader on 简体中文 got an interface in
+       粵語, Simplified content under Traditional chrome, on one page. There is
+       one stored choice now. The page follows it unless this says otherwise,
+       and that is the whole of the second setting. */
+    function setKeepPageEnglish(keep) {
+      localStorage.setItem('keepPageEnglish', String(!!keep));
+      followReadingLanguage();
+    }
+    window.setKeepPageEnglish = setKeepPageEnglish;
+
+    function followReadingLanguage() {
+      const keep = localStorage.getItem('keepPageEnglish') === 'true';
+      const wanted = keep ? 'en' : currentReadingLanguage();
+      const select = document.getElementById('displayLanguage');
+      if (select && select.value !== wanted) select.value = wanted;
+      const box = document.getElementById('keepPageEnglishSetting');
+      if (box) box.checked = keep;
+      if (typeof changeDisplayLanguage === 'function') changeDisplayLanguage(wanted);
+      // The Bible follows the reading language too, script and all: a
+      // Traditional Bible under a Simplified page is the same mistake.
+      if (typeof loadBibleTranslationOptions === 'function') {
+        loadBibleTranslationOptions(currentReadingLanguage());
+      }
+      if (typeof refreshReadingCard === 'function') refreshReadingCard();
+    }
+    window.followReadingLanguage = followReadingLanguage;
+
+    // Whatever set the reading language — the dialog, the wizard, a value
+    // stored by an older build — the page catches up with it on load.
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(followReadingLanguage, 500);
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
       setTimeout(refreshReadingCard, 400);
     });

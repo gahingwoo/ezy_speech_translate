@@ -354,6 +354,19 @@ def passage_dialog():
 ''' % {"times": btn_icon("times"), "volume_btn": btn_icon("volume-up")}
 
 
+def page_follows_reading():
+    """The escape hatch from the reading language, and the hidden select that
+    still carries the value to the shared i18n helper."""
+    return ('      <label class="pf-v6-c-check">\n'
+            '        <input class="pf-v6-c-check__input" type="checkbox"\n'
+            '               id="keepPageEnglishSetting" onchange="setKeepPageEnglish(this.checked)">\n'
+            '        <span class="pf-v6-c-check__label" data-i18n="keepPageEnglish">'
+            'Keep the page in English</span>\n'
+            '      </label>\n'
+            '      <select id="displayLanguage" hidden aria-hidden="true"\n'
+            '              onchange="changeDisplayLanguageLocal()">%s</select>' % LANGS)
+
+
 def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=None,
           title_icon_id=None, title_text_id=None, size="md"):
     close = close_fn or ("hide" + el_id.replace("Modal", "").capitalize() + "()")
@@ -654,9 +667,15 @@ def build():
 ''' % form_group("Current room", "currentRoom",
                  select("userRoomSelect", "window.userSwitchRoom && window.userSwitchRoom(this.value)",
                         "Switch room", ""), "userRoomSelect")) + ('''%s%s%s''' % (
-        form_group("Display Language", "displayLanguage",
-                   select("displayLanguage", "changeDisplayLanguageLocal()", "Select display language", LANGS),
-                   "displayLanguage"),
+        # The page follows the reading language. This is not a second choice of
+        # language — it is the one escape from the first, so it is a checkbox.
+        # The old select stays in the markup, hidden: it is how the shared
+        # i18n helper is told which language to apply, and half of user.js
+        # reads it.
+        form_group("The page itself", "pageItself",
+                   page_follows_reading(),
+                   "keepPageEnglishSetting",
+                   help="The buttons and headings follow the language you are reading in."),
         form_group("Display Mode", "displayMode",
                    select("displayMode", "changeDisplayMode()", "Select display mode",
                           '<option value="translation" data-i18n="translation">Translation</option>'
@@ -1542,13 +1561,9 @@ def build():
         const select = document.getElementById('targetLang');
         if (select) { select.value = langPending; }
         if (typeof changeLanguage === 'function') changeLanguage();
-        // The page follows the reading language unless told to stay English.
-        if (typeof changeDisplayLanguage === 'function') {
-          changeDisplayLanguage(keepEnglish ? 'en' : langPending);
-        }
       }
       hideLanguageDialog();
-      if (typeof refreshReadingCard === 'function') refreshReadingCard();
+      followReadingLanguage();
     }
     window.applyLanguage = applyLanguage;
 
@@ -1583,6 +1598,42 @@ def build():
       }
     }
     window.refreshReadingCard = refreshReadingCard;
+
+    /* ── one language, derived not stored ─────────────────────────────────
+       The page used to keep a Display Language of its own beside the reading
+       language, and the two drifted: a reader on 简体中文 got an interface in
+       粵語, Simplified content under Traditional chrome, on one page. There is
+       one stored choice now. The page follows it unless this says otherwise,
+       and that is the whole of the second setting. */
+    function setKeepPageEnglish(keep) {
+      localStorage.setItem('keepPageEnglish', String(!!keep));
+      followReadingLanguage();
+    }
+    window.setKeepPageEnglish = setKeepPageEnglish;
+
+    function followReadingLanguage() {
+      const keep = localStorage.getItem('keepPageEnglish') === 'true';
+      const wanted = keep ? 'en' : currentReadingLanguage();
+      const select = document.getElementById('displayLanguage');
+      if (select && select.value !== wanted) select.value = wanted;
+      const box = document.getElementById('keepPageEnglishSetting');
+      if (box) box.checked = keep;
+      if (typeof changeDisplayLanguage === 'function') changeDisplayLanguage(wanted);
+      // The Bible follows the reading language too, script and all: a
+      // Traditional Bible under a Simplified page is the same mistake.
+      if (typeof loadBibleTranslationOptions === 'function') {
+        loadBibleTranslationOptions(currentReadingLanguage());
+      }
+      if (typeof refreshReadingCard === 'function') refreshReadingCard();
+    }
+    window.followReadingLanguage = followReadingLanguage;
+
+    // Whatever set the reading language — the dialog, the wizard, a value
+    // stored by an older build — the page catches up with it on load.
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(followReadingLanguage, 500);
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
       setTimeout(refreshReadingCard, 400);
     });

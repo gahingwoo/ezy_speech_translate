@@ -187,11 +187,10 @@ html.pf-v6-theme-dark .icon-moon {
    assembled from PatternFly's card markup. They follow the card's tokens so
    they sit in the same visual system. */
 
-.translation-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pf-t--global--spacer--md);
-}
+/* The list is PatternFly's description list now, not a column of cards, and
+   it brings its own layout. Forcing flex on it turned the component's grid
+   off, which is what left every row a different width and every rule under
+   them a different length. */
 
 /* The heading row above the list, on the page rather than inside a card, the
    way PatternFly's page sections carry a title. */
@@ -206,12 +205,10 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 /* An empty list still needs a surface, or the page reads as unfinished. */
-.translation-list > .pf-v6-c-empty-state {
-  padding-block: var(--pf-t--global--spacer--3xl);
-  background: var(--pf-t--global--background--color--primary--default);
-  border: var(--pf-t--global--border--width--box--default) solid
-    var(--pf-t--global--border--color--default);
-  border-radius: var(--pf-t--global--border--radius--medium);
+/* The empty state stands in for the whole list, inside a card that already
+   draws the box around it. */
+.translation-list .pf-v6-c-empty-state {
+  padding-block: var(--pf-t--global--spacer--2xl);
 }
 
 /* The card is the text and one quiet row under it. A header row of its own
@@ -282,13 +279,12 @@ html.pf-v6-theme-dark .icon-moon {
   overflow-wrap: anywhere;
 }
 
+/* The English under a translation is the design's .meta: quiet text, no rule.
+   It used to carry a divider of its own, which put two horizontal lines
+   through every row — one under the translation and one under the row — and
+   that is most of what made a page of them look busy. */
 .text-source {
-  margin-block-start: var(--pf-t--global--spacer--sm);
-  padding-block-start: var(--pf-t--global--spacer--sm);
-  border-block-start: var(--pf-t--global--border--width--divider--default) solid
-    var(--pf-t--global--border--color--default);
-  font-size: var(--pf-t--global--font--size--body--sm);
-  color: var(--pf-t--global--text--color--subtle);
+  margin-block-start: var(--pf-t--global--spacer--xs);
   overflow-wrap: anywhere;
 }
 

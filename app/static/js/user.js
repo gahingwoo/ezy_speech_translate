@@ -449,6 +449,17 @@ function _excludedBible(t) {
         || name.includes('思高') || /studium biblicum/i.test(name);
 }
 
+/* The script of a stored translation code, looked up in the language list we
+   already have rather than guessed from the code. */
+function _zhScriptOfCode(langData, code) {
+    for (const group of langData || []) {
+        for (const t of group.translations || []) {
+            if (t.short_name === code) return _zhScriptOf(t);
+        }
+    }
+    return null;
+}
+
 async function loadBibleTranslationOptions(langCode) {
     const sel = document.getElementById('bibleTargetTranslation');
     if (!sel) return;
@@ -523,8 +534,15 @@ async function loadBibleTranslationOptions(langCode) {
 
     if (hint) hint.hidden = !ppLangName;
 
-    // Restore saved preference if still valid for this language, else auto-match
-    if (bibleTargetTrans && allMatchedCodes.includes(bibleTargetTrans)) {
+    // Restore saved preference if still valid for this language, else auto-match.
+    // "Valid" has to mean the script too: bolls.life returns Simplified and
+    // Traditional Chinese in one group, so a reader who switched from 粵語 to
+    // 简体中文 kept CUV and got a Traditional Bible under a Simplified page —
+    // both scripts on one screen, which is the thing this page must not do.
+    const keeps = bibleTargetTrans && allMatchedCodes.includes(bibleTargetTrans)
+        && (ppLangName !== 'Chinese' || !info.script
+            || _zhScriptOfCode(langData, bibleTargetTrans) === info.script);
+    if (keeps) {
         sel.value = bibleTargetTrans;
     } else {
         // Auto-match: use language default, or first in matched group
