@@ -222,6 +222,17 @@ def _normalize_spoken_numbers(text: str) -> str:
     return pattern.sub(repl, text)
 
 
+# The wording matcher is optional: without its index the app still recognises
+# every reference that is spoken aloud, which is what it did before.
+try:
+    from . import scripture_matcher as _scripture_matcher
+except ImportError:                              # pragma: no cover
+    try:
+        import scripture_matcher as _scripture_matcher
+    except ImportError:
+        _scripture_matcher = None
+
+
 def detect_refs(text: str) -> list[dict]:
     """Find Bible refs in `text`. Returns list of dicts.
 
@@ -558,8 +569,35 @@ def detect_and_lookup(text: str) -> list[dict]:
     Verse text is intentionally NOT fetched here.  The server broadcasts
     the ref metadata (book/chapter/verse/display) and each client fetches
     verse text in their own preferred translations via /api/bible/lookup.
+
+    Every ref carries a `match` saying how it was found, because a wrong verse
+    in a service is worse than no verse and the client shows the difference:
+
+        reference  the speaker said "John 3:16"
+        cited      a chapter was named but not read out
+        wording    the words were recognised, closely enough to stand in
+        offer      close, but offered rather than substituted
     """
-    return detect_refs(text)
+    refs = []
+    seen = set()
+    for ref in detect_refs(text):
+        # A chapter with no verse was named, not read. Pasting a chapter into
+        # a live stream helps nobody; the client offers it instead.
+        ref["match"] = "reference" if ref.get("verse_start") else "cited"
+        refs.append(ref)
+        seen.add((ref.get("book"), ref.get("chapter")))
+
+    # Then the words themselves. A preacher quotes far more often than cites.
+    if _scripture_matcher is not None:
+        try:
+            for ref in _scripture_matcher.match(text):
+                if (ref.get("book"), ref.get("chapter")) in seen:
+                    continue
+                refs.append(ref)
+        except Exception:                        # pragma: no cover - never fatal
+            logger.exception("Wording match failed; references still stand")
+
+    return refs
 
 
 def fetch_languages() -> list[dict]:
