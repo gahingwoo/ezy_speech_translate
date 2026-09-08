@@ -318,6 +318,42 @@ def language_dialog():
 ''' % {"times": btn_icon("times"), "search": icon("search")}
 
 
+def passage_dialog():
+    """The whole passage, at a reading measure rather than the stream's.
+
+    The stream shows a window over a long passage; this is where the rest of
+    it lives. Its footer is the one place in the app that reads a whole
+    passage aloud — the stream never starts one on its own."""
+    return '''  <div class="pf-v6-c-backdrop app-modal scripture-backdrop" id="passageModal"
+       onclick="if(event.target===this)hidePassage()">
+    <div class="pf-v6-l-bullseye">
+      <div class="pf-v6-c-modal-box pf-m-lg" role="dialog" aria-modal="true"
+           aria-labelledby="passageTitle">
+        <div class="pf-v6-c-modal-box__close">
+          <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
+                  onclick="hidePassage()">%(times)s</button>
+        </div>
+        <header class="pf-v6-c-modal-box__header">
+          <h1 class="pf-v6-c-modal-box__title" id="passageTitle"></h1>
+          <span class="modal-sub" data-i18n="sc_fromBible">from the Bible, not translated</span>
+        </header>
+        <div class="pf-v6-c-modal-box__body" id="passageBody"></div>
+        <footer class="pf-v6-c-modal-box__footer">
+          <div class="modal-actions">
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    onclick="readPassageAloud()">
+              %(volume_btn)s<span class="pf-v6-c-button__text" data-i18n="sc_readAloud">Read the
+                passage aloud</span></button>
+            <button class="pf-v6-c-button pf-m-link" type="button" onclick="hidePassage()">
+              <span class="pf-v6-c-button__text" data-i18n="close">Close</span></button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+''' % {"times": btn_icon("times"), "volume_btn": btn_icon("volume-up")}
+
+
 def modal(el_id, title_id, title_i18n, title_text, body, footer="", close_fn=None,
           title_icon_id=None, title_text_id=None, size="md"):
     close = close_fn or ("hide" + el_id.replace("Modal", "").capitalize() + "()")
@@ -1047,6 +1083,26 @@ def build():
                 </div>
               </div>
 
+              <!-- Every passage this service has been through, in one place.
+                   user.js fills it as references arrive. -->
+              <div class="section">
+                <div class="pf-v6-c-card" id="scripture">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text" data-i18n="bibleVerses">Scripture</h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <dl class="pf-v6-c-description-list kv scripture" id="scriptureList">
+                      <div class="pf-v6-c-description-list__group scripture-empty">
+                        <dd class="pf-v6-c-description-list__description">
+                          <div class="pf-v6-c-description-list__text meta"
+                               data-i18n="sc_none">Passages read in this service will appear
+                            here.</div></dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+
               <div class="section">
                 <div class="pf-v6-c-card" id="reading">
                   <div class="pf-v6-c-card__title">
@@ -1139,7 +1195,7 @@ def build():
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
-%(settings)s%(language)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
+%(settings)s%(language)s%(passage)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
           aria-label="Scroll to top" onclick="scrollToTop()">%(expand)s</button>
 
@@ -1633,6 +1689,7 @@ def build():
         "expand": btn_icon("angle-down"),
         "settings": settings_modal(panels),
         "language": language_dialog(),
+        "passage": passage_dialog(),
         "lang_names": json.dumps([
             {"code": c, "native": n, "english": e} for c, n, e in LANG_NAMES
         ], ensure_ascii=False),

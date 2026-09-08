@@ -562,6 +562,11 @@ async function _fetchBibleVerses(refs, tgt) {
  */
 async function loadBiblePanel(card, refs) {
     if (!card || !refs || !refs.length) return;
+    // The record of what was read is kept whether or not the verses are shown
+    // in the stream: turning the verses off is a reading preference, not an
+    // instruction to forget what the service went through.
+    const when = card.querySelector('.card-time');
+    refs.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
     if (!showBibleVerse || !bibleFeatureAvailable) return;
     // In transcription mode show source text only (no target translation).
     const tgt = displayMode === 'transcription' ? '' : bibleTargetTrans;
@@ -667,97 +672,329 @@ function attachBiblePanel(card, refs) {
     panel.className = 'bible-verse-panel';
 
     refs.forEach(ref => {
-        const block = document.createElement('div');
-        block.className = 'bible-verse-block';
-
-        // ── Header: icon + reference display ──
-        // The version each line is in used to sit up here as a row of badges,
-        // which left the reader to guess which badge went with which verse.
-        // It belongs against the verse it names, so it moved into the rows.
-        const head = document.createElement('div');
-        head.className = 'bible-verse-head';
-        const icon = document.createElement('span');
-        icon.innerHTML = svgIcon('book');
-        icon.setAttribute('aria-hidden', 'true');
-        const title = document.createElement('span');
-        title.className = 'bible-verse-ref';
-        title.textContent = ref.display || '';
-        head.appendChild(icon);
-        head.appendChild(title);
-        block.appendChild(head);
-
-        // PatternFly's description list: the version is the term, the verses
-        // are its description, and the component keeps the two aligned down
-        // the block however many versions there are.
-        const list = document.createElement('dl');
-        list.className = 'pf-v6-c-description-list pf-m-horizontal pf-m-compact '
-            + 'pf-m-fluid bible-verse-versions';
-        block.appendChild(list);
-
-        /* One version: its name, then its verses. */
-        function addVersion(name, verses, slot) {
-            const group = document.createElement('div');
-            group.className = 'pf-v6-c-description-list__group';
-
-            const dt = document.createElement('dt');
-            dt.className = 'pf-v6-c-description-list__term';
-            const dtText = document.createElement('span');
-            dtText.className = 'pf-v6-c-description-list__text bible-verse-translation';
-            dtText.textContent = (name || '').toUpperCase();
-            if (slot === 'target') {
-                const script = _bibleChineseScript();
-                if (script) dtText.dataset.script = script;
-            }
-            dt.appendChild(dtText);
-            group.appendChild(dt);
-
-            const dd = document.createElement('dd');
-            dd.className = 'pf-v6-c-description-list__description';
-            const ddText = document.createElement('div');
-            ddText.className = 'pf-v6-c-description-list__text bible-verse-body '
-                + 'bible-verse-' + slot;
-            if (!verses || !verses.length) {
-                const empty = document.createElement('em');
-                empty.className = 'bible-verse-missing';
-                empty.textContent = 'Verse text unavailable';
-                ddText.appendChild(empty);
-            } else {
-                verses.forEach(v => {
-                    const line = document.createElement('div');
-                    line.className = 'bible-verse-line';
-                    const num = document.createElement('sup');
-                    num.className = 'bible-verse-num';
-                    num.textContent = String(v.n);
-                    line.appendChild(num);
-                    line.appendChild(document.createTextNode(' ' + (v.text || '')));
-                    ddText.appendChild(line);
-                });
-            }
-            dd.appendChild(ddText);
-            group.appendChild(dd);
-            list.appendChild(group);
+        // A doubtful match is offered, never substituted. Below the line the
+        // ordinary translation stands and this is one quiet line saying the
+        // verse is there if you want it — a wrong verse in a service is worse
+        // than no verse. A chapter that was named but not read is the same
+        // case: a live stream is no place to paste a chapter into.
+        if (ref.match === 'offer' || ref.match === 'cited') {
+            panel.appendChild(buildOffer(ref));
+            return;
         }
-
-        if (ref.source) {
-            addVersion(ref.source.translation, ref.source.verses, 'source');
-        }
-
-        // The target slot only earns a row when it is a different version.
-        if (ref.target && ref.target.translation &&
-                (!ref.source || ref.target.translation !== ref.source.translation)) {
-            addVersion(ref.target.translation, ref.target.verses, 'target');
-        }
-
-        // Legacy fallback: old data shape with `verses` array (single version).
-        if (!ref.source && !ref.target && ref.verses) {
-            addVersion(ref.translation, ref.verses, 'source');
-        }
-
-        panel.appendChild(block);
+        panel.appendChild(buildVerseBlock(ref));
     });
 
     card.appendChild(panel);
 }
+
+/* One quiet line: the reference, and a way to read it. */
+function buildOffer(ref) {
+    const line = document.createElement('p');
+    line.className = 'sc-offer';
+    const label = document.createElement('span');
+    label.textContent = ref.match === 'cited'
+        ? t('sc_cited', 'Mentioned') + ' — '
+        : t('sc_maybe', 'This may be') + ' — ';
+    line.appendChild(label);
+    const open = document.createElement('button');
+    open.className = 'pf-v6-c-button pf-m-inline pf-m-link';
+    open.type = 'button';
+    open.setAttribute('aria-haspopup', 'dialog');
+    open.onclick = () => showPassage(ref);
+    const openText = document.createElement('span');
+    openText.className = 'pf-v6-c-button__text';
+    openText.textContent = ref.display || '';
+    open.appendChild(openText);
+    line.appendChild(open);
+    return line;
+}
+
+/* The verse itself, with the version against each line and a window over a
+   long passage. */
+function buildVerseBlock(ref) {
+    const block = document.createElement('div');
+    block.className = 'bible-verse-block';
+
+    const head = document.createElement('div');
+    head.className = 'bible-verse-head';
+    const icon = document.createElement('span');
+    icon.innerHTML = svgIcon('book');
+    icon.setAttribute('aria-hidden', 'true');
+    const title = document.createElement('span');
+    title.className = 'bible-verse-ref';
+    title.textContent = ref.display || '';
+    head.appendChild(icon);
+    head.appendChild(title);
+
+    // How this verse was found, said plainly. A verse looked up because the
+    // reference was spoken is a different thing from one recognised by its
+    // wording, and the reader is entitled to know which they are reading.
+    const how = document.createElement('span');
+    how.className = 'stream-tag';
+    how.textContent = ref.match === 'wording'
+        ? t('sc_byWording', 'matched by wording')
+        : t('sc_fromBible', 'from the Bible, not translated');
+    head.appendChild(how);
+    block.appendChild(head);
+
+    const list = document.createElement('dl');
+    list.className = 'pf-v6-c-description-list pf-m-horizontal pf-m-compact '
+        + 'pf-m-fluid bible-verse-versions';
+    block.appendChild(list);
+
+    let total = 0;
+    function addVersion(name, verses, slot) {
+        const group = document.createElement('div');
+        group.className = 'pf-v6-c-description-list__group';
+
+        const dt = document.createElement('dt');
+        dt.className = 'pf-v6-c-description-list__term';
+        const dtText = document.createElement('span');
+        dtText.className = 'pf-v6-c-description-list__text bible-verse-translation';
+        dtText.textContent = (name || '').toUpperCase();
+        if (slot === 'target') {
+            const script = _bibleChineseScript();
+            if (script) dtText.dataset.script = script;
+        }
+        dt.appendChild(dtText);
+        group.appendChild(dt);
+
+        const dd = document.createElement('dd');
+        dd.className = 'pf-v6-c-description-list__description';
+        const ddText = document.createElement('div');
+        ddText.className = 'pf-v6-c-description-list__text bible-verse-body '
+            + 'bible-verse-' + slot;
+        if (!verses || !verses.length) {
+            const empty = document.createElement('em');
+            empty.className = 'bible-verse-missing';
+            empty.textContent = t('sc_unavailable', 'Verse text unavailable');
+            ddText.appendChild(empty);
+        } else {
+            total = Math.max(total, verses.length);
+            renderWindow(ddText, verses, ref);
+        }
+        dd.appendChild(ddText);
+        group.appendChild(dd);
+        list.appendChild(group);
+    }
+
+    if (ref.source) addVersion(ref.source.translation, ref.source.verses, 'source');
+    if (ref.target && ref.target.translation &&
+            (!ref.source || ref.target.translation !== ref.source.translation)) {
+        addVersion(ref.target.translation, ref.target.verses, 'target');
+    }
+    if (!ref.source && !ref.target && ref.verses) {
+        addVersion(ref.translation, ref.verses, 'source');
+    }
+
+    if (total > VERSE_WINDOW) {
+        const more = document.createElement('p');
+        more.className = 'sc-more';
+        const btn = document.createElement('button');
+        btn.className = 'pf-v6-c-button pf-m-inline pf-m-link';
+        btn.type = 'button';
+        btn.setAttribute('aria-haspopup', 'dialog');
+        btn.onclick = () => showPassage(ref);
+        const text = document.createElement('span');
+        text.className = 'pf-v6-c-button__text';
+        text.textContent = t('sc_showAll', 'Show all %n verses').replace('%n', String(total))
+            + ' — ' + (ref.display || '');
+        btn.appendChild(text);
+        more.appendChild(btn);
+        block.appendChild(more);
+    }
+
+    return block;
+}
+
+/* ── the Scripture section ────────────────────────────────────────────────
+   Every passage this service has been through, gathered in one place, so
+   somebody who looked away can find the reading without scrolling the stream.
+   Offers and citations are listed too: what was mentioned is part of the
+   record even when it was not read out. */
+const scriptureSeen = new Set();
+
+function addToScripture(ref, timestamp) {
+    const list = document.getElementById('scriptureList');
+    if (!list || !ref || !ref.display) return;
+    const key = ref.display + '|' + (ref.match || '');
+    if (scriptureSeen.has(key)) return;
+    scriptureSeen.add(key);
+
+    const empty = list.querySelector('.scripture-empty');
+    if (empty) empty.remove();
+
+    const group = document.createElement('div');
+    group.className = 'pf-v6-c-description-list__group';
+
+    const dt = document.createElement('dt');
+    dt.className = 'pf-v6-c-description-list__term';
+    const dtText = document.createElement('span');
+    dtText.className = 'pf-v6-c-description-list__text';
+    dtText.textContent = ref.display;
+    const when = document.createElement('span');
+    when.className = 'sc-time';
+    when.textContent = timestamp || '';
+    dtText.appendChild(when);
+    dt.appendChild(dtText);
+    group.appendChild(dt);
+
+    const dd = document.createElement('dd');
+    dd.className = 'pf-v6-c-description-list__description';
+    const ddText = document.createElement('div');
+    ddText.className = 'pf-v6-c-description-list__text';
+    const open = document.createElement('button');
+    open.className = 'pf-v6-c-button pf-m-inline pf-m-link';
+    open.type = 'button';
+    open.setAttribute('aria-haspopup', 'dialog');
+    open.onclick = () => showPassage(ref);
+    const openText = document.createElement('span');
+    openText.className = 'pf-v6-c-button__text';
+    openText.textContent = t('sc_read', 'Read the passage');
+    open.appendChild(openText);
+    ddText.appendChild(open);
+
+    const how = document.createElement('span');
+    how.className = 'meta';
+    how.textContent = {
+        reference: t('sc_fromBible', 'from the Bible, not translated'),
+        wording: t('sc_byWording', 'matched by wording'),
+        offer: t('sc_maybe', 'This may be'),
+        cited: t('sc_cited', 'Mentioned')
+    }[ref.match] || '';
+    ddText.appendChild(how);
+
+    dd.appendChild(ddText);
+    group.appendChild(dd);
+    list.insertBefore(group, list.firstChild);
+}
+window.addToScripture = addToScripture;
+
+/* ── the window over a long passage ───────────────────────────────────────
+   Up to three verses are shown whole. Beyond that the window has to contain
+   the verse that was actually read — not simply the first three — or the
+   reader is shown the run-up to the point and never the point. */
+const VERSE_WINDOW = 3;
+
+function verseWindow(verses, ref) {
+    if (verses.length <= VERSE_WINDOW) return { start: 0, verses: verses };
+    // When the whole passage was read, nothing is singled out and the window
+    // starts at the top.
+    const read = (ref.verse_start && ref.verse_end && ref.verse_end > ref.verse_start
+                  && (ref.verse_end - ref.verse_start + 1) >= verses.length)
+        ? null : ref.verse_start;
+    let start = 0;
+    if (read != null) {
+        const at = verses.findIndex(v => Number(v.n) === Number(read));
+        if (at > 0) start = Math.min(Math.max(0, at - 1), verses.length - VERSE_WINDOW);
+    }
+    return { start: start, verses: verses.slice(start, start + VERSE_WINDOW) };
+}
+
+function renderWindow(host, verses, ref) {
+    const win = verseWindow(verses, ref);
+    const above = win.start;
+    const below = verses.length - win.start - win.verses.length;
+
+    if (above > 0) host.appendChild(elide(above));
+    win.verses.forEach(v => host.appendChild(verseLine(v, ref)));
+    if (below > 0) host.appendChild(elide(below));
+}
+
+function elide(count) {
+    const line = document.createElement('p');
+    line.className = 'sc-elide';
+    line.textContent = '⋯ ';
+    const label = document.createElement('span');
+    label.textContent = t('sc_moreVerses', '%n more verses').replace('%n', String(count));
+    line.appendChild(label);
+    return line;
+}
+
+function verseLine(v, ref) {
+    const line = document.createElement('p');
+    line.className = 'sc-line';
+    // Context around the verse that was read is dimmed, so the eye lands on
+    // the one the speaker actually said.
+    if (ref && ref.verse_start && ref.verse_end === ref.verse_start
+            && Number(v.n) !== Number(ref.verse_start)) {
+        line.classList.add('sc-dim');
+    }
+    const num = document.createElement('sup');
+    num.className = 'sc-n';
+    num.textContent = String(v.n);
+    line.appendChild(num);
+    line.appendChild(document.createTextNode(' ' + (v.text || '')));
+    return line;
+}
+
+/* ── the passage dialog ───────────────────────────────────────────────────
+   The whole passage at a reading measure. Its footer reads it aloud; the
+   stream never starts a passage on its own. */
+async function showPassage(ref) {
+    const modal = document.getElementById('passageModal');
+    if (!modal) return;
+    document.getElementById('passageTitle').textContent = ref.display || '';
+    const body = document.getElementById('passageBody');
+    body.replaceChildren();
+    const loading = document.createElement('p');
+    loading.className = 'sc-elide';
+    loading.textContent = t('bibleLoading', '— Loading... —');
+    body.appendChild(loading);
+    modal.classList.add('active');
+
+    let full = ref;
+    if (!ref.source && !ref.target) {
+        try {
+            const got = await _fetchBibleVerses([ref], displayMode === 'transcription'
+                ? '' : bibleTargetTrans);
+            if (got && got.length) full = got[0];
+        } catch (e) {
+            console.warn('passage lookup failed', e);
+        }
+    }
+
+    body.replaceChildren();
+    [['source', full.source], ['target', full.target]].forEach(([slot, data]) => {
+        if (!data || !data.verses || !data.verses.length) return;
+        if (slot === 'target' && full.source
+                && data.translation === full.source.translation) return;
+        const head = document.createElement('p');
+        head.className = 'bible-verse-translation';
+        head.textContent = (data.translation || '').toUpperCase();
+        body.appendChild(head);
+        const wrap = document.createElement('div');
+        wrap.className = 'modal-verses';
+        data.verses.forEach(v => wrap.appendChild(verseLine(v, null)));
+        body.appendChild(wrap);
+    });
+    if (!body.childNodes.length) {
+        const empty = document.createElement('p');
+        empty.className = 'bible-verse-missing';
+        empty.textContent = t('sc_unavailable', 'Verse text unavailable');
+        body.appendChild(empty);
+    }
+    modal._passage = full;
+}
+window.showPassage = showPassage;
+
+function hidePassage() {
+    const modal = document.getElementById('passageModal');
+    if (modal) modal.classList.remove('active');
+}
+window.hidePassage = hidePassage;
+
+/* The one place a whole passage is ever spoken. */
+function readPassageAloud() {
+    const modal = document.getElementById('passageModal');
+    const full = modal && modal._passage;
+    if (!full) return;
+    const slot = (full.target && full.target.verses && full.target.verses.length)
+        ? full.target : full.source;
+    if (!slot || !slot.verses) return;
+    speakText(slot.verses.map(v => v.text).join(' '));
+}
+window.readPassageAloud = readPassageAloud;
 
 /* =========================
    Voice management (basic)
