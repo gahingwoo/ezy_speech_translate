@@ -112,21 +112,51 @@ html.pf-v6-theme-dark .icon-moon {
   white-space: nowrap;
 }
 
-/* The search shrinks with the room it has; below md it is replaced by the
-   icon that opens the bar under the masthead. */
-.header-search-desktop {
-  min-width: 0;
-  flex: 0 1 22rem;
-}
-
-/* Above the phone breakpoint the masthead carries the full search box, so
-   the expandable one is not there at all. */
+/* One search at every width, and it is the last thing in the row: the
+   magnifier sits at the far end, beside the gear, and the field opens over
+   the row it came from. A desktop-only open field in the middle of the row
+   was a second search box in a second place, doing the same job. */
 .search-slot {
-  display: none;
+  display: flex;
+  flex: 0 0 auto;
+  /* The slot holds the group's footprint whether the group is standing in it
+     or floating over the row. Without the height, opening the search took the
+     tallest thing out of the flow and the masthead shrank seven pixels, then
+     grew back on closing: the row twitched every time. */
+  min-width: 2.3rem;
+  min-height: 2.3125rem;
+  align-items: center;
 }
 
-/* The search field is an item in the masthead's action row, not a row of its
-   own; what it looks like when it is open is in the phone block below. */
+.mobile-search-bar {
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 0;
+  /* The group is as tall as the field it will grow into, so its items sat at
+     the top of that height and the magnifier rode four pixels above the icons
+     beside it. */
+  align-items: center;
+}
+
+.mobile-search-bar .pf-v6-c-text-input-group__text-input {
+  min-width: 0;
+}
+
+/* Open, the group lifts out of the flex row and lies over the actions rather
+   than competing with them for space, so expanding it can never reflow the
+   masthead. It grows from the end it sits at. */
+.mobile-search-bar.pf-m-expanded {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 0;
+  z-index: 2;
+  width: min(24rem, 100%);
+  transform: translateY(-50%);
+}
+
+.mobile-search-bar.pf-m-expanded .pf-v6-c-input-group__item.pf-m-search-input {
+  --pf-v6-c-input-group__item--m-search-text-input--MaxWidth: 100%;
+}
 
 .search-results-info {
   margin-block-start: var(--pf-t--global--spacer--xs);
@@ -388,15 +418,44 @@ html.pf-v6-theme-dark .icon-moon {
 }
 
 /* ── setup wizard ─────────────────────────────────────────────────────── */
-/* PatternFly's wizard is sized for a page; in a dialog it takes the room the
-   backdrop's padding leaves it. */
+/* PatternFly puts a wizard in a modal box (its "within modal" example), which
+   is what every other dialog here already is. The surface, the radius, the
+   shadow and the open animation all come from that; the hand-made box it used
+   to sit in matched none of them, which is most of what made it look cheap. */
 
 .setup-wizard {
-  width: min(48rem, 100%);
   max-height: 100%;
-  background: var(--pf-t--global--background--color--primary--default);
-  border-radius: var(--pf-t--global--border--radius--large);
-  box-shadow: var(--pf-t--global--box-shadow--lg);
+  overflow: visible;
+}
+
+/* PatternFly's wizard is a page-height component: inside a modal box it takes
+   the whole height the box is allowed, so one question sat at the top of four
+   hundred empty pixels. Its own height token turns that off; the inner wrap
+   then holds a floor so the box does not resize under the reader as they step
+   through. */
+.setup-wizard .pf-v6-c-wizard {
+  --pf-v6-c-wizard--Height: auto;
+}
+
+.setup-wizard .pf-v6-c-wizard__inner-wrap {
+  min-height: 13rem;
+}
+
+/* Next is the one primary action, and it sits where a reader looks for the way
+   forward: the far end of the row. Back is beside it, the tour is a link at
+   the other end. The spacing is the action list's, not whitespace between
+   inline buttons, which is why the old row looked unevenly set. */
+.setup-wizard .pf-v6-c-wizard__footer > .pf-v6-c-action-list {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+@media (max-width: 35rem) {
+  .setup-wizard .pf-v6-c-wizard__footer > .pf-v6-c-action-list {
+    justify-content: flex-end;
+  }
 }
 
 .setup-step[hidden] {
@@ -714,26 +773,6 @@ html[data-ui-mode="elderly"] .text-source {
    and the live region still read it out, and it stops the row's width
    depending on how long "Waiting" happens to be in the reader's language. */
 @media (max-width: 47.99rem) {
-  .header-search-desktop {
-    display: none;
-  }
-
-  /* The slot is not positioned: the expanded group measures itself against the
-     masthead's content row, so it spans the row instead of hanging off the
-     slot's own edge and running past the left of the screen. It keeps the
-     icon's width while the group is out of the flow, so nothing beside it
-     shifts as the field opens. */
-  .search-slot {
-    display: flex;
-    flex: 0 0 auto;
-    /* The slot holds the group's footprint whether the group is standing in
-       it or floating over the row. Without the height, opening the search
-       took the tallest thing out of the flow and the masthead shrank seven
-       pixels, then grew back on closing — the row twitched every time. */
-    min-width: 2.3rem;
-    min-height: 2.3125rem;
-    align-items: center;
-  }
 
   .pf-v6-c-masthead__content {
     gap: var(--pf-t--global--spacer--sm);
@@ -743,39 +782,11 @@ html[data-ui-mode="elderly"] .text-source {
     display: none;
   }
 
-  /* Collapsed, the group is one icon sitting in the row. Expanded, it lifts
-     out of the flex row and lies over the other actions rather than competing
-     with them for space, so opening it can never reflow the masthead or push
-     anything on to a second line. It hangs off the end of the slot the icon
-     occupied, so the button under the thumb does not move as it opens. */
-  .mobile-search-bar {
-    width: auto;
-    flex: 0 0 auto;
-    min-width: 0;
-    /* The group is as tall as the field it will grow into, so its items sat
-       at the top of that height and the magnifier rode four pixels above the
-       icons beside it. */
-    align-items: center;
-  }
-
-  .mobile-search-bar .pf-v6-c-text-input-group__text-input {
-    min-width: 0;
-  }
-
-  /* Anchored to the row, not to the slot the icon sat in: measuring a width
-     from the slot's own edge sent the field off the left of the screen,
-     because the slot is in the middle of the row. Spanning the row cannot
-     overflow, and it covers exactly what it is replacing. */
+  /* A phone row is narrower than the field wants, so there it spans the row
+     rather than measuring a width from the end it sits at. */
   .mobile-search-bar.pf-m-expanded {
-    position: absolute;
-    inset-block-start: 50%;
     inset-inline: 0;
-    z-index: 2;
-    transform: translateY(-50%);
-  }
-
-  .mobile-search-bar.pf-m-expanded .pf-v6-c-input-group__item.pf-m-search-input {
-    --pf-v6-c-input-group__item--m-search-text-input--MaxWidth: 100%;
+    width: auto;
   }
 }
 

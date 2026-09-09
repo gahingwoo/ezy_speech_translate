@@ -88,20 +88,6 @@
           </span>
         </span>
 
-        <div class="header-search-desktop" id="headerSearchDesktop">
-          <div class="pf-v6-c-text-input-group">
-            <div class="pf-v6-c-text-input-group__main pf-m-icon">
-              <span class="pf-v6-c-text-input-group__text">
-                <span class="pf-v6-c-text-input-group__icon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"/></svg></span>
-                <input class="pf-v6-c-text-input-group__text-input" type="search" id="searchInput"
-                       aria-label="Search translations" data-i18n-placeholder="search"
-                       placeholder="Search..." oninput="handleSearch()">
-              </span>
-            </div>
-          </div>
-        </div>
-
-
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
                 id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
                 data-i18n-title="textToSpeech" title="Text-to-Speech"
@@ -121,15 +107,16 @@
                 aria-label="Settings" data-i18n-title="settings" title="Settings"
                 onclick="showSettings()"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M487.4 315.7l-42.6-24.6c4.3-23.2 4.3-47 0-70.2l42.6-24.6c4.9-2.8 7.1-8.6 5.5-14-11.1-35.6-30-67.8-54.7-94.6-3.8-4.1-10-5.1-14.8-2.3L380.8 110c-17.9-15.4-38.5-27.3-60.8-35.1V25.8c0-5.6-3.9-10.5-9.4-11.7-36.7-8.2-74.3-7.8-109.2 0-5.5 1.2-9.4 6.1-9.4 11.7V75c-22.2 7.9-42.8 19.8-60.8 35.1L88.7 85.5c-4.9-2.8-11-1.9-14.8 2.3-24.7 26.7-43.6 58.9-54.7 94.6-1.7 5.4.6 11.2 5.5 14L67.3 221c-4.3 23.2-4.3 47 0 70.2l-42.6 24.6c-4.9 2.8-7.1 8.6-5.5 14 11.1 35.6 30 67.8 54.7 94.6 3.8 4.1 10 5.1 14.8 2.3l42.6-24.6c17.9 15.4 38.5 27.3 60.8 35.1v49.2c0 5.6 3.9 10.5 9.4 11.7 36.7 8.2 74.3 7.8 109.2 0 5.5-1.2 9.4-6.1 9.4-11.7v-49.2c22.2-7.9 42.8-19.8 60.8-35.1l42.6 24.6c4.9 2.8 11 1.9 14.8-2.3 24.7-26.7 43.6-58.9 54.7-94.6 1.5-5.5-.7-11.3-5.6-14.1zM256 336c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/></svg></button>
 
-        <!-- PatternFly's expandable search: an icon that grows into a field
-             and shrinks back, which the component animates itself. What was
-             here hid one element and showed another, so it appeared and
-             vanished in a single frame.
+        <!-- PatternFly's expandable search, at every width: an icon that
+             grows into a field and shrinks back, which the component animates
+             itself. What was here hid one element and showed another, so it
+             appeared and vanished in a single frame.
 
              Copied from the shape gahingwoo.com uses, which is the same
              component: the group lifts out of the flex row while it is open
              and lies over the other actions, so expanding it can never reflow
-             the masthead. -->
+             the masthead. It is last in the row, so the magnifier is the
+             control furthest to the end. -->
         <div class="search-slot">
           <div class="pf-v6-c-input-group pf-m-search-expandable pf-m-plain mobile-search-bar"
                id="mobileSearchBar">
@@ -1057,8 +1044,9 @@
     </div>
   </div>
   <div class="pf-v6-c-backdrop app-modal" id="welcomeModal" onclick="hideWelcome(event)">
-    <div class="pf-v6-c-wizard pf-m-plain setup-wizard" role="dialog" aria-modal="true"
-         aria-labelledby="welcomeTitle">
+   <div class="pf-v6-c-modal-box pf-m-md setup-wizard" role="dialog" aria-modal="true"
+        aria-labelledby="welcomeTitle">
+    <div class="pf-v6-c-wizard pf-m-plain">
       <div class="pf-v6-c-wizard__header">
         <div class="pf-v6-c-wizard__close">
           <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
@@ -1076,7 +1064,7 @@
           <span class="pf-v6-c-wizard__toggle-list">
             <span class="pf-v6-c-wizard__toggle-list-item">
               <span class="pf-v6-c-wizard__toggle-num" id="setupToggleNum">1</span>
-              <span id="setupToggleTitle">Your language</span>
+              <span id="setupToggleTitle" data-i18n="welcome_nav_language">Your language</span>
             </span>
           </span>
           <span class="pf-v6-c-wizard__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
@@ -1086,50 +1074,49 @@
             <ol class="pf-v6-c-wizard__nav-list">
           <li class="pf-v6-c-wizard__nav-item">
             <button class="pf-v6-c-wizard__nav-link pf-m-current" type="button" id="setup-nav-language"
-                    onclick="showSetupStep('language')" aria-current="step">Your language</button>
+                    onclick="showSetupStep('language')" aria-current="step">
+              <span class="pf-v6-c-wizard__nav-link-main">
+                <span class="pf-v6-c-wizard__nav-link-text" data-i18n="welcome_nav_language">Your language</span>
+              </span>
+            </button>
           </li>
           <li class="pf-v6-c-wizard__nav-item">
             <button class="pf-v6-c-wizard__nav-link" type="button" id="setup-nav-speech"
-                    onclick="showSetupStep('speech')">Reading aloud</button>
+                    onclick="showSetupStep('speech')">
+              <span class="pf-v6-c-wizard__nav-link-main">
+                <span class="pf-v6-c-wizard__nav-link-text" data-i18n="welcome_nav_speech">Reading aloud</span>
+              </span>
+            </button>
           </li>
           <li class="pf-v6-c-wizard__nav-item">
             <button class="pf-v6-c-wizard__nav-link" type="button" id="setup-nav-done"
-                    onclick="showSetupStep('done')">You are set</button>
+                    onclick="showSetupStep('done')">
+              <span class="pf-v6-c-wizard__nav-link-main">
+                <span class="pf-v6-c-wizard__nav-link-text" data-i18n="welcome_nav_done">You are set</span>
+              </span>
+            </button>
           </li>
             </ol>
           </nav>
           <main class="pf-v6-c-wizard__main">
           <div class="pf-v6-c-wizard__main-body setup-step" id="setup-language">
-            <p class="pf-v6-c-content--p" data-i18n="welcome_step_language">Pick the language you want to read, and the language this page is in.</p>
+            <p class="pf-v6-c-content--p" data-i18n="welcome_step_language">Pick the language you want to read in. The page follows it.</p>
             <form class="pf-v6-c-form" onsubmit="return false;">
       <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-label">
           <div class="pf-v6-c-form__group-label-main">
-            <label class="pf-v6-c-form__label" for="setupDisplayLanguage">
-              <span class="pf-v6-c-form__label-text" data-i18n="displayLanguage">Display Language</span>
-            </label>
-          </div>
-        </div>
-        <div class="pf-v6-c-form__group-control">
-          <span class="pf-v6-c-form-control">
-            <select id="setupDisplayLanguage" aria-label="Interface language" onchange="setupApply('displayLanguage', this.value)"><option value="en">English</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="yue">粵語</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="tl">Tagalog</option><option value="sm">Gagana Samoa</option><option value="to">Lea faka-Tonga</option><option value="mi">Te Reo Māori</option></select>
-            <span class="pf-v6-c-form-control__utilities">
-              <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
-            </span>
-          </span>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-label">
-          <div class="pf-v6-c-form__group-label-main">
             <label class="pf-v6-c-form__label" for="setupTargetLanguage">
-              <span class="pf-v6-c-form__label-text" data-i18n="targetLanguage">Target Language</span>
+              <span class="pf-v6-c-form__label-text" data-i18n="nav_reading">Reading</span>
             </label>
           </div>
+            <span class="pf-v6-c-form__group-label-help">
+              <button class="pf-v6-c-button pf-m-plain" type="button"
+                      aria-label="The sermon is translated into this, and the buttons and headings follow it." data-tooltip="The sermon is translated into this, and the buttons and headings follow it."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+            </span>
         </div>
         <div class="pf-v6-c-form__group-control">
           <span class="pf-v6-c-form-control">
-            <select id="setupTargetLanguage" aria-label="Translation language" onchange="setupApply('targetLang', this.value)"><option value="en">English</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="yue">粵語</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="tl">Tagalog</option><option value="sm">Gagana Samoa</option><option value="to">Lea faka-Tonga</option><option value="mi">Te Reo Māori</option></select>
+            <select id="setupTargetLanguage" aria-label="Reading language" onchange="setupApply('targetLang', this.value)"><option value="en">English</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="yue">粵語</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="ru">Русский</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="th">ไทย</option><option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option><option value="ms">Bahasa Melayu</option><option value="tl">Tagalog</option><option value="sm">Gagana Samoa</option><option value="to">Lea faka-Tonga</option><option value="mi">Te Reo Māori</option></select>
             <span class="pf-v6-c-form-control__utilities">
               <span class="pf-v6-c-form-control__toggle-icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span>
             </span>
@@ -1164,21 +1151,34 @@
           </main>
         </div>
         <footer class="pf-v6-c-wizard__footer">
-          <button class="pf-v6-c-button pf-m-primary" type="button" id="setupNext"
-                  onclick="setupNext()">
-            <span class="pf-v6-c-button__text" data-i18n="tour_next">Next</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" id="setupBack"
-                  onclick="setupBack()" disabled>
-            <span class="pf-v6-c-button__text" data-i18n="tour_prev">Back</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-link" type="button"
-                  onclick="hideWelcome(); showTour();">
-            <span class="pf-v6-c-button__text" data-i18n="welcome_takeTour">Take a quick tour</span>
-          </button>
+          <div class="pf-v6-c-action-list">
+            <div class="pf-v6-c-action-list__group">
+              <div class="pf-v6-c-action-list__item">
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        onclick="hideWelcome(); showTour();">
+                  <span class="pf-v6-c-button__text" data-i18n="welcome_takeTour">Take a quick tour</span>
+                </button>
+              </div>
+            </div>
+            <div class="pf-v6-c-action-list__group">
+              <div class="pf-v6-c-action-list__item">
+                <button class="pf-v6-c-button pf-m-secondary" type="button" id="setupBack"
+                        onclick="setupBack()" disabled>
+                  <span class="pf-v6-c-button__text" data-i18n="tour_prev">Back</span>
+                </button>
+              </div>
+              <div class="pf-v6-c-action-list__item">
+                <button class="pf-v6-c-button pf-m-primary" type="button" id="setupNext"
+                        onclick="setupNext()">
+                  <span class="pf-v6-c-button__text" data-i18n="tour_next">Next</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </footer>
       </div>
     </div>
+   </div>
   </div>
   <div class="pf-v6-c-backdrop app-modal" id="tourModal" onclick="hideTour(event)">
     <div class="pf-v6-c-modal-box pf-m-lg" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
@@ -1414,7 +1414,10 @@
       const num = document.getElementById('setupToggleNum');
       const title = document.getElementById('setupToggleTitle');
       if (num) num.textContent = String(setupStep + 1);
-      if (title && link) title.textContent = link.textContent.trim();
+      if (title && link) {
+        title.setAttribute('data-i18n', link.getAttribute('data-i18n'));
+        title.textContent = link.textContent.trim();
+      }
       const toggle = document.getElementById('setupToggle');
       const nav = document.getElementById('setupNav');
       if (toggle && toggle.classList.contains('pf-m-expanded')) {
@@ -1427,11 +1430,15 @@
       const next = document.getElementById('setupNext');
       if (back) back.disabled = setupStep === 0;
       if (next) {
+        // The last step finishes rather than advances. The label is swapped by
+        // key, not by text: reading it out of the English table left the one
+        // button on the page in English whatever language was chosen.
         const last = setupStep === SETUP_STEPS.length - 1;
-        next.querySelector('.pf-v6-c-button__text').textContent =
-          last ? (window.sharedI18n && window.sharedI18n.en && window.sharedI18n.en.tour_done) || 'Done'
-               : (window.sharedI18n && window.sharedI18n.en && window.sharedI18n.en.tour_next) || 'Next';
+        const text = next.querySelector('.pf-v6-c-button__text');
+        text.setAttribute('data-i18n', last ? 'tour_done' : 'tour_next');
+        text.textContent = last ? 'Done' : 'Next';
       }
+      if (window.applyDisplayLanguage) window.applyDisplayLanguage();
     }
     window.showSetupStep = showSetupStep;
 

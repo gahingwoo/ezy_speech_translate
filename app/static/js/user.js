@@ -5118,7 +5118,15 @@ document.addEventListener('keydown', function (e) {
     if (isFormControl) return;
 
     if (e.key === '/') {
+        // The search is collapsed to its magnifier until someone opens it,
+        // so focusing the field alone would put the caret in nothing.
+        const bar = document.getElementById('mobileSearchBar');
         const search = document.getElementById('searchInput') || document.getElementById('searchInputMobile');
+        if (bar && !bar.classList.contains('pf-m-expanded') && typeof toggleMobileSearch === 'function') {
+            e.preventDefault();
+            toggleMobileSearch();
+            return;
+        }
         if (search) { e.preventDefault(); search.focus(); search.select && search.select(); }
         return;
     }

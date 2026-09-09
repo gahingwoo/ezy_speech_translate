@@ -483,13 +483,16 @@ def about_modal():
 # are asked once, in a wizard; everything else waits behind the gear. Each
 # control writes through to the real one in the settings dialog, so there is
 # still one source of truth.
+# (key, title, key for the title, key for the body, body)
+# The titles are read by whoever is being set up, so they are translated like
+# everything else; they were the only English left on a page in Cantonese.
 SETUP_STEPS = (
-    ("language", "Your language", "welcome_step_language",
-     "Pick the language you want to read, and the language this page is in."),
-    ("speech", "Reading aloud", "welcome_step_speech",
+    ("language", "Your language", "welcome_nav_language", "welcome_step_language",
+     "Pick the language you want to read in. The page follows it."),
+    ("speech", "Reading aloud", "welcome_nav_speech", "welcome_step_speech",
      "Reading aloud speaks each translation as it arrives. Turn it on now, "
      "or later."),
-    ("done", "You are set", "welcome_step_done",
+    ("done", "You are set", "welcome_nav_done", "welcome_step_done",
      "Translations appear as the speaker talks. Everything else lives behind "
      "the gear in the top right."),
 )
@@ -502,25 +505,32 @@ def setup_wizard():
     nav = "".join(
         '''          <li class="pf-v6-c-wizard__nav-item">
             <button class="pf-v6-c-wizard__nav-link%s" type="button" id="setup-nav-%s"
-                    onclick="showSetupStep(\'%s\')"%s>%s</button>
+                    onclick="showSetupStep(\'%s\')"%s>
+              <span class="pf-v6-c-wizard__nav-link-main">
+                <span class="pf-v6-c-wizard__nav-link-text" data-i18n="%s">%s</span>
+              </span>
+            </button>
           </li>
 ''' % (" pf-m-current" if i == 0 else "", key, key,
-       ' aria-current="step"' if i == 0 else "", title)
-        for i, (key, title, _i18n, _desc) in enumerate(SETUP_STEPS))
+       ' aria-current="step"' if i == 0 else "", nav_key, title)
+        for i, (key, title, nav_key, _i18n, _desc) in enumerate(SETUP_STEPS))
 
     bodies = [
+        # One language. The first thing a newcomer saw was the same question
+        # asked twice — an interface language and a target language, side by
+        # side, in the one place there is no chance to explain the difference.
+        # The reading language sets both, as it does everywhere else.
         '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-language">
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_language">%s</p>
             <form class="pf-v6-c-form" onsubmit="return false;">
-%s%s            </form>
+%s            </form>
           </div>
-''' % (SETUP_STEPS[0][3],
-       form_group("Display Language", "displayLanguage",
-                  select("setupDisplayLanguage", "setupApply(\'displayLanguage\', this.value)",
-                         "Interface language", LANGS), "setupDisplayLanguage"),
-       form_group("Target Language", "targetLanguage",
+''' % (SETUP_STEPS[0][4],
+       form_group("Reading", "nav_reading",
                   select("setupTargetLanguage", "setupApply(\'targetLang\', this.value)",
-                         "Translation language", LANGS), "setupTargetLanguage")),
+                         "Reading language", LANGS), "setupTargetLanguage",
+                  help="The sermon is translated into this, and the buttons and "
+                       "headings follow it.")),
 
         '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-speech" hidden>
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">%s</p>
@@ -537,7 +547,7 @@ def setup_wizard():
               </div>
             </form>
           </div>
-''' % SETUP_STEPS[1][3],
+''' % SETUP_STEPS[1][4],
 
         '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-done" hidden>
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_done">%s</p>
@@ -547,12 +557,13 @@ def setup_wizard():
                   <span data-i18n="welcome_tip_keys_after">any time for shortcuts.</span></li>
             </ul>
           </div>
-''' % SETUP_STEPS[2][3],
+''' % SETUP_STEPS[2][4],
     ]
 
     return '''  <div class="pf-v6-c-backdrop app-modal" id="welcomeModal" onclick="hideWelcome(event)">
-    <div class="pf-v6-c-wizard pf-m-plain setup-wizard" role="dialog" aria-modal="true"
-         aria-labelledby="welcomeTitle">
+   <div class="pf-v6-c-modal-box pf-m-md setup-wizard" role="dialog" aria-modal="true"
+        aria-labelledby="welcomeTitle">
+    <div class="pf-v6-c-wizard pf-m-plain">
       <div class="pf-v6-c-wizard__header">
         <div class="pf-v6-c-wizard__close">
           <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Close"
@@ -570,7 +581,7 @@ def setup_wizard():
           <span class="pf-v6-c-wizard__toggle-list">
             <span class="pf-v6-c-wizard__toggle-list-item">
               <span class="pf-v6-c-wizard__toggle-num" id="setupToggleNum">1</span>
-              <span id="setupToggleTitle">Your language</span>
+              <span id="setupToggleTitle" data-i18n="welcome_nav_language">Your language</span>
             </span>
           </span>
           <span class="pf-v6-c-wizard__toggle-icon">%s</span>
@@ -584,21 +595,34 @@ def setup_wizard():
 %s          </main>
         </div>
         <footer class="pf-v6-c-wizard__footer">
-          <button class="pf-v6-c-button pf-m-primary" type="button" id="setupNext"
-                  onclick="setupNext()">
-            <span class="pf-v6-c-button__text" data-i18n="tour_next">Next</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button" id="setupBack"
-                  onclick="setupBack()" disabled>
-            <span class="pf-v6-c-button__text" data-i18n="tour_prev">Back</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-link" type="button"
-                  onclick="hideWelcome(); showTour();">
-            <span class="pf-v6-c-button__text" data-i18n="welcome_takeTour">Take a quick tour</span>
-          </button>
+          <div class="pf-v6-c-action-list">
+            <div class="pf-v6-c-action-list__group">
+              <div class="pf-v6-c-action-list__item">
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        onclick="hideWelcome(); showTour();">
+                  <span class="pf-v6-c-button__text" data-i18n="welcome_takeTour">Take a quick tour</span>
+                </button>
+              </div>
+            </div>
+            <div class="pf-v6-c-action-list__group">
+              <div class="pf-v6-c-action-list__item">
+                <button class="pf-v6-c-button pf-m-secondary" type="button" id="setupBack"
+                        onclick="setupBack()" disabled>
+                  <span class="pf-v6-c-button__text" data-i18n="tour_prev">Back</span>
+                </button>
+              </div>
+              <div class="pf-v6-c-action-list__item">
+                <button class="pf-v6-c-button pf-m-primary" type="button" id="setupNext"
+                        onclick="setupNext()">
+                  <span class="pf-v6-c-button__text" data-i18n="tour_next">Next</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </footer>
       </div>
     </div>
+   </div>
   </div>
 ''' % (btn_icon("times"), icon("angle-down"), nav, "".join(bodies))
 
@@ -933,20 +957,6 @@ def build():
           </span>
         </span>
 
-        <div class="header-search-desktop" id="headerSearchDesktop">
-          <div class="pf-v6-c-text-input-group">
-            <div class="pf-v6-c-text-input-group__main pf-m-icon">
-              <span class="pf-v6-c-text-input-group__text">
-                <span class="pf-v6-c-text-input-group__icon">%(search)s</span>
-                <input class="pf-v6-c-text-input-group__text-input" type="search" id="searchInput"
-                       aria-label="Search translations" data-i18n-placeholder="search"
-                       placeholder="Search..." oninput="handleSearch()">
-              </span>
-            </div>
-          </div>
-        </div>
-
-
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
                 id="ttsQuickToggle" aria-pressed="false" aria-label="Read translations aloud"
                 data-i18n-title="textToSpeech" title="Text-to-Speech"
@@ -966,15 +976,16 @@ def build():
                 aria-label="Settings" data-i18n-title="settings" title="Settings"
                 onclick="showSettings()">%(cog)s</button>
 
-        <!-- PatternFly's expandable search: an icon that grows into a field
-             and shrinks back, which the component animates itself. What was
-             here hid one element and showed another, so it appeared and
-             vanished in a single frame.
+        <!-- PatternFly's expandable search, at every width: an icon that
+             grows into a field and shrinks back, which the component animates
+             itself. What was here hid one element and showed another, so it
+             appeared and vanished in a single frame.
 
              Copied from the shape gahingwoo.com uses, which is the same
              component: the group lifts out of the flex row while it is open
              and lies over the other actions, so expanding it can never reflow
-             the masthead. -->
+             the masthead. It is last in the row, so the magnifier is the
+             control furthest to the end. -->
         <div class="search-slot">
           <div class="pf-v6-c-input-group pf-m-search-expandable pf-m-plain mobile-search-bar"
                id="mobileSearchBar">
@@ -1445,7 +1456,10 @@ def build():
       const num = document.getElementById('setupToggleNum');
       const title = document.getElementById('setupToggleTitle');
       if (num) num.textContent = String(setupStep + 1);
-      if (title && link) title.textContent = link.textContent.trim();
+      if (title && link) {
+        title.setAttribute('data-i18n', link.getAttribute('data-i18n'));
+        title.textContent = link.textContent.trim();
+      }
       const toggle = document.getElementById('setupToggle');
       const nav = document.getElementById('setupNav');
       if (toggle && toggle.classList.contains('pf-m-expanded')) {
@@ -1458,11 +1472,15 @@ def build():
       const next = document.getElementById('setupNext');
       if (back) back.disabled = setupStep === 0;
       if (next) {
+        // The last step finishes rather than advances. The label is swapped by
+        // key, not by text: reading it out of the English table left the one
+        // button on the page in English whatever language was chosen.
         const last = setupStep === SETUP_STEPS.length - 1;
-        next.querySelector('.pf-v6-c-button__text').textContent =
-          last ? (window.sharedI18n && window.sharedI18n.en && window.sharedI18n.en.tour_done) || 'Done'
-               : (window.sharedI18n && window.sharedI18n.en && window.sharedI18n.en.tour_next) || 'Next';
+        const text = next.querySelector('.pf-v6-c-button__text');
+        text.setAttribute('data-i18n', last ? 'tour_done' : 'tour_next');
+        text.textContent = last ? 'Done' : 'Next';
       }
+      if (window.applyDisplayLanguage) window.applyDisplayLanguage();
     }
     window.showSetupStep = showSetupStep;
 
