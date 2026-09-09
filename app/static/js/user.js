@@ -827,9 +827,15 @@ function attachBiblePanel(card, refs) {
         }
     }
 
-    // Anything doubtful is offered instead, on one quiet line under the row.
-    refs.filter(r => r.match === 'offer' || r.match === 'cited')
-        .forEach(r => text.appendChild(buildOffer(r)));
+    // Anything doubtful is offered *instead* — which is what "instead" has to
+    // mean. A row already showing Matthew 5:19 was still offering "This may be
+    // Matthew 5:20" and "This may be Matthew 18:4" underneath it: three
+    // answers to one question, two of them guesses, under a verse the page was
+    // sure enough about to put in place of what the speaker said.
+    if (!shown) {
+        refs.filter(r => r.match === 'offer' || r.match === 'cited')
+            .forEach(r => text.appendChild(buildOffer(r)));
+    }
 
     // The row has settled: read it now if reading it was held back.
     speakDeferred(card);
