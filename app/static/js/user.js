@@ -4552,13 +4552,66 @@ function reserveTranslationSpace(textEl, sourceText) {
     textEl.style.minHeight = Math.min(height, cap) + 'px';
 }
 
+/* Is there anything to wait for? A line already in the language being read is
+   not going to be translated, so nothing should behave as though it might be:
+   no listening, no understanding, no refining. It is already the answer. */
+function nothingToTranslate(item) {
+    const spoken = (item && (item.source_language || item.language)) || '';
+    return displayMode === 'transcription' || sameLanguage(spoken, targetLang);
+}
+
+/* The line, straight onto the row: no thinking sequence, no spinner, no round
+   trip. Everything the finished translation would have done to the row is done
+   here too — the play button, reading aloud, the stored text — because from
+   the reader's side nothing about this row is different except that it was
+   already in their language. */
+function showWithoutTranslating(item, itemId, lang, textEl) {
+    item.translated = item.corrected;
+    item.currentLang = lang;
+    item.translationFailed = false;
+
+    const row = document.getElementById(itemId);
+    if (!row) return;
+    if (!textEl) textEl = row.querySelector('.text-target');
+
+    if (textEl) {
+        stopAIThinkingMachine(textEl);
+        textEl.className = 'text-target';
+        textEl.style.minHeight = '';
+        textEl.textContent = item.translated;
+        textEl.setAttribute('data-original-text', item.translated);
+    }
+    const spinner = row.querySelector('.card-actions .translating-indicator');
+    if (spinner) spinner.remove();
+
+    const ttsBtn = row.querySelector('.tts-icon');
+    if (ttsBtn && row.getAttribute('data-speaks-verse') !== '1') {
+        ttsBtn.setAttribute('data-text', item.translated);
+    }
+    if (ttsEnabled && displayMode !== 'transcription' && item.translated
+            && row.getAttribute('data-await-verse') !== '1'
+            && row.getAttribute('data-speaks-verse') !== '1') {
+        speakText(item.translated, true);
+    }
+}
+
 async function translateInBackground(item, itemId, textEl) {
     // Translate asynchronously and update DOM when done
     try {
         // Use item's current language if set, otherwise use global targetLang
         const lang = item.currentLang || targetLang;
         console.log('Starting translation for item ' + itemId + ', target lang: ' + lang + ', text length: ' + (item.corrected ? item.corrected.length : 0));
-        
+
+        /* Nothing to translate when the line is already in the language being
+           read. The network call was skipped for this case, but the waiting
+           was not: the row still ran the whole thinking sequence — reserving
+           space, "Understanding", "Refining output" — before landing on the
+           words it already had. English to English should simply appear. */
+        if (sameLanguage(item.source_language || item.language || '', lang)) {
+            showWithoutTranslating(item, itemId, lang, textEl);
+            return;
+        }
+
         // Immediately show "translated" status when API request starts
         const elem = document.getElementById(itemId);
         if (elem) {
@@ -5278,8 +5331,11 @@ function setupSocketEventListeners() {
                 statusChangeInterval: null
             };
             
-            // Only start listening state machine in translation mode
-            if (displayMode !== 'transcription') {
+            // Only while there is a translation on the way. Reading English
+            // in English, the row used to sit through "Listening" and
+            // "Understanding the speaker's context" before showing the words
+            // it had all along.
+            if (!nothingToTranslate(data)) {
                 const textEl = tempCard.querySelector('.text-target');
                 if (textEl) {
                     startListeningStateMachine(textEl, tempId);
@@ -5288,8 +5344,11 @@ function setupSocketEventListeners() {
         }
 
         // Update transcription text with typewriter effect
-        if (displayMode === 'transcription') {
-            // In transcription mode, show live text in text-target
+        if (nothingToTranslate(data)) {
+            // Transcription mode, or the line is already in the language being
+            // read: either way the words being said are the line, so they type
+            // straight into it. Nothing is waiting on a round trip, so nothing
+            // announces that it is.
             const textEl = tempCard.querySelector('.text-target');
             if (textEl) {
                 const transcribedText = data.original || data.text || '';
@@ -5402,7 +5461,7 @@ function setupSocketEventListeners() {
                     
                     // Start AI thinking status machine (replaces old rotation)
                     // Only in translation mode - in transcription mode, we just show the final text
-                    if (currentTextEl && displayMode !== 'transcription') {
+                    if (currentTextEl && !nothingToTranslate(data)) {
                         // Use same styling as final translation (no 'translating' class to hide the transition)
                         currentTextEl.className = 'text-target';
                         currentTextEl.setAttribute('data-original-text', '');
@@ -5412,10 +5471,14 @@ function setupSocketEventListeners() {
                         const sourceText = data.corrected || data.original || '';
                         startAIThinkingMachine(currentTextEl, 'preparing', 30000, sourceText);
                         console.log('Started AI thinking machine (preparingtranslating)');
-                    } else if (currentTextEl && displayMode === 'transcription') {
-                        // In transcription mode, just show the final text
+                    } else if (currentTextEl) {
+                        // Transcription mode, or the line is already in the
+                        // language being read: the words are the answer.
+                        stopAIThinkingMachine(currentTextEl);
+                        currentTextEl.className = 'text-target';
+                        currentTextEl.style.minHeight = '';
                         currentTextEl.textContent = data.corrected || data.original;
-                        console.log('Completed transcription displayed');
+                        console.log('Completed line displayed without translating');
                     }
 
                     // Add copy + TTS buttons to card-actions.
