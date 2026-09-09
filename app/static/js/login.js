@@ -58,14 +58,7 @@ function sanitizeInput(input) {
 }
 
 function toggleLoginTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
-    const newTheme = current === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    // PatternFly switches its own tokens on this class; data-theme is kept
-    // because the rest of the app's CSS still reads it.
-    document.documentElement.classList.toggle('pf-v6-theme-dark', newTheme === 'dark');
-    localStorage.setItem('theme', newTheme);
-
+    toggleThemeTo();
 }
 
 async function login(event) {
@@ -173,8 +166,7 @@ async function login(event) {
 document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme
     const storedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', storedTheme);
-    document.documentElement.classList.toggle('pf-v6-theme-dark', storedTheme === 'dark');
+    paintTheme(storedTheme);
 
 
 

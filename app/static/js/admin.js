@@ -266,13 +266,7 @@ function __doExport(format) {
 }
 
 function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
-    const newTheme = current === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    document.documentElement.classList.toggle('pf-v6-theme-dark', newTheme === 'dark');
-    localStorage.setItem('theme', newTheme);
-
-    updateThemeUI(newTheme);
+    toggleThemeTo(updateThemeUI);
 }
 
 function updateThemeUI(theme) {
@@ -303,8 +297,7 @@ function logout() {
 document.addEventListener('DOMContentLoaded', async () => {
     // Apply saved theme
     const storedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', storedTheme);
-    document.documentElement.classList.toggle('pf-v6-theme-dark', storedTheme === 'dark');
+    paintTheme(storedTheme);
     updateThemeUI(storedTheme);
 
     // Load server config

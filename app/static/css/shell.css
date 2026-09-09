@@ -218,3 +218,28 @@
   font-size: var(--pf-t--global--font--size--body--default);
   color: var(--pf-t--global--text--color--subtle);
 }
+
+/* ── theme crossfade ──────────────────────────────────────────────────── */
+/* theme.js swaps the theme inside a view transition, and this is how long the
+   browser's crossfade lasts. Inverting a page of text in a single frame is a
+   flash in a dark room; a fade of PatternFly's own duration is the same change
+   without the jolt.
+
+   Only the whole page fades. Naming no other view-transition-name keeps this
+   to one composited pass, which matters on a stream that may be hundreds of
+   rows long. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--pf-t--global--motion--duration--fade--long);
+  animation-timing-function: var(--pf-t--global--motion--timing-function--default);
+}
+
+/* theme.js skips the transition entirely when less motion is asked for, so
+   this is only the belt to that braces: a browser that starts one anyway
+   finishes it at once. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms;
+  }
+}

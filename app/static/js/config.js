@@ -333,8 +333,7 @@ window.saveRawConfig = saveRawConfig;
 
 document.addEventListener('DOMContentLoaded', function () {
     const theme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.classList.toggle('pf-v6-theme-dark', theme === 'dark');
+    paintTheme(theme);
 
     authToken = localStorage.getItem('authToken');
     if (!authToken) { window.location.href = '/login'; return; }

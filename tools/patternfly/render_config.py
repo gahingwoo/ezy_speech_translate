@@ -286,6 +286,7 @@ def build():
   </div>
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
+  <script src="{{ static_url('js/theme.js') }}"></script>
   <script src="{{ static_url('js/config.js') }}"></script>
 </body>
 

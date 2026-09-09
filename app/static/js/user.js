@@ -2256,11 +2256,9 @@ function hideAbout(event) {
 }
 
 function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
-    const newTheme = current === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeUI(newTheme);
+    // theme.js paints it, and crossfades the page while it does. The label
+    // changes inside the same fade rather than a frame before it.
+    toggleThemeTo(updateThemeUI);
 }
 
 // ── Landscape / kiosk caption mode ───────────────────────────────────────────
@@ -2279,8 +2277,8 @@ function toggleTheme() {
 function updateThemeUI(theme) {
     const text = document.getElementById('themeText');
     // The icon is two PatternFly SVGs in the markup and CSS shows the one that
-    // matches the theme, so nothing here writes a glyph into the page.
-    document.documentElement.classList.toggle('pf-v6-theme-dark', theme === 'dark');
+    // matches the theme, so nothing here writes a glyph into the page, and
+    // theme.js has already put the page in the theme this is labelling.
     if (theme === 'dark') {
         if (text) text.textContent = t('lightMode', 'Light Mode');
     } else {

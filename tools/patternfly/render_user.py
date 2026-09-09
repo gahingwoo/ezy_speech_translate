@@ -1847,6 +1847,7 @@ def build():
   </script>
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
+  <script src="{{ static_url('js/theme.js') }}"></script>
   <script src="{{ static_url('js/user.js') }}"></script>
 </body>
 
