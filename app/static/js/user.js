@@ -5418,11 +5418,28 @@ function setupSocketEventListeners() {
                         console.log('Completed transcription displayed');
                     }
 
-                    // Add copy + TTS buttons to card-actions
+                    // Add copy + TTS buttons to card-actions.
+                    //
+                    // The same two buttons the row builder makes, in the same
+                    // markup. These were bare <button> elements with the icon
+                    // in a plain span: no PatternFly classes at all, so a line
+                    // that arrived while an interim row was on screen got the
+                    // browser's own grey boxed buttons, sitting beside rows
+                    // whose buttons were plain icons.
                     const actions = tempCard.querySelector('.card-actions');
                     if (actions) {
-                        actions.innerHTML = '<button class="copy-btn" id="copy-btn-' + data.id + '" data-translation-id="' + data.id + '" onclick="copyTranslationFromButton(this)" title="Copy"><span>' + svgIcon('copy') + '</span></button>' +
-                            '<button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(data.translated || data.corrected || data.original || '') + '" title="Speak">' + svgIcon('volume-up') + '</button>';
+                        actions.innerHTML =
+                            '<button class="pf-v6-c-button pf-m-plain copy-btn" type="button"' +
+                            ' id="copy-btn-' + data.id + '" data-translation-id="' + data.id + '"' +
+                            ' onclick="copyTranslationFromButton(this)" aria-label="Copy this line">' +
+                            '<span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>' +
+                            '</button>' +
+                            '<button class="pf-v6-c-button pf-m-plain tts-icon" type="button"' +
+                            ' onclick="speakText(this.getAttribute(\'data-text\'))"' +
+                            ' data-text="' + escapeHtml(data.translated || data.corrected || data.original || '') + '"' +
+                            ' aria-label="Read this line aloud">' +
+                            '<span class="pf-v6-c-button__icon">' + svgIcon('volume-up') + '</span>' +
+                            '</button>';
                     }
 
                     // Add to translations array
