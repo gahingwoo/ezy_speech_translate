@@ -239,7 +239,7 @@ let renderBatchSize = 30;            // Render this many items at once (was rend
 // page becomes laggy past ~1000 cards. The full set stays in the `translations`
 // array, so trimmed (older) cards are re-rendered from memory when scrolled to.
 const MAX_RENDERED_CARDS = 250;
-let scrollObserver = null;           // IntersectionObserver for virtual scrolling
+let scrollObserver = null;           // unused: the list ends in a button now
 let isRenderingMore = false;         // Prevent duplicate render operations
 
 // Translation queue - prevents rate limit when admin bulk imports
@@ -1763,6 +1763,13 @@ function loadSettings() {
 
     document.getElementById('targetLang').value = targetLang;
 
+    /* Now that the reading language is settled, the page can say what it is:
+       "Live Translations" or, when that language is the one being spoken,
+       "Live Transcription". This used to run only when a display mode had
+       been stored, so a first visit kept whatever the template happened to
+       say. */
+    updateDisplayMode();
+
     if (savedRate) {
         ttsRate = parseFloat(savedRate);
         document.getElementById('rateSlider').value = ttsRate;
@@ -2116,6 +2123,7 @@ function changeLanguage() {
     // calling this, but the select in the settings did not, so changing the
     // language there translated the lines and left the buttons and headings
     // in the old one until the page was reloaded.
+    updateDisplayMode();
     if (typeof followReadingLanguage === 'function') followReadingLanguage();
 }
 
@@ -2152,35 +2160,46 @@ function updateDisplayMode() {
     const emptyStateText = document.getElementById('emptyStateText');
     const emptyStateDesc = document.getElementById('emptyStateDesc');
 
-    if (displayMode === 'transcription') {
-        if (ttsTab)          ttsTab.hidden = true;
-        if (bibleTab)        bibleTab.hidden = true;
-        if (languageGroup)   languageGroup.hidden = true;
-        if (bibleTransRow)   bibleTransRow.hidden = true;
+    // Transcription mode hides the settings that only matter to a translation.
+    const transcriptionMode = displayMode === 'transcription';
+    if (ttsTab)        ttsTab.hidden = transcriptionMode;
+    if (bibleTab)      bibleTab.hidden = transcriptionMode;
+    if (languageGroup) languageGroup.hidden = transcriptionMode;
+    if (bibleTransRow) bibleTransRow.hidden = transcriptionMode;
 
-        // Update title (use localized string when available)
-        if (mainTitleText) mainTitleText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].liveTranscriptions) || i18n['en'].liveTranscriptions || 'Live Transcriptions';
+    /* What the page calls itself is a separate question from which settings it
+       shows. Reading the language being spoken is transcription by another
+       name — nothing is being translated — so the heading says so rather than
+       announcing "Live Translations" above a column of untranslated English.
+       The settings stay where they are: a reader may be about to change
+       language, and the tabs are how they would. */
+    const transcribing = transcriptionMode || readingWhatIsSpoken();
+    const dict = (i18n && i18n[displayLanguage]) || {};
+    const fallback = (i18n && i18n.en) || {};
+    const pick = (key, last) => dict[key] || fallback[key] || last;
 
-        // Update empty state (use localized strings when available)
-        if (emptyStateText) emptyStateText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].waitingTranscriptions) || (i18n['en'] && i18n['en'].waitingTranscriptions) || 'Waiting for transcriptions...';
-        if (emptyStateDesc) emptyStateDesc.textContent = (i18n[displayLanguage] && i18n[displayLanguage].waitingDesc) || (i18n['en'] && i18n['en'].waitingDesc) || 'Transcriptions will appear here in real-time';
-
-        console.log('Transcription mode enabled');
-    } else {
-        if (ttsTab)          ttsTab.hidden = false;
-        if (bibleTab)        bibleTab.hidden = false;
-        if (languageGroup)   languageGroup.hidden = false;
-        if (bibleTransRow)   bibleTransRow.hidden = false;
-
-        // Update title (use localized string when available)
-        if (mainTitleText) mainTitleText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].liveTranslations) || (i18n['en'] && i18n['en'].liveTranslations) || 'Live Translations';
-
-        // Update empty state (use localized strings when available)
-        if (emptyStateText) emptyStateText.textContent = (i18n[displayLanguage] && i18n[displayLanguage].waitingTranslations) || (i18n['en'] && i18n['en'].waitingTranslations) || 'Waiting for translations...';
-        if (emptyStateDesc) emptyStateDesc.textContent = (i18n[displayLanguage] && i18n[displayLanguage].waitingDesc) || (i18n['en'] && i18n['en'].waitingDesc) || 'Translations will appear here in real-time';
-
-        console.log('Translation mode enabled');
+    /* Set the key, not just the words. The heading carries data-i18n, so the
+       shared translator rewrites it from that key every time the language is
+       applied — writing only the text here worked until the next such pass
+       put "Live Translations" straight back over the top of it. */
+    if (mainTitleText) {
+        const key = transcribing ? 'liveTranscriptions' : 'liveTranslations';
+        mainTitleText.setAttribute('data-i18n', key);
+        mainTitleText.textContent = pick(key, transcribing
+            ? 'Live Transcription' : 'Live Translations');
     }
+    if (emptyStateText) {
+        const key = transcribing ? 'waitingTranscriptions' : 'waitingTranslations';
+        emptyStateText.setAttribute('data-i18n', key);
+        emptyStateText.textContent = pick(key, transcribing
+            ? 'Waiting for transcriptions...' : 'Waiting for translations...');
+    }
+    if (emptyStateDesc) {
+        emptyStateDesc.textContent = pick('waitingDesc',
+            transcribing ? 'Transcriptions will appear here in real-time'
+                         : 'Translations will appear here in real-time');
+    }
+    console.log(transcribing ? 'Showing what was said' : 'Showing translations');
 }
 
 /* ===================================
@@ -3697,9 +3716,9 @@ async function renderTranslationsBatch(startIdx, endIdx) {
     endIdx = Math.min(endIdx, translations.length);
     const batch = translations.slice(startIdx, endIdx);
     
-    // Remove old sentinel before adding new items
-    const oldSentinel = document.getElementById('virtualScrollSentinel');
-    if (oldSentinel) oldSentinel.remove();
+    // Take the button off the end before appending; it goes back after.
+    const oldFoot = document.getElementById('loadMoreRow');
+    if (oldFoot) oldFoot.remove();
     
     // Build HTML for all items in batch synchronously
     // (createTranslationHTML no longer awaits translation - it fires translation in background)
@@ -3728,62 +3747,97 @@ async function renderTranslationsBatch(startIdx, endIdx) {
     renderedCount = endIdx;
     console.log('Rendered items ' + startIdx + '-' + endIdx + '/' + translations.length);
     
-    // Re-add sentinel at the very bottom for IntersectionObserver
-    if (renderedCount < translations.length || hasMoreTranslations) {
-        const sentinel = document.createElement('div');
-        sentinel.id = 'virtualScrollSentinel';
-        sentinel.style.height = '1px';
-        list.appendChild(sentinel);
-        if (scrollObserver) {
-            scrollObserver.observe(sentinel);
-        }
-    }
+    paintLoadMore();
 }
 
-/* Virtual Scrolling Functions - PERFORMANCE OPTIMIZED */
+/* The end of the list.
+ *
+ * What was here was a one-pixel sentinel and an IntersectionObserver with a
+ * 500px margin: scrolling near the bottom fetched the next thirty lines and
+ * rendered them, and then the next thirty, with no end and nobody asking. A
+ * service with a thousand lines in it ended up with a thousand rows in the
+ * page, every one of them holding its text, its buttons and any verse it
+ * found, on a phone that has been in someone's hand for an hour.
+ *
+ * A button instead. Nothing is fetched or drawn until someone asks for it, and
+ * what it costs is visible in the number on the button. */
+function paintLoadMore() {
+    const list = document.getElementById('translationsList');
+    if (!list) return;
+    const existing = document.getElementById('loadMoreRow');
+    if (existing) existing.remove();
+
+    const inMemory = translations.length - renderedCount;
+    const remaining = Math.max(0, inMemory) + (hasMoreTranslations
+        ? Math.max(0, translationsTotal - translations.length) : 0);
+    if (remaining <= 0) return;
+
+    const row = document.createElement('div');
+    row.className = 'load-more';
+    row.id = 'loadMoreRow';
+
+    const button = document.createElement('button');
+    button.className = 'pf-v6-c-button pf-m-secondary';
+    button.type = 'button';
+    button.id = 'loadMoreButton';
+    button.onclick = loadMoreClicked;
+
+    const label = document.createElement('span');
+    label.className = 'pf-v6-c-button__text';
+    label.setAttribute('data-i18n', 'loadMore');
+    label.textContent = t('loadMore', 'Show earlier lines');
+    button.appendChild(label);
+
+    // How many are waiting, in the badge the headings on this page use. A
+    // reader deciding whether to press it should be able to see the size of
+    // what they are asking for.
+    const count = document.createElement('span');
+    count.className = 'pf-v6-c-badge pf-m-read';
+    count.textContent = String(remaining);
+    button.appendChild(document.createTextNode(' '));
+    button.appendChild(count);
+
+    row.appendChild(button);
+    list.appendChild(row);
+}
+
+/* Draw what is already here first, and only go to the server when this
+   browser has run out of lines to draw. */
+async function loadMoreClicked() {
+    const button = document.getElementById('loadMoreButton');
+    if (button) {
+        button.disabled = true;
+        /* Going to the server for the next batch takes as long as it takes,
+           and a button that only greys out does not say whether it heard the
+           press. PatternFly's in-progress button does: the spinner is part of
+           the component, not something drawn beside it. */
+        button.classList.add('pf-m-progress', 'pf-m-in-progress');
+        const progress = document.createElement('span');
+        progress.className = 'pf-v6-c-button__progress';
+        progress.innerHTML = '<span class="pf-v6-c-spinner pf-m-md" role="progressbar"'
+            + ' aria-label="Loading">'
+            + '<span class="pf-v6-c-spinner__clipper"></span>'
+            + '<span class="pf-v6-c-spinner__lead-ball"></span>'
+            + '<span class="pf-v6-c-spinner__ball"></span></span>';
+        button.insertBefore(progress, button.firstChild);
+    }
+    try {
+        if (renderedCount < translations.length) {
+            await renderMoreVisibleItems();
+        } else if (hasMoreTranslations && !isLoadingMore) {
+            await loadMoreTranslations();
+        }
+    } finally {
+        paintLoadMore();
+    }
+}
+window.loadMoreClicked = loadMoreClicked;
+
+/* The list draws in batches, and the button at its end asks for the next one.
+   Nothing here watches the scroll position any more. */
 
 function setupVirtualScrolling() {
-    // Setup virtual scrolling using IntersectionObserver for efficient rendering
-    const mainSection = document.querySelector('.pf-c-page__main-section');
-    
-    // If all items already rendered AND no more on server, skip
-    if (renderedCount >= translations.length && !hasMoreTranslations) {
-        console.log('All items rendered, virtual scrolling not needed');
-        return;
-    }
-    
-    if (!mainSection) {
-        console.warn('Main section not found for scroll listener');
-        return;
-    }
-    
-    // Clean up old observer if exists
-    if (scrollObserver) {
-        scrollObserver.disconnect();
-    }
-    
-    // Use IntersectionObserver: render more when user approaches bottom
-    scrollObserver = new IntersectionObserver(
-        function(entries) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting && !isRenderingMore) {
-                    if (renderedCount < translations.length) {
-                        renderMoreVisibleItems();
-                    } else if (hasMoreTranslations && !isLoadingMore) {
-                        loadMoreTranslations();
-                    }
-                }
-            });
-        },
-        { root: mainSection, rootMargin: '500px' }  // Preload 500px before bottom
-    );
-    
-    // Sentinel is managed by renderTranslationsBatch, just observe if it exists
-    var sentinel = document.getElementById('virtualScrollSentinel');
-    if (sentinel) {
-        scrollObserver.observe(sentinel);
-    }
-    console.log('Virtual scrolling setup with IntersectionObserver');
+    paintLoadMore();
 }
 
 async function renderMoreVisibleItems() {
@@ -3797,23 +3851,13 @@ async function renderMoreVisibleItems() {
     await renderTranslationsBatch(renderedCount, nextBatchEnd);
     
     isRenderingMore = false;
-    
-    // After rendering, also check if we need to load from server
-    if (nextBatchEnd >= translations.length - 3 && hasMoreTranslations && !isLoadingMore) {
-        console.log('Approaching end, loading from server...');
-        loadMoreTranslations();
-    }
 }
 
-function setupScrollListener() {
-    // Deprecated: Now using IntersectionObserver for better performance
-    console.log('setupScrollListener() - virtual scrolling uses IntersectionObserver');
-}
+/* Kept because other code still calls them. Nothing watches the scroll
+   position: the list ends in a button, and it is pressed or it is not. */
+function setupScrollListener() {}
 
-function onTranslationsScroll(event) {
-    // Deprecated: Now using IntersectionObserver
-    return;
-}
+function onTranslationsScroll(event) {}
 
 async function loadInitialTranslations() {
     // Load first batch of translations from server
@@ -3931,17 +3975,8 @@ function trimRenderedCards() {
         if (renderedCount > 0) renderedCount--;
     }
 
-    // Re-arm the sentinel so scrolling down re-renders the trimmed older items.
-    if (renderedCount < translations.length || hasMoreTranslations) {
-        let sentinel = document.getElementById('virtualScrollSentinel');
-        if (!sentinel) {
-            sentinel = document.createElement('div');
-            sentinel.id = 'virtualScrollSentinel';
-            sentinel.style.height = '1px';
-        }
-        list.appendChild(sentinel);
-        if (scrollObserver) scrollObserver.observe(sentinel);
-    }
+    // The trimmed lines are still in memory, so the button offers them again.
+    paintLoadMore();
 }
 
 async function addTranslation(data) {
@@ -4556,6 +4591,27 @@ function reserveTranslationSpace(textEl, sourceText) {
     // covers what most lines turn out to be.
     const cap = lineHeight ? lineHeight * 2 : height;
     textEl.style.minHeight = Math.min(height, cap) + 'px';
+}
+
+/* What the speaker is speaking. Assumed English until a line says otherwise,
+   because that is what this is usually used for; the moment a line arrives
+   saying something else, it says so. */
+let spokenLanguage = 'en';
+
+function noteSpokenLanguage(item) {
+    const said = (item && (item.source_language || item.language)) || '';
+    if (!said || sameLanguage(said, spokenLanguage)) return;
+    spokenLanguage = said;
+    // The heading and the pair beneath it both describe the two languages, so
+    // both have to be told when one of them turns out to be different.
+    if (typeof updateDisplayMode === 'function') updateDisplayMode();
+    if (typeof refreshReadingCard === 'function') refreshReadingCard();
+}
+
+/* Nothing is being translated when the reading language is the one being
+   spoken: the page is showing what was said, not a translation of it. */
+function readingWhatIsSpoken() {
+    return sameLanguage(spokenLanguage, targetLang);
 }
 
 /* Is there anything to wait for? A line already in the language being read is
@@ -5392,6 +5448,7 @@ function setupSocketEventListeners() {
     });
 
     socket.on('new_translation', async (data) => {
+        noteSpokenLanguage(data);
         // Check if an interim card exists for this temp_id — update in-place
         if (data.temp_id) {
             const list = document.getElementById('translationsList');

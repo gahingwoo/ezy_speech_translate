@@ -1658,9 +1658,10 @@ def build():
       // a machine doing nothing, and it sat under the heading all service.
       const subtitle = document.getElementById('mainSubtitle');
       if (subtitle) {
-        const speaking = 'en';
+        const speaking = (typeof spokenLanguage !== 'undefined') ? spokenLanguage : 'en';
+        const from = LANGUAGES.find(function (l) { return l.code === speaking; });
         subtitle.textContent = (entry && !sameLanguage(speaking, code))
-          ? 'English \u2192 ' + entry.native
+          ? (from ? from.native : speaking) + ' \u2192 ' + entry.native
           : '';
       }
       const tts = document.getElementById('readingTtsState');

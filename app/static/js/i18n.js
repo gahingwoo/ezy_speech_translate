@@ -5009,3 +5009,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 })();
+
+// The button at the end of the list, which asks for the batch before this one.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { loadMore: "Show earlier lines" },
+        zh: { loadMore: "显示更早的内容" },
+        yue: { loadMore: "睇返之前嘅" },
+        "zh-tw": { loadMore: "顯示更早的內容" },
+        es: { loadMore: "Ver líneas anteriores" },
+        fr: { loadMore: "Afficher les lignes précédentes" },
+        de: { loadMore: "Frühere Zeilen anzeigen" },
+        ru: { loadMore: "Показать более ранние строки" },
+        pl: { loadMore: "Pokaż wcześniejsze wiersze" },
+        tr: { loadMore: "Daha önceki satırları göster" },
+        ja: { loadMore: "前の行を表示" },
+        ko: { loadMore: "이전 내용 보기" },
+        vi: { loadMore: "Xem các dòng trước" },
+        th: { loadMore: "ดูข้อความก่อนหน้า" },
+        id: { loadMore: "Tampilkan baris sebelumnya" },
+        ms: { loadMore: "Tunjuk baris terdahulu" },
+        hi: { loadMore: "पहले की पंक्तियाँ दिखाएँ" },
+        ar: { loadMore: "عرض الأسطر السابقة" },
+        pt: { loadMore: "Mostrar linhas anteriores" },
+        it: { loadMore: "Mostra le righe precedenti" },
+        nl: { loadMore: "Eerdere regels tonen" },
+        ta: { loadMore: "முந்தைய வரிகளைக் காட்டு" },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();

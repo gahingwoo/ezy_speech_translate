@@ -799,3 +799,13 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   z-index: var(--pf-t--global--z-index--2xl);
   max-width: min(22rem, calc(100vw - 1rem));
 }
+
+/* ── the end of the list ──────────────────────────────────────────────── */
+/* The button that asks for the previous batch. Centred under the last line,
+   with room around it, so it reads as the end of what is here rather than as
+   another row. */
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--pf-t--global--spacer--lg);
+}
