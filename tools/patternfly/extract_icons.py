@@ -34,7 +34,7 @@ globe grip-vertical
 info-circle key keyboard language lightbulb list lock microphone minus
 moon paper-plane pause play plus qrcode redo save search server share-alt
 sign-out-alt
-stop sun sync-alt table times trash upload user users volume-up wheelchair
+stop sun sync-alt table times trash upload user users volume-mute volume-up wheelchair
 """.split()
 
 

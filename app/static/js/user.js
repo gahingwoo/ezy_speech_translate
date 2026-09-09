@@ -677,7 +677,7 @@ async function loadBiblePanel(card, refs) {
     const when = card.querySelector('.card-time');
     try {
         const enriched = await _fetchBibleVerses(refs, tgt);
-        if (!enriched || !enriched.length) return;
+        if (!enriched || !enriched.length) { speakDeferred(card); return; }
         // The lookup rebuilds each ref around the verse text and drops what it
         // did not ask about — including `match`, which is the whole of how the
         // page decides whether to show a verse at all. Put the detector's own
@@ -698,7 +698,7 @@ async function loadBiblePanel(card, refs) {
         // verses are shown in the stream: switching them off is a reading
         // preference, not an instruction to forget the readings.
         merged.forEach(ref => addToScripture(ref, when ? when.textContent : ''));
-        if (!showBibleVerse) return;
+        if (!showBibleVerse) { speakDeferred(card); return; }
         // The lookup takes a few hundred milliseconds, and a line that arrives
         // while the speaker is talking can be re-rendered inside that window —
         // the row this was called with is then detached, and the verse used to
@@ -707,9 +707,13 @@ async function loadBiblePanel(card, refs) {
         const live = card.isConnected
             ? card
             : (card.id ? document.getElementById(card.id) : null);
+        // Whatever happens, a line held back for a verse gets read: nothing
+        // may be worse than the wrong thing, but silence is worse than both.
         if (live) attachBiblePanel(live, merged);
+        else speakDeferred(card);
     } catch (e) {
         console.warn('loadBiblePanel failed:', e);
+        speakDeferred(card);
     }
 }
 
@@ -826,6 +830,9 @@ function attachBiblePanel(card, refs) {
     // Anything doubtful is offered instead, on one quiet line under the row.
     refs.filter(r => r.match === 'offer' || r.match === 'cited')
         .forEach(r => text.appendChild(buildOffer(r)));
+
+    // The row has settled: read it now if reading it was held back.
+    speakDeferred(card);
 }
 
 /* Did the speaker say anything besides the reference?
@@ -846,6 +853,51 @@ function saidNothingElse(card, ref) {
         .trim();
     const words = rest.split(/\s+/).filter(Boolean);
     return words.length < 3;
+}
+
+/* What the play button on a row reads out. A row whose line was a reference
+   has the verse put in place of it on screen, but the button kept the words
+   that were transcribed — so pressing play on "For God so loved the world"
+   said "john 3:16 to 18" instead, and with reading aloud on that reference
+   was spoken before the next line's own words. The button says what the row
+   says. */
+function setRowSpeech(card, text) {
+    const btn = card && card.querySelector('.tts-icon');
+    if (btn && text) btn.setAttribute('data-text', text);
+    // Once a row reads a verse, the background translation landing later must
+    // not put the transcribed reference back on the button.
+    if (card && text) card.setAttribute('data-speaks-verse', '1');
+}
+
+/* A line that carries a reference is not read aloud when it arrives: the
+   lookup takes a second or two, and by the time it lands the row may be
+   showing the verse instead of the words that were transcribed. Speaking
+   immediately meant hearing "john 3:16 to 18" and then, on the next line, the
+   sermon going on without the verse ever being read. The row is marked, and
+   whatever it settles on is spoken once the lookup is done. */
+function deferSpeech(card) {
+    if (card) card.setAttribute('data-await-verse', '1');
+}
+
+function speakDeferred(card) {
+    if (!card || card.getAttribute('data-await-verse') !== '1') return;
+    card.removeAttribute('data-await-verse');
+    if (!ttsEnabled || displayMode === 'transcription') return;
+    const btn = card.querySelector('.tts-icon');
+    const text = btn && btn.getAttribute('data-text');
+    if (text) speakText(text, true);
+}
+
+/* Is this line nothing but a reference, so that the verse will take its
+   place? The speak sites need to know before the lookup comes back. */
+function willBecomeVerse(data) {
+    return !!(showBibleVerse && bibleFeatureAvailable
+              && data && data.bible_refs && data.bible_refs.length);
+}
+
+function verseSpeech(slot) {
+    return slot.verses.map(function (v) { return tidyVerseText(v.text); })
+        .join(' ').trim();
 }
 
 /* The verse under the translation rather than in place of it, for a line that
@@ -884,6 +936,7 @@ function substituteVerse(card, text, ref) {
         verse.insertAdjacentElement('afterend', buildShowAll(ref, slot.verses.length));
     }
 
+    setRowSpeech(card, verseSpeech(slot));
     writeVerseTag(card, ref, both);
 }
 
@@ -1645,11 +1698,14 @@ function loadSettings() {
     // Load TTS enabled state
     if (savedTTSEnabled !== null) {
         ttsEnabled = savedTTSEnabled === 'true';
-        const box = document.getElementById('toggleTTS');
-        if (box) box.checked = ttsEnabled;
-        syncTTSQuickToggle();
         console.log('Loaded TTS enabled state:', ttsEnabled);
     }
+    // Unconditionally: the masthead icon says which state it is in, and with
+    // nothing stored yet it would otherwise keep the speaking icon while
+    // silent.
+    const ttsBox = document.getElementById('toggleTTS');
+    if (ttsBox) ttsBox.checked = ttsEnabled;
+    syncTTSQuickToggle();
 
     // Load TTS engine preference
     if (savedTTSEngine && (savedTTSEngine === 'system' || savedTTSEngine === 'edge')) {
@@ -3426,10 +3482,19 @@ async function speakTextEdge(text) {
 function syncTTSQuickToggle() {
     const quick = document.getElementById('ttsQuickToggle');
     if (!quick) return;
-    // pf-m-selected is not a PatternFly button state, so pressing this changed
-    // nothing anyone could see and the button read as dead. aria-pressed is
-    // the state, and user.css colours the button from it.
+    /* PatternFly does have a pressed look for a plain button: pf-m-clicked,
+       which is what its own masthead toggles use. What was here instead was a
+       grey box and a blue icon written by hand, a combination belonging to no
+       state in the design system, and beside five plain black icons it read as
+       a button stuck under the cursor rather than a switch that is on.
+
+       The plate is quiet by design, so the icon carries the state as well: a
+       speaker with waves when it is reading, a crossed-out one when it is
+       not. That is the same signal every media player gives, and it does not
+       depend on telling two shades of grey apart. */
+    quick.classList.toggle('pf-m-clicked', ttsEnabled);
     quick.setAttribute('aria-pressed', String(ttsEnabled));
+    quick.innerHTML = svgIcon(ttsEnabled ? 'volume-up' : 'volume-mute');
     const label = ttsEnabled
         ? t('textToSpeechOff', 'Stop reading aloud')
         : t('textToSpeech', 'Read aloud');
@@ -3945,7 +4010,9 @@ async function processPendingTranslations() {
         
         // Only speak the latest one (translation mode only)
         if (ttsEnabled && displayMode !== 'transcription' && i === 0 && data.translated) {
-            speakText(data.translated, true);
+            const row = document.getElementById('translation-' + data.id);
+            if (willBecomeVerse(data)) deferSpeech(row);
+            else speakText(data.translated, true);
         }
         
         // Small delay between items to avoid UI freeze and rate limits
@@ -4577,12 +4644,14 @@ async function translateInBackground(item, itemId, textEl) {
             } catch (e) {}
             // Update TTS button data
             const ttsBtn = elem2.querySelector('.tts-icon');
-            if (ttsBtn) {
+            if (ttsBtn && elem2.getAttribute('data-speaks-verse') !== '1') {
                 ttsBtn.setAttribute('data-text', item.translated);
             }
             
             // Auto-play translated text if TTS is enabled (translation mode only)
-            if (ttsEnabled && displayMode !== 'transcription' && item.translated) {
+            if (ttsEnabled && displayMode !== 'transcription' && item.translated
+                    && elem2.getAttribute('data-await-verse') !== '1'
+                    && elem2.getAttribute('data-speaks-verse') !== '1') {
                 console.log('Auto-playing translation via TTS');
                 speakText(item.translated, true);
             }
@@ -5446,7 +5515,7 @@ function setupSocketEventListeners() {
                     const actions = tempCard.querySelector('.card-actions');
                     if (actions) {
                         actions.innerHTML = '<button class="copy-btn" id="copy-btn-' + data.id + '" data-translation-id="' + data.id + '" onclick="copyTranslationFromButton(this)" title="Copy"><span>' + svgIcon('copy') + '</span></button>' +
-                            '<button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="" title="Speak">' + svgIcon('volume-up') + '</button>';
+                            '<button class="tts-icon" onclick="speakText(this.getAttribute(\'data-text\'))" data-text="' + escapeHtml(data.translated || data.corrected || data.original || '') + '" title="Speak">' + svgIcon('volume-up') + '</button>';
                     }
 
                     // Add to translations array
@@ -5467,7 +5536,10 @@ function setupSocketEventListeners() {
                     }
 
                     // Queue auto-TTS playback (translation mode only)
-                    if (ttsEnabled && displayMode !== 'transcription' && data.translated) speakText(data.translated, true);
+                    if (ttsEnabled && displayMode !== 'transcription' && data.translated) {
+                        if (willBecomeVerse(data)) deferSpeech(tempCard);
+                        else speakText(data.translated, true);
+                    }
                     return;
                 }
             }

@@ -16,15 +16,6 @@
  */
 
 
-/* A plain icon button that is a switch needs to look switched: PatternFly has
-   no "pressed" modifier for a plain button, so the state is read from
-   aria-pressed, which is where it belongs anyway. */
-.masthead-action[aria-pressed="true"] {
-  color: var(--pf-t--global--icon--color--brand--default);
-  background: var(--pf-t--global--background--color--action--plain--clicked);
-  border-radius: var(--pf-t--global--border--radius--small);
-}
-
 /* ── page ─────────────────────────────────────────────────────────────── */
 
 /* PatternFly sets `display` on its components, and any author rule beats the

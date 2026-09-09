@@ -42,7 +42,7 @@ def btn_icon(name):
 SPRITE_ICONS = ("book", "bullhorn", "check", "check-circle", "copy", "edit",
                 "exclamation-circle", "exclamation-triangle", "globe",
                 "info-circle", "keyboard", "microphone", "search", "times",
-                "volume-up", "wheelchair")
+                "volume-mute", "volume-up", "wheelchair")
 
 
 def sprite():
