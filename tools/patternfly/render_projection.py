@@ -188,6 +188,13 @@ def build():
       <span class="proj-top-end">
         <span class="proj-lang" id="projLang"></span>
         <span class="proj-clock" id="projClock">--:--:--</span>
+        <!-- The only thing on the screen anyone is meant to press, and only
+             before the service. It is nearly invisible until the pointer or
+             the keyboard finds it: a room should not spend an hour looking at
+             a control it is not going to use. -->
+        <button class="pf-v6-c-button pf-m-plain proj-setup-open" type="button"
+                id="projSetupOpen" data-i18n-title="settings" title="Settings"
+                aria-label="Set up this screen" onclick="openSetup()">%(cog)s</button>
       </span>
     </div>
 
@@ -221,7 +228,7 @@ def build():
 </body>
 
 </html>
-''' % {"setup": setup_wizard()}
+''' % {"setup": setup_wizard(), "cog": icon("cog")}
 
 
 if __name__ == "__main__":

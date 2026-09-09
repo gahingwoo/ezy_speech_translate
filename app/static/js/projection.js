@@ -46,6 +46,10 @@ const CONFIGURED = !!(params.get('room') || params.get('lang')
 let recent = [];
 let socket = null;
 
+/* What the speaker is speaking. Assumed English until a line says otherwise,
+   which is what the room is told at the top of the screen. */
+let sourceLang = 'en';
+
 const el = id => document.getElementById(id);
 
 /* ── the clock ────────────────────────────────────────────────────────────
@@ -106,6 +110,25 @@ function showVerse(ref) {
     el('projVerse').hidden = false;
 }
 
+/* ── the language pair ────────────────────────────────────────────────────
+   Which language is going in and which is coming out. When they are the same
+   there is no translation happening and nothing to say about it: "English →
+   English" is a label for a machine that is doing nothing, and the room does
+   not need to read it for an hour. */
+let LANG_NAMES = {};
+
+function paintLangPair() {
+    const label = el('projLang');
+    if (!label) return;
+    if (!LANG || sameLanguage(sourceLang, LANG)) {
+        label.textContent = '';
+        return;
+    }
+    const from = LANG_NAMES[sourceLang] || sourceLang;
+    const to = LANG_NAMES[LANG] || LANG;
+    label.textContent = from + ' \u2192 ' + to;
+}
+
 /* ── the foot ─────────────────────────────────────────────────────────────
    The address to read along at, and how many languages are waiting there.
    This is the only part of the screen anyone in the room can act on. */
@@ -151,6 +174,11 @@ function connect() {
     });
 
     socket.on('new_translation', async data => {
+        const said = data.source_language || data.language || '';
+        if (said && said !== sourceLang) {
+            sourceLang = said;
+            paintLangPair();
+        }
         const source = data.corrected || data.original || '';
         let text = source;
         if (LANG && !sameLanguage(data.source_language || data.language || 'en', LANG)) {
@@ -292,7 +320,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     hi: 'हिन्दी', th: 'ไทย', vi: 'Tiếng Việt', id: 'Bahasa Indonesia',
                     ms: 'Bahasa Melayu', tl: 'Tagalog', sm: 'Gagana Samoa',
                     to: 'Lea faka-Tonga', mi: 'Te Reo Māori' };
-    el('projLang').textContent = LANG ? 'English → ' + (names[LANG] || LANG) : '';
+    LANG_NAMES = names;
+    paintLangPair();
     el('projRoom').textContent = ROOM === 'main' ? 'EzySpeech' : ROOM;
     paintFoot(Object.keys(names).filter(c => c !== 'en').map(c => names[c]));
     tickClock();

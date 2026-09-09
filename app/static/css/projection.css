@@ -103,3 +103,25 @@ body {
   color: var(--pf-t--global--text--color--subtle);
 }
 
+
+/* The one control on the screen. A room reads this wall for an hour, so the
+   gear waits at the edge of visible until someone goes looking for it; the
+   pointer, the keyboard and a finger all bring it back. */
+.proj-setup-open {
+  --pf-v6-c-button--m-plain--Color: var(--pf-t--global--icon--color--subtle);
+  opacity: 0.25;
+  transition: opacity var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--default);
+}
+
+.proj-setup-open:hover,
+.proj-setup-open:focus-visible,
+.proj-top:hover .proj-setup-open {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proj-setup-open {
+    transition-duration: 1ms;
+  }
+}

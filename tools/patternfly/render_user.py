@@ -1653,8 +1653,16 @@ def build():
       });
       const reading = document.getElementById('readingLangName');
       if (reading) reading.textContent = name;
+      // Nothing is being translated when the reading language is the one
+      // being spoken, so there is no pair to show: "English → English" names
+      // a machine doing nothing, and it sat under the heading all service.
       const subtitle = document.getElementById('mainSubtitle');
-      if (subtitle) subtitle.textContent = entry ? 'English → ' + entry.native : '';
+      if (subtitle) {
+        const speaking = 'en';
+        subtitle.textContent = (entry && !sameLanguage(speaking, code))
+          ? 'English \u2192 ' + entry.native
+          : '';
+      }
       const tts = document.getElementById('readingTtsState');
       if (tts) {
         const on = localStorage.getItem('ttsEnabled') === 'true';
