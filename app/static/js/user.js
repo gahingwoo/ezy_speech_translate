@@ -117,6 +117,26 @@ const TTS_DOUBLE_TAP_THRESHOLD = 500;  // 500ms window for double-tap detection
 // Use shared translations provided by /static/js/i18n.js
 const i18n = window.sharedI18n || {};
 let displayLanguage = localStorage.getItem('displayLanguage') || detectDisplayLanguageLocal();
+
+/* i18n.js resolves the language for everything carrying data-i18n and records
+   it as window._displayLanguage. This file kept a second copy, and the reading
+   language — set from the wizard, the dialog or a URL parameter — went through
+   the shared runtime without touching it. So the markup translated and
+   everything the script writes did not: the whole guide, the empty states, the
+   toasts, all still in the language the page had loaded in. Wrapping the one
+   funnel keeps the copy in step, whoever calls it. */
+(function () {
+    const shared = window.applyDisplayLanguage;
+    if (typeof shared !== 'function' || shared.__syncsLocal) return;
+    const wrapped = function () {
+        shared.apply(this, arguments);
+        const resolved = window._displayLanguage;
+        if (resolved && i18n[resolved]) displayLanguage = resolved;
+        return resolved;
+    };
+    wrapped.__syncsLocal = true;
+    window.applyDisplayLanguage = wrapped;
+})();
 let displayMode = localStorage.getItem('displayMode') || 'translation';
 let targetLang = localStorage.getItem('targetLang') || 'en';
 let showSourceText = localStorage.getItem('showSourceText') !== 'false';  // Default true, unless explicitly set to false
@@ -2529,9 +2549,15 @@ function __renderTour() {
     }
     if (progEl) progEl.textContent = (__tourStep + 1) + ' / ' + total;
     if (prevBtn) prevBtn.disabled = (__tourStep === 0);
-    if (nextBtn) nextBtn.textContent = (__tourStep === total - 1)
-        ? t('tour_done', 'Done')
-        : t('tour_next', 'Next');
+    if (nextBtn) {
+        // Writing to the button flattened PatternFly's markup: the text span
+        // it carries is what the button lays out, and its data-i18n key is
+        // what re-translates it when the reading language changes.
+        const label = nextBtn.querySelector('.pf-v6-c-button__text') || nextBtn;
+        const last = __tourStep === total - 1;
+        label.setAttribute('data-i18n', last ? 'tour_done' : 'tour_next');
+        label.textContent = last ? t('tour_done', 'Done') : t('tour_next', 'Next');
+    }
 }
 function showTour() {
     __tourStep = 0;

@@ -536,13 +536,19 @@ def setup_wizard():
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">%s</p>
             <form class="pf-v6-c-form" onsubmit="return false;">
               <div class="pf-v6-c-form__group">
+                <!-- PatternFly's switch is a grid whose every state rule reads
+                     input ~ toggle and input ~ label: the toggle and the label
+                     have to be the input's siblings. Nested inside a label, as
+                     this was, the grid had one child so the column gap never
+                     appeared and the word sat against the toggle, and nothing
+                     could match the checked state either. -->
                 <div class="pf-v6-c-switch">
                   <input class="pf-v6-c-switch__input" type="checkbox" id="setupTTS"
-                         onchange="setupToggleTTS(this.checked)">
-                  <label class="pf-v6-c-switch__label" for="setupTTS">
-                    <span class="pf-v6-c-switch__toggle"></span>
-                    <span data-i18n="enableTTS">Enable TTS</span>
-                  </label>
+                         onchange="setupToggleTTS(this.checked)"
+                         aria-labelledby="setupTTS-label">
+                  <span class="pf-v6-c-switch__toggle"></span>
+                  <label class="pf-v6-c-switch__label" for="setupTTS" id="setupTTS-label"
+                         data-i18n="enableTTS">Read aloud</label>
                 </div>
               </div>
             </form>

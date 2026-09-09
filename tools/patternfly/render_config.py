@@ -72,11 +72,13 @@ def control(path, kind, options):
     el_id, data = field_id(path), ' data-config-path="%s"' % path
 
     if kind == "switch":
+        # PatternFly's switch states are all written input ~ toggle, so the
+        # toggle has to be the input's sibling. Wrapped in the label, as this
+        # was, none of them could match and the switch never showed itself on.
         return ('''          <div class="pf-v6-c-switch">
             <input class="pf-v6-c-switch__input" type="checkbox" id="%s"%s>
-            <label class="pf-v6-c-switch__label" for="%s">
-              <span class="pf-v6-c-switch__toggle"></span>
-            </label>
+            <span class="pf-v6-c-switch__toggle"></span>
+            <label class="pf-v6-c-switch__label" for="%s"></label>
           </div>''' % (el_id, data, el_id))
 
     if kind == "select":
