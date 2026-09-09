@@ -55,18 +55,28 @@ def sprite():
             '%s\n  </svg>\n' % "\n".join(parts))
 
 
-def form_group(label_text, i18n_key, control, for_id=None, group_id=None, help=None):
+def form_group(label_text, i18n_key, control, for_id=None, group_id=None, help=None,
+               help_key=None):
     """PatternFly form group: label above, control below, and an optional hint
     in the label's help slot."""
     label = ""
     if label_text is not None:
         help_button = ""
         if help:
+            # A tooltip appears on hover, and a phone has no hover: the
+            # help this button carried could not be read at all on the
+            # devices most listeners use, and clicking it did nothing.
+            # PatternFly opens label help in a popover, which is a dialog:
+            # it opens on click, stays until dismissed, and can be read by
+            # a thumb.
             help_button = (
                 '            <span class="pf-v6-c-form__group-label-help">\n'
                 '              <button class="pf-v6-c-button pf-m-plain" type="button"\n'
-                '                      aria-label="%s" data-tooltip="%s">%s</button>\n'
-                '            </span>\n' % (help, help, icon("info-circle")))
+                '                      aria-label="%s" aria-expanded="false"\n'
+                '                      data-popover="%s"%s>%s</button>\n'
+                '            </span>\n' % (help, help,
+                                            ' data-popover-i18n="%s"' % help_key if help_key else "",
+                                            icon("info-circle")))
         label = ('        <div class="pf-v6-c-form__group-label">\n'
                  '          <div class="pf-v6-c-form__group-label-main">\n'
                  '            <label class="pf-v6-c-form__label"%s>\n'
@@ -530,7 +540,7 @@ def setup_wizard():
                   select("setupTargetLanguage", "setupApply(\'targetLang\', this.value)",
                          "Reading language", LANGS), "setupTargetLanguage",
                   help="The sermon is translated into this, and the buttons and "
-                       "headings follow it.")),
+                       "headings follow it.", help_key="help_reading")),
 
         '''          <div class="pf-v6-c-wizard__main-body setup-step" id="setup-speech" hidden>
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">%s</p>
@@ -705,15 +715,15 @@ def build():
         form_group("The page itself", "pageItself",
                    page_follows_reading(),
                    "keepPageEnglishSetting",
-                   help="The buttons and headings follow the language you are reading in."),
+                   help="The buttons and headings follow the language you are reading in.", help_key="help_uiLanguage"),
         form_group("Display Mode", "displayMode",
                    select("displayMode", "changeDisplayMode()", "Select display mode",
                           '<option value="translation" data-i18n="translation">Translation</option>'
                           '<option value="transcription" data-i18n="transcriptionOnly">Transcription</option>'),
-                   "displayMode", help="Translation shows what the speaker said in your language. Transcription shows their own words."),
+                   "displayMode", help="Translation shows what the speaker said in your language. Transcription shows their own words.", help_key="help_displayMode"),
         form_group("Target Language", "targetLanguage",
                    select("targetLang", "changeLanguage()", "Select target language", LANGS),
-                   "targetLang", group_id="languageSelectGroup", help="The language every line is translated into."),
+                   "targetLang", group_id="languageSelectGroup", help="The language every line is translated into.", help_key="help_targetLang"),
     ))
 
     # Text to speech
@@ -732,7 +742,7 @@ def build():
                    select("ttsEngine", "changeTTSEngine()", "Select TTS engine",
                           '<option value="system" data-i18n="tts_system">System (Local)</option>'
                           '<option value="edge" data-i18n="tts_edge">Edge (Server)</option>'),
-                   "ttsEngine", help="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection."),
+                   "ttsEngine", help="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection.", help_key="help_ttsEngine"),
         form_group("Voice", "voice",
                    select("voiceSelect", "changeVoice()", "Select voice",
                           '<option value="" data-i18n="tts_autoVoice">Auto (System Default)</option>'),
@@ -741,12 +751,12 @@ def build():
                    slider("rateSlider", "1", '<span id="rateValue">&times;</span>',
                           "Speech rate", "updateRate()", step="0.1",
                           minimum="0.5", maximum="2"),
-                   "rateSlider", help="How fast the voice reads. 1 is its normal pace."),
+                   "rateSlider", help="How fast the voice reads. 1 is its normal pace.", help_key="help_rate"),
         form_group("Volume", "volume",
                    slider("volumeSlider", "100", '<span id="volumeValue">%</span>',
                           "Speech volume", "updateVolume()", step="5",
                           minimum="0", maximum="100"),
-                   "volumeSlider", help="How loud the voice reads, as a percentage of the device volume."),
+                   "volumeSlider", help="How loud the voice reads, as a percentage of the device volume.", help_key="help_volume"),
     ))
 
     # Export
@@ -773,7 +783,7 @@ def build():
                           '<option value="json" data-i18n="format_json">JSON</option>'
                           '<option value="csv" data-i18n="format_csv">CSV</option>'
                           '<option value="srt" data-i18n="format_srt">Subtitle (SRT)</option>'),
-                   "exportFormat", help="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording."),
+                   "exportFormat", help="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording.", help_key="help_exportFormat"),
         btn_icon("copy"),
         btn_icon("download"),
         sidebar_button("ai-summary-btn", "shareForAI('chatgpt')", "Share for AI", "share-alt",
@@ -792,12 +802,12 @@ def build():
                           '<option value="standard" data-i18n="uiMode_standard">Standard</option>'
                           '<option value="accessibility" data-i18n="uiMode_accessibility">Accessibility</option>'
                           '<option value="elderly" data-i18n="uiMode_elderly">Elderly</option>'),
-                   "uiMode", help="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further."),
+                   "uiMode", help="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further.", help_key="help_uiMode"),
         form_group("Font Size", "fontSize",
                    slider("fontSizeSlider", "18", '<span id="fontSizeValue">px</span>',
                           "Translation font size", "updateFontSize()",
                           step="1", minimum="12", maximum="24"),
-                   "fontSizeSlider", help="The size of the translated line, in pixels."),
+                   "fontSizeSlider", help="The size of the translated line, in pixels.", help_key="help_fontSize"),
         sidebar_button("sourceTextToggle", "toggleSourceText()", "Toggle source text display",
                        "book", "sourceTextText", "Show Source"),
         ('      <div class="pf-v6-c-form__group">\n'
@@ -828,7 +838,7 @@ def build():
                    select("bibleTargetTranslation", "onBibleTranslationChange()",
                           "Select Bible translation for your language",
                           '<option value="" data-i18n="bibleLoading">— Loading... —</option>'),
-                   "bibleTargetTranslation", help="Which Bible the verses are quoted from, in your language."),
+                   "bibleTargetTranslation", help="Which Bible the verses are quoted from, in your language.", help_key="help_bibleTranslation"),
     ))
 
 
@@ -1248,16 +1258,30 @@ def build():
     </div>
   </div>
 
-  <!-- One tooltip for the whole page; anything with data-tooltip borrows it. -->
-  <div class="pf-v6-c-tooltip app-tooltip" id="appTooltip" role="tooltip" hidden>
-    <div class="pf-v6-c-tooltip__arrow"></div>
-    <div class="pf-v6-c-tooltip__content" id="appTooltipText"></div>
-  </div>
-
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
 %(settings)s%(language)s%(passage)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
+
+  <!-- One popover for the whole page; anything carrying data-popover
+       borrows it. It comes after the dialogs: it shares a z-index layer with
+       them, so document order is what puts the help in a dialog above the
+       dialog it explains. -->
+  <!-- One popover, borrowed by anything carrying data-popover, the way the
+       tooltip above is. PatternFly draws it; the page says where and when. -->
+  <div class="pf-v6-c-popover app-popover" id="appPopover" role="dialog"
+       aria-describedby="appPopoverBody" hidden>
+    <div class="pf-v6-c-popover__arrow"></div>
+    <div class="pf-v6-c-popover__content">
+      <div class="pf-v6-c-popover__close">
+        <button class="pf-v6-c-button pf-m-plain" type="button" data-i18n-title="close"
+                title="Close" aria-label="Close"
+                onclick="hidePopover()">%(times_plain)s</button>
+      </div>
+      <div class="pf-v6-c-popover__body" id="appPopoverBody"></div>
+    </div>
+  </div>
+
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
           aria-label="Scroll to top" onclick="scrollToTop()">%(expand)s</button>
 
@@ -1299,56 +1323,72 @@ def build():
     const SETUP_STEPS = ['language', 'speech', 'done'];
     let setupStep = 0;
 
-    /* One tooltip, borrowed by anything carrying data-tooltip. PatternFly
-       draws it; this only says where to put it and when. */
+    /* The same idea for the label help, which is a popover rather than a
+       tooltip: a dialog that opens on a click and stays until it is
+       dismissed. A tooltip needs a pointer to hover, and the listeners this
+       page is for are holding phones. */
     (function () {
-      const tip = () => document.getElementById('appTooltip');
+      const box = () => document.getElementById('appPopover');
       let anchor = null;
 
       function place() {
-        const box = tip();
-        if (!anchor || !box) return;
+        const pop = box();
+        if (!anchor || !pop) return;
         const a = anchor.getBoundingClientRect();
-        const b = box.getBoundingClientRect();
+        const b = pop.getBoundingClientRect();
         const above = a.top > b.height + 12;
-        box.classList.toggle('pf-m-top', above);
-        box.classList.toggle('pf-m-bottom', !above);
-        box.style.top = (above ? a.top - b.height - 8 : a.bottom + 8) + 'px';
-        box.style.left =
+        pop.classList.toggle('pf-m-top', above);
+        pop.classList.toggle('pf-m-bottom', !above);
+        pop.style.insetBlockStart =
+          (above ? a.top - b.height - 8 : a.bottom + 8) + 'px';
+        pop.style.insetInlineStart =
           Math.min(Math.max(8, a.left + a.width / 2 - b.width / 2),
                    window.innerWidth - b.width - 8) + 'px';
       }
 
-      function show(el) {
-        const box = tip();
-        if (!box) return;
-        anchor = el;
-        document.getElementById('appTooltipText').textContent = el.dataset.tooltip;
-        box.hidden = false;
-        place();
-      }
-
-      function hide() {
-        const box = tip();
+      function hidePopover() {
+        const pop = box();
+        if (anchor) anchor.setAttribute('aria-expanded', 'false');
         anchor = null;
-        if (box) box.hidden = true;
+        if (pop) pop.hidden = true;
+      }
+      window.hidePopover = hidePopover;
+
+      function show(el) {
+        const pop = box();
+        if (!pop) return;
+        if (anchor === el) { hidePopover(); return; }
+        hidePopover();
+        anchor = el;
+        // The text is looked up every time it opens, so it is in whatever
+        // language is being read now rather than the one the page loaded in.
+        const key = el.dataset.popoverI18n;
+        const table = window.sharedI18n || {};
+        const lang = window._displayLanguage;
+        document.getElementById('appPopoverBody').textContent =
+          (key && table[lang] && table[lang][key])
+          || (key && table.en && table.en[key])
+          || el.dataset.popover;
+        el.setAttribute('aria-expanded', 'true');
+        pop.hidden = false;
+        place();
+        pop.querySelector('.pf-v6-c-popover__close button').focus();
       }
 
-      ['mouseover', 'focusin'].forEach(function (type) {
-        document.addEventListener(type, function (e) {
-          const el = e.target.closest && e.target.closest('[data-tooltip]');
-          if (el) show(el);
-        });
-      });
-      ['mouseout', 'focusout'].forEach(function (type) {
-        document.addEventListener(type, function (e) {
-          if (e.target.closest && e.target.closest('[data-tooltip]')) hide();
-        });
+      document.addEventListener('click', function (e) {
+        const el = e.target.closest && e.target.closest('[data-popover]');
+        if (el) { e.preventDefault(); show(el); return; }
+        if (anchor && !e.target.closest('#appPopover')) hidePopover();
       });
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') hide();
+        if (e.key === 'Escape' && anchor) {
+          const el = anchor;
+          hidePopover();
+          el.focus();
+        }
       });
-      window.addEventListener('scroll', hide, true);
+      window.addEventListener('resize', hidePopover);
+      window.addEventListener('scroll', hidePopover, true);
     })();
 
     /* PatternFly's slider is markup plus a --value custom property; the drag,

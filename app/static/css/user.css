@@ -470,16 +470,6 @@ html.pf-v6-theme-dark .icon-moon {
   align-items: center;
 }
 
-/* ── tooltip ──────────────────────────────────────────────────────────── */
-/* PatternFly draws it; the page owns one and moves it to whatever is hovered. */
-
-.app-tooltip {
-  position: fixed;
-  z-index: var(--pf-t--global--z-index--2xl);
-  max-width: 20rem;
-  pointer-events: none;
-}
-
 /* ── settings dialog ──────────────────────────────────────────────────── */
 /* PatternFly's vertical tabs put the list beside the panel, and the two are
    siblings, so the dialog body is the row that holds them. Below md there is
@@ -807,3 +797,12 @@ html[data-ui-mode="elderly"] .text-source {
   }
 }
 
+
+/* The shared popover the label help opens, placed by the page the way the
+   shared tooltip above it is. Unlike the tooltip it takes clicks: it is a
+   dialog with a close button in it. */
+.app-popover {
+  position: fixed;
+  z-index: var(--pf-t--global--z-index--2xl);
+  max-width: min(22rem, calc(100vw - 1rem));
+}

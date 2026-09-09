@@ -390,12 +390,6 @@
     </div>
   </div>
 
-  <!-- One tooltip for the whole page; anything with data-tooltip borrows it. -->
-  <div class="pf-v6-c-tooltip app-tooltip" id="appTooltip" role="tooltip" hidden>
-    <div class="pf-v6-c-tooltip__arrow"></div>
-    <div class="pf-v6-c-tooltip__content" id="appTooltipText"></div>
-  </div>
-
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
@@ -488,7 +482,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="The buttons and headings follow the language you are reading in." data-tooltip="The buttons and headings follow the language you are reading in."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="The buttons and headings follow the language you are reading in." aria-expanded="false"
+                      data-popover="The buttons and headings follow the language you are reading in." data-popover-i18n="help_uiLanguage"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -510,7 +505,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="Translation shows what the speaker said in your language. Transcription shows their own words." data-tooltip="Translation shows what the speaker said in your language. Transcription shows their own words."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="Translation shows what the speaker said in your language. Transcription shows their own words." aria-expanded="false"
+                      data-popover="Translation shows what the speaker said in your language. Transcription shows their own words." data-popover-i18n="help_displayMode"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -531,7 +527,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="The language every line is translated into." data-tooltip="The language every line is translated into."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="The language every line is translated into." aria-expanded="false"
+                      data-popover="The language every line is translated into." data-popover-i18n="help_targetLang"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -567,7 +564,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection." data-tooltip="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection." aria-expanded="false"
+                      data-popover="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection." data-popover-i18n="help_ttsEngine"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -605,7 +603,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="How fast the voice reads. 1 is its normal pace." data-tooltip="How fast the voice reads. 1 is its normal pace."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="How fast the voice reads. 1 is its normal pace." aria-expanded="false"
+                      data-popover="How fast the voice reads. 1 is its normal pace." data-popover-i18n="help_rate"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -637,7 +636,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="How loud the voice reads, as a percentage of the device volume." data-tooltip="How loud the voice reads, as a percentage of the device volume."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="How loud the voice reads, as a percentage of the device volume." aria-expanded="false"
+                      data-popover="How loud the voice reads, as a percentage of the device volume." data-popover-i18n="help_volume"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -685,7 +685,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="Which Bible the verses are quoted from, in your language." data-tooltip="Which Bible the verses are quoted from, in your language."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="Which Bible the verses are quoted from, in your language." aria-expanded="false"
+                      data-popover="Which Bible the verses are quoted from, in your language." data-popover-i18n="help_bibleTranslation"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -719,7 +720,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording." data-tooltip="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording." aria-expanded="false"
+                      data-popover="TXT and SRT are plain text. JSON and CSV keep the timings and the original wording." data-popover-i18n="help_exportFormat"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -776,7 +778,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further." data-tooltip="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further." aria-expanded="false"
+                      data-popover="Accessibility enlarges the text and the tap targets. Elderly enlarges everything further." data-popover-i18n="help_uiMode"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -797,7 +800,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="The size of the translated line, in pixels." data-tooltip="The size of the translated line, in pixels."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="The size of the translated line, in pixels." aria-expanded="false"
+                      data-popover="The size of the translated line, in pixels." data-popover-i18n="help_fontSize"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -1111,7 +1115,8 @@
           </div>
             <span class="pf-v6-c-form__group-label-help">
               <button class="pf-v6-c-button pf-m-plain" type="button"
-                      aria-label="The sermon is translated into this, and the buttons and headings follow it." data-tooltip="The sermon is translated into this, and the buttons and headings follow it."><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
+                      aria-label="The sermon is translated into this, and the buttons and headings follow it." aria-expanded="false"
+                      data-popover="The sermon is translated into this, and the buttons and headings follow it." data-popover-i18n="help_reading"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></button>
             </span>
         </div>
         <div class="pf-v6-c-form__group-control">
@@ -1216,6 +1221,26 @@
     </div>
   </div>
 
+
+  <!-- One popover for the whole page; anything carrying data-popover
+       borrows it. It comes after the dialogs: it shares a z-index layer with
+       them, so document order is what puts the help in a dialog above the
+       dialog it explains. -->
+  <!-- One popover, borrowed by anything carrying data-popover, the way the
+       tooltip above is. PatternFly draws it; the page says where and when. -->
+  <div class="pf-v6-c-popover app-popover" id="appPopover" role="dialog"
+       aria-describedby="appPopoverBody" hidden>
+    <div class="pf-v6-c-popover__arrow"></div>
+    <div class="pf-v6-c-popover__content">
+      <div class="pf-v6-c-popover__close">
+        <button class="pf-v6-c-button pf-m-plain" type="button" data-i18n-title="close"
+                title="Close" aria-label="Close"
+                onclick="hidePopover()"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></button>
+      </div>
+      <div class="pf-v6-c-popover__body" id="appPopoverBody"></div>
+    </div>
+  </div>
+
   <button class="pf-v6-c-button pf-m-primary scroll-to-top" type="button" id="scrollToTopBtn"
           aria-label="Scroll to top" onclick="scrollToTop()"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 320 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M143 352.3L7 216.3c-9.4-9.4-9.4-24.6 0-33.9l22.6-22.6c9.4-9.4 24.6-9.4 33.9 0l96.4 96.4 96.4-96.4c9.4-9.4 24.6-9.4 33.9 0l22.6 22.6c9.4 9.4 9.4 24.6 0 33.9l-136 136c-9.2 9.4-24.4 9.4-33.8 0z"/></svg></span></button>
 
@@ -1257,56 +1282,72 @@
     const SETUP_STEPS = ['language', 'speech', 'done'];
     let setupStep = 0;
 
-    /* One tooltip, borrowed by anything carrying data-tooltip. PatternFly
-       draws it; this only says where to put it and when. */
+    /* The same idea for the label help, which is a popover rather than a
+       tooltip: a dialog that opens on a click and stays until it is
+       dismissed. A tooltip needs a pointer to hover, and the listeners this
+       page is for are holding phones. */
     (function () {
-      const tip = () => document.getElementById('appTooltip');
+      const box = () => document.getElementById('appPopover');
       let anchor = null;
 
       function place() {
-        const box = tip();
-        if (!anchor || !box) return;
+        const pop = box();
+        if (!anchor || !pop) return;
         const a = anchor.getBoundingClientRect();
-        const b = box.getBoundingClientRect();
+        const b = pop.getBoundingClientRect();
         const above = a.top > b.height + 12;
-        box.classList.toggle('pf-m-top', above);
-        box.classList.toggle('pf-m-bottom', !above);
-        box.style.top = (above ? a.top - b.height - 8 : a.bottom + 8) + 'px';
-        box.style.left =
+        pop.classList.toggle('pf-m-top', above);
+        pop.classList.toggle('pf-m-bottom', !above);
+        pop.style.insetBlockStart =
+          (above ? a.top - b.height - 8 : a.bottom + 8) + 'px';
+        pop.style.insetInlineStart =
           Math.min(Math.max(8, a.left + a.width / 2 - b.width / 2),
                    window.innerWidth - b.width - 8) + 'px';
       }
 
-      function show(el) {
-        const box = tip();
-        if (!box) return;
-        anchor = el;
-        document.getElementById('appTooltipText').textContent = el.dataset.tooltip;
-        box.hidden = false;
-        place();
-      }
-
-      function hide() {
-        const box = tip();
+      function hidePopover() {
+        const pop = box();
+        if (anchor) anchor.setAttribute('aria-expanded', 'false');
         anchor = null;
-        if (box) box.hidden = true;
+        if (pop) pop.hidden = true;
+      }
+      window.hidePopover = hidePopover;
+
+      function show(el) {
+        const pop = box();
+        if (!pop) return;
+        if (anchor === el) { hidePopover(); return; }
+        hidePopover();
+        anchor = el;
+        // The text is looked up every time it opens, so it is in whatever
+        // language is being read now rather than the one the page loaded in.
+        const key = el.dataset.popoverI18n;
+        const table = window.sharedI18n || {};
+        const lang = window._displayLanguage;
+        document.getElementById('appPopoverBody').textContent =
+          (key && table[lang] && table[lang][key])
+          || (key && table.en && table.en[key])
+          || el.dataset.popover;
+        el.setAttribute('aria-expanded', 'true');
+        pop.hidden = false;
+        place();
+        pop.querySelector('.pf-v6-c-popover__close button').focus();
       }
 
-      ['mouseover', 'focusin'].forEach(function (type) {
-        document.addEventListener(type, function (e) {
-          const el = e.target.closest && e.target.closest('[data-tooltip]');
-          if (el) show(el);
-        });
-      });
-      ['mouseout', 'focusout'].forEach(function (type) {
-        document.addEventListener(type, function (e) {
-          if (e.target.closest && e.target.closest('[data-tooltip]')) hide();
-        });
+      document.addEventListener('click', function (e) {
+        const el = e.target.closest && e.target.closest('[data-popover]');
+        if (el) { e.preventDefault(); show(el); return; }
+        if (anchor && !e.target.closest('#appPopover')) hidePopover();
       });
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') hide();
+        if (e.key === 'Escape' && anchor) {
+          const el = anchor;
+          hidePopover();
+          el.focus();
+        }
       });
-      window.addEventListener('scroll', hide, true);
+      window.addEventListener('resize', hidePopover);
+      window.addEventListener('scroll', hidePopover, true);
     })();
 
     /* PatternFly's slider is markup plus a --value custom property; the drag,
