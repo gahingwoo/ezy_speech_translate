@@ -408,50 +408,6 @@ html.pf-v6-theme-dark .icon-moon {
   rotate: 180deg;
 }
 
-/* ── setup wizard ─────────────────────────────────────────────────────── */
-/* PatternFly puts a wizard in a modal box (its "within modal" example), which
-   is what every other dialog here already is. The surface, the radius, the
-   shadow and the open animation all come from that; the hand-made box it used
-   to sit in matched none of them, which is most of what made it look cheap. */
-
-.setup-wizard {
-  max-height: 100%;
-  overflow: visible;
-}
-
-/* PatternFly's wizard is a page-height component: inside a modal box it takes
-   the whole height the box is allowed, so one question sat at the top of four
-   hundred empty pixels. Its own height token turns that off; the inner wrap
-   then holds a floor so the box does not resize under the reader as they step
-   through. */
-.setup-wizard .pf-v6-c-wizard {
-  --pf-v6-c-wizard--Height: auto;
-}
-
-.setup-wizard .pf-v6-c-wizard__inner-wrap {
-  min-height: 13rem;
-}
-
-/* Next is the one primary action, and it sits where a reader looks for the way
-   forward: the far end of the row. Back is beside it, the tour is a link at
-   the other end. The spacing is the action list's, not whitespace between
-   inline buttons, which is why the old row looked unevenly set. */
-.setup-wizard .pf-v6-c-wizard__footer > .pf-v6-c-action-list {
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-@media (max-width: 35rem) {
-  .setup-wizard .pf-v6-c-wizard__footer > .pf-v6-c-action-list {
-    justify-content: flex-end;
-  }
-}
-
-.setup-step[hidden] {
-  display: none;
-}
 
 /* PatternFly styles the help button in a form group's label but leaves the
    label a block, so the two stack. They belong on one line. */

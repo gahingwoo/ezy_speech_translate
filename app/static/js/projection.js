@@ -5,9 +5,13 @@
  * before it, and nothing else. It never scrolls — what does not fit is what
  * has already been said.
  *
- * Everything on it is read-only. There is nothing to press, no settings, and
- * no way in to the rest of the app: this is a display, and whoever is running
- * the service should never have to touch it once it is up.
+ * Once it is running there is nothing on it to press: it is a display, and
+ * whoever is leading the service should never have to touch it. Before it is
+ * running it has to be told three things, and it used to be told them by
+ * hand-writing a query string. A wizard asks instead, on a screen that has
+ * never been set up or when someone presses s, and writes its answers into
+ * the address — so a screen can still be set up by pasting a URL, and the two
+ * ways of doing it cannot disagree.
  *
  * Query parameters:
  *   ?room=main     which room to follow (default: main)
@@ -19,9 +23,24 @@
  */
 
 const params = new URLSearchParams(location.search);
-const ROOM = params.get('room') || 'main';
-const LANG = params.get('lang') || '';
-const JOIN = params.get('join') || location.host;
+
+/* The address is what the screen is; anything it does not say is what this
+   screen was told last time. A projector loses power, comes back on the same
+   URL, and has to come back to the same room. */
+function remembered(name) {
+    try { return localStorage.getItem('proj.' + name) || ''; } catch (e) { return ''; }
+}
+
+function setting(name, fallback) {
+    return params.get(name) || remembered(name) || fallback;
+}
+
+const ROOM = setting('room', 'main');
+const LANG = setting('lang', '');
+const JOIN = setting('join', location.host);
+const THEME = setting('theme', 'light');
+const CONFIGURED = !!(params.get('room') || params.get('lang')
+                      || remembered('room') || remembered('lang'));
 
 /* The three lines on the stage, newest last. */
 let recent = [];
@@ -91,7 +110,10 @@ function showVerse(ref) {
    The address to read along at, and how many languages are waiting there.
    This is the only part of the screen anyone in the room can act on. */
 function paintFoot(languageNames) {
-    const dict = (window.sharedI18n || {}).en || {};
+    // The foot is read by the room, so it is in the room's language. It was
+    // pinned to English while everything above it followed the projection.
+    const table = window.sharedI18n || {};
+    const dict = Object.assign({}, table.en || {}, (LANG && table[LANG]) || {});
     const join = document.createElement('span');
     join.textContent = (dict.projJoin || 'Read along in your own language') + ' — ';
     const address = document.createElement('strong');
@@ -110,6 +132,12 @@ function paintFoot(languageNames) {
 /* ── the wire ─────────────────────────────────────────────────────────────
    The same room feed the listeners are on, read-only. */
 function connect() {
+    if (typeof io !== 'function') {
+        // A screen in front of a congregation says nothing about its own
+        // troubles; the log is where this belongs.
+        console.error('projection: socket.io did not load, no feed');
+        return;
+    }
     socket = io({
         transports: ['websocket', 'polling'],
         query: { type: 'user', room: ROOM }
@@ -172,12 +200,92 @@ async function translate(text, target) {
     }
 }
 
+/* ── setup ────────────────────────────────────────────────────────────────
+   The wizard the room never sees. It opens on a screen that has not been set
+   up, and on `s` for a screen that has: whoever is setting a projector up has
+   a keyboard in front of them, and a gear in the corner would be one more
+   thing for the congregation to look at all service. */
+let projSetup = null;
+
+function openSetup() {
+    const modal = el('projSetupModal');
+    if (!modal) return;
+    // The wizard is read in the language the screen projects, not in whatever
+    // this browser last stored for the listener page: the person setting a
+    // projector up in a Cantonese service reads Cantonese.
+    if (window.applyDisplayLanguage) window.applyDisplayLanguage(LANG || 'en');
+    el('projSetupLang').value = LANG || 'en';
+    el('projSetupTheme').value = THEME;
+    el('projSetupJoin').textContent = JOIN;
+    fillRooms();
+    projSetup.show('room');
+    modal.classList.add('active');
+}
+
+function closeSetup() {
+    const modal = el('projSetupModal');
+    if (modal) modal.classList.remove('active');
+}
+
+/* The rooms this server actually has, so nobody has to know a room's id to
+   point a screen at it. If the list cannot be fetched the field keeps Main,
+   which is the room every install starts with. */
+async function fillRooms() {
+    const select = el('projSetupRoom');
+    if (!select) return;
+    try {
+        const res = await fetch('/api/rooms');
+        const data = await res.json();
+        const rooms = (data && data.rooms) || [];
+        if (!rooms.length) return;
+        select.textContent = '';
+        rooms.forEach(function (room) {
+            const option = document.createElement('option');
+            option.value = room.room_id;
+            option.textContent = room.display_name || room.room_id;
+            select.appendChild(option);
+        });
+    } catch (err) {
+        console.warn('room list unavailable', err);
+    }
+    select.value = ROOM;
+}
+
+/* Answers go to both places: stored, so the screen comes back to itself after
+   a power cut, and into the address, so what is on screen is what the URL
+   says and a second screen can be set up by copying it. */
+function applySetup() {
+    const room = el('projSetupRoom').value || 'main';
+    const lang = el('projSetupLang').value || '';
+    const theme = el('projSetupTheme').value || 'light';
+    try {
+        localStorage.setItem('proj.room', room);
+        localStorage.setItem('proj.lang', lang);
+        localStorage.setItem('proj.theme', theme);
+    } catch (e) {}
+    const url = new URL(location.href);
+    url.searchParams.set('room', room);
+    url.searchParams.set('lang', lang);
+    url.searchParams.set('theme', theme);
+    url.searchParams.delete('setup');
+    location.href = url.toString();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    if (params.get('theme') === 'dark') {
+    if (THEME === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
         document.documentElement.classList.add('pf-v6-theme-dark');
         document.body.setAttribute('data-theme', 'dark');
     }
+    projSetup = Wizard('projSetup', ['room', 'language', 'look', 'done'], applySetup);
+    window.projSetup = projSetup;
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeSetup(); return; }
+        // Not while a field has the caret: s is a letter before it is a key.
+        const tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        if (e.key === 's' || e.key === 'S') openSetup();
+    });
     const names = { en: 'English', zh: '简体中文', 'zh-tw': '繁體中文', yue: '粵語',
                     ja: '日本語', ko: '한국어', es: 'Español', fr: 'Français',
                     de: 'Deutsch', pt: 'Português', ru: 'Русский', ar: 'العربية',
@@ -189,5 +297,9 @@ document.addEventListener('DOMContentLoaded', () => {
     paintFoot(Object.keys(names).filter(c => c !== 'en').map(c => names[c]));
     tickClock();
     setInterval(tickClock, 1000);
+    // A screen nobody has told anything asks; one that has been set up goes
+    // straight to work, which is what it is for. Asking comes first: if the
+    // feed cannot be reached, the way to fix it is still on screen.
+    if (!CONFIGURED || params.get('setup') === '1') openSetup();
     connect();
 });

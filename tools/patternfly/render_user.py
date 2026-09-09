@@ -1336,8 +1336,6 @@ def build():
     }
     window.setupToggleTTS = setupToggleTTS;
 
-    const SETUP_STEPS = ['language', 'speech', 'done'];
-    let setupStep = 0;
 
     /* The same idea for the label help, which is a popover rather than a
        tooltip: a dialog that opens on a click and stays until it is
@@ -1490,72 +1488,24 @@ def build():
     window.syncSliders = syncSliders;
 
 
-    function toggleSetupNav() {
-      const toggle = document.getElementById('setupToggle');
-      const nav = document.getElementById('setupNav');
-      const open = !toggle.classList.contains('pf-m-expanded');
-      toggle.classList.toggle('pf-m-expanded', open);
-      nav.classList.toggle('pf-m-expanded', open);
-      toggle.setAttribute('aria-expanded', String(open));
-    }
-    window.toggleSetupNav = toggleSetupNav;
+    /* The steps are wizard.js, which the projection screen uses too: its ids
+       are derived from a prefix, and "setup" is the prefix this page already
+       uses. Everything specific to this wizard — what a control does with what
+       it collects — stays here.
 
-    function showSetupStep(key) {
-      setupStep = Math.max(0, SETUP_STEPS.indexOf(key));
-      SETUP_STEPS.forEach(function (k, i) {
-        const link = document.getElementById('setup-nav-' + k);
-        if (link) {
-          link.classList.toggle('pf-m-current', i === setupStep);
-          if (i === setupStep) link.setAttribute('aria-current', 'step');
-          else link.removeAttribute('aria-current');
-        }
-        const body = document.getElementById('setup-' + k);
-        if (body) body.hidden = i !== setupStep;
-      });
-      // The toggle is what a phone sees instead of the step list, so it has
-      // to say which step this is; choosing one from it also puts it away.
-      const link = document.getElementById('setup-nav-' + SETUP_STEPS[setupStep]);
-      const num = document.getElementById('setupToggleNum');
-      const title = document.getElementById('setupToggleTitle');
-      if (num) num.textContent = String(setupStep + 1);
-      if (title && link) {
-        title.setAttribute('data-i18n', link.getAttribute('data-i18n'));
-        title.textContent = link.textContent.trim();
+       Built on first use, not now: this script is in the body and the files it
+       needs are at the end of it. */
+    let setupWizard = null;
+    function setup() {
+      if (!setupWizard) {
+        setupWizard = Wizard('setup', ['language', 'speech', 'done'], hideWelcome);
       }
-      const toggle = document.getElementById('setupToggle');
-      const nav = document.getElementById('setupNav');
-      if (toggle && toggle.classList.contains('pf-m-expanded')) {
-        toggle.classList.remove('pf-m-expanded');
-        nav.classList.remove('pf-m-expanded');
-        toggle.setAttribute('aria-expanded', 'false');
-      }
-
-      const back = document.getElementById('setupBack');
-      const next = document.getElementById('setupNext');
-      if (back) back.disabled = setupStep === 0;
-      if (next) {
-        // The last step finishes rather than advances. The label is swapped by
-        // key, not by text: reading it out of the English table left the one
-        // button on the page in English whatever language was chosen.
-        const last = setupStep === SETUP_STEPS.length - 1;
-        const text = next.querySelector('.pf-v6-c-button__text');
-        text.setAttribute('data-i18n', last ? 'tour_done' : 'tour_next');
-        text.textContent = last ? 'Done' : 'Next';
-      }
-      if (window.applyDisplayLanguage) window.applyDisplayLanguage();
+      return setupWizard;
     }
-    window.showSetupStep = showSetupStep;
-
-    function setupNext() {
-      if (setupStep >= SETUP_STEPS.length - 1) { hideWelcome(); return; }
-      showSetupStep(SETUP_STEPS[setupStep + 1]);
-    }
-    window.setupNext = setupNext;
-
-    function setupBack() {
-      if (setupStep > 0) showSetupStep(SETUP_STEPS[setupStep - 1]);
-    }
-    window.setupBack = setupBack;
+    window.showSetupStep = function (key) { setup().show(key); };
+    window.setupNext = function () { setup().next(); };
+    window.setupBack = function () { setup().back(); };
+    window.toggleSetupNav = function () { setup().toggleNav(); };
 
     /* The rail is PatternFly's expandable jump links: a toggle below xl, a
        plain sticky list above it. */
@@ -1848,6 +1798,7 @@ def build():
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/theme.js') }}"></script>
+  <script src="{{ static_url('js/wizard.js') }}"></script>
   <script src="{{ static_url('js/user.js') }}"></script>
 </body>
 

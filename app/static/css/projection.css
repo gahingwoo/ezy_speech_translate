@@ -53,3 +53,53 @@ body {
 .is-offline .proj-foot {
   color: var(--pf-t--global--text--color--status--warning--default);
 }
+
+/* ── setup ────────────────────────────────────────────────────────────── */
+/* The wizard the room never sees. PatternFly's backdrop covers the screen;
+   this centres the box in it and fades the two together, the way the dialogs
+   on the other pages do. */
+
+.app-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pf-t--global--spacer--md);
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--accelerate),
+    visibility 0s linear var(--pf-t--global--motion--duration--fade--default);
+}
+
+.app-modal.active {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity var(--pf-t--global--motion--duration--fade--default)
+      var(--pf-t--global--motion--timing-function--decelerate),
+    visibility 0s;
+}
+
+.app-modal > .pf-v6-c-modal-box {
+  max-width: 100%;
+  max-height: 100%;
+  translate: 0 -0.75rem;
+  transition: translate var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--decelerate);
+}
+
+.app-modal.active > .pf-v6-c-modal-box {
+  translate: 0 0;
+}
+
+/* The rest of the page is set for reading from the back of a room; the wizard
+   is read by one person standing at the machine, so it keeps ordinary sizes. */
+.proj-setup {
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+
+.proj-setup-address {
+  color: var(--pf-t--global--text--color--subtle);
+}
+
