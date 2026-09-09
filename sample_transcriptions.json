@@ -1,0 +1,41 @@
+{
+  "translations": [
+    {
+      "id": 100,
+      "timestamp": "14:32:45",
+      "original": "Hello, how are you today?",
+      "corrected": "Hello, how are you today?",
+      "is_corrected": false,
+      "language": "en",
+      "confidence": 0.95
+    },
+    {
+      "id": 101,
+      "timestamp": "14:33:12",
+      "original": "I want to learn english",
+      "corrected": "I want to learn English.",
+      "is_corrected": true,
+      "language": "en",
+      "confidence": 0.92
+    },
+    {
+      "id": 102,
+      "timestamp": "14:34:28",
+      "original": "whats the weather like",
+      "corrected": "What's the weather like?",
+      "is_corrected": true,
+      "language": "en",
+      "confidence": 0.89
+    },
+    {
+      "id": 103,
+      "timestamp": "14:35:10",
+      "original": "See you later alligator",
+      "corrected": "See you later, alligator.",
+      "is_corrected": true,
+      "language": "en",
+      "confidence": 0.96
+    }
+  ]
+}
+
