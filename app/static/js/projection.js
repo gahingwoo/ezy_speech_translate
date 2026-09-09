@@ -50,6 +50,17 @@ let socket = null;
    which is what the room is told at the top of the screen. */
 let sourceLang = 'en';
 
+/* A projector in a hall is nobody's accessibility setting, but the machine
+   driving it may still carry one, and a room that has asked for less motion
+   should not be typed at. */
+const REDUCED_MOTION = (function () {
+    try {
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+        return false;
+    }
+})();
+
 const el = id => document.getElementById(id);
 
 /* ── the clock ────────────────────────────────────────────────────────────
@@ -67,10 +78,26 @@ function tickClock() {
 function paint() {
     const [older, previous, now] = [recent[recent.length - 3], recent[recent.length - 2],
                                     recent[recent.length - 1]];
+    // The two lines above have already been read; they move up in place. Only
+    // the line being said is typed, because that is the one the room is
+    // reading as it arrives.
     el('projPast2').textContent = older ? older.text : '';
     el('projPast1').textContent = previous ? previous.text : '';
-    el('projNow').textContent = now ? now.text : '';
-    el('projSource').textContent = now && now.source !== now.text ? now.source : '';
+    say('projNow', now ? now.text : '');
+    say('projSource', now && now.source !== now.text ? now.source : '');
+}
+
+/* Type into one of the stage lines. The typewriter only types what is new, so
+   an interim transcription that grows a word at a time grows on screen rather
+   than being retyped from its first letter every time. */
+function say(id, text) {
+    const node = el(id);
+    if (!node) return;
+    if (typeof animateTextChange !== 'function' || REDUCED_MOTION) {
+        node.textContent = text;
+        return;
+    }
+    animateTextChange(node, node.textContent, text, 400);
 }
 
 function push(text, source) {
@@ -132,7 +159,12 @@ function paintLangPair() {
 /* ── the foot ─────────────────────────────────────────────────────────────
    The address to read along at, and how many languages are waiting there.
    This is the only part of the screen anyone in the room can act on. */
-function paintFoot(languageNames) {
+function paintFoot() {
+    // The address, and nothing else. A list of four language names and "and 16
+    // more" told the room nothing it could act on — the address is where the
+    // languages are, and naming a few of them only crowded the foot of a wall
+    // that is mostly meant to be read from twenty metres away.
+    //
     // The foot is read by the room, so it is in the room's language. It was
     // pinned to English while everything above it followed the projection.
     const table = window.sharedI18n || {};
@@ -144,12 +176,6 @@ function paintFoot(languageNames) {
     el('projJoin').textContent = '';
     el('projJoin').appendChild(join);
     el('projJoin').appendChild(address);
-
-    const shown = languageNames.slice(0, 4).join(' · ');
-    const rest = languageNames.length - 4;
-    el('projLangs').textContent = rest > 0
-        ? shown + ' · ' + (dict.projMore || 'and %n more').replace('%n', String(rest))
-        : shown;
 }
 
 /* ── the wire ─────────────────────────────────────────────────────────────
@@ -188,6 +214,18 @@ function connect() {
         }
         push(text, source);
         if (data.bible_refs && data.bible_refs.length) showVerse(data.bible_refs[0]);
+    });
+
+    /* What is being said right now, before the sentence is finished. The room
+       sees the words arrive instead of waiting for a pause and then being
+       handed a paragraph. It is the speaker's own words, so it goes on the
+       quiet line under the translation — unless no translation is happening,
+       in which case that quiet line is the line. */
+    socket.on('realtime_transcription', data => {
+        const said = data.original || data.text || '';
+        if (!said) return;
+        const translating = LANG && !sameLanguage(sourceLang, LANG);
+        say(translating ? 'projSource' : 'projNow', said);
     });
 
     socket.on('clear_history', () => {
@@ -323,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     LANG_NAMES = names;
     paintLangPair();
     el('projRoom').textContent = ROOM === 'main' ? 'EzySpeech' : ROOM;
-    paintFoot(Object.keys(names).filter(c => c !== 'en').map(c => names[c]));
+    paintFoot();
     tickClock();
     setInterval(tickClock, 1000);
     // A screen nobody has told anything asks; one that has been set up goes
