@@ -666,7 +666,11 @@ html.pf-v6-theme-dark .credit-badge__art {
 }
 
 /* ── reading modes ────────────────────────────────────────────────────── */
-/* The view mode select in the sidebar sets data-ui-mode on the root. */
+/* The view mode select sets data-ui-mode on the root. Its help says
+   Accessibility enlarges the text and the tap targets, and Elderly enlarges
+   everything further; only the first half of the first of those was ever
+   written, so the setting did almost nothing even once it was applied to the
+   right element. */
 
 html[data-ui-mode="accessibility"] .text-target,
 html[data-ui-mode="elderly"] .text-target {
@@ -676,6 +680,48 @@ html[data-ui-mode="elderly"] .text-target {
 
 html[data-ui-mode="elderly"] .text-source {
   font-size: var(--pf-t--global--font--size--body--default);
+}
+
+/* A tap target a shaking hand can hit. PatternFly sizes a plain button from
+   its icon and its padding, so the padding is what there is to raise; 44px is
+   the size both platform guidelines ask for. */
+html[data-ui-mode="accessibility"] .pf-v6-c-button.pf-m-plain,
+html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
+  --pf-v6-c-button--m-plain--PaddingBlockStart: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-button--m-plain--PaddingBlockEnd: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-button--m-plain--PaddingInlineStart: var(--pf-t--global--spacer--sm);
+  --pf-v6-c-button--m-plain--PaddingInlineEnd: var(--pf-t--global--spacer--sm);
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+}
+
+html[data-ui-mode="accessibility"] .pf-v6-c-button:not(.pf-m-plain):not(.pf-m-inline),
+html[data-ui-mode="elderly"] .pf-v6-c-button:not(.pf-m-plain):not(.pf-m-inline) {
+  min-block-size: 2.75rem;
+}
+
+/* The focus ring is how someone working by keyboard or switch knows where
+   they are; at this size it is worth twice the width. */
+html[data-ui-mode="accessibility"],
+html[data-ui-mode="elderly"] {
+  --pf-t--global--border--width--strong: 2px;
+}
+
+/* Elderly enlarges everything further: the whole page steps up a size rather
+   than the reading line alone, so the labels, the buttons and the settings
+   grow with it. */
+html[data-ui-mode="elderly"] {
+  --pf-t--global--font--size--body--default: 1.0625rem;
+  --pf-t--global--font--size--body--sm: 1rem;
+  --pf-t--global--font--size--body--lg: 1.1875rem;
+  --pf-t--global--font--size--heading--sm: 1.25rem;
+  --pf-t--global--font--size--heading--md: 1.5rem;
+  --pf-t--global--font--size--heading--lg: 1.75rem;
+}
+
+html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
+  min-inline-size: 3rem;
+  min-block-size: 3rem;
 }
 
 @media print {

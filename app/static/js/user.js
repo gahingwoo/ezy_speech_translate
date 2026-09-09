@@ -116,6 +116,59 @@ const TTS_DOUBLE_TAP_THRESHOLD = 500;  // 500ms window for double-tap detection
 
 // Use shared translations provided by /static/js/i18n.js
 const i18n = window.sharedI18n || {};
+/* The reading language is the one choice a listener makes, and this is what
+   the browser is asked for before they make it. English was missing from the
+   whole table: nothing here could ever resolve to it, so an English browser
+   fell past every branch to the Cantonese default at the bottom. That was
+   invisible while this only picked a translation target — English in, English
+   out, nothing to translate — but the page's own language follows this now,
+   so an English speaker was met with a Cantonese page. */
+const BROWSER_LANG_MAP = {
+    'en': 'en',
+    'zh-HK': 'yue',
+    'zh-MO': 'yue',
+    'yue': 'yue',
+    'zh-CN': 'zh',
+    'zh-SG': 'zh',
+    'zh': 'zh',
+    'zh-TW': 'zh-tw',
+    'ja': 'ja',
+    'ja-JP': 'ja',
+    'ko': 'ko',
+    'ko-KR': 'ko',
+    'es': 'es',
+    'es-ES': 'es',
+    'fr': 'fr',
+    'fr-FR': 'fr',
+    'de': 'de',
+    'de-DE': 'de',
+    'ru': 'ru',
+    'ru-RU': 'ru',
+    'ar': 'ar',
+    'pt': 'pt',
+    'pt-PT': 'pt',
+    'it': 'it',
+    'it-IT': 'it',
+    'nl': 'nl',
+    'nl-NL': 'nl',
+    'pl': 'pl',
+    'pl-PL': 'pl',
+    'tr': 'tr',
+    'tr-TR': 'tr',
+    'vi': 'vi',
+    'vi-VN': 'vi',
+    'th': 'th',
+    'th-TH': 'th',
+    'id': 'id',
+    'id-ID': 'id',
+    'ms': 'ms',
+    'ms-MY': 'ms',
+    'hi': 'hi',
+    'hi-IN': 'hi',
+    'ta': 'ta',
+    'ta-IN': 'ta'
+};
+
 let displayLanguage = localStorage.getItem('displayLanguage') || detectDisplayLanguageLocal();
 
 /* i18n.js resolves the language for everything carrying data-i18n and records
@@ -1448,50 +1501,6 @@ const TTS_LANG_MAP = {
 };
 
 // Language Detection Mapping
-const BROWSER_LANG_MAP = {
-    'zh-HK': 'yue',
-    'zh-MO': 'yue',
-    'yue': 'yue',
-    'zh-CN': 'zh',
-    'zh-SG': 'zh',
-    'zh': 'zh',
-    'zh-TW': 'zh-tw',
-    'ja': 'ja',
-    'ja-JP': 'ja',
-    'ko': 'ko',
-    'ko-KR': 'ko',
-    'es': 'es',
-    'es-ES': 'es',
-    'fr': 'fr',
-    'fr-FR': 'fr',
-    'de': 'de',
-    'de-DE': 'de',
-    'ru': 'ru',
-    'ru-RU': 'ru',
-    'ar': 'ar',
-    'pt': 'pt',
-    'pt-PT': 'pt',
-    'it': 'it',
-    'it-IT': 'it',
-    'nl': 'nl',
-    'nl-NL': 'nl',
-    'pl': 'pl',
-    'pl-PL': 'pl',
-    'tr': 'tr',
-    'tr-TR': 'tr',
-    'vi': 'vi',
-    'vi-VN': 'vi',
-    'th': 'th',
-    'th-TH': 'th',
-    'id': 'id',
-    'id-ID': 'id',
-    'ms': 'ms',
-    'ms-MY': 'ms',
-    'hi': 'hi',
-    'hi-IN': 'hi',
-    'ta': 'ta',
-    'ta-IN': 'ta'
-};
 
 /* ===================================
    Auto Language Detection
@@ -1506,6 +1515,13 @@ function detectUserLanguage() {
         console.log('Exact match found:', BROWSER_LANG_MAP[browserLang]);
         return BROWSER_LANG_MAP[browserLang];
     }
+
+    // Try the script and region before the bare base: browsers report
+    // zh-Hant-HK rather than zh-HK, and taking the base of that would answer
+    // Simplified to someone reading Traditional.
+    const lower = browserLang.toLowerCase();
+    if (lower.startsWith('yue') || lower.includes('-hk') || lower.includes('-mo')) return 'yue';
+    if (lower.startsWith('zh') && (lower.includes('hant') || lower.includes('-tw'))) return 'zh-tw';
 
     // Try base language (e.g., 'zh' from 'zh-Hans')
     const baseLang = browserLang.split('-')[0];
@@ -1535,60 +1551,12 @@ function detectUserLanguage() {
 }
 
 function detectDisplayLanguageLocal() {
-    const browserLang = navigator.language || navigator.userLanguage;
-    console.log('Browser language for UI detected:', browserLang);
-
-    // Check for exact matches first
-    if (browserLang in i18n) {
-        console.log('Exact language match found:', browserLang);
-        return browserLang;
-    }
-
-    // Check for language prefixes
-    const langPrefix = browserLang.split('-')[0];
-
-    // Map common language prefixes to our supported languages
-    const langMap = {
-        'zh': 'zh',
-        'en': 'en',
-        'ja': 'ja',
-        'ko': 'ko',
-        'es': 'es',
-        'fr': 'fr',
-        'de': 'de',
-        'ru': 'ru',
-        'ar': 'ar',
-        'pt': 'pt',
-        'it': 'it',
-        'nl': 'nl',
-        'pl': 'pl',
-        'tr': 'tr',
-        'vi': 'vi',
-        'th': 'th',
-        'id': 'id',
-        'ms': 'ms',
-        'hi': 'hi',
-        'ta': 'ta'
-    };
-
-    if (langMap[langPrefix]) {
-        return langMap[langPrefix];
-    }
-
-    // Special handling for Chinese variants
-    if (langPrefix === 'zh') {
-        // For display language, map Traditional Chinese and Cantonese appropriately
-        if (browserLang.includes('TW') || browserLang.includes('tw') || browserLang.includes('hk') || browserLang.includes('HK') || browserLang.includes('hant') || browserLang.includes('Hant')) {
-            return 'zh-tw';
-        } else if (browserLang.includes('yue') || browserLang.includes('cantonese') || browserLang.includes('Cantonese')) {
-            return 'yue';
-        } else {
-            // Default to Simplified Chinese for display language
-            return 'zh';
-        }
-    }
-
-    return 'en';
+    /* The page's language is the reading language, so it is detected the same
+       way. This used to be a second table with its own idea of which browser
+       means which language, and the two disagreed: this one answered English
+       where the other answered Cantonese, and which of them a reader got
+       depended on which ran first. */
+    return detectUserLanguage();
 }
 
 // Use shared i18n runtime helpers when available to avoid duplication and errors.
@@ -1677,14 +1645,9 @@ function loadSettings() {
     // Load TTS enabled state
     if (savedTTSEnabled !== null) {
         ttsEnabled = savedTTSEnabled === 'true';
-        const btn = document.getElementById('toggleTTS');
-        if (btn) {
-            const label = btn.querySelector('.pf-v6-c-button__text');
-            btn.classList.toggle('active', ttsEnabled);
-            btn.setAttribute('aria-pressed', String(ttsEnabled));
-            if (label) label.textContent = ttsEnabled ? 'Disable TTS' : 'Enable TTS';
-            syncTTSQuickToggle();
-        }
+        const box = document.getElementById('toggleTTS');
+        if (box) box.checked = ttsEnabled;
+        syncTTSQuickToggle();
         console.log('Loaded TTS enabled state:', ttsEnabled);
     }
 
@@ -2086,6 +2049,12 @@ function changeLanguage() {
     if (bibleFeatureAvailable) {
         loadBibleTranslationOptions(targetLang);
     }
+
+    // The page follows the reading language. The dialog said so itself after
+    // calling this, but the select in the settings did not, so changing the
+    // language there translated the lines and left the buttons and headings
+    // in the old one until the page was reloaded.
+    if (typeof followReadingLanguage === 'function') followReadingLanguage();
 }
 
 function changeDisplayMode() {
@@ -2299,7 +2268,11 @@ function showSyncIndicator() {
 function applyUIMode(mode) {
     const valid = { standard: 1, accessibility: 1, elderly: 1 };
     const m = valid[mode] ? mode : 'standard';
-    document.body.setAttribute('data-ui-mode', m);
+    // On the root, where the stylesheet looks for it and where data-theme
+    // already lives. Written to the body, it matched nothing: picking
+    // Accessibility or Elderly stored the choice and changed nothing on the
+    // page, before or after a reload.
+    document.documentElement.setAttribute('data-ui-mode', m);
     const sel = document.getElementById('uiMode');
     if (sel && sel.value !== m) sel.value = m;
 }
@@ -3464,27 +3437,39 @@ function syncTTSQuickToggle() {
     quick.setAttribute('aria-label', label);
 }
 
-function toggleTTS() {
-    ttsEnabled = !ttsEnabled;
+function toggleTTS(next) {
+    /* Called by the switch in the settings, by the icon in the masthead and by
+       the wizard, so the new state is passed in when the caller knows it and
+       worked out here when it does not. The switch shows the state itself;
+       nothing has to relabel a button any more. */
+    ttsEnabled = typeof next === 'boolean' ? next : !ttsEnabled;
     localStorage.setItem('ttsEnabled', ttsEnabled);
-    const btn = document.getElementById('toggleTTS');
-    const text = btn.querySelector('.pf-v6-c-button__text');
+
+    const box = document.getElementById('toggleTTS');
+    if (box && box.checked !== ttsEnabled) box.checked = ttsEnabled;
+    syncTTSQuickToggle();
 
     if (ttsEnabled) {
-        btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
-        text.textContent = t('textToSpeechOff', 'Stop reading aloud');
-        syncTTSQuickToggle();
         showToast(t('textToSpeechOn', 'Reading translations aloud'), 'success');
     } else {
-        btn.classList.remove('active');
-        btn.setAttribute('aria-pressed', 'false');
-        text.textContent = t('enableTTS', 'Read aloud');
-        syncTTSQuickToggle();
         showToast(t('textToSpeechOff', 'Stop reading aloud'), 'info');
         // Clear TTS queue and stop current playback when disabling
         clearTTSQueue();
     }
+}
+
+/* Hearing the voice before the sermon starts is the point of the setting, and
+   there was no way to do it without waiting for a line to arrive. Reads the
+   most recent translation if there is one, so what is heard is the real
+   thing, and a sample sentence otherwise. */
+function testVoice() {
+    const latest = translations.find(function (item) {
+        return item && item.translated;
+    });
+    const sample = latest ? latest.translated : t('tts_sample',
+        'This is how the translations will sound.');
+    clearTTSQueue();
+    speakText(sample, false);
 }
 
 function updateRate() {

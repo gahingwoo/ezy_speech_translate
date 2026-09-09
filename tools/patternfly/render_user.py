@@ -728,12 +728,28 @@ def build():
 
     # Text to speech
     panels["speech"] = ('''
+      <!-- Reading aloud is on or off, which is a switch. It was a full-width
+           primary button whose label changed between "Read aloud" and "Stop
+           reading aloud", so the one control that has a state was the one
+           thing on the panel that did not show one. Hearing the voice is a
+           real action, and that is the button. -->
       <div class="pf-v6-c-form__group">
-        <button class="pf-v6-c-button pf-m-primary pf-m-block" type="button" id="toggleTTS"
-                aria-pressed="false" aria-label="Toggle text to speech" onclick="toggleTTS()">
-          %s
-          <span class="pf-v6-c-button__text" data-i18n="enableTTS">Enable TTS</span>
-        </button>
+        <div class="pf-v6-c-switch">
+          <input class="pf-v6-c-switch__input" type="checkbox" id="toggleTTS"
+                 onchange="toggleTTS(this.checked)" aria-labelledby="toggleTTS-label">
+          <span class="pf-v6-c-switch__toggle"></span>
+          <label class="pf-v6-c-switch__label" for="toggleTTS" id="toggleTTS-label"
+                 data-i18n="enableTTS">Read aloud</label>
+        </div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-control">
+          <button class="pf-v6-c-button pf-m-secondary" type="button" id="ttsTest"
+                  onclick="testVoice()">
+            %s
+            <span class="pf-v6-c-button__text" data-i18n="tts_test">Hear a sample</span>
+          </button>
+        </div>
       </div>
 %s%s%s%s
 ''' % (
@@ -1313,10 +1329,10 @@ def build():
     window.setupApply = setupApply;
 
     function setupToggleTTS(on) {
-      const button = document.getElementById('toggleTTS');
-      if (!button) return;
-      const isOn = button.classList.contains('active');
-      if (isOn !== on) button.click();
+      const box = document.getElementById('toggleTTS');
+      if (!box) return;
+      box.checked = on;
+      if (typeof toggleTTS === 'function') toggleTTS(on);
     }
     window.setupToggleTTS = setupToggleTTS;
 
@@ -1668,6 +1684,9 @@ def build():
         if (typeof changeLanguage === 'function') changeLanguage();
       }
       hideLanguageDialog();
+      // changeLanguage carries the page along with it now; this is still here
+      // for the case where nothing was picked but Keep the page in English
+      // was toggled.
       followReadingLanguage();
     }
     window.applyLanguage = applyLanguage;

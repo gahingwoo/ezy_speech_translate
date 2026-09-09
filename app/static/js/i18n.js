@@ -4900,3 +4900,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 })();
+
+// The button that plays a sample voice, and what it says when there is no
+// translation yet to read back.
+(function () {
+    const map = window.sharedI18n || {};
+    const extra = {
+        en: { tts_test: "Hear a sample", tts_sample: "This is how the translations will sound." },
+        zh: { tts_test: "试听", tts_sample: "翻译读出来就是这个声音。" },
+        yue: { tts_test: "試聽", tts_sample: "翻譯讀出嚟就係咁嘅聲。" },
+        "zh-tw": { tts_test: "試聽", tts_sample: "翻譯唸出來就是這個聲音。" },
+        es: { tts_test: "Escuchar una muestra", tts_sample: "Así sonarán las traducciones." },
+        fr: { tts_test: "Écouter un exemple", tts_sample: "Voici comment les traductions vont sonner." },
+        de: { tts_test: "Probe anhören", tts_sample: "So werden die Übersetzungen klingen." },
+        ru: { tts_test: "Прослушать образец", tts_sample: "Вот так будут звучать переводы." },
+        pl: { tts_test: "Posłuchaj próbki", tts_sample: "Tak będą brzmiały tłumaczenia." },
+        tr: { tts_test: "Örneği dinle", tts_sample: "Çeviriler böyle duyulacak." },
+        ja: { tts_test: "試聴する", tts_sample: "翻訳はこのように読み上げられます。" },
+        ko: { tts_test: "샘플 듣기", tts_sample: "번역은 이렇게 들립니다." },
+        vi: { tts_test: "Nghe thử", tts_sample: "Bản dịch sẽ nghe như thế này." },
+        th: { tts_test: "ฟังตัวอย่าง", tts_sample: "คำแปลจะออกเสียงแบบนี้" },
+        id: { tts_test: "Dengarkan contoh", tts_sample: "Beginilah nanti suara terjemahannya." },
+        ms: { tts_test: "Dengar contoh", tts_sample: "Beginilah bunyi terjemahan nanti." },
+        hi: { tts_test: "नमूना सुनें", tts_sample: "अनुवाद ऐसे सुनाई देंगे।" },
+        ar: { tts_test: "استمع إلى عينة", tts_sample: "هكذا ستُقرأ الترجمات." },
+        pt: { tts_test: "Ouvir uma amostra", tts_sample: "É assim que as traduções vão soar." },
+        it: { tts_test: "Ascolta un esempio", tts_sample: "Le traduzioni suoneranno così." },
+        nl: { tts_test: "Voorbeeld beluisteren", tts_sample: "Zo gaan de vertalingen klinken." },
+        ta: { tts_test: "மாதிரியைக் கேளுங்கள்", tts_sample: "மொழிபெயர்ப்புகள் இப்படித்தான் ஒலிக்கும்." },
+    };
+    Object.keys(extra).forEach(function (lang) {
+        if (!map[lang]) map[lang] = {};
+        Object.keys(extra[lang]).forEach(function (key) {
+            if (map[lang][key] === undefined) map[lang][key] = extra[lang][key];
+        });
+    });
+})();
