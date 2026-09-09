@@ -30,12 +30,26 @@
   <div class="pf-v6-c-page">
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
+        <!-- Below xl the groups are a drawer, and without this there was no
+             way to open it: the panel slid off the left and nothing in the
+             masthead brought it back, so on a narrow window the list of
+             settings groups was simply gone. -->
+        <span class="pf-v6-c-masthead__toggle">
+          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
+                  aria-controls="configSidebar" aria-expanded="true"
+                  aria-label="Toggle the settings groups"
+                  onclick="toggleMobileMenu()"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16 132h416c8.837 0 16-7.163 16-16V76c0-8.837-7.163-16-16-16H16C7.163 60 0 67.163 0 76v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16z"/></svg></button>
+        </span>
         <div class="pf-v6-c-masthead__brand">
-          <div class="pf-v6-c-masthead__logo brand">
+          <!-- The name of the thing is the way back to it, which is what a
+               masthead brand is everywhere else. .brand and the order of its
+               two spans are what oem-loader.js writes a customer's icon and
+               name into. -->
+          <a class="pf-v6-c-masthead__logo brand" href="/admin">
             <span aria-hidden="true"><img class="pf-v6-c-brand brand-mark"
                  src="{{ static_url('img/mabc-mark.png') }}" width="208" height="208" alt=""></span>
             <span>EzySpeech Admin</span>
-          </div>
+          </a>
         </div>
       </div>
 
@@ -48,6 +62,10 @@
         </button>
       </div>
     </header>
+
+    <!-- Backdrop behind the groups when they are a drawer, below xl. -->
+    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
+         onclick="toggleMobileMenu()"></div>
 
     <!-- The groups, down the page's own sidebar: one is shown at a time, so
          changing one setting is never a scroll through fifty-eight others. -->
@@ -1154,6 +1172,7 @@
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/theme.js') }}"></script>
+  <script src="{{ static_url('js/sidebar.js') }}"></script>
   <script src="{{ static_url('js/config.js') }}"></script>
 </body>
 

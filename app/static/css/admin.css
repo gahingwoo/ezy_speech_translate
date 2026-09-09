@@ -764,3 +764,20 @@ html.pf-v6-theme-dark .credit-badge__art {
     display: none !important;
   }
 }
+
+/* The settings page's brand is the way back to the console, so it is a link —
+   but a masthead brand that reads as body text with an underline is not a
+   brand any more. It keeps the masthead's own colour and says it is a link by
+   answering the pointer. */
+a.pf-v6-c-masthead__logo {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.pf-v6-c-masthead__logo:hover,
+a.pf-v6-c-masthead__logo:focus-visible {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: var(--pf-t--global--text-decoration--offset--default);
+}
+

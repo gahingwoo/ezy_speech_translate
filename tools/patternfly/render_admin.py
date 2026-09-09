@@ -1493,6 +1493,7 @@ def build():
 %(correction)s%(dialogs)s%(script)s
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/theme.js') }}"></script>
+  <script src="{{ static_url('js/sidebar.js') }}"></script>
   <script src="{{ static_url('js/admin.js') }}"></script>
 </body>
 

@@ -143,46 +143,8 @@ function validateText(text, maxLength = 5000) {
     return { valid: true, text: trimmed };
 }
 
-function toggleMobileMenu() {
-    setSidebarOpen(!isSidebarOpen());
-}
-
-/* PatternFly owns the sidebar's state. Below xl the panel is a drawer that
-   .pf-m-expanded slides in; from xl it is a column that .pf-m-collapsed folds
-   away, and the page's main container widens into the space. One toggle, two
-   classes, because which one applies depends on the width. */
-function sidebarIsWide() {
-    return window.matchMedia('(min-width: 75rem)').matches;
-}
-
-function isSidebarOpen() {
-    const sidebar = document.getElementById('sidebar');
-    if (!sidebar) return false;
-    return sidebarIsWide()
-        ? !sidebar.classList.contains('pf-m-collapsed')
-        : sidebar.classList.contains('pf-m-expanded');
-}
-
-function setSidebarOpen(open) {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggle = document.getElementById('mobileMenuToggle');
-    if (!sidebar) return;
-    const wide = sidebarIsWide();
-    sidebar.classList.toggle('pf-m-collapsed', wide && !open);
-    sidebar.classList.toggle('pf-m-expanded', !wide && open);
-    if (overlay) overlay.classList.toggle('active', open && !wide);
-    if (toggle) {
-        toggle.classList.toggle('active', open);
-        toggle.setAttribute('aria-expanded', String(open));
-    }
-}
-
-function closeMobileMenu() {
-    // Only the drawer closes on its own; folding the desktop panel away
-    // because someone pressed a button in it would be a surprise.
-    if (!sidebarIsWide()) setSidebarOpen(false);
-}
+/* The sidebar is opened and closed by sidebar.js, which the settings page
+   uses as well: it had a sidebar of its own and no way to open it. */
 
 function showAbout() {
     document.getElementById('aboutModal').classList.add('active');
