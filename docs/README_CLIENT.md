@@ -12,6 +12,7 @@ Welcome! This guide will help you view live translations during events and servi
 - [Getting Started](#getting-started)
 - [Using the Viewer Interface](#using-the-viewer-interface)
 - [Features](#features)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
 - [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
 
@@ -72,17 +73,23 @@ EzySpeechTranslate provides real-time translation of live speech in multiple lan
 
 ###### **What You See:**
 
-- 🕐 **Timestamp** - When it was spoken
-- 🌍 **Original Language & Text** - What was actually said
-- 🔄 **Your Language & Translation** - Translated version
-- 🔊 **Audio Button** - Play text-to-speech
+- **Timestamp** - When it was spoken
+- **The line, in your language** - the large text, which is what you read
+- **What was actually said** - quieter, underneath, when it differs
+- **Copy and play** - two buttons at the end of the row
 
 **Layout:**
 
-- Newest translations appear at the top
-- Older translations scroll down
-- Auto-scrolls as new content arrives
+- Newest lines appear at the top
+- Older lines move down
 - Responsive design for any screen size
+- The words appear as they are spoken, rather than a whole sentence at once
+
+**When a verse is read**, the row shows the verse itself, looked up in a Bible
+in your language and marked with which one, rather than a machine translation
+of the words the speaker happened to use. If the speaker only mentioned a
+passage in passing, the verse is offered on a quiet line underneath instead of
+replacing what they said.
 
 ---
 
@@ -107,10 +114,19 @@ EzySpeechTranslate provides real-time translation of live speech in multiple lan
 
 **To Change Language:**
 
-1. Click the language dropdown menu
-2. Select your preferred language
-3. All translations update automatically
+1. Open the gear in the top right, or Language in the sidebar
+2. Choose the language you want to read in
+3. Everything updates at once — no reload
 4. Choice is saved for next time
+
+**One language, not two.** The language you choose is both the language the
+speaker is translated into *and* the language of the buttons and headings. If
+you would rather keep the page itself in English while reading translations in
+another language, there is a "Keep the page in English" switch beside the
+language list.
+
+The first time you open the page a short wizard asks for this, and whether you
+want the translations read aloud. Everything else is behind the gear.
 
 ---
 
@@ -122,11 +138,14 @@ EzySpeechTranslate provides real-time translation of live speech in multiple lan
 
 **Listen to translations:**
 
-1. **Enable TTS**
-   
-   - Toggle "Enable TTS" switch
+1. **Turn on "Read aloud"**
+
+   - It is a switch in Settings → Text to speech, and an icon in the top bar.
+     The icon shows a speaker when it is reading and a crossed-out speaker
+     when it is not
    - New translations play automatically
-   - Hear translations as they arrive
+   - **Hear a sample** plays the most recent line, so you can set the voice,
+     the speed and the volume before the speaker starts rather than during
 
 2. **Adjust Speed**
    
@@ -222,22 +241,63 @@ EzySpeechTranslate provides real-time translation of live speech in multiple lan
 
 ### Display Modes
 
-**Standard (Translation) Mode** (Default)
+Settings → Display → Display mode.
 
-- Full details with timestamps
-- Both original and translated text
-- All controls visible
+**Translation** (default)
 
-**Transcription Mode** (Default)
+- The line in your language, large
+- What was actually said, quieter underneath, when it differs
 
-- Full details with timestamps
-- Original text only
+**Transcription**
 
-**Minimal Mode** (Coming Soon)
+- The speaker's own words only, as they are said, with nothing translated
 
-- Large text display
-- Focus on translation only
-- Ideal for projection screens
+Choosing the language the speaker is already using has the same effect as
+transcription: there is nothing to translate, so the words simply appear.
+
+---
+
+### View Modes
+
+Settings → View → View mode. These change the page, not the content.
+
+**Standard** — the default.
+
+**Accessibility** — larger reading text, every button at least 44 pixels
+across, a heavier focus outline for anyone working by keyboard or switch.
+
+**Elderly** — all of that, and the whole page a size up: labels, buttons and
+settings, not only the line being read.
+
+Font size has its own slider beside it, for adjusting the reading line alone.
+
+---
+
+### The Projection Screen
+
+A separate page, `/projection`, for a screen at the front of the room. It is
+not this page made bigger: it shows the line being said now and the two before
+it, in one language, typed as the words arrive, and never scrolls.
+
+The first time it opens it asks which room to follow, which language to show,
+and whether the room is dark. It remembers the answers, so a projector that
+loses power comes back to the same service. Pressing `s`, or the gear beside
+the clock, asks again.
+
+Full guide: [README_PROJECTION.md](README_PROJECTION.md).
+
+---
+
+## Keyboard Shortcuts
+
+| Key   | What it does                          |
+| ----- | ------------------------------------- |
+| `/`   | Open the search and put the caret in it |
+| `g`   | Back to the newest line               |
+| `?`   | The full list of shortcuts            |
+| `Esc` | Close whatever is open                |
+
+On the projection screen, `s` opens its setup.
 
 ---
 

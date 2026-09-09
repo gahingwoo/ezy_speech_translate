@@ -143,8 +143,8 @@ Run through this checklist:
 
 ## Implementation Notes
 
-- File: [app/templates/captions.html](app/templates/captions.html)
-- Route: [app/user/server.py](app/user/server.py) → `/captions`
+- File: [app/templates/captions.html](../app/templates/captions.html)
+- Route: [app/user/server.py](../app/user/server.py) → `/captions`
 - Reuses existing Socket.IO events: `new_translation`,
   `translation_corrected`, `history_cleared`.
 - Initial backfill via `GET /api/history?limit=N` so OBS doesn't show a
