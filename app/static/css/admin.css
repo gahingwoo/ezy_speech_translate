@@ -146,6 +146,16 @@ html.pf-v6-theme-dark .icon-moon {
   --pf-v6-c-page--c-masthead--ZIndex: var(--pf-t--global--z-index--xl);
 }
 
+/* shell.css stops the content short of the screen, which is right for a page
+   that is read. This one is scanned: a live transcript of five columns, where
+   width is what keeps a line of speech on one line. Cockpit fills the screen
+   for the same reason. The limit is lifted on the main element because that is
+   where doc-page sets it, and a rule higher up the tree would lose to it. The
+   settings page keeps its own measure, which it sets on its form. */
+.pf-v6-c-page__main.doc-page {
+  --pf-v6-c-page--section--m-limit-width--MaxWidth: none;
+}
+
 /* ── sidebar ──────────────────────────────────────────────────────────── */
 /* This panel is a desktop console, so the sidebar is a column that stays. It
    holds two groups with a job each: what the panel records with, and what can
@@ -405,6 +415,26 @@ html.pf-v6-theme-dark .icon-moon {
 .transcript-table thead > tr > :nth-child(5) {
   width: 42%;
   min-width: 9rem;
+}
+
+/* As a table, from md, the two row controls are ordinary cells and both align
+   to the top, which is right: on a row several lines deep they stay with the
+   first line rather than floating to the middle of it. But the tick is
+   thirteen pixels tall and the grip is a plain button, an icon of one em with
+   the button's block padding on each side, so top alignment left their centres
+   six pixels apart. Give both cells a line as tall as the grip and centre what
+   is in them, and the two share a centre line at every row height. */
+@media (min-width: 48rem) {
+  .transcript-table .pf-v6-c-table__check,
+  .transcript-table .table-drag {
+    vertical-align: top;
+    line-height: calc(1em + 2 * var(--pf-v6-c-button--PaddingBlockStart, 0.5rem));
+  }
+
+  .transcript-table .pf-v6-c-table__check > input,
+  .transcript-table .drag-handle {
+    vertical-align: middle;
+  }
 }
 
 /* Stacked, below md, PatternFly lays every labelled cell out as a label in
