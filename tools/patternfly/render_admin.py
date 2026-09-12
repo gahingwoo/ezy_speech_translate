@@ -710,29 +710,31 @@ def analytics_section():
 
 
 def empty_state(indent=16):
-    """The list is empty on load and again whenever admin.js clears it, so the
-    same markup is rendered inline and into a <template> it can clone. It is a
-    row of the data list, because that is what it stands in for."""
+    """What stands in for the list when it is empty.
+
+    A row of the table, spanning every column. It used to be a data list item,
+    which is what this list was before it became a table, and cloning an <li>
+    into a <tbody> left the browser to invent a cell for it: the empty state
+    came out inside the first and narrowest column, one word to a line.
+    """
     pad = " " * indent
-    return ('%s<li class="pf-v6-c-data-list__item empty-row">\n'
-            '%s  <div class="pf-v6-c-data-list__item-row">\n'
-            '%s    <div class="pf-v6-c-data-list__item-content">\n'
-            '%s      <div class="pf-v6-c-data-list__cell">\n'
-            '%s        <div class="pf-v6-c-empty-state">\n'
-            '%s          <div class="pf-v6-c-empty-state__content">\n'
-            '%s            <div class="pf-v6-c-empty-state__icon">%s</div>\n'
-            '%s            <div class="pf-v6-c-empty-state__title">\n'
-            '%s              <h2 class="pf-v6-c-empty-state__title-text"\n'
-            '%s                  data-i18n="noTranscriptionsYet">No transcriptions yet</h2>\n'
-            '%s            </div>\n'
-            '%s            <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">\n'
-            '%s              Start recording to see transcriptions</div>\n'
-            '%s          </div>\n'
+    return ('%s<tr class="pf-v6-c-table__tr empty-row">\n'
+            # Five, the width of the header: the tick, the grip, and the three
+            # that carry the line.
+            '%s  <td class="pf-v6-c-table__td" colspan="5">\n'
+            '%s    <div class="pf-v6-c-empty-state">\n'
+            '%s      <div class="pf-v6-c-empty-state__content">\n'
+            '%s        <div class="pf-v6-c-empty-state__icon">%s</div>\n'
+            '%s        <div class="pf-v6-c-empty-state__title">\n'
+            '%s          <h2 class="pf-v6-c-empty-state__title-text"\n'
+            '%s              data-i18n="noTranscriptionsYet">No transcriptions yet</h2>\n'
             '%s        </div>\n'
+            '%s        <div class="pf-v6-c-empty-state__body" data-i18n="startRecordingHelp">\n'
+            '%s          Start recording to see transcriptions</div>\n'
             '%s      </div>\n'
             '%s    </div>\n'
-            '%s  </div>\n'
-            '%s</li>\n' % ((pad,) * 7 + (icon("comments"),) + (pad,) * 12))
+            '%s  </td>\n'
+            '%s</tr>\n' % ((pad,) * 5 + (icon("comments"),) + (pad,) * 10))
 
 
 # ── dialogs ───────────────────────────────────────────────────────────────
@@ -1527,7 +1529,6 @@ def build():
                          "primary", el_id="recordBtn", i18n="startRecording",
                          extra=' aria-pressed="false"', indent=16) + "\n",
         "grip": icon("grip-vertical"),
-        "empty": empty_state(),
         "empty_template": empty_state(6),
         # Two cogs side by side said nothing about which was which: this one
         # opens the server's own configuration file.
