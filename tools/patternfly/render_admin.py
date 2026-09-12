@@ -1254,6 +1254,7 @@ def build():
 %(settings)s
 
 %(config)s
+%(about)s
 %(logout)s
       </div>
     </header>
@@ -1298,11 +1299,15 @@ def build():
             <h2 class="pf-v6-c-nav__section-title" id="nav-elsewhere-title"
                 data-i18n="nav_elsewhere">Elsewhere</h2>
             <ul class="pf-v6-c-nav__list" role="list">
+              <!-- Both pages are served by the user server, not this one, so a
+                   relative address resolves against the admin origin and finds
+                   nothing. admin.js rewrites these against the user server it
+                   already looks up; data-user-path is the part to keep. -->
               <li class="pf-v6-c-nav__item">
-                <a href="/" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
+                <a href="/" data-user-path="/" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
                   <span class="pf-v6-c-nav__link-text" data-i18n="nav_liveTranslation">Live translation</span></a></li>
               <li class="pf-v6-c-nav__item">
-                <a href="/projection" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
+                <a href="/projection" data-user-path="/projection" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
                   <span class="pf-v6-c-nav__link-text" data-i18n="projection">Projection screen</span></a></li>
             </ul>
           </section>
@@ -1532,6 +1537,13 @@ def build():
                          "plain masthead-action",
                          extra=' title="Server configuration"'
                                ' aria-label="Server configuration"', indent=8),
+        # The about box existed but only the mobile sidebar could open it,
+        # so on a desktop console there was no way in. Same dialog, same
+        # handler as the listener's.
+        "about": button("About", "showAbout()", "info-circle",
+                        "plain masthead-action", i18n="about",
+                        extra=' aria-label="About" title="About"'
+                              ' data-i18n-title="about"', indent=8),
         "logout": button("Logout", "logout()", "sign-out-alt",
                          "plain masthead-action", i18n="logout",
                          extra=' aria-label="Logout"', indent=8),

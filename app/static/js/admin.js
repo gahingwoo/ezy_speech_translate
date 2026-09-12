@@ -146,6 +146,18 @@ function validateText(text, maxLength = 5000) {
 /* The sidebar is opened and closed by sidebar.js, which the settings page
    uses as well: it had a sidebar of its own and no way to open it. */
 
+// The listener and the projection screen are served by the user server, so a
+// relative address on this console resolves against the admin origin and finds
+// nothing. The markup carries the path in data-user-path; this puts the user
+// server in front of it, once that address is known.
+function pointCrossServerLinks() {
+    if (!SERVER_URL) return;
+    const base = SERVER_URL.replace(/\/+$/, '');
+    document.querySelectorAll('[data-user-path]').forEach(a => {
+        a.href = base + a.dataset.userPath;
+    });
+}
+
 function showAbout() {
     document.getElementById('aboutModal').classList.add('active');
 }
@@ -280,9 +292,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         console.log('Main server URL:', SERVER_URL);
+        pointCrossServerLinks();
     } catch (error) {
         console.error('Failed to load config:', error);
         SERVER_URL = `${window.location.protocol}//${window.location.hostname}:1915`;
+        pointCrossServerLinks();
     }
 
     // Check authentication

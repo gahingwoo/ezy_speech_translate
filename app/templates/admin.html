@@ -79,6 +79,9 @@
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="openConfigPasswordGate()" title="Server configuration" aria-label="Server configuration">
           <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M480 160H32c-17.673 0-32-14.327-32-32V64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm112 248H32c-17.673 0-32-14.327-32-32v-64c0-17.673 14.327-32 32-32h448c17.673 0 32 14.327 32 32v64c0 17.673-14.327 32-32 32zm-48-88c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24zm-64 0c-13.255 0-24 10.745-24 24s10.745 24 24 24 24-10.745 24-24-10.745-24-24-24z"/></svg></span><span class="pf-v6-c-button__text">Config</span>
         </button>
+        <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="showAbout()" aria-label="About" title="About" data-i18n-title="about">
+          <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="about">About</span>
+        </button>
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button" onclick="logout()" aria-label="Logout">
           <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M497 273L329 441c-15 15-41 4.5-41-17v-96H152c-13.3 0-24-10.7-24-24v-96c0-13.3 10.7-24 24-24h136V88c0-21.4 25.9-32 41-17l168 168c9.3 9.4 9.3 24.6 0 34zM192 436v-40c0-6.6-5.4-12-12-12H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h84c6.6 0 12-5.4 12-12V76c0-6.6-5.4-12-12-12H96c-53 0-96 43-96 96v192c0 53 43 96 96 96h84c6.6 0 12-5.4 12-12z"/></svg></span><span class="pf-v6-c-button__text" data-i18n="logout">Logout</span>
         </button>
@@ -125,11 +128,15 @@
             <h2 class="pf-v6-c-nav__section-title" id="nav-elsewhere-title"
                 data-i18n="nav_elsewhere">Elsewhere</h2>
             <ul class="pf-v6-c-nav__list" role="list">
+              <!-- Both pages are served by the user server, not this one, so a
+                   relative address resolves against the admin origin and finds
+                   nothing. admin.js rewrites these against the user server it
+                   already looks up; data-user-path is the part to keep. -->
               <li class="pf-v6-c-nav__item">
-                <a href="/" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
+                <a href="/" data-user-path="/" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
                   <span class="pf-v6-c-nav__link-text" data-i18n="nav_liveTranslation">Live translation</span></a></li>
               <li class="pf-v6-c-nav__item">
-                <a href="/projection" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
+                <a href="/projection" data-user-path="/projection" class="pf-v6-c-nav__link" rel="noopener noreferrer" target="_blank">
                   <span class="pf-v6-c-nav__link-text" data-i18n="projection">Projection screen</span></a></li>
             </ul>
           </section>
