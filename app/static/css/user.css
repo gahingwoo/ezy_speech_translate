@@ -702,6 +702,17 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   z-index: var(--pf-t--global--z-index--2xl);
 }
 
+/* The drawer opens under the top bar, and the top bar stays live: the toggle
+   that closes it is up there, and so are search, audio and the theme. Without
+   this the dim covered them, which both greyed them out and swallowed taps
+   meant for them. PatternFly's own `.pf-v6-c-page > .pf-v6-c-masthead` outranks
+   a bare class, so this goes through the token it reads. Dialogs are a
+   different matter and are lifted above it further down this file: a dialog is
+   answered before anything else, so it dims the chrome too. */
+.pf-v6-c-page {
+  --pf-v6-c-page--c-masthead--ZIndex: var(--pf-t--global--z-index--xl);
+}
+
 /* The drawer's dim. Faded rather than switched: display cannot animate, so
    the panel used to slide in beside a film that simply appeared. The element
    is laid out whenever it is not [hidden], and sidebar.js clears that a frame
