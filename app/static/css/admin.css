@@ -350,8 +350,15 @@ html.pf-v6-theme-dark .icon-moon {
   white-space: nowrap;
 }
 
-.selection-actions[hidden] {
-  display: none;
+/* The bulk actions live in the card's header, and taking them out of the
+   layout when nothing was ticked meant the first tick made the header taller
+   and moved the whole table down under the pointer. The room is kept whether
+   they are there or not: that space is blank either way, so reserving it costs
+   nothing to look at and saves the jump. visibility, not display, because it
+   also takes them out of the tab order and off a screen reader. */
+.selection-actions.is-empty {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ── the transcript table ─────────────────────────────────────────────── */
@@ -398,6 +405,45 @@ html.pf-v6-theme-dark .icon-moon {
 .transcript-table thead > tr > :nth-child(5) {
   width: 42%;
   min-width: 9rem;
+}
+
+/* Stacked, below md, PatternFly lays every labelled cell out as a label in
+   the first column and its value in the second. The tick and the grip carry no
+   label, so they fall outside that and shared the card's first line by
+   accident: the grip landed where labels start, the tick where values do, on
+   the same row but with different block padding and neither centred in it, so
+   the two sat fourteen pixels apart. Pin both to that row and centre each in
+   it, which keeps the grip leading and the tick trailing, the way a list row
+   on a phone carries its controls, but level with each other. */
+@media (max-width: 47.99rem) {
+  /* The selectors carry .pf-m-grid so they match the weight of the component
+     rules they are correcting; without it the padding below lost to them. The
+     tick's offset is a token, so it is set rather than fought. With the block
+     padding the same on both and each centred in the row, the two controls
+     land on one line. */
+  .pf-m-grid-md.transcript-table .pf-v6-c-table__check,
+  .pf-m-grid-md.transcript-table .table-drag {
+    /* Set on the cell, not fought for: the component reads these from the
+       element it is styling, so the value wins wherever it is declared. Its
+       own block padding is not symmetric, which left the grip four pixels
+       below the tick even once both were centred. */
+    --pf-v6-c-table__check--responsive--MarginBlockStart: 0;
+    --pf-v6-c-table--cell--responsive--PaddingBlockStart: var(--pf-t--global--spacer--sm);
+    --pf-v6-c-table--cell--responsive--PaddingBlockEnd: var(--pf-t--global--spacer--sm);
+    grid-row: 1;
+    align-self: center;
+    display: flex;
+    align-items: center;
+  }
+
+  .pf-m-grid-md.transcript-table .table-drag {
+    grid-column: 1;
+  }
+
+  .pf-m-grid-md.transcript-table .pf-v6-c-table__check {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
 }
 
 /* The handle sat flush against the checkbox, and the two read as one strange

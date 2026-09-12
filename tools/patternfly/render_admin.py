@@ -1402,8 +1402,7 @@ def build():
                        many are ticked, so Delete always has a subject. -->
                   <div class="pf-v6-c-card__header">
                     <div class="pf-v6-c-card__actions pf-m-no-offset">
-                      <div class="pf-v6-c-action-list selection-actions" id="selectionActions"
-                           hidden>
+                      <div class="pf-v6-c-action-list selection-actions is-empty" id="selectionActions">
                         <div class="pf-v6-c-action-list__group">
                           <span class="meta" id="selectionCount" role="status"
                                 aria-live="polite"></span>

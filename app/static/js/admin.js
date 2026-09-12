@@ -878,7 +878,7 @@ function paintSelection() {
     const count = document.getElementById('selectionCount');
     if (!bar || !count) return;
     const n = bulkSelected.size;
-    bar.hidden = n === 0;
+    bar.classList.toggle('is-empty', n === 0);
     count.textContent = n
         ? t('selectedCount', '%n selected').replace('%n', String(n))
         : '';
