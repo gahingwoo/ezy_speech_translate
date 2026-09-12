@@ -313,7 +313,19 @@ function connect() {
         const said = data.original || data.text || '';
         if (!said) return;
         const translating = LANG && !sameLanguage(sourceLang, LANG);
-        say(translating ? 'projSource' : 'projNow', said);
+        if (translating) {
+            say('projSource', said);
+            return;
+        }
+        // Where nothing is being translated this quiet line is the line, and
+        // it grows a word at a time as the speaker talks. It has to be sized
+        // like any other: paint() fits what it writes, but this path never went
+        // through paint(), so a sentence that outgrew the screen mid-speech was
+        // clipped until the moment it finished and paint() finally sized it.
+        // The room watched the end of a long sentence disappear off the bottom
+        // and come back a second later, smaller.
+        fitNow(said);
+        say('projNow', said);
     });
 
     socket.on('clear_history', () => {
