@@ -179,6 +179,19 @@ def build():
 <head>
   <meta charset="UTF-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <!-- The saved theme, before the first frame. The page scripts apply it at
+       DOMContentLoaded, which is a frame too late: a reader who chose dark saw
+       the page arrive light and turn over. Same two lines theme.js paints
+       with, inline so nothing has to be fetched first. -->
+  <script>
+    try {
+      var t = localStorage.getItem('theme');
+      if (t) {
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.toggle('pf-v6-theme-dark', t === 'dark');
+      }
+    } catch (e) {}
+  </script>
   <title>EzySpeech - Settings</title>
   <!-- Favicon will be set by OEM loader -->
   <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">

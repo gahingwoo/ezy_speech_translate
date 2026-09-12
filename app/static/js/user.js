@@ -1781,7 +1781,11 @@ function loadSettings() {
     }
 
     if (savedTheme) {
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        // paintTheme, not the attribute on its own: PatternFly switches its
+        // tokens on a class, and setting only data-theme left the page light
+        // after every reload while the toggle believed it was dark. The other
+        // three pages call this; this one had its own copy of half of it.
+        paintTheme(savedTheme);
         updateThemeUI(savedTheme);
     }
 
