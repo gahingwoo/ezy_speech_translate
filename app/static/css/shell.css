@@ -22,6 +22,14 @@
   margin-inline: auto;
 }
 
+/* Without this the body is sized by what is in it rather than by the limit
+   above, so the column came out at the width of its widest card and sat in the
+   middle of an otherwise empty sheet. It was in the stylesheet this one was
+   ported from and did not come across. */
+.pf-v6-c-page__main-section.pf-m-limit-width > .pf-v6-c-page__main-body {
+  width: 100%;
+}
+
 /* The first section sits 16px below the top of the sheet by default, which
    crowds the page title against the masthead. */
 .pf-v6-c-page__main > .pf-v6-c-page__main-section:first-child {
