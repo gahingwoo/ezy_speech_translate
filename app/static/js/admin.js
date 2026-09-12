@@ -878,6 +878,12 @@ function paintSelection() {
     const count = document.getElementById('selectionCount');
     if (!bar || !count) return;
     const n = bulkSelected.size;
+    // Room for the actions is kept whether they are there or not, so ticking
+    // the first line does not make the card taller. The attribute is cleared
+    // as well: a template compiled before this changed still ships it, and a
+    // server that has been up since then serves that markup with this script,
+    // which would leave the actions hidden for good.
+    bar.hidden = false;
     bar.classList.toggle('is-empty', n === 0);
     count.textContent = n
         ? t('selectedCount', '%n selected').replace('%n', String(n))
