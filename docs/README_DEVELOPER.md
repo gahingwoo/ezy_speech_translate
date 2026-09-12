@@ -4,7 +4,7 @@
 
 Complete technical documentation for developers, system administrators, and contributors.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 ---
@@ -1518,31 +1518,42 @@ Any other context or screenshots.
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](../LICENSE) file for details.
+EzySpeech is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See [LICENSE](../LICENSE) for the full text.
 
-```
-MIT License
+It is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+A PARTICULAR PURPOSE.
 
-Copyright (c) 2025 Ga Hing Woo
+Copyright (c) 2025-2026 Ga Hing Woo (Jiaxing Hu)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+### Why AGPL and not GPL
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This is a web application. Under the GPL, someone can modify it, run it as a
+hosted service, and never distribute anything, so the changes never have to
+come back. Section 13 of the AGPL closes that: anyone who interacts with a
+modified version over a network must be offered its source. The about dialog
+already carries that link, and a modified deployment has to keep offering one.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+### Additional terms under section 7
+
+Two terms are added, both of which section 7 permits:
+
+- **7(b), author attribution.** The *Engineered by gahingwoo* credit in the
+  about dialog must be preserved in every deployment.
+- **7(e), trademarks.** No rights are granted in the names *EzySpeech* and
+  *EzySpeechTranslate* or in the *Engineered by gahingwoo* wordmark.
+
+[TRADEMARK.md](../TRADEMARK.md) says what those terms do and do not stop you
+doing. Running the software under your own name is supported and needs no
+permission; the configuration for it ships with the code.
+
+### Dependencies
+
+Every dependency is BSD, MIT, Apache-2.0 or LGPL-3.0, all of which the AGPL
+can incorporate. `edge-tts` is LGPL-3.0 and is the only copyleft one.
 
 ---
 

@@ -425,7 +425,7 @@ def about_link(href, text, i18n=None):
 REPO = "https://github.com/gahingwoo/ezy_speech_translate"
 
 ABOUT_ROWS = (
-    ("Version", "versionLabel", "v4.0.0 - Open Source - MIT License", "version"),
+    ("Version", "versionLabel", "v4.0.0 - Open Source - AGPL-3.0", "version"),
     # Who wrote it. This was in the box the rewrite replaced and went missing
     # on the way; the credit badge below says the same thing in a logo, and a
     # logo is not a row anyone can read out.

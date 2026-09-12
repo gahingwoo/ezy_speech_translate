@@ -1,6 +1,22 @@
 """
 EzySpeechTranslate Admin Server (HTTPS Version)
 Serves the admin HTML interface securely with eventlet SSL
+
+Copyright (C) 2025-2026 Ga Hing Woo (Jiaxing Hu)
+
+This file is part of EzySpeech.
+
+EzySpeech is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version. Two additional terms apply under section 7: the author
+attribution in the about dialog must be preserved, and no trademark rights
+are granted. See LICENSE and TRADEMARK.md.
+
+EzySpeech is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+details.
 """
 
 import os

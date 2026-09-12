@@ -45,6 +45,7 @@ written for whoever actually uses it:
 
 | Guide | For |
 |---|---|
+| [`docs/WHATS_NEW_v4.md`](docs/WHATS_NEW_v4.md) | What changed in 4.0, in plain language (Chinese) |
 | [`docs/README_CLIENT.md`](docs/README_CLIENT.md) | Anyone following a service on their own phone |
 | [`docs/README_ADMIN.md`](docs/README_ADMIN.md) | Whoever runs the console during a service |
 | [`docs/README_PROJECTION.md`](docs/README_PROJECTION.md) | Whoever sets up the screen at the front of the room |
@@ -537,3 +538,23 @@ python3 tools/bible/build_index.py    # app/data/bible/web_index.json
 UI and legacy docs reference version `3.3.0`.
 There is no single canonical version constant in runtime code; the value is repeated in documentation/template text.
 No formal changelog file is present; commit history is the source of change detail.
+
+## License
+
+EzySpeech is free software under the [GNU Affero General Public License,
+version 3](LICENSE), or any later version.
+
+It is a web application, which is why AGPL and not GPL. Under the GPL a
+company can modify it, run it as a hosted service, and never distribute
+anything, so the changes never come back. Section 13 closes that: anyone
+interacting with a modified version over a network must be offered its
+source.
+
+Two terms are added under section 7, which permits both. The *Engineered by
+gahingwoo* credit in the about dialog must be preserved, and no rights are
+granted in the project's names and marks. [TRADEMARK.md](TRADEMARK.md) sets
+out what that does and does not stop you doing. Running the software under
+your own name is supported and needs no permission; the configuration for it
+ships with the code.
+
+Copyright (c) 2025-2026 Ga Hing Woo (Jiaxing Hu)
