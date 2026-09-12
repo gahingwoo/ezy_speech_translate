@@ -201,10 +201,10 @@ def build():
              masthead brought it back, so on a narrow window the list of
              settings groups was simply gone. -->
         <span class="pf-v6-c-masthead__toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
+          <button class="pf-v6-c-button pf-m-hamburger pf-m-plain" type="button" id="mobileMenuToggle"
                   aria-controls="configSidebar" aria-expanded="true"
                   aria-label="Toggle the settings groups"
-                  onclick="toggleMobileMenu()">%(bars)s</button>
+                  onclick="toggleMobileMenu()"><span class="pf-v6-c-button__icon"><svg viewBox="0 0 10 10" class="pf-v6-c-button--hamburger-icon pf-v6-svg" width="1em" height="1em" aria-hidden="true"><path class="pf-v6-c-button--hamburger-icon--top" d="M1,1 L9,1"/><path class="pf-v6-c-button--hamburger-icon--middle" d="M1,5 L9,5"/><path class="pf-v6-c-button--hamburger-icon--arrow" d="M1,5 L1,5 L1,5"/><path class="pf-v6-c-button--hamburger-icon--bottom" d="M9,9 L1,9"/></svg></span></button>
         </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- The name of the thing is the way back to it, which is what a
@@ -226,7 +226,7 @@ def build():
     </header>
 
     <!-- Backdrop behind the groups when they are a drawer, below xl. -->
-    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
+    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true" hidden
          onclick="toggleMobileMenu()"></div>
 
     <!-- The groups, down the page's own sidebar: one is shown at a time, so
@@ -316,7 +316,6 @@ def build():
         "nav": nav(GROUPS),
         "advanced": advanced_card(),
         "lock": icon("lock"),
-        "bars": icon("bars"),
         "eye": icon("eye", "pf-v6-svg icon-eye"),
         "eyeslash": icon("eye-slash", "pf-v6-svg icon-eye-slash"),
         "back": button("Dashboard", "window.location.href='/admin'", "angle-left",

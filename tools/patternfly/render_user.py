@@ -960,9 +960,9 @@ def build():
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
         <span class="pf-v6-c-masthead__toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
+          <button class="pf-v6-c-button pf-m-hamburger pf-m-plain" type="button" id="mobileMenuToggle"
                   aria-controls="sidebar" aria-expanded="true" data-i18n-aria-label="toggleMenu"
-                  aria-label="Toggle the menu" onclick="toggleMobileMenu()">%(bars)s</button>
+                  aria-label="Toggle the menu" onclick="toggleMobileMenu()"><span class="pf-v6-c-button__icon"><svg viewBox="0 0 10 10" class="pf-v6-c-button--hamburger-icon pf-v6-svg" width="1em" height="1em" aria-hidden="true"><path class="pf-v6-c-button--hamburger-icon--top" d="M1,1 L9,1"/><path class="pf-v6-c-button--hamburger-icon--middle" d="M1,5 L9,5"/><path class="pf-v6-c-button--hamburger-icon--arrow" d="M1,5 L1,5 L1,5"/><path class="pf-v6-c-button--hamburger-icon--bottom" d="M9,9 L1,9"/></svg></span></button>
         </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
@@ -1057,6 +1057,13 @@ def build():
     <!-- The site's own navigation, as the design spec has it: three groups and
          no more. Everything under Reading opens a dialog rather than going
          somewhere, which is why those are buttons. -->
+    <!-- The drawer's dim, below xl. The listener page had none: on a phone the
+         panel slid over the page with nothing behind it, so there was no way to
+         tell what was still live and a tap beside it went to whatever it landed
+         on. sidebar.js fades it. -->
+    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true" hidden
+         onclick="toggleMobileMenu()"></div>
+
     <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Site">
       <div class="pf-v6-c-page__sidebar-body">
         <nav class="pf-v6-c-nav" aria-label="Site">
@@ -1809,6 +1816,10 @@ def build():
 
   <script src="{{ static_url('js/i18n.js') }}"></script>
   <script src="{{ static_url('js/theme.js') }}"></script>
+  <!-- The drawer. This page carried its own copy of it, which was the only
+       reason it worked and the reason it stayed behind: the shared one grew a
+       faded backdrop and Escape to close, and none of that reached here. -->
+  <script src="{{ static_url('js/sidebar.js') }}"></script>
   <script src="{{ static_url('js/wizard.js') }}"></script>
   <script src="{{ static_url('js/typewriter.js') }}"></script>
   <script src="{{ static_url('js/user.js') }}"></script>
@@ -1824,7 +1835,6 @@ def build():
         "search": icon("search"),
         "status_icon": icon("exclamation-circle"),
         "times_plain": icon("times"),
-        "bars": icon("bars"),
         "angle_right": icon("angle-right"),
         "empty": empty_group(),
         "comments": icon("comments"),

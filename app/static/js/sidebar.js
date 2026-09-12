@@ -41,14 +41,41 @@
     }
     window.isSidebarOpen = isSidebarOpen;
 
+    /* The dim, faded in and out. A transition needs two states and a frame
+       between them: [hidden] comes off first and the class goes on in the next
+       frame, so there is an opacity to travel from. On the way back the class
+       comes off, the fade runs, and only then is the element taken out of the
+       layout; taking it out at once would cut the fade to nothing, which is
+       what the display toggle it replaces did. */
+    function setOverlay(on) {
+        const dim = overlay();
+        if (!dim) return;
+        if (on) {
+            dim.hidden = false;
+            // Read a layout property to make the browser settle on the opacity
+            // of nought before the class asks for one. Waiting a frame instead
+            // was not enough: the first style it computed for the element
+            // already had the class on it, so there was nothing to travel from
+            // and the dim arrived at full strength at once.
+            void dim.offsetHeight;
+            dim.classList.add('active');
+            return;
+        }
+        dim.classList.remove('active');
+        if (dim.hidden === false) {
+            window.setTimeout(function () {
+                if (!dim.classList.contains('active')) dim.hidden = true;
+            }, 250);
+        }
+    }
+
     function setSidebarOpen(open) {
         const el = sidebar();
         if (!el) return;
         const wide = sidebarIsWide();
         el.classList.toggle('pf-m-collapsed', wide && !open);
         el.classList.toggle('pf-m-expanded', !wide && open);
-        const dim = overlay();
-        if (dim) dim.classList.toggle('active', open && !wide);
+        setOverlay(open && !wide);
         const button = toggleButton();
         if (button) {
             button.classList.toggle('active', open);
@@ -56,6 +83,19 @@
         }
     }
     window.setSidebarOpen = setSidebarOpen;
+
+    /* Escape closes the drawer, the way it closes every other thing that opens
+       over the page. Only the drawer: folding the desktop column away because
+       someone pressed Escape in a field would be a surprise. */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !sidebarIsWide() && isSidebarOpen()) setSidebarOpen(false);
+    });
+
+    /* A width change can leave the drawer's dim over a layout that no longer
+       has a drawer. */
+    window.matchMedia('(min-width: 75rem)').addEventListener('change', function (e) {
+        if (e.matches) setOverlay(false);
+    });
 
     window.toggleMobileMenu = function () {
         setSidebarOpen(!isSidebarOpen());

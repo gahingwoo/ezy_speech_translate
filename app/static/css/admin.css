@@ -182,17 +182,37 @@ html.pf-v6-theme-dark .icon-moon {
   z-index: var(--pf-t--global--z-index--xl);
 }
 
+/* The drawer's dim. Faded rather than switched: display cannot animate, so
+   the panel used to slide in beside a film that simply appeared. The element
+   is laid out whenever it is not [hidden], and sidebar.js clears that a frame
+   before adding the class that brings the opacity up, so there is a state to
+   transition from; on the way out it removes the class first and sets [hidden]
+   again only once the fade has run, so nothing is left over the page. */
 .sidebar-overlay {
-  display: none;
+  opacity: 0;
+  transition: opacity var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--decelerate);
+  /* A drag on the dimmed area does nothing, rather than scrolling the page
+     behind the panel. */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .sidebar-overlay.active {
-  display: block;
+  opacity: 1;
 }
 
+/* From xl the panel is a column of the page, not a drawer over it, so there is
+   nothing to dim. */
 @media (min-width: 75rem) {
-  .sidebar-overlay.active {
-    display: none;
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-overlay {
+    transition: none;
   }
 }
 
@@ -448,6 +468,10 @@ html.pf-v6-theme-dark .icon-moon {
   align-items: center;
   justify-content: center;
   padding: var(--pf-t--global--spacer--md);
+  /* Above the masthead and the sidebar, both of which this file lifts over the
+     drawer's backdrop. A drawer opens under the top bar and leaves its buttons
+     live; a dialog is answered before anything else, so it dims them too. */
+  z-index: var(--pf-t--global--z-index--2xl);
   visibility: hidden;
   opacity: 0;
   transition:
@@ -781,3 +805,12 @@ a.pf-v6-c-masthead__logo:focus-visible {
   text-underline-offset: var(--pf-t--global--text-decoration--offset--default);
 }
 
+/* The hamburger morph runs at the icon default, which reads as a flick beside
+   a panel that takes a slide-in to arrive. Give it the slide's duration so the
+   two finish together. */
+@media (max-width: 74.99rem) {
+  .pf-v6-c-button.pf-m-hamburger {
+    --pf-v6-c-button--hamburger-icon--TransitionDuration:
+      var(--pf-t--global--motion--duration--slide-in--default);
+  }
+}

@@ -1225,9 +1225,9 @@ def build():
     <header class="pf-v6-c-masthead pf-m-display-inline-on-md" role="banner">
       <div class="pf-v6-c-masthead__main">
         <span class="pf-v6-c-masthead__toggle">
-          <button class="pf-v6-c-button pf-m-plain" type="button" id="mobileMenuToggle"
+          <button class="pf-v6-c-button pf-m-hamburger pf-m-plain" type="button" id="mobileMenuToggle"
                   aria-controls="sidebar" aria-expanded="true" aria-label="Toggle the panel"
-                  onclick="toggleMobileMenu()">%(bars)s</button>
+                  onclick="toggleMobileMenu()"><span class="pf-v6-c-button__icon"><svg viewBox="0 0 10 10" class="pf-v6-c-button--hamburger-icon pf-v6-svg" width="1em" height="1em" aria-hidden="true"><path class="pf-v6-c-button--hamburger-icon--top" d="M1,1 L9,1"/><path class="pf-v6-c-button--hamburger-icon--middle" d="M1,5 L9,5"/><path class="pf-v6-c-button--hamburger-icon--arrow" d="M1,5 L1,5 L1,5"/><path class="pf-v6-c-button--hamburger-icon--bottom" d="M9,9 L1,9"/></svg></span></button>
         </span>
         <div class="pf-v6-c-masthead__brand">
           <!-- .brand and the order of its two spans are what oem-loader.js
@@ -1260,7 +1260,7 @@ def build():
     </header>
 
     <!-- Backdrop behind the sidebar when it is a drawer, below xl. -->
-    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true"
+    <div class="pf-v6-c-backdrop sidebar-overlay" id="sidebarOverlay" aria-hidden="true" hidden
          onclick="toggleMobileMenu()"></div>
 
     <!-- The site's own navigation, the same three groups the viewer has.
@@ -1513,7 +1513,6 @@ def build():
                            i18n="settings",
                            extra=' aria-label="Settings" title="Settings"'
                                  ' data-i18n-title="settings"', indent=8),
-        "bars": btn_icon("bars"),
         "angle_right": icon("angle-right"),
         "sync": icon("sync-alt"),
         "audio": hearing_controls(),

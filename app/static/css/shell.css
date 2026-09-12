@@ -291,3 +291,13 @@
 .setup-step[hidden] {
   display: none;
 }
+
+/* The hamburger morph runs at the icon default, which reads as a flick beside
+   a panel that takes a slide-in to arrive. Give it the slide's duration so the
+   two finish together. */
+@media (max-width: 74.99rem) {
+  .pf-v6-c-button.pf-m-hamburger {
+    --pf-v6-c-button--hamburger-icon--TransitionDuration:
+      var(--pf-t--global--motion--duration--slide-in--default);
+  }
+}

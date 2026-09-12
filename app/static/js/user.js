@@ -2206,46 +2206,12 @@ function updateDisplayMode() {
    UI Controls
    =================================== */
 
-function toggleMobileMenu() {
-    setSidebarOpen(!isSidebarOpen());
-}
-
-/* PatternFly owns the sidebar's state. Below xl the panel is a drawer that
-   .pf-m-expanded slides in; from xl it is a column that .pf-m-collapsed folds
-   away, and the page's main container widens into the space. One toggle, two
-   classes, because which one applies depends on the width. */
-function sidebarIsWide() {
-    return window.matchMedia('(min-width: 75rem)').matches;
-}
-
-function isSidebarOpen() {
-    const sidebar = document.getElementById('sidebar');
-    if (!sidebar) return false;
-    return sidebarIsWide()
-        ? !sidebar.classList.contains('pf-m-collapsed')
-        : sidebar.classList.contains('pf-m-expanded');
-}
-
-function setSidebarOpen(open) {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggle = document.getElementById('mobileMenuToggle');
-    if (!sidebar) return;
-    const wide = sidebarIsWide();
-    sidebar.classList.toggle('pf-m-collapsed', wide && !open);
-    sidebar.classList.toggle('pf-m-expanded', !wide && open);
-    if (overlay) overlay.classList.toggle('active', open && !wide);
-    if (toggle) {
-        toggle.classList.toggle('active', open);
-        toggle.setAttribute('aria-expanded', String(open));
-    }
-}
-
-function closeMobileMenu() {
-    // Only the drawer closes on its own; folding the desktop panel away
-    // because someone pressed a button in it would be a surprise.
-    if (!sidebarIsWide()) setSidebarOpen(false);
-}
+/* The drawer is sidebar.js's, not this file's. A copy of it lived here, and
+   because this script loads after that one it shadowed the original: the panel
+   opened, but through the older version, so the backdrop was switched on rather
+   than faded and Escape did nothing. sidebar.js puts toggleMobileMenu,
+   closeMobileMenu, setSidebarOpen, isSidebarOpen and sidebarIsWide on window,
+   and every call in this file goes to those. */
 
 function toggleMobileSearch() {
     // PatternFly's expandable search animates itself: the one class is the

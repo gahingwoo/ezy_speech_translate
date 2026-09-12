@@ -702,17 +702,37 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   z-index: var(--pf-t--global--z-index--2xl);
 }
 
+/* The drawer's dim. Faded rather than switched: display cannot animate, so
+   the panel used to slide in beside a film that simply appeared. The element
+   is laid out whenever it is not [hidden], and sidebar.js clears that a frame
+   before adding the class that brings the opacity up, so there is a state to
+   transition from; on the way out it removes the class first and sets [hidden]
+   again only once the fade has run, so nothing is left over the page. */
 .sidebar-overlay {
-  display: none;
+  opacity: 0;
+  transition: opacity var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--decelerate);
+  /* A drag on the dimmed area does nothing, rather than scrolling the page
+     behind the panel. */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .sidebar-overlay.active {
-  display: block;
+  opacity: 1;
 }
 
+/* From xl the panel is a column of the page, not a drawer over it, so there is
+   nothing to dim. */
 @media (min-width: 75rem) {
-  .sidebar-overlay.active {
-    display: none;
+  .sidebar-overlay {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-overlay {
+    transition: none;
   }
 }
 
