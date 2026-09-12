@@ -16,9 +16,10 @@ function animateTextChange(element, currentText, newText, durationMs = 300) {
         return;
     }
 
-    // Clear any existing animation timer
+    // Stop any animation already running on this element.
     if (element._typewriterTimer) {
-        clearTimeout(element._typewriterTimer);
+        cancelAnimationFrame(element._typewriterTimer);
+        element._typewriterTimer = null;
     }
 
     // Get what's currently displayed in the element
@@ -33,13 +34,12 @@ function animateTextChange(element, currentText, newText, durationMs = 300) {
     const newHeight = element.offsetHeight;
     element.textContent = oldContent; // Restore old content for animation
     
-    // Set min-height if content would grow (prevent shrinking)
-    if (newHeight > currentHeight) {
-        element.style.minHeight = newHeight + 'px';
-    } else {
-        // Keep current height as minimum if new content is smaller
-        element.style.minHeight = currentHeight + 'px';
-    }
+    // Hold the taller of the two heights so the box does not jump about while
+    // the characters arrive. Held only for the animation: keeping it after was
+    // permanent, so any line that had once been long stayed that tall for the
+    // rest of the session even when it was emptied, and a stage measuring
+    // itself read as full when it was not.
+    element.style.minHeight = Math.max(newHeight, currentHeight) + 'px';
     
     // Smart diff: find common prefix to avoid clearing text when correcting
     let commonPrefixLen = 0;
@@ -77,22 +77,42 @@ function animateTextChange(element, currentText, newText, durationMs = 300) {
     // If nothing new to type, just update and return
     if (charsToType.length === 0) {
         element.textContent = newText;
+        element.style.minHeight = '';
         return;
     }
 
-    // Typewriter effect: type out new characters one by one
+    // Driven by the clock, not by a count of characters. One timer per
+    // character floored at 10ms, which made the duration a function of the
+    // length: a 260 character sentence took two and a half seconds instead of
+    // the 400ms asked for, and on a live feed the next interim update arrived
+    // before it finished and restarted it, so the end of a long sentence was
+    // never reached at all. Now however long the text, it is whole after
+    // durationMs, and a dropped frame is caught up rather than fallen behind.
+    const base = element.textContent;
+    const total = charsToType.length;
+    const started = performance.now();
     let charIdx = 0;
-    const charDurationMs = Math.max(10, durationMs / charsToType.length);  // Adaptive speed based on new chars count
-    
-    function typeNextChar() {
-        if (charIdx < charsToType.length) {
-            // Append new character instead of replacing entire text
-            element.textContent += charsToType[charIdx];
-            charIdx++;
-            element._typewriterTimer = setTimeout(typeNextChar, charDurationMs);
+
+    function step(now) {
+        const progress = Math.min(1, (now - started) / durationMs);
+        const want = Math.max(1, Math.round(total * progress));
+        if (want > charIdx) {
+            element.textContent = base + charsToType.slice(0, want).join('');
+            charIdx = want;
+        }
+        if (progress < 1) {
+            element._typewriterTimer = requestAnimationFrame(step);
+            return;
+        }
+        // Exactly the text asked for, whatever the arithmetic rounded to, and
+        // the height handed back so the next line is free to be shorter.
+        element.textContent = base + charsToType.join('');
+        element._typewriterTimer = null;
+        element.style.minHeight = '';
+        if (typeof element._onTypewriterDone === 'function') {
+            element._onTypewriterDone();
         }
     }
-    
-    // Start typewriter animation
-    typeNextChar();
+
+    element._typewriterTimer = requestAnimationFrame(step);
 }

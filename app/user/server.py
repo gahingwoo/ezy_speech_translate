@@ -72,13 +72,13 @@ if BASE_DIR not in sys.path:
 # OEM Configuration - with fallback for direct script execution
 try:
     # Try relative import (works when imported as module)
-    from .oem_manager import init_oem_config
+    from .oem_manager import init_oem_config, favicon_from_oem
 except ImportError:
     # Fallback for direct script execution
-    from app.oem_manager import init_oem_config
+    from app.oem_manager import init_oem_config, favicon_from_oem
 
 # Now import Flask and other app modules
-from flask import Flask, render_template, request, jsonify, session, Response
+from flask import Flask, render_template, request, jsonify, session, Response, redirect
 from flask_socketio import SocketIO, emit, disconnect
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -1363,8 +1363,18 @@ def clear_translations():
 
 @app.route('/favicon.ico', methods=['GET'])
 def favicon():
-    """Favicon endpoint - return empty response to prevent 404"""
-    return '', 204
+    """The tab icon.
+
+    This used to answer 204 to keep 404s out of the log, which worked and left
+    every page in the app without an icon, the projection screen included.
+    A configured file is redirected to; otherwise the brand icon is drawn, so a
+    tab has something in it out of the box.
+    """
+    kind, value = favicon_from_oem(app.config.get('OEM'))
+    if kind == 'path':
+        return redirect(value, code=302)
+    return Response(value, mimetype='image/svg+xml',
+                    headers={'Cache-Control': 'public, max-age=86400'})
 
 @app.route('/api/health', methods=['GET'])
 @limiter.limit("120 per minute")

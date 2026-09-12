@@ -71,6 +71,91 @@ function tickClock() {
     });
 }
 
+/* ── fitting the stage ────────────────────────────────────────────────────
+   The line being said is set to read from the back of a room, which means a
+   long sentence does not fit. The stage centres what is in it and the page
+   cannot scroll, so anything over the height was clipped at both ends and the
+   end of the sentence went missing off the bottom of the screen.
+
+   So the type is sized to the sentence: start at what the stylesheet asks for
+   and come down until the whole thing is on the screen. Never below the size
+   of the quiet lines above it, because a sentence nobody at the back can read
+   is no better than one they cannot see the end of. */
+const NOW_MAX_REM = 4.25;
+const NOW_MIN_REM = 2;
+let nowText = '';
+
+function stageContentHeight(stage) {
+    /* Not scrollHeight: the stage centres its children, so a browser counts
+       only what hangs off the bottom and the top of a long sentence is missed.
+       Measure the children instead. */
+    const kids = Array.prototype.filter.call(stage.children,
+        k => !k.hidden && k.offsetParent !== null);
+    if (!kids.length) return 0;
+    const gap = parseFloat(getComputedStyle(stage).rowGap) || 0;
+    let h = gap * (kids.length - 1);
+    kids.forEach(k => {
+        const cs = getComputedStyle(k);
+        // scrollHeight, not the box. These are flex items and they shrink, so
+        // the boxes always add up to the height of the stage however much text
+        // is in them: measuring those said every sentence fitted while the
+        // words ran off the bottom of the screen.
+        h += Math.max(k.scrollHeight, k.getBoundingClientRect().height)
+           + (parseFloat(cs.marginTop) || 0)
+           + (parseFloat(cs.marginBottom) || 0);
+    });
+    return h;
+}
+
+/* Sized against the finished sentence rather than whatever the typewriter has
+   reached, so the room does not watch the text shrink as it arrives. */
+function fitNow(text) {
+    const stage = document.querySelector('.proj-stage');
+    const now = el('projNow');
+    if (!stage || !now) return;
+    nowText = text;
+    // On the first paint the stage has not been laid out yet and measures
+    // nothing, and a height of zero makes every sentence look too long. Wait a
+    // frame rather than shrinking the type to its floor for no reason.
+    if (stage.clientHeight <= 0) {
+        window.requestAnimationFrame(function () { fitNow(text); });
+        return;
+    }
+    const showing = now.textContent;
+    now.style.minHeight = '';
+    now.textContent = text;
+    // Every paint starts from the whole stage and the largest type, so a short
+    // line after a long one gets its size and its history back.
+    const past = [el('projPast1'), el('projPast2')].filter(Boolean);
+    past.forEach(k => { k.hidden = false; });
+    // Any line mid-animation is holding a height for the typewriter; measuring
+    // that instead of its text would size this one against the last one.
+    Array.prototype.forEach.call(stage.querySelectorAll('[style*="min-height"]'),
+        k => { if (k !== now) k.style.minHeight = ''; });
+    let size = NOW_MAX_REM;
+    now.style.fontSize = size + 'rem';
+
+    // What gives way first is the history, oldest line then the other. Those
+    // two are there so the screen is not blank in a pause; they have already
+    // been read, and a long one of them is no reason to shrink the sentence
+    // the room is reading right now.
+    for (let i = past.length - 1; i >= 0 && stageContentHeight(stage) > stage.clientHeight; i--) {
+        past[i].hidden = true;
+    }
+    // Only then the type, and never below the size those quiet lines were:
+    // a sentence nobody at the back can read is no better than one whose end
+    // they cannot see.
+    while (size > NOW_MIN_REM && stageContentHeight(stage) > stage.clientHeight) {
+        size = Math.max(NOW_MIN_REM, size - 0.25);
+        now.style.fontSize = size + 'rem';
+    }
+    now.textContent = showing;
+}
+
+/* The height available changes too: a window resized, or the scripture panel
+   opening under the line and taking a third of the screen with it. */
+function refitNow() { fitNow(nowText); }
+
 /* ── the stage ────────────────────────────────────────────────────────────
    Three lines: the one being said, and the two before it, each quieter than
    the last. Nothing is removed until a fourth arrives, so the screen is never
@@ -83,8 +168,10 @@ function paint() {
     // reading as it arrives.
     el('projPast2').textContent = older ? older.text : '';
     el('projPast1').textContent = previous ? previous.text : '';
-    say('projNow', now ? now.text : '');
     say('projSource', now && now.source !== now.text ? now.source : '');
+    // Sized before it is typed, so the size is right from the first frame.
+    fitNow(now ? now.text : '');
+    say('projNow', now ? now.text : '');
 }
 
 /* Type into one of the stage lines. The typewriter only types what is new, so
@@ -135,6 +222,7 @@ function showVerse(ref) {
     }
     el('projVerseText').textContent = slot.verses.map(tidyVerse).join(' ');
     el('projVerse').hidden = false;
+    refitNow();
 }
 
 /* ── the language pair ────────────────────────────────────────────────────
@@ -232,6 +320,7 @@ function connect() {
         recent = [];
         paint();
         el('projVerse').hidden = true;
+        refitNow();
     });
 }
 
@@ -345,6 +434,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     projSetup = Wizard('projSetup', ['room', 'language', 'look', 'done'], applySetup);
     window.projSetup = projSetup;
+
+    /* The cursor. projection.css hides it, because one left on a projector is
+       a white arrow on the wall for the whole service. But the gear in the
+       corner and every control in the wizard have to be clickable, and a
+       pointer nobody can see cannot be aimed. Bring it back whenever the mouse
+       moves and take it away again once the mouse has been still, which on a
+       screen at the front of a room means the operator has walked off. The
+       stylesheet holds it open for as long as the wizard is, however still it
+       is held. */
+    window.addEventListener('resize', refitNow);
+
+    let cursorIdle = null;
+    document.addEventListener('mousemove', function () {
+        document.body.classList.add('cursor-shown');
+        clearTimeout(cursorIdle);
+        cursorIdle = setTimeout(function () {
+            document.body.classList.remove('cursor-shown');
+        }, 3000);
+    }, { passive: true });
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { closeSetup(); return; }
         // Not while a field has the caret: s is a letter before it is a key.

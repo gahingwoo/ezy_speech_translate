@@ -16,9 +16,19 @@ body {
 body {
   background: var(--pf-t--global--background--color--primary--default);
   color: var(--pf-t--global--text--color--regular);
-  /* Nothing on this screen is pressed, and a pointer left on a projector is
-     a white arrow on the wall for an hour. */
+  /* A pointer left on a projector is a white arrow on the wall for an hour,
+     so it goes away on its own. It is not that nothing here is pressed: the
+     gear and the wizard are, and projection.js brings the cursor back the
+     moment the mouse moves. */
   cursor: none;
+}
+
+/* Whoever is setting the screen up is using the mouse, and a pointer they
+   cannot see cannot press anything. Shown while the mouse is moving, and for
+   as long as the wizard is open however still they hold it. */
+body.cursor-shown,
+body:has(#projSetupModal.active) {
+  cursor: auto;
 }
 
 .brand {

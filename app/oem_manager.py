@@ -4,9 +4,37 @@ Handles branding and customization settings from config.yaml
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
+from xml.sax.saxutils import escape
 
 logger = logging.getLogger(__name__)
+
+
+def favicon_from_oem(oem: Optional[Dict[str, Any]]) -> Tuple[str, str]:
+    """The tab icon, for a server to answer /favicon.ico with.
+
+    Returns ("path", url) when a file is configured, and ("svg", markup) when
+    one is not: the brand icon drawn as an icon, so every page has something in
+    its tab without anyone having to supply a file. The same answer serves the
+    projection and captions screens, which do not load the OEM script and so
+    could never pick a configured favicon up on their own.
+    """
+    assets = ((oem or {}).get('assets') or {})
+    configured = (assets.get('favicon') or '').strip()
+    if configured:
+        if configured.startswith(('/', 'http://', 'https://')):
+            return 'path', configured
+        # An emoji reaches this field too; it has no path and no extension.
+        if '/' in configured or '.' in configured:
+            return 'path', '/static/' + configured.lstrip('/')
+
+    icon = configured or (assets.get('brand_icon') or '').strip() or '\U0001F399'
+    return 'svg', (
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+        "<text x='32' y='46' font-size='44' text-anchor='middle'>"
+        + escape(icon) +
+        "</text></svg>"
+    )
 
 
 class OEMConfig:
