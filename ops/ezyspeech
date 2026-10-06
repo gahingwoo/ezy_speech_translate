@@ -668,9 +668,18 @@ def link_command(conf, release):
             if link.is_symlink() or link.exists():
                 link.unlink()
             link.symlink_to(target)
-            return
+            break
         except OSError:
             continue
+    # sudo on Red Hat-like systems runs commands with a PATH (secure_path)
+    # that leaves out /usr/local/bin, and so does Cockpit's administrative
+    # access; a link in /usr/bin is found either way.
+    if os.geteuid() == 0:
+        link = Path('/usr/bin/ezyspeech')
+        if link.is_symlink() or not link.exists():
+            if link.is_symlink():
+                link.unlink()
+            link.symlink_to(target)
 
 
 def install_cockpit(source):
@@ -894,7 +903,8 @@ def cmd_uninstall(a):
         for r in releases(conf):
             run(['docker', 'image', 'rm', f'ezyspeech:{r.name}'], check=False, quiet=True)
     shutil.rmtree(conf['home'], ignore_errors=True)
-    for link in (Path('/usr/local/bin/ezyspeech'), Path.home() / '.local/bin/ezyspeech'):
+    for link in (Path('/usr/local/bin/ezyspeech'), Path('/usr/bin/ezyspeech'),
+                 Path.home() / '.local/bin/ezyspeech'):
         if link.is_symlink():
             link.unlink()
     Path(conf['_path']).unlink()
