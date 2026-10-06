@@ -1824,6 +1824,7 @@ function changeLanguage() {
     const select = document.getElementById('targetLang');
     targetLang = select.value;
     localStorage.setItem('targetLang', targetLang);
+    announceReadingLanguage();
 
     loadVoices();
 
@@ -1853,6 +1854,7 @@ function changeDisplayMode() {
     const select = document.getElementById('displayMode');
     displayMode = select.value;
     localStorage.setItem('displayMode', displayMode);
+    announceReadingLanguage();
 
     trace('Display mode changed to:', displayMode);
     
@@ -4131,11 +4133,66 @@ function showWithoutTranslating(item, itemId, lang, textEl) {
     }
 }
 
+/* Translations the server sends. Each screen says which language it reads in,
+   and the server translates every line once per language and pushes it to the
+   screens reading that language, where every screen used to ask for its own
+   copy of each line. One that has not arrived in time is asked for as before. */
+let serverTranslation = false;
+const pushedTranslations = {};       // id|lang -> {source, translated}
+const pushWaiters = {};              // id|lang -> [resolve]
+const PUSH_WAIT_MS = 6000;
+
+function announceReadingLanguage() {
+    if (!socket || !socket.connected) return;
+    socket.emit('reading_language', { lang: displayMode === 'transcription' ? null : targetLang });
+}
+
+function receivePushedTranslation(data) {
+    if (!data || data.id == null || !data.lang) return;
+    const key = data.id + '|' + data.lang;
+    pushedTranslations[key] = { source: data.source, translated: data.translated };
+    (pushWaiters[key] || []).forEach(function (done) { done(); });
+    delete pushWaiters[key];
+}
+
+/* The server's translation of this line into lang, if it has one or sends one
+   within PUSH_WAIT_MS: kept on the line from history, or pushed. Only for the
+   words the line has now; a correction makes earlier ones stale. */
+async function serverTranslationFor(item, lang) {
+    const source = item.corrected || item.original || '';
+    const key = item.id + '|' + lang;
+    const pick = function () {
+        const kept = item.translations && item.translations[lang];
+        if (kept && kept.source === source) return kept.text;
+        const pushed = pushedTranslations[key];
+        if (pushed && pushed.source === source) return pushed.translated;
+        return null;
+    };
+    const answered = function () {
+        const pushed = pushedTranslations[key];
+        return !!(pushed && pushed.source === source);
+    };
+    let found = pick();
+    // An answer of null is the server saying it could not: ask straight away.
+    if (found || answered() || !serverTranslation || item.id == null) return found;
+    await new Promise(function (done) {
+        const timer = setTimeout(done, PUSH_WAIT_MS);
+        (pushWaiters[key] = pushWaiters[key] || []).push(function () { clearTimeout(timer); done(); });
+    });
+    return pick();
+}
+
 async function translateInBackground(item, itemId, textEl) {
+    // Use item's current language if set, otherwise use global targetLang
+    const lang = item.currentLang || targetLang;
+    // Once per line and language at a time. A line arriving without an
+    // interim row was translated twice: once as its row was built and again
+    // as it was added, the second clearing what the first was typing.
+    const inFlight = (item.corrected || '') + '\u001f' + lang;
+    if (item._translating === inFlight) return;
+    item._translating = inFlight;
     // Translate asynchronously and update DOM when done
     try {
-        // Use item's current language if set, otherwise use global targetLang
-        const lang = item.currentLang || targetLang;
         trace('Starting translation for item ' + itemId + ', target lang: ' + lang + ', text length: ' + (item.corrected ? item.corrected.length : 0));
 
         /* Nothing to translate when the line is already in the language being
@@ -4167,9 +4224,10 @@ async function translateInBackground(item, itemId, textEl) {
         
         const spoken = item.source_language || item.language || '';
         const sameTongue = sameLanguage(spoken, lang);
+        const fromServer = sameTongue ? null : await serverTranslationFor(item, lang);
         const translated = sameTongue
             ? item.corrected
-            : await translateText(item.corrected, lang);
+            : (fromServer || await translateText(item.corrected, lang));
         item.translated = translated || item.corrected;
         item.currentLang = lang;
 
@@ -4180,8 +4238,9 @@ async function translateInBackground(item, itemId, textEl) {
         item.translationFailed = !sameTongue
             && (item.translated || '').trim() === (item.corrected || '').trim();
 
-        // Fire-and-forget: cache translation on server so future clients skip this call
-        if (translated && item.id != null) {
+        // Fire-and-forget: cache translation on server so future clients skip
+        // this call. Not when it came from the server, which has it already.
+        if (translated && item.id != null && !fromServer) {
             fetch('/api/translations/' + item.id + '/translated?api_token=' + encodeURIComponent(apiSessionToken) + '&room=' + encodeURIComponent(window.CURRENT_ROOM_ID || 'main'), {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -4194,8 +4253,10 @@ async function translateInBackground(item, itemId, textEl) {
         // Update DOM if element still exists
         const elem2 = document.getElementById(itemId);
         if (elem2) {
-            // Get text-target element if not already provided
-            if (!textEl) {
+            // The one on the page now: the row may have been drawn again
+            // while the translation was on its way, and writing into the copy
+            // taken before it left the reader looking at an empty line.
+            if (!textEl || !textEl.isConnected) {
                 textEl = elem2.querySelector('.text-target');
             }
             
@@ -4245,6 +4306,8 @@ async function translateInBackground(item, itemId, textEl) {
         }
     } catch (e) {
         console.warn('Background translation failed for item ' + itemId + ':', e.message);
+    } finally {
+        if (item._translating === inFlight) item._translating = null;
     }
 }
 
@@ -4738,7 +4801,13 @@ function setupSocketEventListeners() {
         await loadInitialTranslations();
     });
 
+    socket.on('line_translated', receivePushedTranslation);
+
     socket.on('ready', async (data) => {
+        // A new connection is a new socket on the server: say again which
+        // language this one reads, before the history is asked for.
+        serverTranslation = !!(data && data.server_translation);
+        announceReadingLanguage();
         // Server sent a fresh API token for this session.
         if (data && data.api_token) {
             const prevToken = apiSessionToken;

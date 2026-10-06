@@ -12,7 +12,11 @@
 function animateTextChange(element, currentText, newText, durationMs = 300) {
     // Already on its way to exactly this: an interim result is often sent
     // again unchanged, and restarting would only delay the end of the line.
-    if (element._typewriterTimer && element._twTarget === newText) return;
+    // Only while that animation still owns the element: if something has
+    // written over it since, it has stopped, and returning here left the line
+    // empty.
+    if (element._typewriterTimer && element._twTarget === newText
+            && element._twRest && element._twRest.parentNode === element) return;
 
     if (element._typewriterTimer) {
         cancelAnimationFrame(element._typewriterTimer);

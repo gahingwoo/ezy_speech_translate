@@ -285,6 +285,16 @@ function connect() {
 
     socket.on('connect', () => {
         document.body.classList.remove('is-offline');
+        // Which language this screen reads, so the server sends each line
+        // translated rather than this screen asking for it.
+        socket.emit('reading_language', { lang: LANG || null });
+    });
+    socket.on('line_translated', data => {
+        if (!data || data.lang !== LANG) return;
+        const key = data.id + '|' + data.source;
+        pushed[key] = data.translated;
+        (pushWaiters[key] || []).forEach(done => done());
+        delete pushWaiters[key];
     });
     socket.on('disconnect', () => {
         document.body.classList.add('is-offline');
@@ -301,7 +311,7 @@ function connect() {
         if (LANG && !sameLanguage(data.source_language || data.language || 'en', LANG)) {
             text = data.translated && data.translated_lang === LANG
                 ? data.translated
-                : await translate(source, LANG);
+                : (await pushedFor(data.id, source)) || await translate(source, LANG);
         }
         push(text, source);
         if (data.bible_refs && data.bible_refs.length) showVerse(data.bible_refs[0]);
@@ -353,12 +363,26 @@ function sameLanguage(a, b) {
     return base(a) === base(b);
 }
 
+/* Lines the server has translated for this screen, by id and wording. */
+const pushed = {};
+const pushWaiters = {};
+
+function pushedFor(id, source) {
+    const key = id + '|' + source;
+    if (key in pushed || id == null) return Promise.resolve(pushed[key] || null);
+    return new Promise(done => {
+        const timer = setTimeout(() => done(null), 6000);
+        (pushWaiters[key] = pushWaiters[key] || []).push(() => { clearTimeout(timer); done(pushed[key]); });
+    });
+}
+
 async function translate(text, target) {
     try {
         const res = await fetch('/api/translate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text, target_lang: target })
+            // The room, so its glossary applies; this was left out.
+            body: JSON.stringify({ text: text, target_lang: target, room: ROOM })
         });
         const data = await res.json();
         return data.translated || text;

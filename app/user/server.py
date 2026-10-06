@@ -511,6 +511,7 @@ def _room(rid: str) -> dict:
                     'next_id': 0,
                     'display_name': rid.replace('_', ' ').title() if rid != DEFAULT_ROOM_ID else 'Main',
                     'recording': None,   # None or {'username': str, 'sid': str, 'started_at': iso}
+                    'reading': {},       # sid -> the language that screen reads in
                 }
                 _rooms[rid] = state
     return state
@@ -665,6 +666,74 @@ def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
             f"History trimmed to {MAX_HISTORY_SIZE} items for room '{room_id}'. "
             f"Total IDs generated: {state['next_id']}"
         )
+
+
+# ── Translating once, for everyone ──────────────────────────────────────────
+# Every listener used to ask for its own translation of every line: fifty
+# phones, fifty requests the moment a sentence ended, each a round trip before
+# its reader saw anything. The server already knew the line first. Now each
+# screen says which language it reads, and the server translates a line once
+# per language present and sends the result to the screens reading it; a
+# screen that hears nothing in time still asks, as before.
+
+_READING_LANG = re.compile(r'^[a-z]{2,3}(-[a-z0-9]{2,8})?$')
+
+
+def _language_base(code: str) -> str:
+    """Same rule as sameLanguage() in user.js: Chinese splits by script and
+    Cantonese is its own language; everything else by its first subtag."""
+    c = (code or '').lower()
+    if c.startswith('yue'):
+        return 'yue'
+    if c.startswith('zh-tw') or '-hant' in c:
+        return 'zh-tw'
+    if c.startswith('zh'):
+        return 'zh'
+    return c.split('-')[0]
+
+
+def _reading_room(room_id: str, lang: str) -> str:
+    return f'room:{room_id}:lang:{lang}'
+
+
+def _push_translations(room_id: str, item: dict) -> None:
+    """Translate one line into every language its room is reading, at once,
+    and send each to the screens reading it. Runs in its own greenlet."""
+    text = item.get('corrected') or item.get('original') or ''
+    if not text:
+        return
+    spoken = _language_base(item.get('source_language') or 'en')
+    wanted = {lang for lang in _room(room_id).get('reading', {}).values()
+              if _language_base(lang) != spoken}
+    if not wanted:
+        return
+    service = get_translation_service()
+
+    def one(lang):
+        try:
+            ok, translated, _ = service.translate(text, lang, glossary=_get_glossary_for(room_id, lang))
+        except Exception as exc:                 # never fatal: the screen asks itself
+            logger.warning(f"Push translation to {lang} failed: {exc}")
+            ok, translated = False, None
+        if not ok or not translated:
+            # Said at once, so the screens stop waiting and ask for themselves
+            # (the browser can still reach the service when this server cannot).
+            socketio.emit('line_translated', {
+                'id': item.get('id'), 'room_id': room_id, 'lang': lang,
+                'source': text, 'translated': None,
+            }, room=_reading_room(room_id, lang))
+            return
+        # Kept on the line, so a screen that loads it later has it already.
+        item.setdefault('translations', {})[lang] = {'source': text, 'text': translated}
+        socketio.emit('line_translated', {
+            'id': item.get('id'), 'room_id': room_id, 'lang': lang,
+            'source': text, 'translated': translated,
+        }, room=_reading_room(room_id, lang))
+
+    pool = eventlet.GreenPool(8)
+    for lang in sorted(wanted):
+        pool.spawn_n(one, lang)
+    pool.waitall()
 
 
 def _get_glossary_for(room_id: str, target_lang: str) -> list:
@@ -2450,6 +2519,9 @@ def handle_connect():
         'message': 'Use /api/translations to fetch paginated history',
         'api_token': api_token,
         'room_id': room_id,
+        # Translations arrive as line_translated for the language announced
+        # with reading_language.
+        'server_translation': True,
     })
 
     # ── Feature 1: broadcast live viewer count to admins of this room ────
@@ -2488,6 +2560,8 @@ def handle_disconnect(sid=None):
             rs = _rooms.get(room_id)
             if rs is not None and rs['listeners'].get(client_key) == sid_used:
                 del rs['listeners'][client_key]
+            if rs is not None:
+                rs.setdefault('reading', {}).pop(sid_used, None)
             logger.info(
                 f"User client disconnected: SID {sid_used} from {client_key} "
                 f"(Room: {room_id}, Total listeners: {_all_listener_count()})"
@@ -2569,6 +2643,33 @@ def _heartbeat_cleanup_loop():
                     handle_disconnect(sid)
                 except Exception as _e:
                     logger.warning(f"[HEARTBEAT] Cleanup error for {sid}: {_e}")
+
+
+@socketio.on('reading_language')
+def handle_reading_language(data):
+    """A screen says which language it reads in, or that it needs none
+    (transcription mode, or reading the spoken language)."""
+    from flask_socketio import join_room, leave_room
+    sid = request.sid
+    mapping = sid_to_client_key.get(sid)
+    if not mapping or mapping[1] != 'user':
+        return
+    lang = (data or {}).get('lang') if isinstance(data, dict) else None
+    lang = str(lang).strip().lower() if lang else None
+    if lang and not _READING_LANG.match(lang):
+        return
+    room_id = _sid_room(sid)
+    reading = _room(room_id).setdefault('reading', {})
+    previous = reading.get(sid)
+    if previous == lang:
+        return
+    if previous:
+        leave_room(_reading_room(room_id, previous))
+    if lang:
+        reading[sid] = lang
+        join_room(_reading_room(room_id, lang))
+    else:
+        reading.pop(sid, None)
 
 
 @socketio.on('admin_connect')
@@ -2709,6 +2810,7 @@ def handle_new_transcription(data):
         # Emit to listeners in this room only
         socketio.emit('new_translation', translation_data,
                       room=f'room:{room_id}', skip_sid=[request.sid])
+        eventlet.spawn_n(_push_translations, room_id, translation_data)
         # Echo back to the sending admin for confirmation
         emit('transcription_confirmed', translation_data)
         logger.info(f"[FINAL] room={room_id} ID={translation_data.get('id')}")
@@ -2751,6 +2853,8 @@ def handle_correct_translation(data):
 
     target_item['corrected'] = corrected_text
     target_item['is_corrected'] = True
+    # Translations of the old wording are no longer this line's.
+    target_item.pop('translations', None)
 
     # Re-detect Bible references in the corrected text so the panel updates
     # if the admin fixed a transcription error into a proper Bible citation.
@@ -2771,6 +2875,7 @@ def handle_correct_translation(data):
 
     socketio.emit('translation_corrected', target_item, room=f'room:{room_id}')
     socketio.emit('translation_corrected', target_item, room=f'admin:{room_id}')
+    eventlet.spawn_n(_push_translations, room_id, target_item)
     logger.info(f"[CORRECTED] room={room_id} ID {translation_id}")
     emit('correction_success', {'id': translation_id})
 
@@ -2834,6 +2939,7 @@ def handle_import_transcription(data):
 
     # Broadcast to clients in the admin's room
     socketio.emit('new_translation', translation_data, room=f'room:{room_id}')
+    eventlet.spawn_n(_push_translations, room_id, translation_data)
     socketio.emit('new_translation', translation_data, room=f'admin:{room_id}')
     logger.info(f"[IMPORTED] room={room_id} ID={translation_data['id']} from {_admin_username(request.sid)}")
 

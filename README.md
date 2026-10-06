@@ -362,8 +362,11 @@ Operational cautions:
 - Translation items are ID-based and broadcast to the listeners in one room.
 - Viewer history loading uses tokenized paginated HTTP API (`/api/translations`).
 - Viewer translation path:
-  1) server `/api/translate`
-  2) client-side fallback logic if needed
+  1) pushed by the server: each screen announces its reading language, and
+     the server translates every line once per language in the room and sends
+     it as `line_translated`; kept on the line for screens that load later
+  2) server `/api/translate`, if nothing has arrived after six seconds
+  3) client-side fallback logic if needed
 - Viewer read-aloud path: the browser's own speech synthesis, nothing on the
   server
 - A line already in the language being read is shown, not translated: no round
@@ -474,15 +477,20 @@ Inbound:
 - `clear_history`
 - `import_transcription`
 - `delete_items`
+- `reading_language` (`{lang}`, or `null` for none): the language a listener
+  or projection screen reads, so the server can translate for it
 
 Outbound:
-- `ready` (contains `api_token`)
+- `ready` (contains `api_token`, and `server_translation: true`)
 - `realtime_transcription`
 - `new_translation`
 - `transcription_confirmed`
 - `translation_corrected`
 - `history_cleared`
 - `items_deleted`
+- `line_translated` (`{id, lang, source, translated}`): a line translated once
+  per language present in the room and sent to the screens reading it;
+  `translated: null` means the server could not, and the screen asks itself
 
 ---
 
