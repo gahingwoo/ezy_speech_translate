@@ -24,7 +24,11 @@ rm -rf "$out" && mkdir -p "$out"
 git archive --format=tar.gz --prefix="ezyspeech-$version/" -o "$out/ezyspeech-$version.tar.gz" HEAD
 
 if [ -n "${COCKPIT_DIR:-}" ]; then
-    (cd "$COCKPIT_DIR" && { [ -d node_modules ] || npm ci --no-audit --no-fund; } && npm run build >/dev/null)
+    # Its Makefile fetches the parts of Cockpit it builds against (pkg/lib);
+    # production is minified and compressed, without source maps.
+    (cd "$COCKPIT_DIR" \
+        && { [ -d node_modules ] || env -u NODE_ENV npm install --ignore-scripts --no-audit --no-fund; } \
+        && rm -rf dist && make NODE_ENV=production >/dev/null)
     # dist/ goes in as ezyspeech/, the directory Cockpit looks for it in.
     stage="$(mktemp -d)"
     cp -R "$COCKPIT_DIR/dist" "$stage/ezyspeech"
