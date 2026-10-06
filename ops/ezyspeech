@@ -67,6 +67,7 @@ STATE_LINKS = {           # path in a release -> directory in the state
     'exports': 'exports', 'app/static/oem': 'oem',
 }
 KEEP_RELEASES = 2
+COCKPIT_DIR = Path('/usr/share/cockpit/ezyspeech')
 HEALTH_TIMEOUT = 75
 
 
@@ -684,7 +685,7 @@ def link_command(conf, release):
 
 def install_cockpit(source):
     """The Cockpit module: a package file, or a URL to one."""
-    dest = Path('/usr/share/cockpit/ezyspeech')
+    dest = COCKPIT_DIR
     with tempfile.TemporaryDirectory() as t:
         pkg = Path(source)
         if not pkg.exists():
@@ -794,9 +795,30 @@ def cmd_update(a):
         wait_healthy(conf, installed)
         raise Fail(f'Update to {rel["version"]} failed and was rolled back to {installed}. '
                    'Its log: ezyspeech logs')
-    link_command(conf, release)
     prune(conf)
+    Out.step(95, 'Finishing')
+    # The rest is done by the new release's own copy of this command, so a
+    # change to it takes effect on the update that brings it.
+    if run([sys.executable, str(release / 'ops' / 'ezyspeech'), 'finish-update'],
+           check=False).returncode:
+        Out.info('Finishing the update went wrong; it can be retried: ezyspeech finish-update')
     Out.step(100, f'Updated to {rel["version"]}')
+
+
+def cmd_finish_update(a):
+    """After an update: the command on the PATH, and the Cockpit module."""
+    conf = load_conf()
+    require_root(conf)
+    cur = current_release(conf)
+    link_command(conf, cur)
+    if COCKPIT_DIR.exists():
+        try:
+            rel = fetch_release(version_of(cur))
+            if rel.get('cockpit'):
+                with tempfile.TemporaryDirectory() as t:
+                    install_cockpit(str(verified_download(rel, t, 'cockpit')))
+        except Exception as exc:                # the update itself went through
+            Out.info(f'The Cockpit module was not updated: {exc}')
 
 
 def cmd_rollback(a):
@@ -930,6 +952,7 @@ def main(argv):
     s.add_argument('--force', action='store_true'); s.add_argument('--progress', action='store_true')
     s.set_defaults(func=cmd_update)
     sub.add_parser('rollback').set_defaults(func=cmd_rollback)
+    sub.add_parser('finish-update', help='run by update; safe to repeat').set_defaults(func=cmd_finish_update)
     sub.add_parser('menu', help='the installer\'s management screens').set_defaults(func=cmd_menu)
     for name in ('start', 'stop', 'restart'):
         sub.add_parser(name).set_defaults(func=cmd_service)
