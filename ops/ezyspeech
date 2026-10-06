@@ -50,6 +50,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -175,12 +176,26 @@ def _open(url, timeout=30):
     return urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context())
 
 
+def release_api():
+    """Where releases come from: GitHub, unless the environment or the
+    install says otherwise (a fork, or a test)."""
+    if os.environ.get('EZY_RELEASE_API'):
+        return os.environ['EZY_RELEASE_API']
+    conf = load_conf(required=False) or {}
+    return conf.get('release_api') or RELEASE_API
+
+
 def fetch_release(tag=None):
     """{version, tarball, sums, cockpit, notes, url} for the latest release, or tag."""
-    url = f'{RELEASE_API}/tags/v{tag.lstrip("v")}' if tag else f'{RELEASE_API}/latest'
+    api = release_api()
+    url = f'{api}/tags/v{tag.lstrip("v")}' if tag else f'{api}/latest'
     try:
         with _open(url) as resp:
             data = json.load(resp)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise Fail(f'No release {"v" + tag.lstrip("v") + " " if tag else ""}has been published yet.')
+        raise Fail(f'The release list answered {exc.code} ({url}).')
     except Exception as exc:
         raise Fail(f'Could not reach the release list ({url}): {exc}')
     version = str(data.get('tag_name', '')).lstrip('v')
