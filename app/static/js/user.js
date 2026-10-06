@@ -180,7 +180,16 @@ const BROWSER_LANG_MAP = {
     'hi': 'hi',
     'hi-IN': 'hi',
     'ta': 'ta',
-    'ta-IN': 'ta'
+    'ta-IN': 'ta',
+    'tl': 'tl',
+    'fil': 'tl',
+    'fil-PH': 'tl',
+    'mi': 'mi',
+    'mi-NZ': 'mi',
+    'sm': 'sm',
+    'sm-WS': 'sm',
+    'to': 'to',
+    'to-TO': 'to'
 };
 
 let displayLanguage = localStorage.getItem('displayLanguage') || detectDisplayLanguageLocal();
@@ -1550,7 +1559,11 @@ const TTS_LANG_MAP = {
     'id': 'id-ID',
     'ms': 'ms-MY',
     'hi': 'hi-IN',
-    'ta': 'ta-IN'
+    'ta': 'ta-IN',
+    'tl': 'fil-PH',
+    'mi': 'mi-NZ',
+    'sm': 'sm-WS',
+    'to': 'to-TO'
 };
 
 // Language Detection Mapping

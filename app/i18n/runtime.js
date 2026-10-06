@@ -116,6 +116,17 @@
                 else if (i18n['en'] && i18n['en'][key]) el.placeholder = i18n['en'][key];
             });
 
+            // The help behind each (i) button: its pop-up and the button's own
+            // label, which says the same. These carried a key from the start
+            // and nothing read it, so every language got the English help.
+            document.querySelectorAll('[data-popover-i18n]').forEach(el => {
+                const key = el.getAttribute('data-popover-i18n');
+                const text = (i18n[resolved] && i18n[resolved][key]) || (i18n['en'] && i18n['en'][key]);
+                if (!text) return;
+                el.setAttribute('data-popover', text);
+                if (el.hasAttribute('aria-label')) el.setAttribute('aria-label', text);
+            });
+
             // Titles
             document.querySelectorAll('[data-i18n-title]').forEach(el => {
                 const key = el.getAttribute('data-i18n-title');

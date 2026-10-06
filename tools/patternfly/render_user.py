@@ -230,12 +230,15 @@ LANGS = ('<option value="en">English</option><option value="zh">简体中文</op
          '<option value="ru">Русский</option><option value="ar">العربية</option>'
          '<option value="hi">हिन्दी</option><option value="th">ไทย</option>'
          '<option value="vi">Tiếng Việt</option><option value="id">Bahasa Indonesia</option>'
-         '<option value="ms">Bahasa Melayu</option><option value="tl">Tagalog</option>'
+         '<option value="ms">Bahasa Melayu</option><option value="it">Italiano</option>'
+         '<option value="nl">Nederlands</option><option value="pl">Polski</option>'
+         '<option value="tr">Türkçe</option><option value="ta">தமிழ்</option>'
+         '<option value="tl">Tagalog</option>'
          '<option value="sm">Gagana Samoa</option><option value="to">Lea faka-Tonga</option>'
          '<option value="mi">Te Reo Māori</option>')
 
 
-# The 22 languages, with the English name beside the native one. The design
+# The 26 languages, with the English name beside the native one. The design
 # spec is explicit that the English name stays on the same line: someone is
 # often setting a phone up for a newcomer and may not read the script.
 LANG_NAMES = (
@@ -256,6 +259,11 @@ LANG_NAMES = (
     ("vi", "Tiếng Việt", "Vietnamese"),
     ("id", "Bahasa Indonesia", "Indonesian"),
     ("ms", "Bahasa Melayu", "Malay"),
+    ("it", "Italiano", "Italian"),
+    ("nl", "Nederlands", "Dutch"),
+    ("pl", "Polski", "Polish"),
+    ("tr", "Türkçe", "Turkish"),
+    ("ta", "தமிழ்", "Tamil"),
     ("tl", "Tagalog", "Tagalog"),
     ("sm", "Gagana Samoa", "Samoan"),
     ("to", "Lea faka-Tonga", "Tongan"),
@@ -297,7 +305,7 @@ def language_dialog():
                 <input class="pf-v6-c-text-input-group__text-input" type="text"
                        id="languageSearch" autocomplete="off"
                        aria-label="Search languages" data-i18n-placeholder="searchLanguages"
-                       placeholder="Search 21 languages" oninput="filterLanguages(this.value)">
+                       placeholder="Search 26 languages" oninput="filterLanguages(this.value)">
               </span>
             </div>
           </div>
