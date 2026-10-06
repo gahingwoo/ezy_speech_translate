@@ -338,25 +338,39 @@ def prune(conf):
 
 # ── health ───────────────────────────────────────────────────────────────────
 
+def settings_in(text):
+    """The two-level "section: / key: value" settings of a config.yaml."""
+    found, section = {}, None
+    for line in text.splitlines():
+        m = re.match(r'^([a-z_]+):\s*(#.*)?$', line)
+        if m:
+            section = m.group(1)
+            continue
+        m = re.match(r'^\s+([a-z_]+):\s*(.*?)\s*(#.*)?$', line)
+        if m and section:
+            found[f'{section}.{m.group(1)}'] = m.group(2).strip('\'"')
+    return found
+
+
+def settings(conf):
+    """What the installed config.yaml says, as far as settings_in can read it."""
+    if conf['mode'] == 'native':
+        try:
+            return settings_in((Path(conf['state']) / 'config' / 'config.yaml').read_text())
+        except OSError:
+            return {}
+    r = compose(conf, 'exec', '-T', 'ezyspeech', 'cat', '/var/lib/ezyspeech/config/config.yaml',
+                capture=True, check=False)
+    return settings_in(r.stdout) if r.returncode == 0 else {}
+
+
 def ports(conf):
     """The two ports, as the running configuration has them."""
     port, admin = conf.get('port', '1915'), conf.get('admin_port', '1916')
     if conf['mode'] == 'native':
-        cfg = Path(conf['state']) / 'config' / 'config.yaml'
-        section = None
-        try:
-            for line in cfg.read_text().splitlines():
-                m = re.match(r'^([a-z_]+):\s*(#.*)?$', line)
-                if m:
-                    section = m.group(1)
-                    continue
-                m = re.match(r'^\s+port:\s*(\d+)', line)
-                if m and section == 'server':
-                    port = m.group(1)
-                elif m and section == 'admin_server':
-                    admin = m.group(1)
-        except OSError:
-            pass
+        found = settings(conf)
+        port = found.get('server.port') or port
+        admin = found.get('admin_server.port') or admin
     else:
         env = docker_env(conf)
         port, admin = env.get('EZY_PORT', port), env.get('EZY_ADMIN_PORT', admin)
@@ -605,8 +619,12 @@ def cmd_install(a):
         install_cockpit(a.cockpit)
     Out.step(100, 'Done')
     password = re.search(r'Password:\s+(\S+)', printed or '')
+    found = settings(conf)
     result = {'version': version, 'mode': mode, 'home': str(home), 'ports': list(ports(conf)),
-              'password': password.group(1) if password else None}
+              'password': password.group(1) if password else None,
+              'username': found.get('authentication.admin_username') or 'admin',
+              'https': found.get('admin_server.use_https') == 'true',
+              'external_url': found.get('server.external_url') or None}
     print('RESULT ' + json.dumps(result), flush=True)
 
 

@@ -289,11 +289,18 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
             MIGRATE=/opt/ezy_speech_translate
         fi
     fi
+    if [ -n "$MIGRATE" ]; then   # its ports are the ones people already use
+        local old_port old_admin
+        old_port="$(old_setting server port)"; old_admin="$(old_setting admin_server port)"
+        [ "$PORT" = 1915 ] && [ -n "$old_port" ] && PORT="$old_port"
+        [ "$ADMIN_PORT" = 1916 ] && [ -n "$old_admin" ] && ADMIN_PORT="$old_admin"
+    fi
 
     # Ports and HTTPS
     PORT="$(ask "$(L "Port for the listener page:" "听众页面端口：")" "$PORT")" || exit 1
     ADMIN_PORT="$(ask "$(L "Port for the operator's console:" "操作台端口：")" "$ADMIN_PORT")" || exit 1
-    if [ -z "$HTTPS" ] && [ -z "$EXTERNAL_URL" ]; then
+    # Brought over, HTTPS and the public address stay as they were
+    if [ -z "$HTTPS" ] && [ -z "$EXTERNAL_URL" ] && [ -z "$MIGRATE" ]; then
         local h
         h="$(choose "$(L "Browsers allow the microphone only over HTTPS, or on the machine itself. Where will the console be opened?" "浏览器只在 HTTPS 或本机上允许用麦克风。操作台会在哪里打开？")" off \
             off "$(L "On this machine (plain HTTP)" "就在这台机器上（普通 HTTP）")" \
@@ -307,7 +314,7 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
 
     # The admin password
     ADMIN_PASSWORD=""
-    if interactive && ! yesno "$(L "Make a strong admin password for you? (No: type your own)" "要自动生成一个强管理员密码吗？（否：自己输入）")" y; then
+    if [ -z "$MIGRATE" ] && interactive && ! yesno "$(L "Make a strong admin password for you? (No: type your own)" "要自动生成一个强管理员密码吗？（否：自己输入）")" y; then
         while :; do
             ADMIN_PASSWORD="$(secret "$(L "Admin password (8 or more characters):" "管理员密码（至少 8 位）：")")" || exit 1
             [ "${#ADMIN_PASSWORD}" -ge 8 ] && [ "$ADMIN_PASSWORD" = "$(secret "$(L "Again:" "再输一次：")")" ] && break
@@ -329,7 +336,7 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
   $(L "Mode" "方式"):           $MODE
   $(L "Listener page" "听众页面"):  port $PORT
   $(L "Console" "操作台"):        port $ADMIN_PORT
-  HTTPS:          ${EXTERNAL_URL:-$HTTPS}
+  HTTPS:          ${EXTERNAL_URL:-${HTTPS:-$(L "as before" "保持原样")}}
   Cockpit:        ${COCKPIT:-no}${MIGRATE:+
   $(L "Bring over" "迁移自"):     $MIGRATE}"
     yesno "$summary" y || exit 0
@@ -359,12 +366,19 @@ $(L "The full log is in /tmp/ezyspeech-install.log." "完整日志在 /tmp/ezysp
     rm -rf "$WORK"
 }
 
+old_setting() { # old_setting SECTION KEY  -> a value from the old install's config.yaml
+    awk -v s="$1" -v k="$2" '
+        /^[a-z_]+:[ \t]*(#.*)?$/ { sub(/:.*/, ""); in_s = ($0 == s); next }
+        in_s && $1 == k":" { print $2; exit }' /opt/ezy_speech_translate/config/config.yaml 2>/dev/null
+}
+
 show_result() {
-    local ip pass scheme cockpit_line="" pw_line
+    local ip pass scheme cockpit_line="" pw_line user url
     ip="$(lan_ip)"
-    pass="$(printf '%s' "$1" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("password") or "")')"
-    scheme=http; [ "$HTTPS" = self-signed ] && scheme=https
-    [ "$COCKPIT" = yes ] && cockpit_line="
+    field() { printf '%s' "$1" | python3 -c 'import json,sys; v=json.load(sys.stdin).get(sys.argv[1]); print("" if v in (None, False) else v)' "$2" 2>/dev/null; }
+    pass="$(field "$1" password)"; user="$(field "$1" username)"; url="$(field "$1" external_url)"
+    scheme=http; { [ "$HTTPS" = self-signed ] || [ -n "$(field "$1" https)" ]; } && scheme=https
+    [ "$COCKPIT" = yes ] && [ -n "${COCKPIT_PKG:-}" ] && cockpit_line="
   Cockpit:        https://$ip:9090  → EzySpeech"
     if [ -n "$pass" ]; then pw_line="$pass
   $(L "Write it down: it is not shown again." "请记下：不会再显示。")"
@@ -372,10 +386,10 @@ show_result() {
     else pw_line="$(L "(kept from the earlier install)" "（沿用旧安装的密码）")"; fi
     msg "$(L "EzySpeech $VERSION is running." "EzySpeech $VERSION 已在运行。")
 
-  $(L "Listeners" "听众"):      ${EXTERNAL_URL:-$scheme://$ip:$PORT}
+  $(L "Listeners" "听众"):      ${url:-${EXTERNAL_URL:-$scheme://$ip:$PORT}}
   $(L "Projection" "投影"):     $scheme://$ip:$PORT/projection
   $(L "Console" "操作台"):        $scheme://$ip:$ADMIN_PORT
-  $(L "Sign in as" "登录名"):     admin
+  $(L "Sign in as" "登录名"):     ${user:-admin}
   $(L "Password" "密码"):       $pw_line$cockpit_line
 
 $(L "To manage it later (update, restart, password, logs):" "以后管理（更新、重启、改密码、日志）：")
