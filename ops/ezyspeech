@@ -667,6 +667,20 @@ def install_cockpit(source):
         shutil.rmtree(dest, ignore_errors=True)
         shutil.copytree(root, dest)
         run(['chmod', '-R', 'a+rX', str(dest)])
+    # The old module's "make install" put it in /usr/local/share, which Cockpit
+    # reads before /usr/share, so it would hide this one. One linked into a
+    # home directory hides it for that person only; say so, but leave it.
+    for old in ('ezyspeech', 'ezy-speech-cockpit'):
+        p = Path('/usr/local/share/cockpit') / old
+        if p.is_symlink() or p.is_file():
+            p.unlink()
+        elif p.exists():
+            shutil.rmtree(p, ignore_errors=True)
+    for p in sorted(Path('/home').glob('*/.local/share/cockpit/*')) + \
+            sorted(Path('/root/.local/share/cockpit').glob('*')):
+        if p.name in ('ezyspeech', 'ezy-speech-cockpit'):
+            Out.info(f'Note: {p} is an older copy of the Cockpit module; '
+                    f'remove it to see this one when signed in as that user.')
 
 
 def cmd_status(a):
