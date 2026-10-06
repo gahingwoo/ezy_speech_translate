@@ -874,3 +874,21 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   font-size: var(--pf-t--global--font--size--body--sm);
   color: var(--pf-t--global--text--color--subtle);
 }
+
+/* ── wide screens ─────────────────────────────────────────────────────── */
+/* shell.css stops a read page at 76rem, which on a 1080p or wider screen left
+   a band of nothing either side of the stream. These lines are short, one
+   sentence each, so the column can take more of the sheet before a line gets
+   too long to follow. */
+@media (min-width: 100rem) {
+  .pf-v6-c-page__main.doc-page {
+    --pf-v6-c-page--section--m-limit-width--MaxWidth: 96rem;
+  }
+}
+
+/* .kv caps a value at a reading measure, and in the stream that held the copy
+   and read-aloud buttons short of the card's edge, with a gap after them that
+   lined up with nothing. The text inside still wraps at its own width. */
+.translation-list.kv .pf-v6-c-description-list__description {
+  max-width: none;
+}

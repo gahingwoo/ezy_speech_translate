@@ -278,8 +278,9 @@ function updateThemeUI(theme) {
     const quick = document.getElementById('themeToggle');
     if (quick) {
         const label = theme === 'dark' ? t('lightMode', 'Light Mode') : t('darkMode', 'Dark Mode');
-        quick.setAttribute('aria-label', label);
         quick.setAttribute('title', label);
+        const words = document.getElementById('themeToggleText');
+        if (words) words.textContent = label;
     }
 }
 

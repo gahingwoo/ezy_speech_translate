@@ -1239,10 +1239,12 @@ def build():
 
         <!-- The theme, one tap from anywhere rather than two dialogs deep. The
              moon and the sun are both in it; the stylesheet shows the one for
-             the theme it switches to, and updateThemeUI() keeps the label. -->
+             the theme it switches to, and updateThemeUI() keeps the label, which
+             like the other masthead buttons' is hidden below md. -->
         <button class="pf-v6-c-button pf-m-plain masthead-action theme-toggle" type="button"
-                id="themeToggle" aria-label="Dark Mode" title="Dark Mode"
-                onclick="toggleTheme()">%(moon)s%(sun)s</button>
+                id="themeToggle" title="Dark Mode" onclick="toggleTheme()">
+          <span class="pf-v6-c-button__icon pf-m-start">%(moon)s%(sun)s</span><span class="pf-v6-c-button__text" id="themeToggleText">Dark Mode</span>
+        </button>
 %(settings)s
 
 %(config)s

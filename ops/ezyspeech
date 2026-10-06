@@ -462,6 +462,70 @@ def services_state():
     return out
 
 
+def _size(path):
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for f in files:
+            try:
+                total += os.lstat(os.path.join(root, f)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def _bytes(text):
+    """'135.4MiB' -> bytes, as docker stats writes sizes."""
+    m = re.match(r'([\d.]+)\s*([KMGT]?i?B)', text.strip())
+    if not m:
+        return None
+    scale = {'B': 1, 'KB': 1e3, 'MB': 1e6, 'GB': 1e9, 'TB': 1e12,
+             'KiB': 1024, 'MiB': 1024 ** 2, 'GiB': 1024 ** 3, 'TiB': 1024 ** 4}
+    return int(float(m.group(1)) * scale.get(m.group(2), 1))
+
+
+def usage(conf):
+    """Memory and CPU of each server, how much the transcripts take, and how
+    much room is left. CPU is a running total; a caller compares two readings."""
+    procs = []
+    if conf['mode'] == 'native':
+        for unit, name in zip(SERVICE_UNITS, ('listener', 'console')):
+            r = run(['systemctl', 'show', unit, '-p', 'MemoryCurrent,CPUUsageNSec,ActiveEnterTimestampMonotonic'],
+                    check=False, capture=True)
+            props = dict(line.split('=', 1) for line in r.stdout.splitlines() if '=' in line)
+            num = lambda k: int(props[k]) if props.get(k, '').isdigit() else None
+            procs.append({'name': name, 'memory': num('MemoryCurrent'), 'cpu_ns': num('CPUUsageNSec')})
+        data = Path(conf['state']) / 'data'
+        data_bytes = _size(data) if data.is_dir() else None
+        where = conf['state']
+    else:
+        r = run(['docker', 'stats', '--no-stream', '--format', '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}'],
+                check=False, capture=True)
+        for line in (r.stdout or '').splitlines():
+            parts = line.split('|')
+            if len(parts) == 3 and 'ezyspeech' in parts[0]:
+                cpu = parts[1].rstrip('%')
+                procs.append({'name': 'container', 'memory': _bytes(parts[2].split('/')[0]),
+                              'cpu_percent': float(cpu) if cpu.replace('.', '', 1).isdigit() else None})
+        r = compose(conf, 'exec', '-T', 'ezyspeech', 'du', '-sb', '/var/lib/ezyspeech/data',
+                    capture=True, check=False)
+        data_bytes = int(r.stdout.split()[0]) if r.returncode == 0 and r.stdout.split()[:1] and \
+            r.stdout.split()[0].isdigit() else None
+        where = conf['home']
+    total = None
+    try:
+        for line in Path('/proc/meminfo').read_text().splitlines():
+            if line.startswith('MemTotal:'):
+                total = int(line.split()[1]) * 1024
+    except OSError:
+        pass
+    try:
+        free = shutil.disk_usage(where).free
+    except OSError:
+        free = None
+    return {'processes': procs, 'memory_total': total, 'data_bytes': data_bytes,
+            'disk_free': free, 'at_ns': time.monotonic_ns()}
+
+
 def native_units(conf):
     home, state, user = conf['home'], conf['state'], conf['user']
     units = {}
@@ -739,6 +803,7 @@ def cmd_status(a):
                 rows.extend(json.loads(line))
         data['containers'] = {row.get('Service', row.get('Name')): row.get('State') for row in rows}
     data['running'] = bool(data['health']['listener'] and data['health']['console'])
+    data['usage'] = usage(conf)
     if a.json:
         print(json.dumps(data))
         return
