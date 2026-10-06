@@ -863,3 +863,14 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   justify-content: center;
   padding-block: var(--pf-t--global--spacer--lg);
 }
+
+/* The sidebar's rooms: the count of listeners under each name, quietly. */
+.pf-v6-c-nav__section[hidden] {
+  display: none;
+}
+
+.nav-room-count {
+  display: block;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+}

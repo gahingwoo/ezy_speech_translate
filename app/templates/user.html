@@ -185,6 +185,14 @@
     <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Site">
       <div class="pf-v6-c-page__sidebar-body">
         <nav class="pf-v6-c-nav" aria-label="Site">
+          <!-- The rooms, when there is more than one: which service this is,
+               and the others one tap away. Filled from /api/rooms. -->
+          <section class="pf-v6-c-nav__section" aria-labelledby="nav-room-title"
+                   id="navRoomSection" hidden>
+            <h2 class="pf-v6-c-nav__section-title" id="nav-room-title"
+                data-i18n="room">Room</h2>
+            <ul class="pf-v6-c-nav__list" role="list" id="navRoomList"></ul>
+          </section>
           <section class="pf-v6-c-nav__section" aria-labelledby="nav-service-title">
             <h2 class="pf-v6-c-nav__section-title" id="nav-service-title"
                 data-i18n="nav_thisService">This service</h2>
@@ -1721,16 +1729,65 @@
         const t = (k, fb) => (catalog[lang] && catalog[lang][k]) || (catalog.en && catalog.en[k]) || fb;
 
         const explicitRoom = new URLSearchParams(window.location.search).get('room');
-        const resp = await fetch('/api/rooms');
-        if (!resp.ok) return;
-        const rooms = ((await resp.json()) || {}).rooms || [];
+        const current = explicitRoom || window.CURRENT_ROOM_ID || 'main';
+
+        // The sidebar's own list of rooms, kept current: listener counts
+        // move through a service, and a room can open or close.
+        function roomHref(id) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('room', id);
+          url.hash = '';
+          return url.toString();
+        }
+        function paintRoomNav(rooms) {
+          const nav = document.getElementById('navRoomSection');
+          const list = document.getElementById('navRoomList');
+          if (!nav || !list) return;
+          nav.hidden = rooms.length <= 1;
+          list.replaceChildren();
+          rooms.forEach(function (r) {
+            const li = document.createElement('li');
+            li.className = 'pf-v6-c-nav__item';
+            const a = document.createElement('a');
+            a.className = 'pf-v6-c-nav__link' + (r.room_id === current ? ' pf-m-current' : '');
+            a.href = roomHref(r.room_id);
+            if (r.room_id === current) a.setAttribute('aria-current', 'true');
+            const name = document.createElement('span');
+            name.className = 'pf-v6-c-nav__link-text';
+            name.textContent = r.display_name || r.room_id;
+            const count = document.createElement('span');
+            count.className = 'nav-room-count';
+            // The page's own lookup by the time this paints, which knows the
+            // reader's language; this script's guess was made before it did.
+            const tr = typeof window.t === 'function' ? window.t : t;
+            count.textContent = tr('listenersCount', '{n} listening').replace('{n}', r.listeners || 0);
+            name.appendChild(count);
+            a.appendChild(name);
+            li.appendChild(a);
+            list.appendChild(li);
+          });
+        }
+        async function fetchRooms() {
+          const resp = await fetch('/api/rooms');
+          if (!resp.ok) return null;
+          return ((await resp.json()) || {}).rooms || [];
+        }
+        const rooms = await fetchRooms();
+        if (!rooms) return;
+        paintRoomNav(rooms);
+        // Once more when this reader's own connection has been counted, then
+        // every minute.
+        const refresh = async function () {
+          try { const fresh = await fetchRooms(); if (fresh) paintRoomNav(fresh); } catch (e) {}
+        };
+        setTimeout(refresh, 4000);
+        setInterval(refresh, 60000);
         if (rooms.length <= 1) return;
 
         // The sidebar switcher, whenever there is more than one room.
         const section = document.getElementById('userRoomSwitcherSection');
         const select = document.getElementById('userRoomSelect');
         if (section && select) {
-          const current = explicitRoom || window.CURRENT_ROOM_ID || 'main';
           select.replaceChildren();
           rooms.forEach(function (r) {
             const opt = document.createElement('option');
