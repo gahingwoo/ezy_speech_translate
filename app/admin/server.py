@@ -547,11 +547,13 @@ def get_admin_config():
             "adminPort": ADMIN_PORT
         })
     else:
-        # ✅ For local development: use localhost instead of 0.0.0.0
-        # 0.0.0.0 is only valid for server binding, not for client connections
-        localhost_url = f"{user_server_protocol}://localhost:{MAIN_SERVER_PORT}"
+        # No URL: the console builds one from the address it was opened at,
+        # with this port and protocol. This used to send localhost, which is
+        # only right when the console is open on the server itself; from any
+        # other machine the console went looking for the transcript server on
+        # the operator's own laptop and never connected.
         return jsonify({
-            "mainServerUrl": localhost_url,
+            "mainServerUrl": None,
             "mainServerPort": MAIN_SERVER_PORT,
             "mainServerProtocol": user_server_protocol,
             "adminPort": ADMIN_PORT
@@ -582,7 +584,13 @@ def get_oem_config_admin():
 # ──────────────────────────────────────────
 def _user_server_url() -> str:
     user_server_port = get_config('server', 'port', default=1915)
-    return f'http://localhost:{user_server_port}'
+    # In the scheme it really serves. This was always http, so with HTTPS on
+    # every room and glossary action reached a TLS port speaking plain HTTP
+    # and failed. Certificate checks are off for this hop (verify=False on the
+    # calls): it never leaves the machine, and the certificate is often
+    # self-signed.
+    scheme = 'https' if get_config('server', 'use_https', default=False) else 'http'
+    return f'{scheme}://localhost:{user_server_port}'
 
 
 def _proxy_to_user(method: str, path: str, *, params=None, json_body=None, timeout=10):
