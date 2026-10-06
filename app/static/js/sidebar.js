@@ -97,8 +97,24 @@
         if (e.matches) setOverlay(false);
     });
 
+    /* From xl, folding the column changes the page grid, which no transition
+       can animate, so it is done inside a view transition (see shell.css).
+       The drawer below xl is PatternFly's own slide and needs nothing. */
+    function lessMotion() {
+        try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+        catch (e) { return false; }
+    }
+
     window.toggleMobileMenu = function () {
-        setSidebarOpen(!isSidebarOpen());
+        const open = !isSidebarOpen();
+        if (!sidebarIsWide() || typeof document.startViewTransition !== 'function' || lessMotion()) {
+            setSidebarOpen(open);
+            return;
+        }
+        const root = document.documentElement;
+        root.classList.add('sidebar-moving');
+        const moving = document.startViewTransition(function () { setSidebarOpen(open); });
+        moving.finished.finally(function () { root.classList.remove('sidebar-moving'); });
     };
 
     /* Only the drawer closes on its own; folding the desktop panel away

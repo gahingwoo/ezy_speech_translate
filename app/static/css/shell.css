@@ -309,3 +309,43 @@
       var(--pf-t--global--motion--duration--slide-in--default);
   }
 }
+
+/* ── the wide sidebar, folding ────────────────────────────────────────── */
+/* From xl the sidebar is a column of the page grid, and folding it changes
+   the grid, which nothing animates: it vanished and the content jumped left
+   in one frame, where the drawer below xl slides. sidebar.js folds it inside
+   a view transition and puts this class on the root for its length, so only
+   then do the sidebar and the content get names of their own (the theme
+   switch still fades the page as one). The content moves without being
+   stretched, its picture held at its own size and clipped; the sidebar is
+   held at its right edge, so as its box narrows it slides out to the left,
+   and in again the same way. */
+.sidebar-moving .pf-v6-c-page__sidebar { view-transition-name: page-sidebar; }
+.sidebar-moving .pf-v6-c-page__main-container { view-transition-name: page-main; }
+
+::view-transition-group(page-sidebar),
+::view-transition-group(page-main) {
+  overflow: clip;
+  animation-duration: var(--pf-t--global--motion--duration--slide-in--default);
+  animation-timing-function: var(--pf-t--global--motion--timing-function--decelerate);
+}
+
+::view-transition-old(page-main),
+::view-transition-new(page-main),
+::view-transition-old(page-sidebar),
+::view-transition-new(page-sidebar) {
+  inline-size: auto;
+  block-size: 100%;
+  object-fit: none;
+  animation: none;
+}
+
+::view-transition-old(page-sidebar),
+::view-transition-new(page-sidebar) {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
+/* The content's old picture gives way to the new one at once rather than
+   crossfading: it is the same text, rewrapped. */
+::view-transition-old(page-main) { display: none; }
