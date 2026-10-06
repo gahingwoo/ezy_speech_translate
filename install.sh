@@ -128,13 +128,14 @@ FIRST_INSTALL=1
 touch .env
 
 if [ "$FIRST_INSTALL" = 1 ] && [ -z "$HTTPS" ] && [ -z "$EXTERNAL_URL" ]; then
-    say ""
-    say "The operator's console listens to the speaker through the browser, and"
-    say "browsers only allow the microphone over HTTPS, or on the machine itself."
-    if ask "Will the console be opened on a different computer from this one?" n; then
-        HTTPS="self-signed"
-    else
-        HTTPS="off"
+    HTTPS="off"
+    if interactive; then
+        say ""
+        say "The operator's console listens to the speaker through the browser, and"
+        say "browsers only allow the microphone over HTTPS, or on the machine itself."
+        if ask "Will the console be opened on a different computer from this one?" n; then
+            HTTPS="self-signed"
+        fi
     fi
 fi
 
@@ -240,10 +241,14 @@ as_root() {
 
 # Questions come from the terminal even when the script itself arrives on a
 # pipe; with no terminal, or with --yes, the default is taken.
+interactive() {
+    [ -z "${ASSUME_YES:-}" ] && { : </dev/tty; } 2>/dev/null
+}
+
 ask() {
     local question="$1" default="$2" reply hint="[y/N]"
     [ "$default" = y ] && hint="[Y/n]"
-    if [ -n "${ASSUME_YES:-}" ] || ! { : </dev/tty; } 2>/dev/null; then
+    if ! interactive; then
         [ "$default" = y ]; return
     fi
     printf '%s %s ' "$question" "$hint" >/dev/tty
