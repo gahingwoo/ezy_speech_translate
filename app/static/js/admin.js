@@ -75,23 +75,32 @@ function showToast(message, type, duration) {
     close.type = 'button';
     close.setAttribute('aria-label', 'Close alert');
     close.innerHTML = '<span class="pf-v6-c-button__icon">' + svgIcon('times') + '</span>';
-    close.onclick = function () { item.remove(); };
+    close.onclick = function () { leave(); };
     action.appendChild(close);
 
     alert.append(icon, title, action);
     item.appendChild(alert);
     container.appendChild(item);
 
-    // The group animates an item in from off-stage and out again.
+    // PatternFly's toast group animates an item in from off-stage, and out to
+    // it again. pf-m-offstage-right and pf-m-incoming are both states an item
+    // starts in, not ones it moves to. This added pf-m-incoming as the item
+    // arrived, which holds the first toast in the group at no height and no
+    // opacity, so a message on its own was never seen at all; and the
+    // off-stage class came off before the item had been laid out with it, so
+    // there was nothing to animate from. Now it is laid out off-stage, then
+    // released, and it leaves the same way whether it times out or is closed.
     item.classList.add('pf-m-offstage-right');
-    requestAnimationFrame(function () {
-        item.classList.remove('pf-m-offstage-right');
-        item.classList.add('pf-m-incoming');
-    });
-    setTimeout(function () {
+    void item.offsetHeight;
+    item.classList.remove('pf-m-offstage-right');
+    let gone = false;
+    function leave() {
+        if (gone) return;
+        gone = true;
         item.classList.add('pf-m-outgoing');
         setTimeout(function () { item.remove(); }, 300);
-    }, duration);
+    }
+    setTimeout(leave, duration);
 }
 
 /* ===================================

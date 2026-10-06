@@ -366,12 +366,23 @@ html.pf-v6-theme-dark .icon-moon {
   animation: announcement-in var(--pf-t--global--motion--duration--fade--default) ease-out;
 }
 
+/* Leaving the way it came. This was a bare opacity: 0, which nothing
+   animated, so the banner vanished on the instant while the script waited
+   out a fade that never ran before hiding it. */
 .announcement-hide {
-  opacity: 0;
+  animation: announcement-out var(--pf-t--global--motion--duration--fade--default)
+    var(--pf-t--global--motion--timing-function--accelerate) forwards;
 }
 
 @keyframes announcement-in {
   from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes announcement-out {
+  to {
     opacity: 0;
     transform: translateY(-0.5rem);
   }
@@ -587,6 +598,10 @@ html.pf-v6-theme-dark .credit-badge__art {
   .app-modal > .pf-v6-c-about-modal-box,
   .app-modal > .pf-v6-l-bullseye > .pf-v6-c-modal-box {
     transition-duration: 1ms;
+  }
+  .announcement-show,
+  .announcement-hide {
+    animation-duration: 1ms;
   }
 }
 
