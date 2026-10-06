@@ -284,8 +284,14 @@ Key sections used by runtime:
 - `features.*`
 
 Secrets flow:
-- Encrypted secrets in `config/secrets.key`
-- Loaded by `secure_loader.py` into runtime config
+- Signing secrets encrypted in `config/secrets.key`, loaded by `secure_loader.py`
+- The admin password is kept only as a PBKDF2-SHA256 hash (600,000 rounds,
+  salted) of the SHA-256 the login page sends, so nothing in the file can be
+  used to sign in or turned back into the password. An older install's
+  password is converted on the first start and the recoverable copy deleted
+- There is no default password. To set or change it, then restart both
+  servers: `python -m app.auth.set_password` (or `--generate`); in Docker,
+  `docker compose exec ezyspeech ezyspeech password`
 
 ### Start/stop services
 

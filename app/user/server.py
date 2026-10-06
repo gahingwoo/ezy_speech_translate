@@ -553,12 +553,32 @@ ANALYTICS_ENABLED = get_config('features', 'session_analytics', 'enabled', defau
 
 # ──────────────────────────────────────────
 # Multi-account auth (Feature 6)
-# Build a dict  username -> {password_hash, role, channel, display_name}
-# Falls back to single admin_username / admin_password if no accounts list.
+# Build a dict  username -> {verifier, role, channel, display_name}
+# Falls back to the single admin_username if there is no accounts list.
+#
+# An account is checked against a PBKDF2 verifier, never a password: the admin
+# one from secrets.key, or an account's own password_hash. An account given a
+# plain `password` in config.yaml is hashed here and warned about. There is no
+# default any more: with nothing configured, nobody signs in, rather than
+# anyone who knows "admin123".
 # ──────────────────────────────────────────
 _accounts: dict = {}
 
-from app.auth import hash_password as _hash_password  # noqa: E402
+from app.auth.passwords import (  # noqa: E402
+    verify as _verify_password, make_verifier as _make_verifier,
+    client_hash as _client_hash, is_verifier as _is_verifier,
+)
+
+
+def _account_verifier(acct: dict):
+    if _is_verifier(acct.get('password_hash')):
+        return acct['password_hash']
+    if acct.get('password'):
+        security_logger.warning(
+            "Account '%s' has a plain-text password in config.yaml; it works, "
+            "but give it a password_hash instead", acct.get('username'))
+        return _make_verifier(_client_hash(acct['password']))
+    return get_config('authentication', 'admin_password_hash', default=None)
 
 
 def _build_accounts():
@@ -566,12 +586,9 @@ def _build_accounts():
     if raw_accounts and isinstance(raw_accounts, list):
         for acct in raw_accounts:
             uname = acct.get('username', '')
-            raw_pwd = acct.get('password') or get_config(
-                'authentication', 'admin_password', default='admin123'
-            )
             if uname:
                 _accounts[uname] = {
-                    'password_hash': _hash_password(raw_pwd),
+                    'verifier':     _account_verifier(acct),
                     'role':         acct.get('role', 'operator'),
                     'channel':      acct.get('channel', 'main'),
                     'display_name': acct.get('display_name', uname),
@@ -579,13 +596,17 @@ def _build_accounts():
     # Always ensure the legacy admin account is present
     if not _accounts:
         uname = get_config('authentication', 'admin_username', default='admin')
-        pwd   = get_config('authentication', 'admin_password', default='admin123')
         _accounts[uname] = {
-            'password_hash': _hash_password(pwd),
+            'verifier':     get_config('authentication', 'admin_password_hash', default=None),
             'role':         'admin',
             'channel':      'main',
             'display_name': uname,
         }
+    for uname, acct in _accounts.items():
+        if not acct['verifier']:
+            logger.critical(
+                "No password is set for '%s', so it cannot sign in. Set one with "
+                "python -m app.auth.set_password  (in Docker: ezyspeech password).", uname)
 
 _build_accounts()
 
@@ -1132,11 +1153,11 @@ def login():
         record_suspicious_activity("Oversized credentials", client_key)
         return jsonify({'success': False, 'error': 'Invalid credentials'}), 400
 
-    # Verify credentials against multi-account table
-    # account['password_hash'] is sha256(config_password); client sends sha256(entered_password)
+    # Verify credentials against multi-account table: the browser sends
+    # sha256(password), checked against the account's PBKDF2 verifier.
     account = _accounts.get(username)
 
-    if account and hmac.compare_digest(str(account['password_hash']), str(password_hash)):
+    if account and _verify_password(password_hash, account['verifier']):
         acct_role    = account.get('role', 'operator')
         acct_channel = account.get('channel', 'main')
         acct_display = account.get('display_name', username)
@@ -2135,7 +2156,7 @@ def acquire_recording():
         # Force-takeover requires password re-verification
         password_hash = data.get('password_hash', '')
         account = _accounts.get(username)
-        if not account or len(password_hash) != 64 or account['password_hash'] != password_hash:
+        if not account or not _verify_password(password_hash, account['verifier']):
             security_logger.warning(
                 f"Force-recording rejected: bad password from {username} for room '{rid}'"
             )
@@ -2201,7 +2222,8 @@ def release_recording():
 _CONFIG_FILE_PATH = os.path.join(BASE_DIR, 'config', 'config.yaml') \
     if 'BASE_DIR' in globals() else os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'config.yaml')
 _SENSITIVE_CONFIG_KEYS = (
-    'admin_password', 'jwt_secret', 'server_secret_key',
+    'admin_password', 'admin_password_hash', 'password', 'password_hash',
+    'jwt_secret', 'server_secret_key',
     'secret_key', 'encryption_key',
 )
 
@@ -3107,7 +3129,6 @@ if __name__ == '__main__':
     # ── Insecure-default credential check ─────────────────────────
     _INSECURE_DEFAULTS = {
         'jwt_secret':     ('authentication', 'jwt_secret'),
-        'admin_password': ('authentication', 'admin_password'),
         'secret_key':     ('server', 'secret_key'),
     }
     _BAD_VALUES = {'secret', 'admin123', 'change-this-secret', 'change-this-secret-key', ''}

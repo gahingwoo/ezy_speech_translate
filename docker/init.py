@@ -48,7 +48,9 @@ _spec = importlib.util.spec_from_file_location(
 _config_edit = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_config_edit)
 write_in_place = _config_edit.write_in_place
-from secure_loader import _atomic_write_0600, _is_strong_secret  # noqa: E402
+from secure_loader import (  # noqa: E402
+    _atomic_write_0600, _is_strong_secret, client_hash, make_verifier, is_verifier,
+)
 
 STATE = Path(os.environ.get('EZY_STATE', '/var/lib/ezyspeech'))
 CONFIG = STATE / 'config' / 'config.yaml'
@@ -174,13 +176,18 @@ def ensure_secrets(new_password=None):
             raw[field] = fernet.encrypt(secrets.token_urlsafe(48).encode()).decode()
             changed = True
 
+    # Kept as a hash only. An older install's encrypted password counts as
+    # set: the servers convert it on their first start.
     password = None
-    if new_password is not None or stored(raw, fernet, 'admin_password') is None:
+    has_password = is_verifier(raw.get('admin_password_hash')) \
+        or stored(raw, fernet, 'admin_password') is not None
+    if new_password is not None or not has_password:
         password = new_password or os.environ.get('EZY_ADMIN_PASSWORD', '').strip() \
             or readable_password()
         if len(password) < 8:
             raise SystemExit('The admin password must be at least 8 characters')
-        raw['admin_password'] = fernet.encrypt(password.encode()).decode()
+        raw['admin_password_hash'] = make_verifier(client_hash(password))
+        raw.pop('admin_password', None)
         changed = True
 
     if changed:

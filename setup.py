@@ -278,9 +278,11 @@ def configure_secrets():
         key = Fernet.generate_key()
         f = Fernet(key)
 
+        from secure_loader import client_hash, make_verifier
         new_data = {
             'fernet_key': key.decode(),
-            'admin_password': f.encrypt(admin_password.encode()).decode(),
+            # A hash of the password, never the password: see secure_loader.py.
+            'admin_password_hash': make_verifier(client_hash(admin_password)),
             'jwt_secret': f.encrypt(jwt_secret.encode()).decode(),
             'server_secret_key': f.encrypt(server_secret_key.encode()).decode()
         }

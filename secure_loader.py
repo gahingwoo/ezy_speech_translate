@@ -51,6 +51,62 @@ def _atomic_write_0600(path: Path, text: str) -> None:
         raise
 
 
+# ── the admin password ───────────────────────────────────────────────────────
+# The browser sends SHA-256 of the password, never the password. What is kept
+# is a slow, salted hash of that (PBKDF2-SHA256), so nothing on disk can be
+# used to sign in, or turned back into the password, short of guessing it
+# against this one hash at a fifth of a second a guess.
+#
+# It used to be the password itself, encrypted with a key kept in the same
+# file, and checked against an unsalted SHA-256 of it.
+
+PBKDF2_ITERATIONS = 600_000          # OWASP's figure for PBKDF2-HMAC-SHA256
+_VERIFIER_PREFIX = 'pbkdf2_sha256'
+
+
+def client_hash(password: str) -> str:
+    """What the login page sends for a password: its SHA-256, in hex."""
+    return hashlib.sha256(str(password).encode('utf-8')).hexdigest()
+
+
+def make_verifier(client_hex: str, iterations: int = PBKDF2_ITERATIONS) -> str:
+    salt = _secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac('sha256', client_hex.encode('ascii'), salt, iterations)
+    return '$'.join([_VERIFIER_PREFIX, str(iterations),
+                     base64.b64encode(salt).decode('ascii'),
+                     base64.b64encode(digest).decode('ascii')])
+
+
+def is_verifier(value) -> bool:
+    return isinstance(value, str) and value.startswith(_VERIFIER_PREFIX + '$')
+
+
+def check_verifier(client_hex: str, verifier: str) -> bool:
+    """Whether what the browser sent matches. Constant time in the result."""
+    import hmac
+    try:
+        prefix, iterations, salt, expected = verifier.split('$')
+        if prefix != _VERIFIER_PREFIX or len(client_hex) != 64:
+            return False
+        digest = hashlib.pbkdf2_hmac('sha256', client_hex.encode('ascii'),
+                                     base64.b64decode(salt), int(iterations))
+        return hmac.compare_digest(digest, base64.b64decode(expected))
+    except Exception:
+        return False
+
+
+def store_admin_password(key_path, password: str) -> None:
+    """Keep the hash of a new admin password in secrets.key, and nothing the
+    password could be recovered from."""
+    key_path = Path(key_path)
+    raw = {}
+    if key_path.exists():
+        raw = json.loads(key_path.read_text(encoding='utf-8')) or {}
+    raw['admin_password_hash'] = make_verifier(client_hash(password))
+    raw.pop('admin_password', None)
+    _atomic_write_0600(key_path, json.dumps(raw, indent=2))
+
+
 class MachineBoundEncryption:
     """Simple Key Decryption Utility"""
     
@@ -117,6 +173,19 @@ class SecureConfig:
         self.data = {}
         self._load_config()
         self._load_secrets()
+        self._no_plain_admin_password()
+
+    def _no_plain_admin_password(self):
+        """The admin password is never handed on as itself. One written into
+        config.yaml in plain text is hashed here, for this run, and said so."""
+        auth = self.data.get('authentication')
+        if not isinstance(auth, dict):
+            return
+        plain = auth.pop('admin_password', None)
+        if plain and not is_verifier(auth.get('admin_password_hash')):
+            auth['admin_password_hash'] = make_verifier(client_hash(plain))
+            print("Warning: authentication.admin_password is in config.yaml as plain text. "
+                  "Set it with  python -m app.auth.set_password  and delete it from the file.")
     
     def _load_config(self):
         """Loads the YAML configuration."""
@@ -210,16 +279,28 @@ class SecureConfig:
                     print(f"Error: Failed to decrypt '{field}' from secrets.key: {e}")
                     return None
 
-            admin_password = safe_decrypt('admin_password')
             jwt_secret = safe_decrypt('jwt_secret')
             server_secret_key = safe_decrypt('server_secret_key')
 
-            # Inject into config
-            if admin_password:
-                if 'authentication' not in self.data:
-                    self.data['authentication'] = {}
-                self.data['authentication']['admin_password'] = admin_password
-                print(f"Injected decrypted admin_password into config")
+            # The admin password is kept as a hash. An install from before
+            # that has the password itself here, encrypted beside its key:
+            # it is hashed and the recoverable copy deleted, once.
+            verifier = raw.get('admin_password_hash')
+            if not is_verifier(verifier) and raw.get('admin_password'):
+                plain = safe_decrypt('admin_password')
+                if plain:
+                    verifier = make_verifier(client_hash(plain))
+                    raw['admin_password_hash'] = verifier
+                    raw.pop('admin_password', None)
+                    try:
+                        _atomic_write_0600(key_path, json.dumps(raw, indent=2))
+                        print("Info: the admin password in secrets.key is now kept as a hash; "
+                              "the recoverable copy is deleted")
+                    except Exception as e:
+                        print(f"Warning: could not rewrite secrets.key ({e}); "
+                              "the password is hashed in memory only")
+            if is_verifier(verifier):
+                self.data.setdefault('authentication', {})['admin_password_hash'] = verifier
 
             if jwt_secret:
                 if 'authentication' not in self.data:

@@ -108,7 +108,9 @@ from app.core.config import get_config, config_loader, ensure_runtime_secret  # 
 # ──────────────────────────────────────────
 AUTH_ENABLED = get_config("authentication", "enabled", default=True)
 ADMIN_USERNAME = get_config("authentication", "admin_username", default="admin")
-ADMIN_PASSWORD = get_config("authentication", "admin_password", default="admin123")
+# A PBKDF2 verifier, never the password: see secure_loader.py. There is no
+# default; with none set, nobody signs in.
+ADMIN_VERIFIER = get_config("authentication", "admin_password_hash", default=None)
 # Resolve the JWT secret: if missing or a known insecure default, a strong
 # secret is generated and persisted to secrets.key (shared with the user
 # server). Existing configured secrets are used unchanged.
@@ -119,12 +121,11 @@ logger.info("='='='= INITIALIZATION START ='='='=")
 logger.info(f"AUTH_ENABLED: {AUTH_ENABLED}")
 logger.debug(f"ADMIN_USERNAME: {ADMIN_USERNAME}")
 # NOTE: Do NOT log password values, lengths, or secrets at any level above DEBUG.
-logger.debug("Admin credentials loaded: %s", "yes" if ADMIN_PASSWORD else "NO")
+logger.debug("Admin credentials loaded: %s", "yes" if ADMIN_VERIFIER else "NO")
 
-# Verify password is not None or empty string
-if not ADMIN_PASSWORD:
-    logger.critical("ADMIN_PASSWORD is empty or None — login will fail. Set it in secrets.key.")
-    ADMIN_PASSWORD = "admin123"  # Fallback to default
+if not ADMIN_VERIFIER:
+    logger.critical("No admin password is set, so nobody can sign in. Set one with "
+                    "python -m app.auth.set_password  (in Docker: ezyspeech password).")
 
 if JWT_SECRET in ("change-this-secret", "", None):
     logger.critical("JWT_SECRET is using an insecure default value — tokens can be forged!")
@@ -196,8 +197,8 @@ def get_client_ip():
     return request.remote_addr
 
 # Shared helpers from app.auth
+from app.auth.passwords import verify as verify_password  # noqa: E402
 from app.auth import (  # noqa: E402
-    hash_password,
     sanitize_html as sanitize_input,
     validate_path,
     encode_jwt as _encode_jwt,
@@ -467,12 +468,9 @@ def login():
 
     security_logger.debug("Login attempt - username received")
 
-    # Verify credentials — client sends sha256(password), server stores plaintext
-    # so expected hash = sha256(ADMIN_PASSWORD); compare directly (no double-hash)
-    expected_hash = hash_password(ADMIN_PASSWORD) if ADMIN_PASSWORD else ""
-
+    # The browser sends sha256(password), checked against the PBKDF2 verifier.
     username_ok = hmac.compare_digest(str(username), str(ADMIN_USERNAME))
-    password_ok = bool(expected_hash) and hmac.compare_digest(str(password_hash), str(expected_hash))
+    password_ok = verify_password(password_hash, ADMIN_VERIFIER)
     if username_ok and password_ok:
         # Reset login attempts on successful login
         if ip in login_attempts:
@@ -512,7 +510,7 @@ def debug_config():
     """Debug endpoint — requires admin authentication."""
     return jsonify({
         "admin_username": ADMIN_USERNAME,
-        "admin_password_loaded": bool(ADMIN_PASSWORD),
+        "admin_password_loaded": bool(ADMIN_VERIFIER),
         "jwt_secret_loaded": bool(JWT_SECRET),
         "auth_enabled": AUTH_ENABLED,
         "config_source": "secure_loader"
@@ -524,7 +522,7 @@ def debug_login_info():
     """Debug endpoint — requires admin authentication."""
     return jsonify({
         "status": "ok",
-        "admin_password_configured": bool(ADMIN_PASSWORD),
+        "admin_password_configured": bool(ADMIN_VERIFIER),
         "auth_enabled": AUTH_ENABLED,
     })
 
