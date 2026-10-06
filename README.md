@@ -35,7 +35,7 @@ Tech stack (from runtime code and dependencies):
 - Real-time transport: Socket.IO (WebSocket + polling fallback)
 - Translation provider: Google Translate web endpoint (`translate.googleapis.com`)
 - Speech recognition: browser Web Speech API (admin client)
-- Optional service management: systemd via `ezy_manager.py`
+- Installs natively (systemd, its own account) or in Docker, updates from GitHub releases with automatic rollback, and has a Cockpit module
 
 ### The other guides
 
@@ -222,55 +222,70 @@ Common errors and resolution:
 
 ### Install with one command
 
-On Linux or macOS with Docker (on Linux the script offers to install Docker
-if it is missing):
+On Linux (or a Mac, with Docker):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gahingwoo/ezy_speech_translate/main/install.sh | bash
+curl -fsSL https://github.com/gahingwoo/ezy_speech_translate/releases/latest/download/install.sh | sudo bash
 ```
 
-It downloads the code to `~/ezyspeech`, builds the image, starts both
-servers, and prints the addresses and the admin password. The password is
-made for this install and shown once; nothing starts with a default one.
-Run it again to update. From a copy of the code, `./install.sh` does the same.
+It asks how to install, then downloads the latest release from GitHub,
+checks it against the release's SHA-256 sums, and installs it:
 
-| Option | What it does |
-|---|---|
-| `--https` | Self-signed HTTPS, so the console's microphone works from another computer |
-| `--port N`, `--admin-port N` | Listener page and console ports (1915, 1916) |
-| `--external-url URL` | Public address, when a tunnel or reverse proxy is in front |
-| `--dir DIR` | Where the code goes |
-| `--yes` | Ask nothing |
+| | Native | Docker |
+|---|---|---|
+| Runs as | two systemd services under an `ezyspeech` account | one container |
+| Code | `/opt/ezyspeech/releases/<version>/`, each with its own Python environment | built as the image `ezyspeech:<version>` |
+| Settings, secrets, transcripts | `/var/lib/ezyspeech` | the volume `ezyspeech_ezyspeech` |
+| Needs | Linux with systemd | Docker (offered on Linux if missing) |
 
-**Which HTTPS.** Browsers let a page use the microphone only over HTTPS, or
-on `localhost`. If the console runs on the server itself, plain HTTP is
-enough. If it runs on another computer, use `--https`: each browser warns
-about the certificate once, and listeners see that warning too. With a
-domain, a tunnel such as Cloudflare Tunnel gives real HTTPS with no
-warning; point it at port 1915 and pass `--external-url`.
+The installer asks about ports, HTTPS (browsers allow the console's
+microphone only over HTTPS or on the machine itself), and the admin password,
+which it makes for you unless you type one; nothing starts with a default.
+If Cockpit is installed it offers the EzySpeech module. An install made by
+the old `ezy_manager.py` is found, and its settings, password and transcripts
+are brought over. `--yes` takes the defaults; `--help` lists the options.
 
-Everything an install keeps (settings, secrets, certificates, transcripts,
-logs, exports) is in one Docker volume, `ezyspeech_ezyspeech`. Managing it,
-from the install directory:
+Running it again on a machine that has EzySpeech opens a menu instead:
+update, status, restart, a new admin password, the log, a backup, uninstall.
+
+### Running it
+
+Everything is the `ezyspeech` command, which the installer puts on the path:
 
 ```bash
-docker compose logs -f                                # what it is doing
-docker compose exec ezyspeech ezyspeech password      # a new admin password
-docker compose restart                                # after changing it
-docker compose down                                   # stop; the volume stays
+sudo ezyspeech status            # what is installed and whether it is up
+sudo ezyspeech check-update      # is there a newer release?
+sudo ezyspeech update            # install it
+sudo ezyspeech rollback          # back to the release before
+sudo ezyspeech restart           # also start, stop
+sudo ezyspeech logs -f
+sudo ezyspeech password          # --generate makes one and shows it once
+sudo ezyspeech backup            # settings, secrets and transcripts, as .tar.gz
+sudo ezyspeech uninstall         # --purge deletes settings and transcripts too
 ```
+
+An update keeps the running release and prepares the new one beside it,
+switches over with a restart, and checks both servers come up reporting the
+new version. If they do not within a minute, it switches back and says so.
+The two most recent releases are kept, so `rollback` is a restart.
+
+The Cockpit module does the same from a browser, through the same command,
+for either kind of install. Its source is
+[gahingwoo/ezy_speech_cockpit](https://github.com/gahingwoo/ezy_speech_cockpit);
+each release carries a built copy.
+
+### Releasing
+
+The version is in `VERSION`. To release, change it, commit, and push a tag
+`v<version>`. The release workflow checks the tag and `VERSION` agree, builds
+the package, the Cockpit module and `SHA256SUMS` with `ops/make-release.sh`,
+and publishes them with `install.sh`. Running that script by hand builds the
+same files to test with.
 
 ### Other deployment paths
 
-- `python3 setup.py` (local setup helper, secrets + venv + optional SSL)
-- `sudo python3 ezy_manager.py install` (Linux systemd deployment to `/opt/ezy_speech_translate`)
-
-`ezy_manager.py install` performs:
-- OS/package checks
-- service user creation (`ezyspeech`)
-- app deployment to `/opt/ezy_speech_translate`
-- virtualenv + dependency install
-- systemd unit install (`ezyspeech-user.service`, `ezyspeech-admin.service`)
+- `python3 setup.py` (local development setup: secrets, venv, optional SSL)
+- `docker compose up -d --build` in a copy of the code (development)
 
 ### Configuration
 
@@ -290,18 +305,15 @@ Secrets flow:
   used to sign in or turned back into the password. An older install's
   password is converted on the first start and the recoverable copy deleted
 - There is no default password. To set or change it, then restart both
-  servers: `python -m app.auth.set_password` (or `--generate`); in Docker,
-  `docker compose exec ezyspeech ezyspeech password`
+  servers: `sudo ezyspeech password` (or `--generate`) on an installed copy,
+  which restarts them itself; `python -m app.auth.set_password` in a checkout
 
 ### Start/stop services
 
-Using manager CLI:
-- `sudo python3 ezy_manager.py manage start`
-- `sudo python3 ezy_manager.py manage stop`
-- `sudo python3 ezy_manager.py manage restart`
-- `python3 ezy_manager.py manage status`
-- `python3 ezy_manager.py manage logs:user -f`
-- `python3 ezy_manager.py manage logs:admin -f`
+An installed copy (see "Install with one command"):
+- `sudo ezyspeech start` / `stop` / `restart`
+- `sudo ezyspeech status`
+- `sudo ezyspeech logs -f`
 
 Manual (development):
 - `python app/user/server.py`
@@ -358,7 +370,7 @@ Operational cautions:
 - `app/translation_service.py`: translation API wrapper
 - `app/oem_manager.py`: brand config composition
 - `secure_loader.py`: encrypted secret loading/migration
-- `setup.py`, `update.py`, `ezy_manager.py`: ops lifecycle scripts
+- `install.sh`, `ops/ezyspeech`: installer and the command that runs an install; `ops/make-release.sh` builds a release; `setup.py` sets up a development checkout
 
 ### 5.2 Core Logic
 
@@ -528,9 +540,9 @@ curl -X POST http://localhost:1915/api/translate \
 ### Service operations (Linux/systemd path)
 
 ```bash
-sudo python3 ezy_manager.py manage start
-python3 ezy_manager.py manage status
-python3 ezy_manager.py manage logs:user -f
+sudo ezyspeech start
+sudo ezyspeech status
+sudo ezyspeech logs -f
 ```
 
 ---
@@ -549,8 +561,7 @@ checkout starts with no build step. The generators exist so that a change is
 made once instead of five times.
 
 - `setup.py` for local bootstrap and secret generation
-- `ezy_manager.py` for install/manage/setup/uninstall on Linux
-- `update.py` for pull-and-restore update flow in deployed environments
+- `install.sh` and `ezyspeech` for install, update, rollback and uninstall
 
 Regenerating the front end, after editing a generator:
 
