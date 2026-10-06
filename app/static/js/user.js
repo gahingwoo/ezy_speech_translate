@@ -1,3 +1,16 @@
+/* Diagnostics, silent unless asked for with ?debug in the address or
+   ezyDebug=1 in local storage. These ran on every interim update, two or
+   three to a word, and a console holds on to everything it is given for as
+   long as the page stays open, which in a service is hours. */
+const trace = (function () {
+    try {
+        if (/[?&]debug\b/.test(location.search) || localStorage.getItem('ezyDebug') === '1') {
+            return console.log.bind(console);
+        }
+    } catch (e) { /* storage blocked: stay quiet */ }
+    return function () {};
+})();
+
 // Initialize Socket.IO with proper configuration and error handling
 let socket = null;
 let socketRetryCount = 0;
@@ -13,7 +26,7 @@ function getRoomId() {
     return 'main';
 }
 window.CURRENT_ROOM_ID = getRoomId();
-console.log('Joining room:', window.CURRENT_ROOM_ID);
+trace('Joining room:', window.CURRENT_ROOM_ID);
 
 // Generate or retrieve persistent client ID (stored in localStorage)
 function getOrCreateClientId() {
@@ -22,20 +35,20 @@ function getOrCreateClientId() {
         // Generate a new UUID-like client ID - stored for persistence across sessions
         clientId = 'user_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
         localStorage.setItem('_client_id', clientId);
-        console.log('Generated new persistent client ID:', clientId);
+        trace('Generated new persistent client ID:', clientId);
     } else {
-        console.log('Using persistent client ID:', clientId);
+        trace('Using persistent client ID:', clientId);
     }
     return clientId;
 }
 
 function initSocket() {
     if (socket && socket.connected) {
-        console.log('Socket already connected');
+        trace('Socket already connected');
         return;
     }
 
-    console.log('Initializing Socket.IO connection...');
+    trace('Initializing Socket.IO connection...');
     
     // Get persistent client ID and send it to server
     const clientId = getOrCreateClientId();
@@ -91,9 +104,13 @@ function initSocket() {
 
 // Initialize socket after DOM is ready
 function ensureSocketConnected() {
-    if (!socket || !socket.connected) {
-        initSocket();
-    }
+    // One socket for the life of the page. This used to build a new one
+    // whenever the current one was not connected yet, and it is called twice
+    // in the same tick at load, before either can connect: socket.io opens a
+    // second connection for a second io() on the same namespace, so a listener
+    // held two, every event arrived twice, and each line was translated twice.
+    if (!socket) initSocket();
+    else if (!socket.connected) socket.connect();
 }
 
 // TTS Settings
@@ -102,13 +119,10 @@ let ttsRate = 1.0;
 let ttsVolume = 1.0;
 let availableVoices = [];
 let selectedVoice = null;
-let ttsEngine = 'system';  // 'system' (Local) or 'edge' (Cloud)
-let edgeTTSVoices = [];     // Available Edge TTS voices
 
 // TTS Queue Management - prevents parallel playback and maintains order
 let ttsQueue = [];          // Queue of {text, isAutoPlay} waiting to be spoken
 let isTTSPlaying = false;   // Currently playing TTS
-let currentAudioElement = null;  // Current playing audio element for Edge TTS
 let currentUtterance = null;     // Current utterance for System TTS
 let lastTTSClickText = '';  // Track last clicked TTS text for double-tap stop
 let lastTTSClickTime = 0;   // Track when user last clicked TTS button
@@ -226,7 +240,7 @@ try {
         if (Array.isArray(_cached) && _cached.length) {
             translations = _cached;
             translationsTotal = _cached.length;
-            console.log('Restored ' + _cached.length + ' translations from local cache');
+            trace('Restored ' + _cached.length + ' translations from local cache');
         }
     }
 } catch (e) {}
@@ -376,7 +390,7 @@ function toggleSourceText() {
     const list = document.getElementById('translationsList');
     if (list) {
         const interimCards = list.querySelectorAll('[data-temp-id]');
-        console.log('Updating ' + interimCards.length + ' interim cards: showSourceText=' + showSourceText);
+        trace('Updating ' + interimCards.length + ' interim cards: showSourceText=' + showSourceText);
         
         interimCards.forEach(card => {
             const existingSource = card.querySelector('.text-source');
@@ -403,14 +417,14 @@ function updateSourceTextToggleUI() {
     const btn = document.getElementById('sourceTextToggle');
     const textSpan = document.getElementById('sourceTextText');
     
-    console.log('Updating source text toggle UI: showSourceText=' + showSourceText);
+    trace('Updating source text toggle UI: showSourceText=' + showSourceText);
     
     if (btn && textSpan) {
         // Update text based on current state
         // If showing source (true) → button says "Hide Source"
         // If hiding source (false) → button says "Show Source"
         textSpan.textContent = showSourceText ? 'Hide Source' : 'Show Source';
-        console.log('Button text set to: ' + textSpan.textContent);
+        trace('Button text set to: ' + textSpan.textContent);
     } else {
         console.warn('Could not find sourceTextToggle or sourceTextText elements');
     }
@@ -1274,32 +1288,6 @@ function readPassageAloud() {
 window.readPassageAloud = readPassageAloud;
 
 /* =========================
-   Voice management (basic)
-   ========================= */
-function loadVoices() {
-    if (!('speechSynthesis' in window)) return;
-    availableVoices = speechSynthesis.getVoices() || [];
-    const sel = document.getElementById('voiceSelect');
-    if (!sel) return;
-    sel.innerHTML = '';
-    const auto = document.createElement('option');
-    auto.value = '';
-    auto.textContent = 'Auto';
-    sel.appendChild(auto);
-    availableVoices.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.name;
-        opt.textContent = v.name;
-        sel.appendChild(opt);
-    });
-    sel.addEventListener('change', () => {
-        const nm = sel.value;
-        selectedVoice = availableVoices.find(v => v.name === nm) || null;
-        localStorage.setItem('selectedVoice', nm);
-    });
-}
-
-/* =========================
    Translation (uses Google translate endpoints like before)
    ========================= */
 /* Two language codes name the same language when their base subtag matches —
@@ -1325,23 +1313,6 @@ window.sameLanguage = sameLanguage;
    worked — was dead the moment it was written. It is gone; the live one is
    below, and its fallback now does what this did.
 */
-
-/* =========================
-   TTS
-   ========================= */
-function speakText(text) {
-    if (!('speechSynthesis' in window)) return;
-    speechSynthesis.cancel();
-    if (!text) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = ttsRate;
-    u.volume = ttsVolume;
-    if (selectedVoice) {
-        const v = availableVoices.find(x => x.name === selectedVoice.name);
-        if (v) u.voice = v;
-    }
-    speechSynthesis.speak(u);
-}
 
 /* =========================
    Rendering (minimal)
@@ -1395,14 +1366,11 @@ function init() {
     // Initialize Socket.IO connection
     ensureSocketConnected();
 
-    // Load appropriate voices based on TTS engine
     if ('speechSynthesis' in window) {
         loadVoices();
-        speechSynthesis.addEventListener('voiceschanged', function() {
-            if (ttsEngine === 'system') {
-                loadVoices();
-            }
-        });
+        speechSynthesis.addEventListener('voiceschanged', loadVoices);
+        // Some browsers fill the list a moment later without the event.
+        setTimeout(loadVoices, 100);
     }
 
     const langSel = document.getElementById('displayLanguage');
@@ -1454,7 +1422,7 @@ function init() {
         }
     } catch (e) {}
 
-    console.log('user.js initialized');
+    trace('user.js initialized');
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -1567,11 +1535,11 @@ const TTS_LANG_MAP = {
 
 function detectUserLanguage() {
     const browserLang = navigator.language || navigator.userLanguage;
-    console.log('Browser language detected:', browserLang);
+    trace('Browser language detected:', browserLang);
 
     // Try exact match first
     if (BROWSER_LANG_MAP[browserLang]) {
-        console.log('Exact match found:', BROWSER_LANG_MAP[browserLang]);
+        trace('Exact match found:', BROWSER_LANG_MAP[browserLang]);
         return BROWSER_LANG_MAP[browserLang];
     }
 
@@ -1585,7 +1553,7 @@ function detectUserLanguage() {
     // Try base language (e.g., 'zh' from 'zh-Hans')
     const baseLang = browserLang.split('-')[0];
     if (BROWSER_LANG_MAP[baseLang]) {
-        console.log('Base language match found:', BROWSER_LANG_MAP[baseLang]);
+        trace('Base language match found:', BROWSER_LANG_MAP[baseLang]);
         return BROWSER_LANG_MAP[baseLang];
     }
 
@@ -1593,19 +1561,19 @@ function detectUserLanguage() {
     if (navigator.languages && navigator.languages.length > 0) {
         for (let lang of navigator.languages) {
             if (BROWSER_LANG_MAP[lang]) {
-                console.log('Alternative language match found:', BROWSER_LANG_MAP[lang]);
+                trace('Alternative language match found:', BROWSER_LANG_MAP[lang]);
                 return BROWSER_LANG_MAP[lang];
             }
             const base = lang.split('-')[0];
             if (BROWSER_LANG_MAP[base]) {
-                console.log('Alternative base language match found:', BROWSER_LANG_MAP[base]);
+                trace('Alternative base language match found:', BROWSER_LANG_MAP[base]);
                 return BROWSER_LANG_MAP[base];
             }
         }
     }
 
     // Default to Cantonese
-    console.log('No match found, using default: yue');
+    trace('No match found, using default: yue');
     return 'yue';
 }
 
@@ -1698,13 +1666,12 @@ function loadSettings() {
     const savedTheme = localStorage.getItem('theme');
     const savedFontSize = localStorage.getItem('fontSize');
     const savedDisplayLanguage = localStorage.getItem('displayLanguage');
-    const savedTTSEngine = localStorage.getItem('ttsEngine');
     const savedTTSEnabled = localStorage.getItem('ttsEnabled');
 
     // Load TTS enabled state
     if (savedTTSEnabled !== null) {
         ttsEnabled = savedTTSEnabled === 'true';
-        console.log('Loaded TTS enabled state:', ttsEnabled);
+        trace('Loaded TTS enabled state:', ttsEnabled);
     }
     // Unconditionally: the masthead icon says which state it is in, and with
     // nothing stored yet it would otherwise keep the speaking icon while
@@ -1713,32 +1680,25 @@ function loadSettings() {
     if (ttsBox) ttsBox.checked = ttsEnabled;
     syncTTSQuickToggle();
 
-    // Load TTS engine preference
-    if (savedTTSEngine && (savedTTSEngine === 'system' || savedTTSEngine === 'edge')) {
-        ttsEngine = savedTTSEngine;
-    }
-    const engineSelect = document.getElementById('ttsEngine');
-    if (engineSelect) engineSelect.value = ttsEngine;
-
     // Load display language (be tolerant of variants like 'en-US')
     if (savedDisplayLanguage) {
         if (i18n[savedDisplayLanguage]) {
             displayLanguage = savedDisplayLanguage;
-            console.log('Using saved display language:', savedDisplayLanguage);
+            trace('Using saved display language:', savedDisplayLanguage);
         } else {
             const base = savedDisplayLanguage.split('-')[0];
             if (i18n[base]) {
                 displayLanguage = base;
-                console.log('Using base of saved display language:', base);
+                trace('Using base of saved display language:', base);
             } else {
                 displayLanguage = detectDisplayLanguageLocal();
-                console.log('Saved display language not supported, auto-detected:', displayLanguage);
+                trace('Saved display language not supported, auto-detected:', displayLanguage);
             }
         }
     } else {
         displayLanguage = detectDisplayLanguageLocal();
         localStorage.setItem('displayLanguage', displayLanguage);
-        console.log('Auto-detected and saved display language:', displayLanguage);
+        trace('Auto-detected and saved display language:', displayLanguage);
     }
 
     const dispEl = document.getElementById('displayLanguage');
@@ -1754,11 +1714,11 @@ function loadSettings() {
     // Auto-detect language if not saved
     if (savedLang) {
         targetLang = savedLang;
-        console.log('Using saved language:', savedLang);
+        trace('Using saved language:', savedLang);
     } else {
         targetLang = detectUserLanguage();
         localStorage.setItem('targetLang', targetLang);
-        console.log('Auto-detected and saved language:', targetLang);
+        trace('Auto-detected and saved language:', targetLang);
     }
 
     document.getElementById('targetLang').value = targetLang;
@@ -1807,13 +1767,7 @@ function loadSettings() {
    =================================== */
 
 function loadVoices() {
-    const voiceSelect = document.getElementById('voiceSelect');
-    
-    if (ttsEngine === 'edge') {
-        loadEdgeTTSVoices();
-    } else {
-        loadSystemVoices();
-    }
+    loadSystemVoices();
 }
 
 function loadSystemVoices() {
@@ -1937,128 +1891,7 @@ function loadSystemVoices() {
         }
     }
 
-    console.log('Loaded ' + availableVoices.length + ' system voices, showing ' + voicesToShow.length + ' for ' + targetLang);
-}
-
-async function loadEdgeTTSVoices(retryCount = 0, maxRetries = 5) {
-    // Load Edge TTS voices from backend API with automatic retry
-    const voiceSelect = document.getElementById('voiceSelect');
-    
-    // Only show loading message on first attempt
-    if (retryCount === 0) {
-        voiceSelect.innerHTML = '<option value="">Loading Edge TTS voices...</option>';
-    }
-    
-    try {
-        // Map target language to Edge TTS language code
-        const ttsLang = TTS_LANG_MAP[targetLang] || targetLang;
-        const savedVoice = localStorage.getItem('selectedVoice');
-        
-        if (retryCount === 0) {
-            console.log('Fetching Edge TTS voices for language:', targetLang, '', ttsLang);
-        } else {
-            console.log(`Retrying Edge TTS voices (attempt ${retryCount + 1}/${maxRetries})...`);
-        }
-        
-        const response = await fetch('/api/tts/voices?lang=' + encodeURIComponent(ttsLang));
-        
-        // Check HTTP response status
-        if (!response.ok) {
-            console.error(`HTTP ${response.status} error from /api/tts/voices`);
-            
-            let errorMsg = `Server error (${response.status})`;
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error || errorData.message || errorMsg;
-            } catch (e) {
-                // Response is not JSON
-            }
-            
-            voiceSelect.innerHTML = `<option value="">Edge TTS Error: ${errorMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}</option>`;
-            console.warn(`Edge TTS server error: ${errorMsg}`);
-            return;
-        }
-        
-        const data = await response.json();
-        
-        // Check if voices are still loading
-        if (data.warning && data.warning.includes('loading')) {
-            console.log(`Voices still loading, retrying in 2 seconds...`);
-            if (retryCount < maxRetries) {
-                // Wait and retry
-                voiceSelect.innerHTML = `<option value="">Loading Edge TTS voices (${parseInt(retryCount) + 1}/${parseInt(maxRetries)})...</option>`;
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                return loadEdgeTTSVoices(retryCount + 1, maxRetries);
-            } else {
-                console.warn('Edge TTS voices still loading after max retries');
-                voiceSelect.innerHTML = '<option value="">Voices loading, please refresh...</option>';
-                return;
-            }
-        }
-        
-        if (!data.success || !data.edge_tts_available) {
-            const msg = data.error || 'Edge TTS not available';
-            console.warn(`Edge TTS not available: ${msg}`);
-            voiceSelect.innerHTML = `<option value="">${String(msg || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</option>`; 
-            return;
-        }
-        
-        edgeTTSVoices = data.edge_voices || [];
-        
-        voiceSelect.innerHTML = '';
-        
-        // Add auto option
-        const autoOption = document.createElement('option');
-        autoOption.value = '';
-        autoOption.textContent = 'Auto (Cloud Default)';
-        voiceSelect.appendChild(autoOption);
-        
-        if (edgeTTSVoices.length === 0) {
-            const noVoicesOption = document.createElement('option');
-            noVoicesOption.value = '';
-            noVoicesOption.textContent = 'No voices available for this language';
-            voiceSelect.appendChild(noVoicesOption);
-            console.warn('No Edge TTS voices available for language:', targetLang);
-            return;
-        }
-        
-        // Group voices by language
-        const grouped = {};
-        edgeTTSVoices.forEach(function (voice) {
-            const lang = voice.locale;
-            if (!grouped[lang]) grouped[lang] = [];
-            grouped[lang].push(voice);
-        });
-        
-        // Add voice options
-        Object.keys(grouped).sort().forEach(function (lang) {
-            grouped[lang].forEach(function (voice) {
-                const option = document.createElement('option');
-                option.value = voice.name;
-                option.textContent = voice.display_name + ' (' + voice.gender + ')';
-                voiceSelect.appendChild(option);
-            });
-        });
-        
-        // Restore saved voice selection
-        if (savedVoice) {
-            const voiceExists = edgeTTSVoices.find(function (v) {
-                return v.name === savedVoice;
-            });
-            if (voiceExists) {
-                voiceSelect.value = savedVoice;
-                console.log('Restored saved Edge TTS voice:', savedVoice);
-            } else {
-                voiceSelect.value = '';
-                console.log('Saved voice not available, using auto selection');
-            }
-        }
-        
-        console.log('Loaded ' + edgeTTSVoices.length + ' Edge TTS voices');
-    } catch (error) {
-        console.error('Error loading Edge TTS voices:', error);
-        voiceSelect.innerHTML = `<option value="">Error: ${String(error.message || 'Unknown').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</option>`;
-    }
+    trace('Loaded ' + availableVoices.length + ' system voices, showing ' + voicesToShow.length + ' for ' + targetLang);
 }
 
 function changeVoice() {
@@ -2068,38 +1901,15 @@ function changeVoice() {
     // Clear TTS queue when changing voice to prevent wrong voice playback
     clearTTSQueue();
 
-    if (ttsEngine === 'system') {
-        // System TTS
-        if (voiceName) {
-            selectedVoice = availableVoices.find(function (v) {
-                return v.name === voiceName;
-            });
-            localStorage.setItem('selectedVoice', voiceName);
-            console.log('Selected system voice: ' + voiceName);
-        } else {
-            selectedVoice = null;
-            localStorage.removeItem('selectedVoice');
-            console.log('Using auto voice selection');
-        }
-    } else if (ttsEngine === 'edge') {
-        // Edge TTS
+    if (voiceName) {
+        selectedVoice = availableVoices.find(function (v) {
+            return v.name === voiceName;
+        });
         localStorage.setItem('selectedVoice', voiceName);
-        console.log('Selected Edge TTS voice: ' + voiceName);
+    } else {
+        selectedVoice = null;
+        localStorage.removeItem('selectedVoice');
     }
-}
-
-function changeTTSEngine() {
-    const engineSelect = document.getElementById('ttsEngine');
-    ttsEngine = engineSelect.value;
-    localStorage.setItem('ttsEngine', ttsEngine);
-    
-    console.log('Switched TTS engine to:', ttsEngine === 'system' ? 'System (Local)' : 'Edge TTS (Cloud)');
-    
-    // Clear TTS queue when switching engines to avoid mixing
-    clearTTSQueue();
-    
-    // Load appropriate voices for the new engine
-    loadVoices();
 }
 
 function changeLanguage() {
@@ -2136,13 +1946,13 @@ function changeDisplayMode() {
     displayMode = select.value;
     localStorage.setItem('displayMode', displayMode);
 
-    console.log('Display mode changed to:', displayMode);
+    trace('Display mode changed to:', displayMode);
     
     // Clear any pending interim cards when switching modes
     const list = document.getElementById('translationsList');
     if (list) {
         const interimCards = list.querySelectorAll('[data-temp-id]');
-        console.log('Removing ' + interimCards.length + ' interim cards');
+        trace('Removing ' + interimCards.length + ' interim cards');
         interimCards.forEach(card => card.remove());
     }
 
@@ -2203,7 +2013,7 @@ function updateDisplayMode() {
             transcribing ? 'Transcriptions will appear here in real-time'
                          : 'Translations will appear here in real-time');
     }
-    console.log(transcribing ? 'Showing what was said' : 'Showing translations');
+    trace(transcribing ? 'Showing what was said' : 'Showing translations');
 }
 
 /* ===================================
@@ -2297,7 +2107,7 @@ function resetSettings() {
     localStorage.removeItem('displayLanguage');
     localStorage.removeItem('uiMode');
 
-    console.log('Settings reset to defaults');
+    trace('Settings reset to defaults');
 
     // Reload page to apply defaults
     location.reload();
@@ -2355,7 +2165,7 @@ function showToast(message, type, duration) {
     duration = duration || 3000;
     const container = document.getElementById('toastContainer');
     if (!container) {
-        console.log('[toast]', type, message);
+        trace('[toast]', type, message);
         return;
     }
     while (container.children.length >= MAX_VISIBLE_TOASTS) {
@@ -2691,10 +2501,10 @@ function handleVisibilityChange() {
     pageVisible = !document.hidden;
     
     if (pageVisible) {
-        console.log('Page visible - resuming translations');
+        trace('Page visible - resuming translations');
         // Optionally sync when page becomes visible again
     } else {
-        console.log('Page hidden - pausing translation loads');
+        trace('Page hidden - pausing translation loads');
         // Clear the loading flag so scroll doesn't get stuck
         isLoadingMore = false;
     }
@@ -2834,7 +2644,7 @@ async function translateText(text, targetLang) {
         let translated = null;
         
         if (text.length > splitThreshold) {
-            console.log('Text length:', text.length, '- splitting for better translation...');
+            trace('Text length:', text.length, '- splitting for better translation...');
             translated = await translateLongText(text, targetLang, translationLang);
         } else {
             translated = await performSingleTranslation(text, targetLang, translationLang);
@@ -2862,7 +2672,7 @@ async function performSingleTranslation(text, targetLang, translationLang) {
                 const result = await translateViaApi(text, 'yue');
                 if (result && result.length > 0) {
                     translated = result;
-                    console.log('Cantonese translation successful (' + result.length + ' chars):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
+                    trace('Cantonese translation successful (' + result.length + ' chars):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
                     return translated;
                 }
                 console.warn('Cantonese translation response empty or malformed');
@@ -2873,12 +2683,12 @@ async function performSingleTranslation(text, targetLang, translationLang) {
         }
 
         // Standard translation
-        console.log('Translating to (' + translationLang + ') - text length:', text.length, 'chars');
+        trace('Translating to (' + translationLang + ') - text length:', text.length, 'chars');
         
         const result = await translateViaApi(text, translationLang);
         
         if (result && result.length > 0) {
-            console.log('Translation successful (' + result.length + ' chars):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
+            trace('Translation successful (' + result.length + ' chars):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
             return result;
         }
         
@@ -2898,7 +2708,7 @@ async function translateViaApi(text, targetLang) {
     
     // 1️⃣ Check local cache first
     if (translationCache[cacheKey]) {
-        console.log('Using local cache:', translationCache[cacheKey].substring(0, 80));
+        trace('Using local cache:', translationCache[cacheKey].substring(0, 80));
         return translationCache[cacheKey];
     }
     
@@ -3090,7 +2900,7 @@ function extractAllTranslations(data) {
         return '';
     }
     
-    console.log('API Response - data[0] length:', data[0] ? data[0].length : 'undefined');
+    trace('API Response - data[0] length:', data[0] ? data[0].length : 'undefined');
     
     // Method 1: Iterate through all items in data[0] and collect all translations
     // This handles BOTH single-segment (zh-tw) and multi-segment (zh) responses
@@ -3112,16 +2922,16 @@ function extractAllTranslations(data) {
         }
         
         if (foundCount > 0) {
-            console.log('Merged', foundCount, 'segment(s):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
+            trace('Merged', foundCount, 'segment(s):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
             return result;
         }
     }
     
     // Method 2: Deep search for any string values in the response (fallback)
-    console.log('Trying deep search...');
+    trace('Trying deep search...');
     const allText = searchForTranslations(data);
     if (allText && allText.length > 0) {
-        console.log('Deep search found:', allText.length, 'chars');
+        trace('Deep search found:', allText.length, 'chars');
         return allText;
     }
     
@@ -3179,7 +2989,7 @@ async function translateLongText(text, targetLang, translationLang) {
             sentences = text.split(/[，,、；;\n]+/).filter(s => s.trim().length > 0);
         }
         
-        console.log('Splitting long text into', sentences.length, 'segments');
+        trace('Splitting long text into', sentences.length, 'segments');
         
         // Translate each sentence
         const translatedSentences = [];
@@ -3203,7 +3013,7 @@ async function translateLongText(text, targetLang, translationLang) {
         
         // Rejoin with original delimiters preserved
         let result = translatedSentences.join('');
-        console.log('Long text translation complete:', result.substring(0, 50) + '...');
+        trace('Long text translation complete:', result.substring(0, 50) + '...');
         return result;
         
     } catch (error) {
@@ -3237,7 +3047,7 @@ function enqueueTTSPlayback(text, isAutoPlay = false) {
     
     // Check if this is a double-tap on the same text (within 500ms)
     if (!isAutoPlay && text === lastTTSClickText && (now - lastTTSClickTime) < TTS_DOUBLE_TAP_THRESHOLD) {
-        console.log('Double-tap detected! Stopping TTS playback...');
+        trace('Double-tap detected! Stopping TTS playback...');
         clearTTSQueue();
         lastTTSClickText = '';
         lastTTSClickTime = 0;
@@ -3252,7 +3062,7 @@ function enqueueTTSPlayback(text, isAutoPlay = false) {
     
     // Add to queue instead of playing immediately
     ttsQueue.push({text, isAutoPlay});
-    console.log(`Queued TTS (auto=${isAutoPlay}): ${text.substring(0, 50)}... Queue length: ${ttsQueue.length}`);
+    trace(`Queued TTS (auto=${isAutoPlay}): ${text.substring(0, 50)}... Queue length: ${ttsQueue.length}`);
     
     // Start processing queue if nothing is currently playing
     if (!isTTSPlaying) {
@@ -3264,41 +3074,32 @@ function processTTSQueue() {
     // Process next item in queue
     if (ttsQueue.length === 0) {
         isTTSPlaying = false;
-        console.log('TTS Queue empty');
+        trace('TTS Queue empty');
         return;
     }
     
     if (isTTSPlaying) {
-        console.log('TTS still playing, waiting...');
+        trace('TTS still playing, waiting...');
         return;
     }
     
     const item = ttsQueue.shift();
-    console.log(`Playing from queue (auto=${item.isAutoPlay}): ${item.text.substring(0, 50)}...`);
+    trace(`Playing from queue (auto=${item.isAutoPlay}): ${item.text.substring(0, 50)}...`);
     
     isTTSPlaying = true;
     
-    if (ttsEngine === 'system') {
-        speakTextSystem(item.text);
-    } else if (ttsEngine === 'edge') {
-        speakTextEdge(item.text);
-    }
+    speakTextSystem(item.text);
 }
 
 function clearTTSQueue() {
     // Clear all pending TTS and stop current playback
-    console.log(`Clearing TTS queue (${ttsQueue.length} items)`);
+    trace(`Clearing TTS queue (${ttsQueue.length} items)`);
     ttsQueue = [];
     isTTSPlaying = false;
     
     // Stop current playback
     if ('speechSynthesis' in window) {
         speechSynthesis.cancel();
-    }
-    if (currentAudioElement) {
-        currentAudioElement.pause();
-        currentAudioElement.src = '';
-        currentAudioElement = null;
     }
     currentUtterance = null;
 }
@@ -3327,7 +3128,7 @@ function speakTextSystem(text) {
 
     if (selectedVoice) {
         utterance.voice = selectedVoice;
-        console.log('Using selected system voice: ' + selectedVoice.name);
+        trace('Using selected system voice: ' + selectedVoice.name);
     } else {
         const voices = speechSynthesis.getVoices();
         let autoVoice = voices.find(function (v) {
@@ -3341,12 +3142,12 @@ function speakTextSystem(text) {
         }
         if (autoVoice) {
             utterance.voice = autoVoice;
-            console.log('Using auto system voice: ' + autoVoice.name);
+            trace('Using auto system voice: ' + autoVoice.name);
         }
     }
 
     utterance.onend = function () {
-        console.log('System TTS finished');
+        trace('System TTS finished');
         currentUtterance = null;
         isTTSPlaying = false;
         // Process next in queue
@@ -3362,112 +3163,6 @@ function speakTextSystem(text) {
 
     currentUtterance = utterance;
     speechSynthesis.speak(utterance);
-}
-
-async function speakTextEdge(text) {
-    // Use Edge TTS (Cloud-based)
-    try {
-        console.log('Sending text to Edge TTS...');
-
-        // Token is delivered asynchronously via the 'ready' socket event.
-        // Briefly poll for it (up to ~2s) before failing — otherwise an
-        // early click after page load would error out with "no token".
-        if (!apiSessionToken) {
-            for (let i = 0; i < 20 && !apiSessionToken; i++) {
-                await new Promise(r => setTimeout(r, 100));
-            }
-        }
-        if (!apiSessionToken) {
-            throw new Error('Waiting for server connection... Please try again in a moment');
-        }
-        
-        const selectedVoiceValue = document.getElementById('voiceSelect').value;
-        
-        const response = await fetch('/api/tts/synthesize', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiSessionToken}`
-            },
-            body: JSON.stringify({
-                text: text,
-                lang: TTS_LANG_MAP[targetLang] || targetLang,
-                voice: selectedVoiceValue || null
-            })
-        });
-        
-        if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            let error = 'TTS synthesis failed';
-            let errorDetail = '';
-            
-            if (contentType && contentType.includes('application/json')) {
-                try {
-                    const errorData = await response.json();
-                    error = errorData.error || error;
-                    errorDetail = errorData.error || '';
-                } catch (e) {
-                    // Couldn't parse JSON
-                }
-            }
-            
-            console.error(`TTS Response error: status=${response.status}, content-type=${contentType}`);
-            console.error(`Error detail: ${errorDetail}`);
-            
-            // Provide user-friendly error messages
-            if (response.status === 503) {
-                throw new Error('Edge TTS service is temporarily unavailable. Please try again later.');
-            } else if (response.status === 429) {
-                throw new Error('Too many TTS requests. Please wait a moment and try again.');
-            } else {
-                throw new Error(error);
-            }
-        }
-        
-        // Log response details
-        const contentType = response.headers.get('content-type');
-        console.log(`TTS Response: status=${response.status}, content-type=${contentType}`);
-        
-        // Get audio blob
-        const audioBlob = await response.blob();
-        console.log(`Audio blob: size=${audioBlob.size}, type=${audioBlob.type}`);
-        
-        // Play audio
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio();
-        audio.src = audioUrl;
-        audio.volume = ttsVolume;
-        
-        currentAudioElement = audio;
-        
-        audio.onerror = function (e) {
-            console.error('Edge TTS playback error:', e);
-            isTTSPlaying = false;
-            processTTSQueue();
-        };
-        
-        audio.onended = function () {
-            console.log('Edge TTS finished');
-            URL.revokeObjectURL(audioUrl);
-            currentAudioElement = null;
-            isTTSPlaying = false;
-            // Process next in queue
-            processTTSQueue();
-        };
-        
-        audio.play().catch(function (e) {
-            console.error('Failed to play Edge TTS audio:', e);
-            isTTSPlaying = false;
-            processTTSQueue();
-        });
-        
-        console.log('Edge TTS audio playing...');
-    } catch (error) {
-        console.error('Edge TTS error:', error);
-        isTTSPlaying = false;
-        processTTSQueue();
-        showToast(t('toast_ttsError', 'TTS error') + ': ' + error.message, 'danger');
-    }
 }
 
 /* The masthead's speaker button and the one in the settings dialog are the
@@ -3557,18 +3252,18 @@ function copyTranslation(id) {
 
     // In transcription mode, copy original text; in translation mode, copy translated text
     const textToCopy = displayMode === 'transcription' ? item.corrected : (item.translated || item.corrected);
-    console.log('Attempting to copy:', textToCopy);
+    trace('Attempting to copy:', textToCopy);
 
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(textToCopy).then(function () {
-            console.log('Copied successfully with clipboard API');
+            trace('Copied successfully with clipboard API');
             showCopyFeedback(id);
         }).catch(function (err) {
-            console.log('Clipboard API failed, trying fallback:', err);
+            trace('Clipboard API failed, trying fallback:', err);
             copyWithFallback(id, textToCopy);
         });
     } else {
-        console.log('Clipboard API not available, using fallback');
+        trace('Clipboard API not available, using fallback');
         copyWithFallback(id, textToCopy);
     }
 }
@@ -3595,7 +3290,7 @@ function copyWithFallback(id, text) {
         document.body.removeChild(textArea);
 
         if (successful) {
-            console.log('Copied successfully with fallback method');
+            trace('Copied successfully with fallback method');
             showCopyFeedback(id);
         } else {
             console.error('Fallback copy failed');
@@ -3665,7 +3360,7 @@ async function renderTranslations() {
     
     // Render only first batch initially (30 items instead of ALL!)
     const initialBatch = Math.min(renderBatchSize, translations.length);
-    console.log('Initial render: ' + initialBatch + ' of ' + translations.length + ' items (virtual scrolling)');
+    trace('Initial render: ' + initialBatch + ' of ' + translations.length + ' items (virtual scrolling)');
     await renderTranslationsBatch(0, initialBatch);
     
     // Setup virtual scrolling for remaining items
@@ -3715,7 +3410,7 @@ async function renderTranslationsBatch(startIdx, endIdx) {
     }
 
     renderedCount = endIdx;
-    console.log('Rendered items ' + startIdx + '-' + endIdx + '/' + translations.length);
+    trace('Rendered items ' + startIdx + '-' + endIdx + '/' + translations.length);
     
     paintLoadMore();
 }
@@ -3817,7 +3512,7 @@ async function renderMoreVisibleItems() {
     isRenderingMore = true;
     var nextBatchEnd = Math.min(renderedCount + renderBatchSize, translations.length);
     
-    console.log('Virtual scroll: rendering items ' + renderedCount + '-' + nextBatchEnd + '...');
+    trace('Virtual scroll: rendering items ' + renderedCount + '-' + nextBatchEnd + '...');
     await renderTranslationsBatch(renderedCount, nextBatchEnd);
     
     isRenderingMore = false;
@@ -3866,7 +3561,7 @@ async function loadInitialTranslations() {
                 } catch (e) {}
             }
 
-            console.log('Loaded ' + translations.length + ' translations (total: ' + translationsTotal + ')');
+            trace('Loaded ' + translations.length + ' translations (total: ' + translationsTotal + ')');
             await renderTranslations();
         } else if (response.status === 401) {
             console.warn('API token rejected (401) — waiting for ready event with fresh token');
@@ -3881,14 +3576,14 @@ async function loadInitialTranslations() {
 async function loadMoreTranslations() {
     // Load next batch of translations
     if (isLoadingMore || !hasMoreTranslations) {
-        console.log(`Cannot load more: isLoadingMore=${isLoadingMore}, hasMore=${hasMoreTranslations}`);
+        trace(`Cannot load more: isLoadingMore=${isLoadingMore}, hasMore=${hasMoreTranslations}`);
         return;
     }
     
     isLoadingMore = true;
     translationsOffset += translationsLimit;
     
-    console.log(`Loading more at offset ${translationsOffset}, limit ${translationsLimit}...`);
+    trace(`Loading more at offset ${translationsOffset}, limit ${translationsLimit}...`);
     
     try {
         const response = await fetch(
@@ -3901,14 +3596,14 @@ async function loadMoreTranslations() {
             const data = await response.json();
             const newTranslations = data.translations || [];
             
-            console.log(`Got ${newTranslations.length} more items (has_more=${data.has_more})`);
+            trace(`Got ${newTranslations.length} more items (has_more=${data.has_more})`);
             
             // Append to existing translations (newest at bottom)
             translations.push(...newTranslations);
             hasMoreTranslations = data.has_more || false;
             translationsTotal = data.total || 0;
             
-            console.log(`Loaded ${newTranslations.length} more translations (${translations.length} visible, ${translationsTotal} total, has_more=${hasMoreTranslations})`);
+            trace(`Loaded ${newTranslations.length} more translations (${translations.length} visible, ${translationsTotal} total, has_more=${hasMoreTranslations})`);
             
             // Only render the new items (append to DOM)
             if (newTranslations.length > 0) {
@@ -4010,7 +3705,7 @@ async function processPendingTranslations() {
     
     // Take all pending translations
     const batch = pendingNewTranslations.splice(0);
-    console.log('Processing ' + batch.length + ' pending translations');
+    trace('Processing ' + batch.length + ' pending translations');
     
     // Add them one at a time with a small delay between each
     for (let i = 0; i < batch.length; i++) {
@@ -4265,7 +3960,7 @@ function checkAndTransitionToUnderstanding(element, tempId, currentText) {
     
     // Transition if: reached min words OR detected punctuation
     if (wordCount >= LISTENING_MIN_WORD_COUNT || hasPunctuation) {
-        console.log('Transitioning to understanding: wordCount=' + wordCount + ', hasPunctuation=' + hasPunctuation);
+        trace('Transitioning to understanding: wordCount=' + wordCount + ', hasPunctuation=' + hasPunctuation);
         tracking.hasTransitionedToUnderstanding = true;
         
         // Stop listening state machine
@@ -4320,7 +4015,7 @@ function startIntermediateStateMachine(element, tempId, startStage = 'understand
     
     const baseStatusChangeDuration = getStatusChangeDuration(startStage);
     
-    console.log('Intermediate machine started:', { stage: startStage, wordCount, animStyle: 'dots', duration: baseStatusChangeDuration + 'ms' });
+    trace('Intermediate machine started:', { stage: startStage, wordCount, animStyle: 'dots', duration: baseStatusChangeDuration + 'ms' });
     
     let lastStatusChangeTime = startTime;
     const updateInterval = 200; // Update animation every 200ms
@@ -4442,7 +4137,7 @@ function startAIThinkingMachine(element, startStage = 'understanding', maxDurati
     const wordCount = sourceText ? sourceText.split(WORD_BOUNDARY_REGEX).length : 0;
     const isLongText = wordCount > 20;
     
-    console.log('AI thinking machine started:', { startStage, wordCount, isLongText, animStyle: 'dots' });
+    trace('AI thinking machine started:', { startStage, wordCount, isLongText, animStyle: 'dots' });
     
     const updateInterval = 200; // Update animation every 200ms
     
@@ -4518,7 +4213,7 @@ function startAIThinkingMachine(element, startStage = 'understanding', maxDurati
         if (elapsedMs > maxDurationMs) {
             clearInterval(thinkingTimer);
             element._thinkingMachine = false;
-            console.log('Thinking machine stopped (max duration reached)');
+            trace('Thinking machine stopped (max duration reached)');
         }
     }, updateInterval); // Update every 200ms
     
@@ -4632,7 +4327,7 @@ async function translateInBackground(item, itemId, textEl) {
     try {
         // Use item's current language if set, otherwise use global targetLang
         const lang = item.currentLang || targetLang;
-        console.log('Starting translation for item ' + itemId + ', target lang: ' + lang + ', text length: ' + (item.corrected ? item.corrected.length : 0));
+        trace('Starting translation for item ' + itemId + ', target lang: ' + lang + ', text length: ' + (item.corrected ? item.corrected.length : 0));
 
         /* Nothing to translate when the line is already in the language being
            read. The network call was skipped for this case, but the waiting
@@ -4657,7 +4352,7 @@ async function translateInBackground(item, itemId, textEl) {
                 textEl.className = 'text-target';
                 reserveTranslationSpace(textEl, item.corrected);
                 startAIThinkingMachine(textEl, 'translated', 30000, item.corrected);
-                console.log('Switched to translated state, showing "即將呈現翻譯"');
+                trace('Switched to translated state, showing "即將呈現翻譯"');
             }
         }
         
@@ -4685,7 +4380,7 @@ async function translateInBackground(item, itemId, textEl) {
             }).catch(() => {}); // silent — non-critical
         }
 
-        console.log('Translation complete (' + item.translated.length + ' chars): ' + item.translated.substring(0, 100));
+        trace('Translation complete (' + item.translated.length + ' chars): ' + item.translated.substring(0, 100));
         
         // Update DOM if element still exists
         const elem2 = document.getElementById(itemId);
@@ -4698,7 +4393,7 @@ async function translateInBackground(item, itemId, textEl) {
             // Stop AI thinking machine
             if (textEl) {
                 stopAIThinkingMachine(textEl);
-                console.log('Stopped AI thinking machine, showing translation');
+                trace('Stopped AI thinking machine, showing translation');
             }
             
             // Remove the translating spinner from card-actions
@@ -4735,7 +4430,7 @@ async function translateInBackground(item, itemId, textEl) {
             if (ttsEnabled && displayMode !== 'transcription' && item.translated
                     && elem2.getAttribute('data-await-verse') !== '1'
                     && elem2.getAttribute('data-speaks-verse') !== '1') {
-                console.log('Auto-playing translation via TTS');
+                trace('Auto-playing translation via TTS');
                 speakText(item.translated, true);
             }
         }
@@ -4746,7 +4441,7 @@ async function translateInBackground(item, itemId, textEl) {
 
 function copyTranslationFromButton(button) {
     const id = button.getAttribute('data-translation-id');
-    console.log('Copy button clicked with ID:', id);
+    trace('Copy button clicked with ID:', id);
     copyTranslation(id);
 }
 
@@ -5215,7 +4910,7 @@ document.addEventListener('keydown', function (e) {
 function setupSocketEventListeners() {
     // Prevent multiple registrations of the same listeners
     if (socketListenersSetup) {
-        console.log('Socket listeners already setup, skipping');
+        trace('Socket listeners already setup, skipping');
         return;
     }
 
@@ -5225,10 +4920,10 @@ function setupSocketEventListeners() {
     }
 
     socketListenersSetup = true;
-    console.log('Setting up Socket.IO event listeners...');
+    trace('Setting up Socket.IO event listeners...');
 
     socket.on('connect', async () => {
-        console.log('Connected to server');
+        trace('Connected to server');
         setConnectionStatus('online');
         // Attempt fast load with cached token; ready event will retry if this returns 401.
         await loadInitialTranslations();
@@ -5240,7 +4935,7 @@ function setupSocketEventListeners() {
             const prevToken = apiSessionToken;
             apiSessionToken = data.api_token;
             localStorage.setItem('apiSessionToken', apiSessionToken);
-            console.log('Fresh API token received');
+            trace('Fresh API token received');
             // Only reload if the connect attempt used a stale/rejected token.
             if (!prevToken || prevToken !== apiSessionToken) {
                 await loadInitialTranslations();
@@ -5254,7 +4949,7 @@ function setupSocketEventListeners() {
     });
 
     socket.on('disconnect', () => {
-        console.log('Disconnected from server');
+        trace('Disconnected from server');
         setConnectionStatus('offline');
         // Cancel any pending render so it doesn't fire after disconnect
         // (it would try to use a stale socket and throw).
@@ -5283,7 +4978,7 @@ function setupSocketEventListeners() {
     socket.on('history', async (history) => {
         // Legacy: server still sends history, but we ignore it
         // Instead, we load via HTTP pagination
-        console.log('History message received (ignored, using HTTP API)');
+        trace('History message received (ignored, using HTTP API)');
     });
 
     socket.on('realtime_transcription', async (data) => {
@@ -5388,7 +5083,6 @@ function setupSocketEventListeners() {
                 
                 // Animate with typewriter effect
                 animateTextChange(textEl, currentText, transcribedText, 300);
-                console.log('Updating transcription with typewriter effect:', transcribedText.substring(0, 50));
             }
         } else {
             // Update text-source with interim speech (animated typewriter)
@@ -5401,7 +5095,6 @@ function setupSocketEventListeners() {
                 // Animate text-source with typewriter effect
                 if (tempCard._sourceAnimTimer) clearTimeout(tempCard._sourceAnimTimer);
                 animateTextChange(sourceEl, currentSourceText, sourceText, 300);
-                console.log('Updating text-source in interim card:', sourceText.substring(0, 50));
             }
 
             // Smart chunk detection: check if we should transition from listening to understanding
@@ -5412,7 +5105,6 @@ function setupSocketEventListeners() {
                 
                 // Check if content is stable enough to transition
                 checkAndTransitionToUnderstanding(textEl, tempId, finalText);
-                console.log('Chunk state:', { tempId, wordCount: finalText.split(WORD_BOUNDARY_REGEX).length, hasPunctuation: PUNCTUATION_MARKERS.test(finalText) });
             }
         }
     });
@@ -5438,7 +5130,7 @@ function setupSocketEventListeners() {
                     if (currentTextEl) {
                         stopListeningStateMachine(currentTextEl);
                         stopIntermediateStateMachine(currentTextEl);
-                        console.log('Stopped listening/intermediate state, starting AI thinking...');
+                        trace('Stopped listening/intermediate state, starting AI thinking...');
                     }
                     
                     // Clean up chunk tracking for this temp_id
@@ -5446,7 +5138,7 @@ function setupSocketEventListeners() {
                         delete activeChunkTracking[data.temp_id];
                     }
                     
-                    console.log('Upgrading interim card to final:', {
+                    trace('Upgrading interim card to final:', {
                         tempId: data.temp_id,
                         itemId: itemId,
                         interim: interimText.substring(0, 50),
@@ -5461,7 +5153,7 @@ function setupSocketEventListeners() {
                         && !sameLanguage(normalizedSourceLang, normalizedTargetLang)
                         && displayMode !== 'transcription';
 
-                    console.log('Source language check:', {
+                    trace('Source language check:', {
                         source: normalizedSourceLang,
                         target: normalizedTargetLang,
                         displayMode: displayMode,
@@ -5478,7 +5170,7 @@ function setupSocketEventListeners() {
                             sourceDiv.className = 'meta text-source';
                             sourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
                             sourceDiv.textContent = data.corrected || data.original;
-                            console.log('Adding text-source element');
+                            trace('Adding text-source element');
                             // The source line reads under the translation.
                             currentTextEl.insertAdjacentElement('afterend', sourceDiv);
                         } else {
@@ -5486,7 +5178,7 @@ function setupSocketEventListeners() {
                             existingSourceDiv.hidden = false;
                             existingSourceDiv.textContent = data.corrected || data.original;
                             existingSourceDiv.setAttribute('data-original-text', escapeHtml(data.corrected || data.original));
-                            console.log('Updating existing text-source element');
+                            trace('Updating existing text-source element');
                         }
                     } else if (existingSourceDiv) {
                         existingSourceDiv.hidden = true;
@@ -5503,7 +5195,7 @@ function setupSocketEventListeners() {
                         // Pass source text to determine animation style based on length
                         const sourceText = data.corrected || data.original || '';
                         startAIThinkingMachine(currentTextEl, 'preparing', 30000, sourceText);
-                        console.log('Started AI thinking machine (preparingtranslating)');
+                        trace('Started AI thinking machine (preparingtranslating)');
                     } else if (currentTextEl) {
                         // Transcription mode, or the line is already in the
                         // language being read: the words are the answer.
@@ -5511,7 +5203,7 @@ function setupSocketEventListeners() {
                         currentTextEl.className = 'text-target';
                         currentTextEl.style.minHeight = '';
                         currentTextEl.textContent = data.corrected || data.original;
-                        console.log('Completed line displayed without translating');
+                        trace('Completed line displayed without translating');
                     }
 
                     // Add copy + TTS buttons to card-actions.
@@ -5573,7 +5265,7 @@ function setupSocketEventListeners() {
     });
 
     socket.on('translation_corrected', async (data) => {
-        console.log('Translation corrected:', data.id);
+        trace('Translation corrected:', data.id);
         const index = translations.findIndex(t => t.id === data.id);
         if (index !== -1) {
             translations[index] = data;
@@ -5591,14 +5283,14 @@ function setupSocketEventListeners() {
     });
 
     socket.on('order_updated', async (data) => {
-        console.log('Order updated from admin:', data.translations.length, 'items');
+        trace('Order updated from admin:', data.translations.length, 'items');
         translations = data.translations;
         await renderTranslations();
         showSyncIndicator();
     });
 
     socket.on('history_cleared', () => {
-        console.log('History cleared');
+        trace('History cleared');
         translations = [];
         translationsTotal = 0;
         hasMoreTranslations = false;
@@ -5617,7 +5309,7 @@ function setupSocketEventListeners() {
     });
 
     socket.on('items_deleted', (data) => {
-        console.log('Items deleted:', data.ids);
+        trace('Items deleted:', data.ids);
         const idsToDelete = data.ids || [];
         const before = translations.length;
         translations = translations.filter(item => !idsToDelete.includes(item.id));
@@ -5629,28 +5321,10 @@ function setupSocketEventListeners() {
     });
 }
 
-/* ===================================
-   Initialization
-   =================================== */
-
-if ('speechSynthesis' in window) {
-    loadSettings();
-    applyDisplayLanguageLocal();
-
-    speechSynthesis.addEventListener('voiceschanged', loadVoices);
-    loadVoices();
-    setTimeout(loadVoices, 100);
-
-    console.log('EzySpeechTranslate Ready with Auto Language Detection');
-} else {
-    console.warn('Speech Synthesis not supported');
-}
-
-// Setup socket event listeners when DOM is loaded (only once)
-document.addEventListener('DOMContentLoaded', function () {
-    ensureSocketConnected();
-    initBibleFeature();
-});
+/* Start-up is init(), once, at DOMContentLoaded. Settings, the interface
+   language, voices, the socket and the Bible feature were also run here, at
+   parse time and in a second DOMContentLoaded handler, so each happened two
+   or three times on every load. */
 
 // ── Feature 2: Announcement Banner ─────────────────────────────────────
 let _announcementTimer = null;
@@ -5700,4 +5374,4 @@ function dismissAnnouncement() {
     }, 300);
 }
 
-console.log('EzySpeechTranslate Client Ready');
+trace('EzySpeechTranslate Client Ready');

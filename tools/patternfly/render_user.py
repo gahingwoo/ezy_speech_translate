@@ -753,14 +753,9 @@ def build():
           </button>
         </div>
       </div>
-%s%s%s%s
+%s%s%s
 ''' % (
         btn_icon("volume-up"),
-        form_group("TTS Engine", "ttsEngine",
-                   select("ttsEngine", "changeTTSEngine()", "Select TTS engine",
-                          '<option value="system" data-i18n="tts_system">System (Local)</option>'
-                          '<option value="edge" data-i18n="tts_edge">Edge (Server)</option>'),
-                   "ttsEngine", help="System uses the voices on this device. Edge fetches a voice from the server, which sounds better but needs a connection.", help_key="help_ttsEngine"),
         form_group("Voice", "voice",
                    select("voiceSelect", "changeVoice()", "Select voice",
                           '<option value="" data-i18n="tts_autoVoice">Auto (System Default)</option>'),

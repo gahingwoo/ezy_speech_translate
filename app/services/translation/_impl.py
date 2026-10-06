@@ -21,7 +21,7 @@ from functools import lru_cache
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
 from queue import Queue, Empty
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 import json
 
 logger = logging.getLogger(__name__)
@@ -200,6 +200,9 @@ class GoogleTranslateService:
         })
         self.retry_attempts = 3
         self.retry_backoff = 2  # Exponential backoff factor
+        # Lines being fetched right now, so a second asker waits for the first.
+        self._inflight: Dict[Tuple[str, str], dict] = {}
+        self._inflight_lock = Lock()
     
     def translate(self, text: str, target_lang: str,
                   glossary: list | None = None) -> Tuple[bool, str, bool]:
@@ -251,6 +254,36 @@ class GoogleTranslateService:
             logger.debug(f"Cache hit for {target_lang}: {text[:30]}...")
             return True, cached, True
 
+        # Every listener reading the same language asks for the same line at
+        # the same moment, the instant it is spoken, so all of them miss the
+        # cache together and each used to make its own request. One goes out;
+        # the rest wait for its answer.
+        key = (text, cache_lang_key)
+        with self._inflight_lock:
+            pending = self._inflight.get(key)
+            leader = pending is None
+            if leader:
+                pending = self._inflight[key] = {'done': Event(), 'result': None}
+        if not leader:
+            # Longer than the leader can take: three attempts of ten seconds
+            # with their backoff between.
+            pending['done'].wait(timeout=40)
+            result = pending['result']
+            if result is None:
+                return False, text, False
+            success, translated, _ = result
+            return success, translated, success
+        try:
+            pending['result'] = self._fetch(text, target_lang, cache_lang_key, applicable_terms)
+            return pending['result']
+        finally:
+            with self._inflight_lock:
+                self._inflight.pop(key, None)
+            pending['done'].set()
+
+    def _fetch(self, text: str, target_lang: str, cache_lang_key: str,
+               applicable_terms: list) -> Tuple[bool, str, bool]:
+        """Ask the endpoint, with retries, and cache what comes back."""
         # Normalize language code
         target_lang_norm = self.LANG_MAP.get(target_lang, target_lang)
 

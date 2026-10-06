@@ -28,19 +28,24 @@ from logging.handlers import RotatingFileHandler
 import jwt
 from functools import wraps
 import hashlib
+import select  # noqa: F401  (before patching: see app/admin/server.py)
 import eventlet
 import eventlet.wsgi
-# ⚠️ CRITICAL: Disable select AND socket monkeypatch BEFORE importing asyncio
-# to avoid conflicts with asyncio's event loop
-# We need asyncio's native socket and select modules, not eventlet's patched versions
-eventlet.monkey_patch(select=False, socket=False)
+# Everything, sockets included. This server is one thread: a call that waits
+# on a socket eventlet has not patched waits with the whole server, so every
+# translation, Bible lookup and admin push queued behind the slowest of them,
+# and live captions stopped for every listener while one was answered. Eight
+# listeners asking at once took seven seconds where they now take under two.
+#
+# Sockets were left unpatched for an in-process asyncio Edge TTS client. That
+# client, and cloud speech with it, is gone; nothing here needs the native
+# modules any more.
+eventlet.monkey_patch()
 import secrets
 import hmac
 import re
 from collections import defaultdict
 import time
-import io
-import subprocess
 import threading
 
 # ── Optional persistence layer (SQLite) ───────────────────────────────────────
@@ -141,6 +146,7 @@ security_logger.setLevel(logging.WARNING)
 # Flask Initialization with Security
 # ──────────────────────────────────────────
 from app.core.static_version import make_static_url
+from app.core.compress import install as install_compression
 
 app = Flask(__name__,
             template_folder=TEMPLATE_DIR,
@@ -149,6 +155,9 @@ app = Flask(__name__,
 # Templates address static files through static_url(), which appends a hash of
 # the file's contents so a changed stylesheet is never served from cache.
 app.jinja_env.globals["static_url"] = make_static_url(STATIC_DIR)
+# First, so its hook runs last: what goes out is compressed after every
+# other hook has had its say about the headers.
+install_compression(app)
 
 # Secure configuration — resolve (and persist) a strong Flask secret key.
 # Existing configured keys are used unchanged; missing/insecure ones are
@@ -258,6 +267,9 @@ if BIBLE_DETECTION_ENABLED:
             api_timeout=BIBLE_API_TIMEOUT,
         )
         bible_detector = _bible_mod
+        # The wording index loads on first use, and first use was the first
+        # line of the sermon: 70ms with every listener's feed held behind it.
+        _bible_mod.detect_and_lookup("the Lord is my shepherd")
         logging.getLogger("bible").info(
             f"Bible detection enabled (source={BIBLE_SOURCE_TRANSLATION}"
             + (f", target={BIBLE_TARGET_TRANSLATION}" if BIBLE_TARGET_TRANSLATION else "")
@@ -304,7 +316,6 @@ else:
         'font-src': ["'self'", "https://fonts.gstatic.com"],
         'img-src': ["'self'", "data:", "https:"],
         'connect-src': ["'self'", "ws:", "wss:", "https:", "https://translate.googleapis.com"],
-        'media-src': ["'self'", "blob:"]  # Allow blob URLs for audio playback
     }
 
     Talisman(
@@ -535,7 +546,6 @@ _peak_clients       = 0             # peak concurrent user-type listeners
 _total_words        = 0             # running word count across all final transcriptions
 _session_lines      = 0             # lines this service, as against every line ever
 _total_bible_refs   = 0             # running count of bible references detected
-_total_tts_plays    = 0             # incremented by /api/tts/synthesize
 _total_translations = 0             # incremented by /api/translate
 
 ANALYTICS_ENABLED = get_config('features', 'session_analytics', 'enabled', default=True)
@@ -765,7 +775,6 @@ def after_request(response):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
-            "media-src 'self' blob:; "
             f"connect-src {connect_src}; "
             "img-src 'self' data:; "
             "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
@@ -946,7 +955,6 @@ def set_cache_headers(response):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
-            "media-src 'self' blob:; "
             f"connect-src {connect_src}; "
             "img-src 'self' data:; "
             "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com"
@@ -974,9 +982,10 @@ def set_cache_headers(response):
             # This handles unversioned requests during development/debugging
             response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
         
-        # Add ETag for cache validation
-        if not response.headers.get('ETag'):
-            response.set_etag()
+        # Files carry their own ETag. This used to call set_etag() with no tag,
+        # which raises, so a missing file was answered with a 500, not a 404.
+        if response.status_code == 200 and not response.headers.get('ETag'):
+            response.add_etag()
     
     return response
 
@@ -1445,7 +1454,6 @@ def get_analytics():
         'total_words':      _total_words,
         'total_bible_refs': _total_bible_refs,
         'total_translations': _total_translations,
-        'total_tts_plays':  _total_tts_plays,
         'db':               db_stats,
         'rooms': [
             {
@@ -1464,14 +1472,13 @@ def get_analytics():
 def reset_analytics():
     """Reset session analytics counters (admin only)."""
     global _session_start_time, _peak_clients, _total_words, _session_lines
-    global _total_bible_refs, _total_translations, _total_tts_plays
+    global _total_bible_refs, _total_translations
     _session_start_time = datetime.now()
     _peak_clients = _all_listener_count()
     _total_words = 0
     _session_lines = 0
     _total_bible_refs = 0
     _total_translations = 0
-    _total_tts_plays = 0
     logger.info("Session analytics reset by %s", getattr(request, 'user', {}).get('username', 'unknown'))
     return jsonify({'success': True, 'reset_at': _session_start_time.isoformat()})
 
@@ -1574,67 +1581,6 @@ def export_translations(export_format):
 # Translation API with Rate Limiting and Caching
 # ──────────────────────────────────────────
 from app.services.translation import get_translation_service  # noqa: E402
-
-# Import Edge TTS for cloud-based text-to-speech
-from app.services.tts import tts_cache  # noqa: E402
-
-try:
-    import edge_tts
-    EDGE_TTS_AVAILABLE = True
-    # Cache for Edge TTS voices (will be populated on demand)
-    EDGE_TTS_VOICES_CACHE = None
-    EDGE_TTS_VOICES_CACHE_TIME = None
-
-    # All valid Edge TTS language codes extracted from edge-tts library
-    # These are the base language codes that can be used for voice selection
-    VALID_EDGE_TTS_LANGS = {
-        'af-ZA', 'am-ET', 'ar-AE', 'ar-BH', 'ar-DZ', 'ar-EG', 'ar-IQ', 'ar-JO', 'ar-KW', 
-        'ar-LB', 'ar-LY', 'ar-MA', 'ar-OM', 'ar-QA', 'ar-SA', 'ar-SY', 'ar-TN', 'ar-YE',
-        'az-AZ', 'bg-BG', 'bn-BD', 'bn-IN', 'bs-BA', 'ca-ES', 'cs-CZ', 'cy-GB', 'da-DK',
-        'de-AT', 'de-CH', 'de-DE', 'el-GR', 'en-AU', 'en-CA', 'en-GB', 'en-HK', 'en-IE',
-        'en-IN', 'en-KE', 'en-NG', 'en-NZ', 'en-PH', 'en-SG', 'en-TZ', 'en-US', 'en-ZA',
-        'es-AR', 'es-BO', 'es-CL', 'es-CO', 'es-CR', 'es-CU', 'es-DO', 'es-EC', 'es-ES',
-        'es-GQ', 'es-GT', 'es-HN', 'es-MX', 'es-NI', 'es-PA', 'es-PE', 'es-PR', 'es-PY',
-        'es-SV', 'es-US', 'es-UY', 'es-VE', 'et-EE', 'fa-IR', 'fi-FI', 'fil-PH', 'fr-BE',
-        'fr-CA', 'fr-CH', 'fr-FR', 'ga-IE', 'gl-ES', 'gu-IN', 'he-IL', 'hi-IN', 'hr-HR',
-        'hu-HU', 'id-ID', 'is-IS', 'it-IT', 'iu-Cans-CA', 'iu-Latn-CA', 'ja-JP', 'jv-ID',
-        'ka-GE', 'kk-KZ', 'km-KH', 'kn-IN', 'ko-KR', 'lo-LA', 'lt-LT', 'lv-LV', 'mk-MK',
-        'ml-IN', 'mn-MN', 'mr-IN', 'ms-MY', 'mt-MT', 'my-MM', 'nb-NO', 'ne-NP', 'nl-BE',
-        'nl-NL', 'pl-PL', 'ps-AF', 'pt-BR', 'pt-PT', 'ro-RO', 'ru-RU', 'si-LK', 'sk-SK',
-        'sl-SI', 'so-SO', 'sq-AL', 'sr-RS', 'su-ID', 'sv-SE', 'sw-KE', 'sw-TZ', 'ta-IN',
-        'ta-LK', 'ta-MY', 'ta-SG', 'te-IN', 'th-TH', 'tr-TR', 'uk-UA', 'ur-IN', 'ur-PK',
-        'uz-UZ', 'vi-VN', 'zh-CN', 'zh-HK', 'zh-TW', 'zu-ZA',
-        # Regional variants
-        'zh-CN-liaoning', 'zh-CN-shaanxi'
-    }
-
-    # Client rate limiting tracking
-    CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)  # client_id -> [(timestamp, request_hash), ...]
-    CLIENT_SYNTHESIS_LIMIT = 100  # Max synthesis requests per client per hour
-
-except ImportError:
-    logger.warning("edge-tts not installed. Cloud TTS will not be available. Install with: pip install edge-tts")
-    EDGE_TTS_AVAILABLE = False
-    EDGE_TTS_VOICES_CACHE = None
-    EDGE_TTS_VOICES_CACHE_TIME = None
-    VALID_EDGE_TTS_LANGS = set()
-    CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)
-
-# ✅ Ensure remaining TTS-related globals are defined (fail-safe)
-if 'EDGE_TTS_AVAILABLE' not in globals():
-    EDGE_TTS_AVAILABLE = False
-if 'CLIENT_SYNTHESIS_REQUESTS' not in globals():
-    CLIENT_SYNTHESIS_REQUESTS = defaultdict(list)
-if 'EDGE_TTS_VOICES_CACHE' not in globals():
-    EDGE_TTS_VOICES_CACHE = None
-if 'EDGE_TTS_VOICES_CACHE_TIME' not in globals():
-    EDGE_TTS_VOICES_CACHE_TIME = None
-
-# Lock that guards the one-time background fetch of Edge TTS voices.
-# Prevents concurrent requests from all spawning separate fetch threads.
-_VOICES_FETCH_LOCK = threading.Lock()
-
-logger.info(f"Edge TTS initialized - EDGE_TTS_AVAILABLE={EDGE_TTS_AVAILABLE}, Cache size: {len(tts_cache)} items")
 
 @app.route('/api/translate', methods=['POST'])
 @limiter.limit("300 per minute")  # 5 requests per second per client (need headroom for bulk imports)
@@ -1821,485 +1767,6 @@ def clear_translation_cache():
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ──────────────────────────────────────────
-# Text-to-Speech API (Edge TTS - Cloud)
-# ──────────────────────────────────────────
-
-def fetch_edge_tts_voices_in_thread():
-    """Fetch Edge TTS voices via edge-tts CLI in a background OS thread"""
-    global EDGE_TTS_VOICES_CACHE, EDGE_TTS_VOICES_CACHE_TIME
-
-    if not EDGE_TTS_AVAILABLE:
-        logger.warning("Edge TTS not available, skipping voice fetch")
-        return []
-
-    try:
-        logger.info("Fetching Edge TTS voices via CLI...")
-
-        result = subprocess.run(
-            [sys.executable, '-m', 'edge_tts', '--list-voices'],
-            capture_output=True, text=True, timeout=60,
-            close_fds=True,
-            start_new_session=True
-        )
-
-        if result.returncode != 0:
-            logger.error(f"edge-tts --list-voices failed (rc={result.returncode}): {result.stderr}")
-            EDGE_TTS_VOICES_CACHE_TIME = None
-            return []
-
-        if not result.stdout or not result.stdout.strip():
-            logger.error("edge-tts --list-voices returned empty output")
-            EDGE_TTS_VOICES_CACHE_TIME = None
-            return []
-
-        voices = []
-        current = {}
-        for line in result.stdout.splitlines():
-            line = line.strip()
-            if not line:
-                if current.get('ShortName'):
-                    voices.append(current)
-                current = {}
-            elif ':' in line:
-                key, _, val = line.partition(':')
-                key = key.strip()
-                val = val.strip()
-                if key == 'Name':
-                    current['ShortName'] = val
-                    current['FriendlyName'] = val
-                    # 从 Name 提取 Locale
-                    # zh-CN-XiaoxiaoNeural        → zh-CN
-                    # zh-CN-liaoning-XiaobeiNeural → zh-CN
-                    parts = val.split('-')
-                    if len(parts) >= 2:
-                        current['Locale'] = f"{parts[0]}-{parts[1]}"
-                elif key == 'Gender':
-                    current['Gender'] = val
-        # 处理最后一条（文件末尾无空行时）
-        if current.get('ShortName'):
-            voices.append(current)
-
-        if not voices:
-            logger.error("No voices parsed from CLI output")
-            EDGE_TTS_VOICES_CACHE_TIME = None
-            return []
-
-        logger.info(f"Cached {len(voices)} Edge TTS voices via CLI")
-        if voices:
-            logger.info(f"First voice sample: {voices[0]}")
-        EDGE_TTS_VOICES_CACHE = voices
-        EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
-        return voices
-
-    except subprocess.TimeoutExpired:
-        logger.error("edge-tts --list-voices timeout (60s)")
-        EDGE_TTS_VOICES_CACHE_TIME = None
-        return []
-    except Exception as e:
-        logger.error(f"fetch voices error: {e}", exc_info=True)
-        EDGE_TTS_VOICES_CACHE_TIME = None
-        return []
-
-
-def get_cached_edge_tts_voices():
-    """Get voices from cache, trigger background fetch if needed.
-
-    Thread-safe: uses _VOICES_FETCH_LOCK so only one background thread is
-    spawned even under concurrent requests.  Also fixes the .seconds bug
-    (timedelta.seconds wraps at 86 400) by using .total_seconds() instead.
-    """
-    global EDGE_TTS_VOICES_CACHE, EDGE_TTS_VOICES_CACHE_TIME
-
-    if not EDGE_TTS_AVAILABLE:
-        return []
-
-    # Cache hit: populated and not older than 1 hour
-    if EDGE_TTS_VOICES_CACHE is not None and EDGE_TTS_VOICES_CACHE_TIME is not None:
-        age_seconds = (datetime.now() - EDGE_TTS_VOICES_CACHE_TIME).total_seconds()
-        if age_seconds < 3600:
-            return EDGE_TTS_VOICES_CACHE
-
-    # Only spawn one fetch thread even when multiple requests arrive simultaneously
-    with _VOICES_FETCH_LOCK:
-        # Re-check inside the lock in case another thread just populated the cache
-        if EDGE_TTS_VOICES_CACHE is not None and EDGE_TTS_VOICES_CACHE_TIME is not None:
-            age_seconds = (datetime.now() - EDGE_TTS_VOICES_CACHE_TIME).total_seconds()
-            if age_seconds < 3600:
-                return EDGE_TTS_VOICES_CACHE
-
-        if EDGE_TTS_VOICES_CACHE_TIME is None:
-            # Set placeholder timestamp before spawning to prevent duplicate threads
-            EDGE_TTS_VOICES_CACHE_TIME = datetime.now()
-            logger.info("Fetching Edge TTS voices in background OS thread...")
-            threading.Thread(
-                target=fetch_edge_tts_voices_in_thread,
-                daemon=True,
-                name="tts-voice-fetch"
-            ).start()
-
-    return EDGE_TTS_VOICES_CACHE or []
-
-
-# ──────────────────────────────────────────
-# Edge TTS Validation and Rate Limiting
-# ──────────────────────────────────────────
-
-def validate_language_code(lang_code):
-    """Validate if the language code is supported by Edge TTS."""
-    if not lang_code or not isinstance(lang_code, str):
-        return False, "Invalid language code format"
-
-    if lang_code not in VALID_EDGE_TTS_LANGS:
-        base_lang = lang_code.split('-')[0]
-        matching = [l for l in VALID_EDGE_TTS_LANGS if l.startswith(base_lang + '-')]
-        if matching:
-            return True, f"Language code '{lang_code}' not found. Using '{matching[0]}' instead."
-        return False, f"Unsupported language code: '{lang_code}'."
-
-    return True, None
-
-
-def validate_voice_name(voice_name, available_voices):
-    """Validate if the voice name is available and safe."""
-    if not voice_name or not isinstance(voice_name, str):
-        return True, None, None
-
-    if not re.match(r'^[a-z]{2}-[A-Z]{2}(-[a-zA-Z0-9]+)*Neural$', voice_name):
-        return False, f"Invalid voice format: {voice_name}", None
-
-    if available_voices:
-        voice_exists = any(v.get('ShortName') == voice_name for v in available_voices)
-        if not voice_exists:
-            return False, f"Voice '{voice_name}' is not available", None
-
-    return True, None, voice_name
-
-
-def check_client_synthesis_limit(client_id, request_hash):
-    """Check if client has exceeded synthesis rate limit (100 per hour)."""
-    global CLIENT_SYNTHESIS_REQUESTS
-
-    current_time = time.time()
-    one_hour_ago = current_time - 3600
-
-    if client_id in CLIENT_SYNTHESIS_REQUESTS:
-        CLIENT_SYNTHESIS_REQUESTS[client_id] = [
-            (ts, rh) for ts, rh in CLIENT_SYNTHESIS_REQUESTS[client_id]
-            if ts > one_hour_ago
-        ]
-
-    current_count = len(CLIENT_SYNTHESIS_REQUESTS[client_id])
-
-    if current_count >= CLIENT_SYNTHESIS_LIMIT:
-        logger.warning(f"Client {client_id} exceeded synthesis limit ({current_count}/{CLIENT_SYNTHESIS_LIMIT})")
-        return False, f"Rate limit exceeded: {current_count}/{CLIENT_SYNTHESIS_LIMIT} per hour", current_count
-
-    CLIENT_SYNTHESIS_REQUESTS[client_id].append((current_time, request_hash))
-    return True, None, current_count + 1
-
-
-def get_synthesis_cache_key(text, voice):
-    """Generate a stable cache key for synthesis requests."""
-    cache_input = f"{text}|{voice or 'default'}"
-    return hashlib.sha256(cache_input.encode()).hexdigest()
-
-
-@app.route('/api/tts/synthesize', methods=['POST'])
-@limiter.limit("120 per minute")
-@require_api_token
-@check_client_access
-def synthesize_tts():
-    """Synthesize speech using Edge TTS CLI"""
-    if not EDGE_TTS_AVAILABLE:
-        return jsonify({'success': False, 'error': 'Edge TTS not available'}), 503
-
-    try:
-        data = request.get_json() or {}
-    except Exception:
-        return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
-
-    session_info = getattr(request, 'session_info', {})
-    sid = session_info.get('sid') or request.client_id or get_remote_address()
-    client_id = f"tts_{sid}"
-
-    text = sanitize_text(data.get('text', ''), max_length=5000)
-    lang = sanitize_text(data.get('lang', 'en-US'), max_length=20)
-    voice = sanitize_text(data.get('voice', ''), max_length=100)
-
-    if not text:
-        return jsonify({'success': False, 'error': 'Text is required'}), 400
-
-    if len(text) > 5000:
-        return jsonify({'success': False, 'error': 'Text too long (max 5000 chars)'}), 400
-
-    is_valid_lang, lang_error = validate_language_code(lang)
-    if not is_valid_lang:
-        return jsonify({'success': False, 'error': lang_error}), 400
-
-    available_voices = get_cached_edge_tts_voices()
-    is_valid_voice, voice_error, validated_voice = validate_voice_name(voice, available_voices)
-    if not is_valid_voice:
-        return jsonify({'success': False, 'error': voice_error}), 400
-
-    # 选 voice：优先用请求指定的，否则找该语言第一个，找不到就报错
-    if not validated_voice:
-        if available_voices:
-            lang_voices = [v for v in available_voices if v.get('Locale', '') == lang]
-            if not lang_voices:
-                # 宽松匹配，例如 zh 匹配 zh-CN
-                base = lang.split('-')[0]
-                lang_voices = [v for v in available_voices if v.get('Locale', '').startswith(base + '-')]
-            if lang_voices:
-                validated_voice = lang_voices[0].get('ShortName')
-                logger.info(f"Using default voice for {lang}: {validated_voice}")
-            else:
-                available_locales = list(set(v.get('Locale', '') for v in available_voices[:20]))
-                logger.error(f"No voice for lang={lang}, available locales sample: {available_locales}")
-                return jsonify({'success': False, 'error': f'No voices available for language: {lang}'}), 400
-        else:
-            return jsonify({'success': False, 'error': 'Voices not yet loaded, please retry in a moment'}), 503
-
-    # 检查缓存
-    cache_key = get_synthesis_cache_key(text, validated_voice)
-    cached_audio = tts_cache.get(cache_key)
-    if cached_audio is not None:
-        logger.info(f"Cache hit (client: {client_id})")
-        return Response(
-            cached_audio,
-            mimetype='audio/mpeg',
-            status=200,
-            headers={
-                'Content-Type': 'audio/mpeg',
-                'Content-Length': str(len(cached_audio)),
-                'Content-Disposition': 'inline; filename="speech.mp3"',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0',
-                'X-Cache': 'HIT',
-                'X-Content-Type-Options': 'nosniff'
-            }
-        )
-
-    is_allowed, rate_limit_error, request_count = check_client_synthesis_limit(client_id, cache_key)
-    if not is_allowed:
-        return jsonify({'success': False, 'error': rate_limit_error}), 429
-
-    # 合成：用 CLI 写到临时文件，完全绕开 eventlet/asyncio 冲突
-    try:
-        logger.info(f"Synthesizing via CLI: len={len(text)}, voice={validated_voice}")
-
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
-            tmp_path = f.name
-
-        try:
-            result = subprocess.run(
-                [
-                    sys.executable, '-m', 'edge_tts',
-                    '--voice', validated_voice,
-                    '--text', text,
-                    '--write-media', tmp_path
-                ],
-                capture_output=True, text=True, timeout=30,
-                close_fds=True,
-                start_new_session=True
-            )
-
-            if result.returncode != 0:
-                logger.error(f"edge-tts synthesis failed (rc={result.returncode}):\n{result.stderr}")
-                return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
-
-            with open(tmp_path, 'rb') as f:
-                audio_data = f.read()
-
-        finally:
-            try:
-                os.unlink(tmp_path)
-            except Exception:
-                pass
-
-    except subprocess.TimeoutExpired:
-        logger.error("TTS synthesis timeout (30s)")
-        return jsonify({'success': False, 'error': 'Audio synthesis timeout'}), 503
-    except Exception as e:
-        logger.error(f"Synthesis error: {str(e)[:300]}")
-        return jsonify({'success': False, 'error': 'Audio synthesis failed'}), 500
-
-    if not audio_data or len(audio_data) == 0:
-        logger.error("TTS synthesis returned empty audio")
-        return jsonify({'success': False, 'error': 'Audio synthesis failed - empty output'}), 500
-
-    logger.info(f"Synthesized: {len(audio_data)} bytes, voice={validated_voice}")
-
-    # 写缓存 (TTL + LRU eviction handled by TTSCache)
-    tts_cache.set(cache_key, audio_data)
-    stats = tts_cache.stats()
-    logger.info(f"Cache: {stats['cache_items']} items, {stats['cache_size_mb']:.2f}MB")
-
-    return Response(
-        audio_data,
-        mimetype='audio/mpeg',
-        status=200,
-        headers={
-            'Content-Type': 'audio/mpeg',
-            'Content-Length': str(len(audio_data)),
-            'Content-Disposition': 'inline; filename="speech.mp3"',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'X-Cache': 'MISS',
-            'X-Content-Type-Options': 'nosniff'
-        }
-    )
-
-
-@app.route('/api/tts/voices', methods=['GET'])
-@limiter.limit("30 per minute")
-@check_client_access
-def get_tts_voices():
-    """Get available TTS voices from Edge TTS"""
-    if not EDGE_TTS_AVAILABLE:
-        return jsonify({
-            'success': True,
-            'edge_voices': [],
-            'edge_tts_available': False,
-            'error': 'Edge TTS not installed'
-        })
-
-    try:
-        lang_filter = request.args.get('lang', '').strip()
-        logger.info(f"TTS voices request - lang_filter: {lang_filter}")
-
-        voices = get_cached_edge_tts_voices()
-
-        if not voices:
-            logger.info("Edge TTS voices still loading, returning status and asking client to retry")
-            return jsonify({
-                'success': True,
-                'edge_voices': [],
-                'edge_tts_available': True,
-                'warning': 'Voices are being loaded, please retry in a moment...',
-                'retry_after': 2
-            })
-
-        logger.info(f"Retrieved {len(voices)} voices from cache")
-
-        if lang_filter:
-            voices = [v for v in voices if v.get('Locale', '').startswith(lang_filter)]
-            logger.info(f"After language filter ({lang_filter}): {len(voices)} voices")
-
-        formatted_voices = []
-        for v in voices:
-            try:
-                formatted_voices.append({
-                    'name': v.get('ShortName', ''),
-                    'locale': v.get('Locale', ''),
-                    'gender': v.get('Gender', 'Unknown'),
-                    'display_name': v.get('FriendlyName', v.get('ShortName', ''))
-                })
-            except Exception as e:
-                logger.warning(f"Error formatting voice: {e}")
-                continue
-
-        logger.info(f"Returning {len(formatted_voices)} formatted voices")
-        return jsonify({
-            'success': True,
-            'edge_voices': formatted_voices,
-            'edge_tts_available': True
-        })
-
-    except Exception as e:
-        logger.error(f"Error in get_tts_voices: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'edge_voices': [],
-            'edge_tts_available': False,
-            'error': str(e)
-        }), 500
-
-
-@app.route('/api/tts/supported-languages', methods=['GET'])
-@limiter.limit("30 per minute")
-@check_client_access
-def get_supported_languages():
-    """Get all supported language codes for Edge TTS."""
-    try:
-        voices = get_cached_edge_tts_voices()
-
-        languages = set()
-        for voice in voices:
-            locale = voice.get('Locale', '')
-            if locale:
-                languages.add(locale)
-
-        return jsonify({
-            'success': True,
-            'supported_languages': sorted(list(languages)),
-            'total_languages': len(languages),
-            'total_voices': len(voices) if voices else 0,
-            'edge_tts_available': EDGE_TTS_AVAILABLE
-        })
-
-    except Exception as e:
-        logger.error(f"Error in get_supported_languages: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/tts/cache-stats', methods=['GET'])
-@limiter.limit("30 per minute")
-def get_tts_cache_stats():
-    """Get TTS synthesis cache statistics"""
-    try:
-        stats = tts_cache.stats()
-        stats.update({
-            'success': True,
-            'message': (
-                f"TTS cache using {stats['cache_size_mb']:.2f}MB "
-                f"with {stats['cache_items']} items"
-            ),
-        })
-        return jsonify(stats)
-
-    except Exception as e:
-        logger.error(f"Error in get_tts_cache_stats: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'cache_items': 0,
-            'cache_size_mb': 0
-        }), 500
-
-
-@app.route('/api/tts/cache-clear', methods=['POST'])
-@limiter.limit("10 per minute")
-@require_admin_auth
-def clear_tts_cache():
-    """Clear all TTS synthesis cache (admin only)."""
-    try:
-        cleared_items, freed_bytes = tts_cache.clear()
-        freed_mb = freed_bytes / (1024 * 1024)
-        source_ip = get_real_ip()
-
-        logger.info(
-            f"TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed from {source_ip}"
-        )
-        security_logger.info(
-            f"TTS_ACTION: cache_cleared | Items: {cleared_items} | "
-            f"Freed: {freed_mb:.2f}MB | IP: {source_ip}"
-        )
-
-        return jsonify({
-            'success': True,
-            'cleared_items': cleared_items,
-            'freed_mb': round(freed_mb, 2)
-        })
-
-    except Exception as e:
-        logger.error(f"Error clearing TTS cache: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 
 # ──────────────────────────────────────────
 # Rooms API (multi-room support)
@@ -3294,7 +2761,7 @@ def handle_new_transcription(data):
         # Broadcast to listeners in this room only
         socketio.emit('realtime_transcription', interim_data,
                       room=f'room:{room_id}', skip_sid=[request.sid])
-        logger.info(f"[INTERIM] room={room_id} {len(raw_text)} chars (temp_id: {temp_id})")
+        logger.debug(f"[INTERIM] room={room_id} {len(raw_text)} chars (temp_id: {temp_id})")
     else:
         translation_data = {
             'id': None,  # Will be assigned by add_translation()
@@ -3600,11 +3067,6 @@ if __name__ == '__main__':
                     f"{rid}={len(state['history'])}" for rid, state in _rooms.items()
                 )
                 logger.info(f"Restored {len(persisted)} translations from DB – rooms: {room_summary}")
-
-    # Initialize Edge TTS voice cache in background (non-blocking)
-    if EDGE_TTS_AVAILABLE:
-        logger.info("Pre-loading Edge TTS voices in background...")
-        threading.Thread(target=fetch_edge_tts_voices_in_thread, daemon=True, name="tts-voice-preload").start()
 
     # Start heartbeat cleanup greenlet
     eventlet.spawn(_heartbeat_cleanup_loop)

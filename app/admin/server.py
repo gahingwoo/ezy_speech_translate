@@ -19,6 +19,16 @@ FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
 details.
 """
 
+# The real select module first. On macOS eventlet's hub is kqueue, and
+# patching before select has been imported leaves it two copies of the module
+# whose kevent types do not match: the server dies at its first accept.
+import select  # noqa: F401
+import eventlet
+# Before anything that opens a socket. The console's proxy calls to the user
+# server use requests, and unpatched they hold the whole admin server until
+# they return: one slow call and every other tab, page and asset waits on it.
+eventlet.monkey_patch()
+
 import os
 import sys
 import yaml
@@ -136,11 +146,15 @@ websocket_connections = defaultdict(int)
 # Flask App
 # ──────────────────────────────────────────
 from app.core.static_version import make_static_url
+from app.core.compress import install as install_compression
 
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=TEMPLATE_DIR)
 # Templates address static files through static_url(), which appends a hash of
 # the file's contents so a changed stylesheet is never served from cache.
 app.jinja_env.globals["static_url"] = make_static_url(STATIC_DIR)
+# First, so its hook runs last: what goes out is compressed after every
+# other hook has had its say about the headers.
+install_compression(app)
 app.config['SECRET_KEY'] = ensure_runtime_secret("server_secret_key", ("server", "secret_key"))
 
 CORS(app, origins=get_config("advanced", "security", "cors_origins", default="*"))
@@ -351,9 +365,10 @@ def set_cache_headers(response):
     elif request.path.startswith('/static/'):
         # Browser can cache these for 1 hour, but MUST revalidate with server
         response.headers['Cache-Control'] = 'public, max-age=3600, must-revalidate'
-        # Add ETag for better cache validation
-        if not response.headers.get('ETag'):
-            response.set_etag()
+        # Files carry their own ETag. This used to call set_etag() with no tag,
+        # which raises, so a missing file was answered with a 500, not a 404.
+        if response.status_code == 200 and not response.headers.get('ETag'):
+            response.add_etag()
     
     # ✅ Add dynamic CSP header that includes external URL if configured
     if 'Content-Security-Policy' not in response.headers:
@@ -561,135 +576,6 @@ def favicon():
 def get_oem_config_admin():
     """Get OEM configuration for frontend"""
     return jsonify(app.config.get('OEM', {}))
-
-@app.route("/api/tts/cache-stats", methods=["GET"])
-@require_admin_auth
-@rate_limit_check
-def get_tts_cache_stats():
-    """
-    Get TTS synthesis cache statistics (admin only)
-    
-    Makes a request to the user server to fetch cache stats.
-    Requires admin authentication.
-    
-    Note: Always uses localhost for internal communication.
-    external_url is only for external client access, not server-to-server.
-    """
-    try:
-        # Always use localhost for internal server-to-server communication
-        # external_url (CF tunnel, etc.) is for external clients only
-        user_server_port = get_config('server', 'port', default=1915)
-        user_server_url = f'http://localhost:{user_server_port}'
-        
-        logger.debug(f"Fetching TTS cache stats from user server: {user_server_url}")
-        
-        # Request cache stats from user server
-        # No need for auth header - user server trusts admin panel requests
-        response = requests.get(
-            f'{user_server_url}/api/tts/cache-stats',
-            timeout=5,
-            verify=False  # For self-signed certs
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            logger.debug(f"TTS cache stats retrieved: {data}")
-            return jsonify({
-                'success': True,
-                'cache_items': data.get('cache_items', 0),
-                'cache_size_mb': data.get('cache_size_mb', 0),
-                'cache_ttl_seconds': data.get('cache_ttl_seconds', 3600),
-                'max_cache_size_mb': data.get('max_cache_size_mb', 1000),
-                'max_cache_items': data.get('max_cache_items', 1000),
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        else:
-            error_msg = f'User server error: {response.status_code}'
-            try:
-                error_data = response.json()
-                error_msg = error_data.get('error', error_msg)
-            except:
-                pass
-            logger.warning(f"{error_msg}")
-            return jsonify({
-                'success': False,
-                'error': error_msg
-            }), response.status_code
-    
-    except Exception as e:
-        logger.error(f"Error fetching TTS cache stats: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route("/api/tts/cache-clear", methods=["POST"])
-@require_admin_auth
-@rate_limit_check
-def clear_tts_cache():
-    """
-    Clear all TTS synthesis cache (admin only)
-    
-    Makes a request to the user server to clear cache.
-    Requires admin authentication. This action is logged for audit purposes.
-    
-    Note: Always uses localhost for internal communication.
-    external_url is only for external client access, not server-to-server.
-    """
-    try:
-        # Always use localhost for internal server-to-server communication
-        # external_url (CF tunnel, etc.) is for external clients only
-        user_server_port = get_config('server', 'port', default=1915)
-        user_server_url = f'http://localhost:{user_server_port}'
-        
-        logger.debug(f"Clearing TTS cache on user server: {user_server_url}")
-        
-        # Request cache clear from user server
-        # No need for auth header - user server trusts admin panel requests
-        response = requests.post(
-            f'{user_server_url}/api/tts/cache-clear',
-            timeout=5,
-            verify=False  # For self-signed certs
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            cleared_items = data.get('cleared_items', 0)
-            freed_mb = data.get('freed_mb', 0)
-            
-            admin_session_user = session.get('username', 'unknown')
-            client_ip = get_client_ip()
-            
-            # Detailed security audit log
-            security_logger.info(f"ADMIN_ACTION: TTS cache cleared | Admin: {admin_session_user} | IP: {client_ip} | Items: {cleared_items} | Freed: {freed_mb}MB")
-            logger.info(f"TTS cache cleared: {cleared_items} items, {freed_mb:.2f}MB freed by admin {admin_session_user}")
-            
-            return jsonify({
-                'success': True,
-                'cleared_items': cleared_items,
-                'freed_mb': freed_mb,
-                'message': f"Cleared {cleared_items} items, freed {freed_mb}MB"
-            })
-        else:
-            error_msg = f'User server error: {response.status_code}'
-            try:
-                error_data = response.json()
-                error_msg = error_data.get('error', error_msg)
-            except:
-                pass
-            logger.warning(f"{error_msg}")
-            return jsonify({
-                'success': False,
-                'error': error_msg
-            }), response.status_code
-    
-    except Exception as e:
-        logger.error(f"Error clearing TTS cache: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
 
 # ──────────────────────────────────────────
 # Rooms & Glossary proxy (forward to user server with admin's JWT)

@@ -199,7 +199,6 @@ SETTINGS_TABS = (
     ("announcement", "Announcement", None),
     ("qr", "Audience QR code", None),
     ("bible", "Bible", None),
-    ("cache", "TTS cache", None),
     ("service", "The whole service", None),
     # No translation key: "settings" would render this "Settings" inside a
     # dialog already titled Settings.
@@ -536,33 +535,6 @@ def settings_section():
             button("About", "showAbout(); closeMobileMenu();", "info-circle",
                    "secondary pf-m-block sidebar-action", i18n="about", extra=' aria-label="About"'),
         ))
-    return body
-
-
-def tts_cache_section():
-    stats = ('''          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
-              id="ttsCacheStats">
-%s%s          </dl>'''
-             % (dl_group("Items", '<strong id="cache-items">0/1000</strong>'),
-                dl_group("Memory", '<strong id="cache-memory">0.00MB/1000MB</strong>')))
-    body = ('''      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-card pf-m-compact" id="ttsCacheContainer" aria-label="TTS Cache">
-            <div class="pf-v6-c-card__body">
-%s
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control sidebar-actions">
-%s
-%s
-        </div>
-      </div>
-''' % (stats,
-       button("Refresh", "refreshTTSCacheStats()", "sync-alt", "secondary"),
-       button("Clear", "clearTTSCache()", "trash", "danger")))
     return body
 
 
@@ -1176,7 +1148,6 @@ def build():
         "announcement": announcement_section(),
         "qr": qr_section(),
         "bible": bible_section(),
-        "cache": tts_cache_section(),
         "service": whole_service_section(),
         "display": settings_section(),
     }

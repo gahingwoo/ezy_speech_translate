@@ -525,13 +525,6 @@
           <span class="pf-v6-c-tabs__item-text">Bible</span>
         </button>
       </li>
-      <li class="pf-v6-c-tabs__item" id="settings-tabitem-cache">
-        <button class="pf-v6-c-tabs__link" type="button" role="tab"
-                id="settings-tab-cache" aria-controls="settings-cache"
-                aria-selected="false" onclick="showSettingsTab('cache')">
-          <span class="pf-v6-c-tabs__item-text">TTS cache</span>
-        </button>
-      </li>
       <li class="pf-v6-c-tabs__item" id="settings-tabitem-service">
         <button class="pf-v6-c-tabs__link" type="button" role="tab"
                 id="settings-tab-service" aria-controls="settings-service"
@@ -700,50 +693,6 @@
         </div>
         <p class="pf-v6-c-form__helper-text" id="adminBibleSaveStatus" role="status" aria-live="polite"></p>
       </div>
-      </div>
-        </form>
-      </div>
-    </section>
-    <section class="pf-v6-c-tab-content settings-panel" id="settings-cache"
-             role="tabpanel" tabindex="0" aria-labelledby="settings-tab-cache" hidden>
-      <div class="pf-v6-c-tab-content__body">
-        <form class="pf-v6-c-form" onsubmit="return false;">
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control">
-          <div class="pf-v6-c-card pf-m-compact" id="ttsCacheContainer" aria-label="TTS Cache">
-            <div class="pf-v6-c-card__body">
-          <dl class="pf-v6-c-description-list pf-m-horizontal pf-m-compact pf-m-fluid"
-              id="ttsCacheStats">
-            <div class="pf-v6-c-description-list__group">
-              <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Items</span>
-              </dt>
-              <dd class="pf-v6-c-description-list__description">
-                <div class="pf-v6-c-description-list__text"><strong id="cache-items">0/1000</strong></div>
-              </dd>
-            </div>
-            <div class="pf-v6-c-description-list__group">
-              <dt class="pf-v6-c-description-list__term">
-                <span class="pf-v6-c-description-list__text">Memory</span>
-              </dt>
-              <dd class="pf-v6-c-description-list__description">
-                <div class="pf-v6-c-description-list__text"><strong id="cache-memory">0.00MB/1000MB</strong></div>
-              </dd>
-            </div>
-          </dl>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="pf-v6-c-form__group">
-        <div class="pf-v6-c-form__group-control sidebar-actions">
-          <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="refreshTTSCacheStats()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M370.72 133.28C339.458 104.008 298.888 87.962 255.848 88c-77.458.068-144.328 53.178-162.791 126.85-1.344 5.363-6.122 9.15-11.651 9.15H24.103c-7.498 0-13.194-6.807-11.807-14.176C33.933 94.924 134.813 8 256 8c66.448 0 126.791 26.136 171.315 68.685L463.03 40.97C478.149 25.851 504 36.559 504 57.941V192c0 13.255-10.745 24-24 24H345.941c-21.382 0-32.09-25.851-16.971-40.971l41.75-41.749zM32 296h134.059c21.382 0 32.09 25.851 16.971 40.971l-41.75 41.75c31.262 29.273 71.835 45.319 114.876 45.28 77.418-.07 144.315-53.144 162.787-126.849 1.344-5.363 6.122-9.15 11.651-9.15h57.304c7.498 0 13.194 6.807 11.807 14.176C478.067 417.076 377.187 504 256 504c-66.448 0-126.791-26.136-171.315-68.685L48.97 471.03C33.851 486.149 8 475.441 8 454.059V320c0-13.255 10.745-24 24-24z"/></svg></span><span class="pf-v6-c-button__text">Refresh</span>
-          </button>
-          <button class="pf-v6-c-button pf-m-danger" type="button" onclick="clearTTSCache()">
-            <span class="pf-v6-c-button__icon pf-m-start"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span><span class="pf-v6-c-button__text">Clear</span>
-          </button>
-        </div>
       </div>
         </form>
       </div>

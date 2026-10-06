@@ -1552,8 +1552,8 @@ permission; the configuration for it ships with the code.
 
 ### Dependencies
 
-Every dependency is BSD, MIT, Apache-2.0 or LGPL-3.0, all of which the AGPL
-can incorporate. `edge-tts` is LGPL-3.0 and is the only copyleft one.
+Every dependency is BSD, MIT or Apache-2.0, all of which the AGPL can
+incorporate.
 
 ---
 
