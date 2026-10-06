@@ -34,3 +34,6 @@ bandit_report.json
 # macOS
 .DS_Store
 /app/static/oem/images/
+
+# Settings for a Docker install, written by install.sh
+.env

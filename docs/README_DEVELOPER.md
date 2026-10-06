@@ -1060,97 +1060,37 @@ ExecStart=/opt/ezy_speech_translate/venv/bin/gunicorn \
 
 ### Docker Deployment
 
-**Dockerfile**:
+The image and its setup are in the repository: `Dockerfile`, `compose.yaml`,
+`docker/` (entrypoint, first-run setup, health check) and `install.sh`, which
+wraps them. See *Install with one command* in the main README.
 
-```dockerfile
-FROM python:3.10-slim
+How the image is put together:
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+- **One container, both servers.** The admin server calls the user server on
+  `localhost`, so they share a network namespace. `docker/entrypoint.sh` runs
+  both and stops the container if either exits, so the restart policy brings
+  back the pair.
+- **One volume, `/var/lib/ezyspeech`.** `config/`, `data/`, `logs/`,
+  `exports/` and `app/static/oem/` in the image are links into it. The code
+  stays read-only, and replacing the image never touches an install.
+- **First-run setup before the servers start** (`docker/init.py`): copies the
+  default `config.yaml`, writes the signing secrets and the admin password
+  into `secrets.key`, and makes a self-signed certificate when HTTPS is on.
+  The servers would otherwise each generate their own secrets at the same
+  moment and could disagree.
+- **Settings from the environment** (`EZY_PORT`, `EZY_ADMIN_PORT`,
+  `EZY_HTTPS`, `EZY_EXTERNAL_URL`, `EZY_HOSTNAMES`, `TZ`) are written into
+  `config.yaml` with its comments intact, so the settings screen shows what is
+  running. Left unset, the file decides. The container listens on the same
+  port numbers it publishes, because the console builds the transcript
+  server's address from that port.
+- Runs as an unprivileged user (uid 10001).
 
-# Create app directory
-WORKDIR /app
-
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application
-COPY . .
-
-# Create necessary directories
-RUN mkdir -p logs exports data
-
-# Expose ports
-EXPOSE 1915 1916
-
-# Run application
-CMD ["python", "user/server.py"]
-```
-
-**docker-compose.yml**:
-
-```yaml
-version: '3.8'
-
-services:
-  main-server:
-    build: .
-    container_name: ezyspeech-main
-    ports:
-      - "1915:1915"
-    volumes:
-      - ./logs:/app/logs
-      - ./exports:/app/exports
-      - ./config.yaml:/app/config.yaml
-      - ./cert.pem:/app/cert.pem
-      - ./key.pem:/app/key.pem
-    environment:
-      - FLASK_ENV=production
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-    networks:
-      - ezyspeech
-
-  admin-server:
-    build: .
-    container_name: ezyspeech-admin
-    command: python admin_server.py
-    ports:
-      - "1916:1916"
-    volumes:
-      - ./logs:/app/logs
-      - ./config.yaml:/app/config.yaml
-      - ./cert.pem:/app/cert.pem
-      - ./key.pem:/app/key.pem
-    environment:
-      - FLASK_ENV=production
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
-    networks:
-      - ezyspeech
-
-networks:
-  ezytranslate:
-    driver: bridge
-```
-
-**Deploy with Docker**:
+Building and running by hand:
 
 ```bash
-# Build and start
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Rebuild after changes
-docker-compose up -d --build
+docker compose up -d --build
+docker compose logs ezyspeech | grep -A3 "admin sign-in"
 ```
 
 ---

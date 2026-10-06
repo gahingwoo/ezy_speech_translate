@@ -220,9 +220,48 @@ Common errors and resolution:
 
 ## 4. Administrator Perspective (Admin)
 
-### Deployment steps
+### Install with one command
 
-Two deployment paths exist in repo:
+On Linux or macOS with Docker (on Linux the script offers to install Docker
+if it is missing):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gahingwoo/ezy_speech_translate/main/install.sh | bash
+```
+
+It downloads the code to `~/ezyspeech`, builds the image, starts both
+servers, and prints the addresses and the admin password. The password is
+made for this install and shown once; nothing starts with a default one.
+Run it again to update. From a copy of the code, `./install.sh` does the same.
+
+| Option | What it does |
+|---|---|
+| `--https` | Self-signed HTTPS, so the console's microphone works from another computer |
+| `--port N`, `--admin-port N` | Listener page and console ports (1915, 1916) |
+| `--external-url URL` | Public address, when a tunnel or reverse proxy is in front |
+| `--dir DIR` | Where the code goes |
+| `--yes` | Ask nothing |
+
+**Which HTTPS.** Browsers let a page use the microphone only over HTTPS, or
+on `localhost`. If the console runs on the server itself, plain HTTP is
+enough. If it runs on another computer, use `--https`: each browser warns
+about the certificate once, and listeners see that warning too. With a
+domain, a tunnel such as Cloudflare Tunnel gives real HTTPS with no
+warning; point it at port 1915 and pass `--external-url`.
+
+Everything an install keeps (settings, secrets, certificates, transcripts,
+logs, exports) is in one Docker volume, `ezyspeech_ezyspeech`. Managing it,
+from the install directory:
+
+```bash
+docker compose logs -f                                # what it is doing
+docker compose exec ezyspeech ezyspeech password      # a new admin password
+docker compose restart                                # after changing it
+docker compose down                                   # stop; the volume stays
+```
+
+### Other deployment paths
+
 - `python3 setup.py` (local setup helper, secrets + venv + optional SSL)
 - `sudo python3 ezy_manager.py install` (Linux systemd deployment to `/opt/ezy_speech_translate`)
 

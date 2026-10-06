@@ -2256,79 +2256,9 @@ def _config_coerce(current, value):
     raise ValueError('this setting is not a single value')
 
 
-_CONFIG_KEY_LINE = re.compile(r'^(?P<indent>[ ]*)(?P<key>[A-Za-z0-9_]+)[ ]*:(?P<rest>.*)$')
-
-
-def _config_scalar_text(value):
-    """One scalar, written the way YAML writes it."""
-    import yaml
-    text = yaml.safe_dump(value, default_flow_style=True, allow_unicode=True).rstrip()
-    if text.endswith('\n...'):
-        text = text[:-4].rstrip()
-    return text
-
-
-def _config_split_comment(rest):
-    """The value and the trailing comment on a `key: value  # why` line.
-    None when the line is not a plain scalar this can safely rewrite."""
-    value, comment, quote = [], '', ''
-    for i, ch in enumerate(rest):
-        if quote:
-            if ch == quote:
-                quote = ''
-        elif ch in ('"', "'"):
-            quote = ch
-        elif ch == '#' and (not value or value[-1] in ' \t'):
-            comment = rest[i:]
-            break
-        value.append(ch)
-    if quote:
-        return None                       # an unterminated quote: leave it be
-    joined = ''.join(value)
-    if not joined.strip():
-        return None                       # a mapping or a block, not a scalar
-    if joined.lstrip()[0] in ('&', '*', '|', '>'):
-        return None                       # anchors and block scalars
-    return joined, comment
-
-
-def _config_write_in_place(text, changes):
-    """Rewrite the values of named scalars and leave the rest of the file — its
-    comments, its order, its blank lines — exactly as it was.
-
-    Returns the new text, or None when a path could not be found on a line this
-    can safely rewrite, so the caller falls back to dumping the document.
-    """
-    lines = text.split('\n')
-    stack, done = [], set()
-    for n, line in enumerate(lines):
-        match = _CONFIG_KEY_LINE.match(line)
-        if not match:
-            continue
-        indent = len(match.group('indent'))
-        while stack and stack[-1][0] >= indent:
-            stack.pop()
-        stack.append((indent, match.group('key')))
-        path = '.'.join(key for _, key in stack)
-        if path not in changes or path in done:
-            continue
-        split = _config_split_comment(match.group('rest'))
-        if split is None:
-            return None
-        comment = split[1]
-        prefix = line[:line.index(':', indent) + 1]
-        written = prefix + ' ' + _config_scalar_text(changes[path])
-        if comment:
-            # Put the comment back in the column it was in, so a file that
-            # lines its comments up stays lined up.
-            column = len(line) - len(comment)
-            written += ' ' * max(1, column - len(written)) + comment
-        lines[n] = written
-        done.add(path)
-
-    if done != set(changes):
-        return None
-    return '\n'.join(lines)
+# Rewriting single values without losing the file's comments lives beside the
+# config loader, so the container's first-run setup writes the file the same way.
+from app.core.config_edit import write_in_place as _config_write_in_place  # noqa: E402
 
 
 @app.route('/api/config/fields', methods=['GET'])

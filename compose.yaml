@@ -1,0 +1,42 @@
+# EzySpeech with Docker Compose.
+#
+#   docker compose up -d --build     start (and build the image the first time)
+#   docker compose logs ezyspeech    includes the admin password, on first start
+#   docker compose exec ezyspeech ezyspeech password   set a new one
+#
+# Settings go in a file called .env beside this one; install.sh writes it.
+# Everything the install keeps is in the "ezyspeech" volume.
+
+name: ezyspeech
+
+services:
+  ezyspeech:
+    build: .
+    image: ezyspeech:local
+    restart: unless-stopped
+    environment:
+      # Listener page, and the operator's console. The container listens on
+      # the same numbers it publishes: the console builds the transcript
+      # server's address from this port, so the two must agree.
+      EZY_PORT: ${EZY_PORT:-1915}
+      EZY_ADMIN_PORT: ${EZY_ADMIN_PORT:-1916}
+      # off, or self-signed. The console needs HTTPS for the microphone unless
+      # it is opened on this machine itself. Left empty, config.yaml decides.
+      EZY_HTTPS: ${EZY_HTTPS:-}
+      # Names and addresses the self-signed certificate should cover.
+      EZY_HOSTNAMES: ${EZY_HOSTNAMES:-}
+      # The public address, when a tunnel or reverse proxy is in front;
+      # "none" to clear it. Left empty, config.yaml decides.
+      EZY_EXTERNAL_URL: ${EZY_EXTERNAL_URL:-}
+      # Read once, on the first start. Leave empty to have one made for you.
+      EZY_ADMIN_PASSWORD: ${EZY_ADMIN_PASSWORD:-}
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${EZY_PORT:-1915}:${EZY_PORT:-1915}"
+      - "${EZY_ADMIN_PORT:-1916}:${EZY_ADMIN_PORT:-1916}"
+    volumes:
+      - ezyspeech:/var/lib/ezyspeech
+    stop_grace_period: 15s
+
+volumes:
+  ezyspeech:

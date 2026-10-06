@@ -1,0 +1,30 @@
+# Only what the servers need at runtime goes into the image. Everything a
+# running install writes lives in the volume, never in a layer.
+.git
+.github
+.idea
+.pytest_cache
+.DS_Store
+**/__pycache__
+**/*.pyc
+.mcp.json
+.secrets.baseline
+.env
+
+venv
+venv_old
+
+# A local install's state: secrets, certificates, transcripts, logs.
+config/secrets.key
+config/ssl
+data
+logs
+exports
+app/static/oem
+
+docs
+tools
+scripts/tests
+*.md
+!README.md
+!TRADEMARK.md
