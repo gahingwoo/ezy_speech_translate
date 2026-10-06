@@ -121,7 +121,10 @@ function fitNow(text) {
         window.requestAnimationFrame(function () { fitNow(text); });
         return;
     }
-    const showing = now.textContent;
+    // The nodes themselves, not their text: mid-line, the typewriter is
+    // holding the rest of the sentence hidden in there, and putting back a
+    // string would show it all at once.
+    const showing = Array.from(now.childNodes);
     now.style.minHeight = '';
     now.textContent = text;
     // Every paint starts from the whole stage and the largest type, so a short
@@ -149,7 +152,7 @@ function fitNow(text) {
         size = Math.max(NOW_MIN_REM, size - 0.25);
         now.style.fontSize = size + 'rem';
     }
-    now.textContent = showing;
+    now.replaceChildren(...showing);
 }
 
 /* The height available changes too: a window resized, or the scripture panel

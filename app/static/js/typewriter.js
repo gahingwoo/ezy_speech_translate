@@ -10,103 +10,86 @@
  */
 
 function animateTextChange(element, currentText, newText, durationMs = 300) {
-    if (currentText === newText) {
-        // Already showing same text
-        element.textContent = newText;
-        return;
-    }
+    // Already on its way to exactly this: an interim result is often sent
+    // again unchanged, and restarting would only delay the end of the line.
+    if (element._typewriterTimer && element._twTarget === newText) return;
 
-    // Stop any animation already running on this element.
     if (element._typewriterTimer) {
         cancelAnimationFrame(element._typewriterTimer);
         element._typewriterTimer = null;
     }
 
-    // Get what's currently displayed in the element
-    const displayedText = element.textContent;
-    
-    // ✅ Smart height adjustment: measure new text height and only increase, never decrease
-    const currentHeight = element.offsetHeight;
-    
-    // Temporarily show full new text to measure its height
-    const oldContent = element.textContent;
-    element.textContent = newText;
-    const newHeight = element.offsetHeight;
-    element.textContent = oldContent; // Restore old content for animation
-    
-    // Hold the taller of the two heights so the box does not jump about while
-    // the characters arrive. Held only for the animation: keeping it after was
-    // permanent, so any line that had once been long stayed that tall for the
-    // rest of the session even when it was emptied, and a stage measuring
-    // itself read as full when it was not.
-    element.style.minHeight = Math.max(newHeight, currentHeight) + 'px';
-    
-    // Smart diff: find common prefix to avoid clearing text when correcting
-    let commonPrefixLen = 0;
-    for (let i = 0; i < Math.min(displayedText.length, newText.length); i++) {
-        if (displayedText[i] === newText[i]) {
-            commonPrefixLen++;
-        } else {
-            break;
-        }
-    }
+    // What the reader can see: the typed part, not the tail of an animation
+    // cut short, which is in the element but hidden.
+    const rest = element._twRest;
+    const all = element.textContent;
+    const shown = rest && rest.parentNode === element
+        ? all.slice(0, all.length - rest.textContent.length)
+        : all;
+    element._twRest = null;
+    element._twTarget = newText;
 
-    let charsToType = [];
-    
-    // ✅ If there's a common prefix, only update the differing part
-    if (commonPrefixLen > 0) {
-        // Keep the common prefix, remove suffix that changed, add new suffix
-        element.textContent = displayedText.substring(0, commonPrefixLen);
-        // Add new characters after the common prefix
-        for (let i = commonPrefixLen; i < newText.length; i++) {
-            charsToType.push(newText[i]);
-        }
-    } else if (displayedText && newText.startsWith(displayedText)) {
-        // ✅ Pure extension case - just add new characters
-        for (let i = displayedText.length; i < newText.length; i++) {
-            charsToType.push(newText[i]);
-        }
-    } else {
-        // ❌ Text completely different - clear and retype all
-        element.textContent = '';
-        for (let i = 0; i < newText.length; i++) {
-            charsToType.push(newText[i]);
-        }
-    }
+    // Keep whatever still matches, so a correction retypes only what changed
+    // and a growing transcription only types the words that are new.
+    let keep = 0;
+    const most = Math.min(shown.length, newText.length);
+    while (keep < most && shown.charCodeAt(keep) === newText.charCodeAt(keep)) keep++;
 
-    // If nothing new to type, just update and return
-    if (charsToType.length === 0) {
+    if (keep === newText.length) {
         element.textContent = newText;
         element.style.minHeight = '';
         return;
     }
 
-    // Driven by the clock, not by a count of characters. One timer per
-    // character floored at 10ms, which made the duration a function of the
-    // length: a 260 character sentence took two and a half seconds instead of
-    // the 400ms asked for, and on a live feed the next interim update arrived
-    // before it finished and restarted it, so the end of a long sentence was
-    // never reached at all. Now however long the text, it is whole after
-    // durationMs, and a dropped frame is caught up rather than fallen behind.
-    const base = element.textContent;
-    const total = charsToType.length;
+    // The whole line goes in at once, with the part not yet typed hidden. It
+    // used to type into an element holding only the typed part, and to stop
+    // that growing a line at a time it measured the finished text first: write
+    // it, read the height, write the old text back, read again. Two forced
+    // layouts of the whole page on every interim update, dearer the longer the
+    // service ran. Laid out whole, the box is its final height from the first
+    // frame and the words are where they will end up, so nothing is measured,
+    // and a balanced or centred line no longer rewraps as each letter lands.
+    const typed = document.createTextNode(newText.slice(0, keep));
+    const tail = document.createElement('span');
+    tail.setAttribute('aria-hidden', 'true');
+    tail.style.visibility = 'hidden';
+    const tailText = document.createTextNode(newText.slice(keep));
+    tail.appendChild(tailText);
+    element.replaceChildren(typed, tail);
+    element._twRest = tail;
+
+    // Driven by the clock, not by a count of characters: however long the
+    // text, it is whole after durationMs, and a dropped frame is caught up
+    // rather than fallen behind.
+    const total = newText.length - keep;
     const started = performance.now();
-    let charIdx = 0;
+    let at = keep;
 
     function step(now) {
-        const progress = Math.min(1, (now - started) / durationMs);
-        const want = Math.max(1, Math.round(total * progress));
-        if (want > charIdx) {
-            element.textContent = base + charsToType.slice(0, want).join('');
-            charIdx = want;
+        // Something else wrote the element (a thinking state, a fit that
+        // measured and restored it). It is theirs now.
+        if (tail.parentNode !== element) {
+            element._typewriterTimer = null;
+            return;
         }
-        if (progress < 1) {
+        const progress = Math.min(1, (now - started) / durationMs);
+        let want = keep + Math.max(1, Math.round(total * progress));
+        // Never between the two halves of a surrogate pair.
+        const c = newText.charCodeAt(want - 1);
+        if (want < newText.length && c >= 0xD800 && c <= 0xDBFF) want++;
+        if (want > at) {
+            typed.data = newText.slice(0, want);
+            tailText.data = newText.slice(want);
+            at = want;
+        }
+        if (progress < 1 && at < newText.length) {
             element._typewriterTimer = requestAnimationFrame(step);
             return;
         }
-        // Exactly the text asked for, whatever the arithmetic rounded to, and
-        // the height handed back so the next line is free to be shorter.
-        element.textContent = base + charsToType.join('');
+        // One plain text node again, and any height held for the line handed
+        // back so the next one is free to be shorter.
+        element.textContent = newText;
+        element._twRest = null;
         element._typewriterTimer = null;
         element.style.minHeight = '';
         if (typeof element._onTypewriterDone === 'function') {
