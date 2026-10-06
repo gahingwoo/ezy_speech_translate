@@ -98,10 +98,11 @@ def run(cmd, check=True, capture=False, env=None, cwd=None, quiet=False):
     if capture:
         kwargs.update(stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     elif quiet or Out.progress or Out.quiet:
-        kwargs.update(stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        # Kept, not shown: if it fails, its last lines are the error.
+        kwargs.update(stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     result = subprocess.run(cmd, **kwargs)
     if check and result.returncode != 0:
-        detail = (result.stdout or '') if capture else (getattr(result, 'stderr', '') or '')
+        detail = result.stdout or '' if isinstance(result.stdout, str) else ''
         raise Fail(f'{" ".join(map(str, cmd))} failed ({result.returncode})'
                    + (f':\n{detail.strip()[-1500:]}' if detail else ''))
     return result
@@ -401,10 +402,18 @@ def set_docker_env(conf, values):
     path.write_text('\n'.join(kept + [f'{k}={v}' for k, v in values.items() if v is not None]) + '\n')
 
 
+def compose_cmd(conf, release):
+    """docker compose for a release. Its own folder is the project folder, so
+    the build finds its Dockerfile; the install's settings are in <home>/.env.
+    The project, and so the volume, is named in compose.yaml: ezyspeech."""
+    env_file = home_of(conf) / '.env'
+    return ['docker', 'compose', '-f', str(Path(release) / 'compose.yaml'),
+            *(['--env-file', str(env_file)] if env_file.exists() else [])]
+
+
 def compose(conf, *args, release=None, capture=False, check=True):
     release = Path(release or current_release(conf))
-    cmd = ['docker', 'compose', '-f', str(release / 'compose.yaml'),
-           '--project-directory', str(home_of(conf)), *args]
+    cmd = [*compose_cmd(conf, release), *args]
     return run(cmd, capture=capture, check=check,
                env={'EZY_VERSION': version_of(release) or 'local'})
 
@@ -765,8 +774,7 @@ def cmd_logs(a):
         os.execvp(cmd[0], cmd)
     else:
         cur = current_release(conf)
-        cmd = ['docker', 'compose', '-f', str(cur / 'compose.yaml'), '--project-directory',
-               conf['home'], 'logs', '--tail', str(a.lines)] + (['-f'] if a.follow else [])
+        cmd = [*compose_cmd(conf, cur), 'logs', '--tail', str(a.lines)] + (['-f'] if a.follow else [])
         os.environ['EZY_VERSION'] = version_of(cur) or 'local'
         os.execvp(cmd[0], cmd)
 
@@ -809,9 +817,8 @@ def cmd_backup(a):
     else:
         with open(dest, 'wb') as out:
             cur = current_release(conf)
-            subprocess.run(['docker', 'compose', '-f', str(cur / 'compose.yaml'), '--project-directory',
-                            conf['home'], 'run', '--rm', '--no-deps', '--entrypoint', 'tar', 'ezyspeech',
-                            'czf', '-', '-C', '/var/lib/ezyspeech', '.'],
+            subprocess.run([*compose_cmd(conf, cur), 'run', '--rm', '--no-deps', '--entrypoint', 'tar',
+                            'ezyspeech', 'czf', '-', '-C', '/var/lib/ezyspeech', '.'],
                            stdout=out, check=True, env={**os.environ, 'EZY_VERSION': version_of(cur)})
     print(f'Saved {dest}')
 
