@@ -155,6 +155,8 @@ app = Flask(__name__,
 # Templates address static files through static_url(), which appends a hash of
 # the file's contents so a changed stylesheet is never served from cache.
 app.jinja_env.globals["static_url"] = make_static_url(STATIC_DIR)
+from app.core.version import VERSION as APP_VERSION  # noqa: E402
+app.jinja_env.globals["app_version"] = APP_VERSION
 # First, so its hook runs last: what goes out is compressed after every
 # other hook has had its say about the headers.
 install_compression(app)
@@ -1536,6 +1538,7 @@ def health_check():
         translations = _all_history_count()
     return jsonify({
         'status': 'healthy',
+        'version': APP_VERSION,
         'timestamp': datetime.utcnow().isoformat(),
         'clients': clients,
         'peak_clients': _peak_clients,

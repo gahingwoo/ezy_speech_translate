@@ -582,9 +582,11 @@ python3 tools/bible/build_index.py    # app/data/bible/web_index.json
 
 ### Version notes
 
-UI and legacy docs reference version `3.3.0`.
-There is no single canonical version constant in runtime code; the value is repeated in documentation/template text.
-No formal changelog file is present; commit history is the source of change detail.
+The version is written in one place, `VERSION` at the root. The servers put
+it in every page and in `/api/health`; releases, the Docker image and the
+`ezyspeech` command all take it from there. To release, change `VERSION`,
+commit, and push a tag `v<version>`: the release workflow checks the two
+agree, then builds and publishes the release.
 
 ## License
 

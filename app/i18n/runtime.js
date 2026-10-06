@@ -99,11 +99,14 @@
         try {
             window._displayLanguage = resolved;
 
-            // Text content
+            // Text content. {version} is the running version, which the server
+            // writes on the root element: the strings no longer hold a number
+            // of their own to fall out of date.
+            const version = document.documentElement.getAttribute('data-version') || '';
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
-                if (i18n[resolved] && i18n[resolved][key]) el.textContent = i18n[resolved][key];
-                else if (i18n['en'] && i18n['en'][key]) el.textContent = i18n['en'][key];
+                const text = (i18n[resolved] && i18n[resolved][key]) || (i18n['en'] && i18n['en'][key]);
+                if (text) el.textContent = text.replace('{version}', version);
             });
 
             // Placeholders
