@@ -37,3 +37,6 @@ bandit_report.json
 
 # Settings for a Docker install, written by install.sh
 .env
+
+# Release packages built by ops/make-release.sh
+/dist/
