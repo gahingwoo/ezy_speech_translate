@@ -222,7 +222,7 @@ def build():
 
 %(setup)s
 
-  <script src="{{ static_url('js/i18n.js') }}"></script>
+  <script src="{{ static_url('js/i18n/core.js') }}"></script>
   <script src="{{ static_url('js/wizard.js') }}"></script>
   <script src="{{ static_url('js/typewriter.js') }}"></script>
   <script src="{{ static_url('js/projection.js') }}"></script>

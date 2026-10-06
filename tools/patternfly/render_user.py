@@ -1829,7 +1829,7 @@ def build():
     })();
   </script>
 
-  <script src="{{ static_url('js/i18n.js') }}"></script>
+  <script src="{{ static_url('js/i18n/core.js') }}"></script>
   <script src="{{ static_url('js/theme.js') }}"></script>
   <!-- The drawer. This page carried its own copy of it, which was the only
        reason it worked and the reason it stayed behind: the shared one grew a

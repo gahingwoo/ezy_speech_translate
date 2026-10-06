@@ -128,7 +128,7 @@ let lastTTSClickText = '';  // Track last clicked TTS text for double-tap stop
 let lastTTSClickTime = 0;   // Track when user last clicked TTS button
 const TTS_DOUBLE_TAP_THRESHOLD = 500;  // 500ms window for double-tap detection
 
-// Use shared translations provided by /static/js/i18n.js
+// Use shared translations: js/i18n/core.js loads the languages this page needs
 const i18n = window.sharedI18n || {};
 /* The reading language is the one choice a listener makes, and this is what
    the browser is asked for before they make it. English was missing from the

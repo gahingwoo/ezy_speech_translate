@@ -344,6 +344,11 @@ Operational cautions:
 - `app/templates/*.html`: login, admin console, settings, listener, projection.
   **Generated.** Edit `tools/patternfly/render_*.py` and re-run it; a change
   made directly to a template is lost the next time anyone regenerates
+- `app/i18n/strings.js`: every interface string in all 22 languages. Pages do
+  not load it: `node tools/i18n/build.mjs` splits it into one file per language
+  in `app/static/js/i18n/`, plus `core.js`, which loads English and the
+  languages a page may be shown in, and fetches any other on demand. Run it
+  after editing the strings, and commit what it writes
 - `app/translation_service.py`: translation API wrapper
 - `app/oem_manager.py`: brand config composition
 - `secure_loader.py`: encrypted secret loading/migration

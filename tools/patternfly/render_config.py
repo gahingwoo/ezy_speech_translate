@@ -322,7 +322,7 @@ def build():
     </div>
   </div>
 
-  <script src="{{ static_url('js/i18n.js') }}"></script>
+  <script src="{{ static_url('js/i18n/core.js') }}"></script>
   <script src="{{ static_url('js/theme.js') }}"></script>
   <script src="{{ static_url('js/sidebar.js') }}"></script>
   <script src="{{ static_url('js/config.js') }}"></script>

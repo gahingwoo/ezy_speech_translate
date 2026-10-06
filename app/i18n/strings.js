@@ -1,3 +1,15 @@
+/* Every string the interface shows, in all 22 languages, and the status lines
+ * the listener cycles through while it waits for a translation.
+ *
+ * This is the file to edit. Pages do not load it: it is twenty-two languages
+ * where a reader needs one, 316KB of which a page used a fraction. After an
+ * edit, run
+ *
+ *     node tools/i18n/build.mjs
+ *
+ * which evaluates this file and writes one small file per language to
+ * app/static/js/i18n/, and the runtime that loads them. Both are committed.
+ */
 window.sharedI18n = {
     en: {
         // Header
@@ -4684,148 +4696,6 @@ window.sharedAiStatusLibrary = {
     });
 })();
 
-// Lightweight runtime helpers for applying the shared i18n to any page.
-window.detectDisplayLanguage = function () {
-    const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
-    const i18n = window.sharedI18n || {};
-    // Exact match
-    if (i18n[browserLang]) return browserLang;
-    // Base match (e.g., 'en' from 'en-US')
-    const base = browserLang.split('-')[0];
-    if (i18n[base]) return base;
-    // Chinese variants — prefer available keys
-    if (browserLang.startsWith('zh')) {
-        if ((browserLang.includes('tw') || browserLang.includes('hant') || browserLang.includes('hk')) && i18n['zh-tw']) return 'zh-tw';
-        if ((browserLang.includes('yue') || browserLang.includes('cantonese')) && i18n['yue']) return 'yue';
-        if (i18n['zh']) return 'zh';
-    }
-    // Fallback to first available language or en
-    if (i18n['en']) return 'en';
-    const keys = Object.keys(i18n);
-    return keys.length ? keys[0] : 'en';
-};
-
-// Resolve a possibly-variant language code to a key present in sharedI18n
-window.resolveDisplayLang = function (lang) {
-    const i18n = window.sharedI18n || {};
-    if (!lang) return window.detectDisplayLanguage();
-    const lower = String(lang).toLowerCase();
-    // Exact key
-    if (i18n[lang]) return lang;
-    if (i18n[lower]) return lower;
-    // Base (en-US -> en)
-    const base = lower.split('-')[0];
-    if (i18n[base]) return base;
-    // Common aliases
-    if (lower.startsWith('yue') || lower.includes('cantonese') || lower.includes('hk')) {
-        if (i18n['yue']) return 'yue';
-    }
-    if (lower.startsWith('zh')) {
-        if (lower.includes('tw') || lower.includes('hant')) {
-            if (i18n['zh-tw']) return 'zh-tw';
-        }
-        if (i18n['zh']) return 'zh';
-    }
-    if (i18n['en']) return 'en';
-    const keys = Object.keys(i18n);
-    return keys.length ? keys[0] : 'en';
-};
-
-window.applyDisplayLanguage = function (lang) {
-    const raw = lang || localStorage.getItem('displayLanguage') || window.detectDisplayLanguage();
-    const i18n = window.sharedI18n || {};
-    const resolved = window.resolveDisplayLang(raw);
-    // Guard to prevent re-entrancy when programmatically updating selects
-    if (window._applyingDisplayLanguage) return resolved;
-    window._applyingDisplayLanguage = true;
-    try {
-        window._displayLanguage = resolved;
-
-        // Text content
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            if (i18n[resolved] && i18n[resolved][key]) el.textContent = i18n[resolved][key];
-            else if (i18n['en'] && i18n['en'][key]) el.textContent = i18n['en'][key];
-        });
-
-        // Placeholders
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-            const key = el.getAttribute('data-i18n-placeholder');
-            if (i18n[resolved] && i18n[resolved][key]) el.placeholder = i18n[resolved][key];
-            else if (i18n['en'] && i18n['en'][key]) el.placeholder = i18n['en'][key];
-        });
-
-        // Titles
-        document.querySelectorAll('[data-i18n-title]').forEach(el => {
-            const key = el.getAttribute('data-i18n-title');
-            if (i18n[resolved] && i18n[resolved][key]) el.title = i18n[resolved][key];
-            else if (i18n['en'] && i18n['en'][key]) el.title = i18n['en'][key];
-        });
-
-        // Document title and meta description via data attributes
-        try {
-            let titleKey = 'metaTitle';
-            // If this page includes the admin brand label, or is the login/admin path,
-            // prefer the admin meta title. This is a fallback for templates where
-            // the brand marker may not be detected early enough.
-            if (document.querySelector('[data-i18n="brand_admin"]') ||
-                (window.location && window.location.pathname && (window.location.pathname.includes('/admin') || window.location.pathname.includes('/login')))
-            ) titleKey = 'metaTitle_admin';
-            const titleText = (i18n[resolved] && (i18n[resolved][titleKey] || i18n[resolved]['metaTitle'])) || (i18n['en'] && (i18n['en'][titleKey] || i18n['en']['metaTitle']));
-            if (titleText) document.title = titleText;
-        } catch (e) {
-        }
-
-        document.querySelectorAll('meta[data-i18n-meta]').forEach(el => {
-            const key = el.getAttribute('data-i18n-meta');
-            if (i18n[resolved] && i18n[resolved][key]) el.setAttribute('content', i18n[resolved][key]);
-            else if (i18n['en'] && i18n['en'][key]) el.setAttribute('content', i18n['en'][key]);
-        });
-
-        // Update any inputs/selects that reflect chosen display language (set value only)
-        const selects = document.querySelectorAll('select[id=displayLanguage]');
-        selects.forEach(s => {
-            if (s.value !== resolved) s.value = resolved;
-        });
-
-        // Update status badges if present
-        const badge = document.getElementById('statusBadge');
-        if (badge) {
-            // The badge is a PatternFly label: its text node is a class down,
-            // and `span:last-child` matches the content wrapper instead, so
-            // writing to that would flatten the label's structure.
-            const span = badge.querySelector('.pf-v6-c-label__text')
-                || badge.querySelector('span:last-child');
-            if (span) {
-                if (badge.classList.contains('online')) span.textContent = (i18n[resolved] && i18n[resolved]['online']) || span.textContent;
-                else if (badge.classList.contains('offline')) span.textContent = (i18n[resolved] && i18n[resolved]['offline']) || span.textContent;
-                else span.textContent = (i18n[resolved] && i18n[resolved]['waiting']) || span.textContent;
-            }
-        }
-    } finally {
-        window._applyingDisplayLanguage = false;
-    }
-};
-
-window.changeDisplayLanguage = function (lang) {
-    if (!lang) return;
-    if (window._applyingDisplayLanguage) return;
-    const resolved = window.resolveDisplayLang(lang);
-    try {
-        localStorage.setItem('displayLanguage', resolved);
-    } catch (e) {
-    }
-    window.applyDisplayLanguage(resolved);
-};
-
-// Auto-apply on load
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        window.applyDisplayLanguage();
-    } catch (e) {
-        console.warn('i18n apply failed:', e);
-    }
-});
 
 // The setup wizard's step names. They sat in the markup untranslated, so a
 // reader who had just chosen Cantonese met three English labels.
