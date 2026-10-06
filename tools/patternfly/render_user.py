@@ -999,7 +999,7 @@ def build():
         <!-- PatternFly's status label. The icon carries the state as well as
              the colour, which is what lets the word step aside on a phone
              without the label stopping saying anything. -->
-        <span class="pf-v6-c-label pf-m-orange connection-badge waiting" id="statusBadge"
+        <span class="pf-v6-c-label pf-m-warning connection-badge waiting" id="statusBadge"
               role="status" aria-live="polite">
           <span class="pf-v6-c-label__content">
             <span class="pf-v6-c-label__icon" id="statusBadgeIcon">%(status_icon)s</span>

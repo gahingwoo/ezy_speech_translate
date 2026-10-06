@@ -2288,10 +2288,11 @@ function setConnectionStatus(state) {
     const badge = document.getElementById('statusBadge');
     if (!badge) return;
     const known = { online: 'online', offline: 'offline', waiting: 'waiting' };
-    // PatternFly label modifiers carry the state colour. This function
+    // PatternFly's status variants, as the console's label uses: the two
+    // mastheads showed the same state in two different greens. This function
     // rewrites className wholesale, so they are set here rather than in the
     // template, where they would be wiped on the first status change.
-    const mod = { online: 'pf-m-green', offline: 'pf-m-red', waiting: 'pf-m-orange' };
+    const mod = { online: 'pf-m-success', offline: 'pf-m-danger', waiting: 'pf-m-warning' };
     const cls = known[state] || 'waiting';
     badge.className = 'pf-v6-c-label ' + mod[cls] + ' connection-badge ' + cls;
     const sp = badge.querySelector('.pf-v6-c-label__text');
