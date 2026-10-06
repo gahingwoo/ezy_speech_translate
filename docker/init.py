@@ -281,7 +281,8 @@ def main(argv):
     seed_config()
     config = apply_environment()
     if argv[:1] == ['password']:
-        password = ensure_secrets(new_password=(argv[1] if len(argv) > 1 else '') or readable_password())
+        given = argv[1] if len(argv) > 1 else os.environ.get('EZY_ADMIN_PASSWORD', '')
+        password = ensure_secrets(new_password=given or readable_password())
         announce(password, config)
         say('Restart for it to take effect:  docker compose restart')
         return

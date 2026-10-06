@@ -874,6 +874,8 @@ def cmd_password(a):
         alphabet = 'abcdefghjkmnpqrstuvwxyz23456789'
         raw = ''.join(secrets.choice(alphabet) for _ in range(16))
         password = '-'.join(raw[i:i + 4] for i in range(0, 16, 4))
+    elif a.stdin:                               # from the Cockpit module: kept off the command line
+        password = sys.stdin.readline().rstrip('\n')
     elif not a.json:
         import getpass
         password = getpass.getpass('New admin password: ')
@@ -884,13 +886,13 @@ def cmd_password(a):
     cur = current_release(conf)
     if conf['mode'] == 'native':
         run(['runuser', '-u', conf['user'], '--', 'env', f'EZY_STATE={conf["state"]}',
-             str(cur / '.venv/bin/python'), 'docker/init.py', 'password', password],
-            cwd=str(cur), capture=True)
+             str(cur / '.venv/bin/python'), 'docker/init.py', 'password'],
+            cwd=str(cur), capture=True, env={'EZY_ADMIN_PASSWORD': password})
     else:
         compose(conf, 'exec', '-T', 'ezyspeech', 'ezyspeech', 'password', password, capture=True)
     restart(conf)
     if a.json:
-        print(json.dumps({'password': password}))
+        print(json.dumps({'password': password if a.generate else None}))
     else:
         print('Admin password set' + (f': {password}' if a.generate else '') + '. The servers restarted.')
 
@@ -966,6 +968,7 @@ def main(argv):
     s = sub.add_parser('logs'); s.add_argument('-f', '--follow', action='store_true')
     s.add_argument('-n', '--lines', type=int, default=100); s.set_defaults(func=cmd_logs)
     s = sub.add_parser('password'); s.add_argument('--generate', action='store_true')
+    s.add_argument('--stdin', action='store_true', help='read it from standard input')
     s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_password)
     s = sub.add_parser('backup'); s.add_argument('file', nargs='?'); s.set_defaults(func=cmd_backup)
     s = sub.add_parser('uninstall'); s.add_argument('--purge', action='store_true')
