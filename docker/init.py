@@ -56,7 +56,11 @@ STATE = Path(os.environ.get('EZY_STATE', '/var/lib/ezyspeech'))
 CONFIG = STATE / 'config' / 'config.yaml'
 SECRETS = STATE / 'config' / 'secrets.key'
 SSL = STATE / 'config' / 'ssl'
-DEFAULT_CONFIG = APP / 'docker' / 'defaults' / 'config.yaml'
+# The shipped config.yaml, set aside when the code is prepared to run: by the
+# Dockerfile in the image, and by the ezyspeech command in a native release.
+DEFAULT_CONFIG = next((p for p in (APP / 'docker' / 'defaults' / 'config.yaml',
+                                   APP / 'config.dist' / 'config.yaml') if p.exists()),
+                      APP / 'docker' / 'defaults' / 'config.yaml')
 
 # No 0/O, 1/l/I: it gets read off a screen and typed on a phone.
 _ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'

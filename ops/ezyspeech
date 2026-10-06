@@ -1,0 +1,903 @@
+#!/usr/bin/env python3
+"""ezyspeech: install, update and run EzySpeech, natively or in Docker.
+
+    ezyspeech status [--json]          what is installed, running, and available
+    ezyspeech version                  the installed version
+    ezyspeech check-update [--json]    is there a newer release?
+    ezyspeech update [--yes] [--to V]  install the latest (or V), roll back if it fails
+    ezyspeech rollback                 go back to the previous release
+    ezyspeech start | stop | restart
+    ezyspeech logs [-f] [-n N]
+    ezyspeech password [--generate] [--json]
+    ezyspeech backup [FILE]            settings, secrets and transcripts, as .tar.gz
+    ezyspeech uninstall [--purge]      --purge also deletes settings and transcripts
+    ezyspeech menu                     the same, as screens
+    ezyspeech install --mode native|docker ...   (normally run by install.sh)
+
+Both kinds of install keep each release beside the last one:
+
+    <home>/releases/<version>/   the code (and, natively, its own Python venv)
+    <home>/current               a link to the one in use
+
+An update downloads the release from GitHub, checks it against the
+published SHA-256 sums, prepares it next to the running one, switches the
+link and restarts; if the new one does not come up healthy within a minute
+it switches back. A native install keeps its settings and transcripts in
+/var/lib/ezyspeech, a Docker one in the volume ezyspeech_ezyspeech; neither
+is touched by an update.
+
+The install's mode and paths are in /etc/ezyspeech/install.conf (or
+~/.config/ezyspeech/install.conf for a Docker install made without root).
+
+Python 3.8+ standard library only: this runs before anything is installed.
+
+Copyright (C) 2025-2026 Ga Hing Woo (Jiaxing Hu)
+This file is part of EzySpeech, and is free software under the GNU Affero
+General Public License, version 3 or later. See LICENSE and TRADEMARK.md.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import re
+import secrets
+import shutil
+import ssl
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+import urllib.request
+from pathlib import Path
+
+REPO = 'gahingwoo/ezy_speech_translate'
+RELEASE_API = os.environ.get('EZY_RELEASE_API') or f'https://api.github.com/repos/{REPO}/releases'
+CONF_PATHS = [Path(p) for p in filter(None, [
+    os.environ.get('EZY_CONF'),
+    '/etc/ezyspeech/install.conf',
+    str(Path.home() / '.config/ezyspeech/install.conf'),
+])]
+SERVICE_UNITS = ['ezyspeech-user.service', 'ezyspeech-admin.service']
+STATE_LINKS = {           # path in a release -> directory in the state
+    'config': 'config', 'data': 'data', 'logs': 'logs',
+    'exports': 'exports', 'app/static/oem': 'oem',
+}
+KEEP_RELEASES = 2
+HEALTH_TIMEOUT = 75
+
+
+class Fail(Exception):
+    """A message for the person running this, not a traceback."""
+
+
+# ── output ───────────────────────────────────────────────────────────────────
+
+class Out:
+    progress = False      # PROGRESS <percent> <text> lines, for install.sh's gauge
+    quiet = False
+
+    @classmethod
+    def step(cls, percent, text):
+        if cls.progress:
+            print(f'PROGRESS {int(percent)} {text}', flush=True)
+        elif not cls.quiet:
+            print(f'==> {text}', flush=True)
+
+    @classmethod
+    def info(cls, text):
+        if not cls.quiet:
+            print(text, flush=True)
+
+
+def run(cmd, check=True, capture=False, env=None, cwd=None, quiet=False):
+    """Run a command; its output goes to ours unless captured or quietened."""
+    kwargs = {'cwd': cwd, 'env': {**os.environ, **(env or {})}}
+    if capture:
+        kwargs.update(stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    elif quiet or Out.progress or Out.quiet:
+        kwargs.update(stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    result = subprocess.run(cmd, **kwargs)
+    if check and result.returncode != 0:
+        detail = (result.stdout or '') if capture else (getattr(result, 'stderr', '') or '')
+        raise Fail(f'{" ".join(map(str, cmd))} failed ({result.returncode})'
+                   + (f':\n{detail.strip()[-1500:]}' if detail else ''))
+    return result
+
+
+# ── the install's record ─────────────────────────────────────────────────────
+
+def load_conf(required=True):
+    for path in CONF_PATHS:
+        if path.is_file():
+            conf = {}
+            for line in path.read_text().splitlines():
+                if '=' in line and not line.lstrip().startswith('#'):
+                    k, v = line.split('=', 1)
+                    conf[k.strip()] = v.strip()
+            conf['_path'] = str(path)
+            return conf
+    if required:
+        raise Fail('EzySpeech is not installed here (no install.conf). Install it with install.sh.')
+    return None
+
+
+def save_conf(conf, path):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = '# Written by ezyspeech. The install this machine runs.\n' + ''.join(
+        f'{k}={v}\n' for k, v in conf.items() if not k.startswith('_'))
+    path.write_text(body)
+
+
+def home_of(conf):
+    return Path(conf['home'])
+
+
+def current_release(conf):
+    link = home_of(conf) / 'current'
+    return link.resolve() if link.exists() else None
+
+
+def version_of(release_dir):
+    try:
+        return (Path(release_dir) / 'VERSION').read_text().strip()
+    except OSError:
+        return None
+
+
+def releases(conf):
+    base = home_of(conf) / 'releases'
+    found = [p for p in base.iterdir() if p.is_dir() and not p.name.endswith('.new')] if base.is_dir() else []
+    return sorted(found, key=lambda p: vtuple(p.name))
+
+
+def vtuple(v):
+    parts = re.findall(r'\d+', str(v).lstrip('v'))
+    return tuple(int(x) for x in parts[:3]) + (0,) * (3 - len(parts[:3]))
+
+
+def require_root(conf=None):
+    if conf and conf.get('mode') == 'docker' and not conf.get('_path', '').startswith('/etc/'):
+        return
+    if os.geteuid() != 0:
+        raise Fail('This needs root. Run it with sudo.')
+
+
+# ── releases ─────────────────────────────────────────────────────────────────
+
+def _open(url, timeout=30):
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'ezyspeech-updater', 'Accept': 'application/vnd.github+json'})
+    return urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context())
+
+
+def fetch_release(tag=None):
+    """{version, tarball, sums, cockpit, notes, url} for the latest release, or tag."""
+    url = f'{RELEASE_API}/tags/v{tag.lstrip("v")}' if tag else f'{RELEASE_API}/latest'
+    try:
+        with _open(url) as resp:
+            data = json.load(resp)
+    except Exception as exc:
+        raise Fail(f'Could not reach the release list ({url}): {exc}')
+    version = str(data.get('tag_name', '')).lstrip('v')
+    assets = {a.get('name'): a.get('browser_download_url') for a in data.get('assets') or []}
+    tarball = assets.get(f'ezyspeech-{version}.tar.gz')
+    if not version or not tarball or 'SHA256SUMS' not in assets:
+        raise Fail(f'Release {data.get("tag_name") or "?"} is missing its package or its sums.')
+    return {'version': version, 'tarball': tarball, 'sums': assets['SHA256SUMS'],
+            'cockpit': assets.get(f'ezyspeech-cockpit-{version}.tar.gz'),
+            'notes': data.get('body') or '', 'url': data.get('html_url') or ''}
+
+
+def download(url, dest):
+    with _open(url, timeout=120) as resp, open(dest, 'wb') as out:
+        shutil.copyfileobj(resp, out)
+
+
+def verified_download(release, workdir, asset_key='tarball'):
+    """Download an asset of a release and check it against SHA256SUMS."""
+    url = release[asset_key]
+    name = url.rsplit('/', 1)[-1]
+    dest = Path(workdir) / name
+    sums_file = Path(workdir) / 'SHA256SUMS'
+    if not sums_file.exists():
+        download(release['sums'], sums_file)
+    download(url, dest)
+    expected = None
+    for line in sums_file.read_text().splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1].lstrip('*') == name:
+            expected = parts[0].lower()
+    actual = hashlib.sha256(dest.read_bytes()).hexdigest()
+    if not expected or expected != actual:
+        raise Fail(f'{name} does not match its published SHA-256; not installing it.')
+    return dest
+
+
+def extract(tarball, into):
+    """Unpack a release package, refusing any path that would land outside."""
+    into = Path(into)
+    with tarfile.open(tarball) as tar:
+        members = tar.getmembers()
+        # The package's one folder. Not counting what macOS's tar adds beside
+        # a folder (._name, __MACOSX) or a leading ./
+        names = [m.name[2:] if m.name.startswith('./') else m.name for m in members]
+        top = {n.split('/', 1)[0] for n in names
+               if n and n != '.' and not n.split('/', 1)[0].startswith(('._', '__MACOSX'))}
+        for m in members:
+            target = (into / m.name).resolve()
+            if not str(target).startswith(str(into.resolve())) or m.issym() and os.path.isabs(m.linkname):
+                raise Fail(f'The package contains an unsafe path: {m.name}')
+        # Python's own guard as well, where it has one (3.12 and later).
+        kwargs = {'filter': 'data'} if hasattr(tarfile, 'data_filter') else {}
+        tar.extractall(into, **kwargs)
+    return into / top.pop() if len(top) == 1 else into
+
+
+# ── preparing a release to run ───────────────────────────────────────────────
+
+def stage_release(conf, source, version):
+    """Put a release's code under releases/<version> and get it ready to run.
+    source is a .tar.gz package or a directory of code."""
+    home = home_of(conf)
+    final = home / 'releases' / version
+    if final.exists() and (final / '.ready').exists():
+        return final
+    work = home / 'releases' / f'{version}.new'
+    shutil.rmtree(work, ignore_errors=True)
+    work.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _stage(conf, source, version, work)
+    except BaseException:
+        shutil.rmtree(work, ignore_errors=True)     # nothing half-made is left behind
+        raise
+    shutil.rmtree(final, ignore_errors=True)
+    work.rename(final)
+    return final
+
+
+def _stage(conf, source, version, work):
+    home = home_of(conf)
+    if Path(source).is_dir():
+        shutil.copytree(source, work, symlinks=True, ignore=shutil.ignore_patterns(
+            '.git', 'venv', '.venv', '__pycache__', 'node_modules', '.env', 'data', 'logs', 'exports'))
+    else:
+        tmp = Path(tempfile.mkdtemp(dir=home / 'releases'))
+        root = extract(source, tmp)
+        root.rename(work)
+        shutil.rmtree(tmp, ignore_errors=True)
+    if not (work / 'VERSION').exists():
+        raise Fail('The package does not hold a release (no VERSION file).')
+    if conf['mode'] == 'native':
+        prepare_native(conf, work)
+    (work / '.ready').write_text(version + '\n')
+
+
+def prepare_native(conf, release):
+    state = Path(conf['state'])
+    # The shipped config.yaml is the default a new install starts from; the
+    # live one is in the state, like everything the servers write.
+    cfg = release / 'config'
+    if cfg.is_dir() and not cfg.is_symlink():
+        shutil.rmtree(release / 'config.dist', ignore_errors=True)
+        cfg.rename(release / 'config.dist')
+    for rel, sub in STATE_LINKS.items():
+        p = release / rel
+        if p.is_symlink() or p.is_file():
+            p.unlink()
+        elif p.is_dir():
+            shutil.rmtree(p)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.symlink_to(state / sub)
+    Out.info('    creating its Python environment (a minute or so)')
+    run([sys.executable, '-m', 'venv', str(release / '.venv')])
+    pip = [str(release / '.venv/bin/python'), '-m', 'pip', '--disable-pip-version-check', '-q']
+    cache = {'PIP_CACHE_DIR': '/var/cache/ezyspeech/pip'}
+    run(pip + ['install', '--upgrade', 'pip'], quiet=True, env=cache)
+    run(pip + ['install', '-r', str(release / 'requirements.txt')], env=cache)
+    run(['chmod', '-R', 'a+rX', str(release)])
+
+
+def link_current(conf, release):
+    link = home_of(conf) / 'current'
+    tmp = home_of(conf) / '.current.tmp'
+    if tmp.is_symlink():
+        tmp.unlink()
+    tmp.symlink_to(Path('releases') / Path(release).name)
+    os.replace(tmp, link)                   # atomic: never a moment without one
+
+
+def prune(conf):
+    """Keep the running release and the one before it."""
+    keep = {current_release(conf)}
+    olds = [r for r in releases(conf) if r not in keep]
+    for r in olds[:-max(0, KEEP_RELEASES - 1)] if KEEP_RELEASES > 1 else olds:
+        shutil.rmtree(r, ignore_errors=True)
+        if conf['mode'] == 'docker':
+            run(['docker', 'image', 'rm', f'ezyspeech:{r.name}'], check=False, quiet=True)
+
+
+# ── health ───────────────────────────────────────────────────────────────────
+
+def ports(conf):
+    """The two ports, as the running configuration has them."""
+    port, admin = conf.get('port', '1915'), conf.get('admin_port', '1916')
+    if conf['mode'] == 'native':
+        cfg = Path(conf['state']) / 'config' / 'config.yaml'
+        section = None
+        try:
+            for line in cfg.read_text().splitlines():
+                m = re.match(r'^([a-z_]+):\s*(#.*)?$', line)
+                if m:
+                    section = m.group(1)
+                    continue
+                m = re.match(r'^\s+port:\s*(\d+)', line)
+                if m and section == 'server':
+                    port = m.group(1)
+                elif m and section == 'admin_server':
+                    admin = m.group(1)
+        except OSError:
+            pass
+    else:
+        env = docker_env(conf)
+        port, admin = env.get('EZY_PORT', port), env.get('EZY_ADMIN_PORT', admin)
+    return int(port), int(admin)
+
+
+def probe(port, path):
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    for scheme in ('http', 'https'):
+        try:
+            with urllib.request.urlopen(f'{scheme}://127.0.0.1:{port}{path}', timeout=3,
+                                        context=ctx if scheme == 'https' else None) as r:
+                return json.loads(r.read().decode() or '{}')
+        except Exception:
+            continue
+    return None
+
+
+def health(conf):
+    port, admin = ports(conf)
+    user = probe(port, '/api/health')
+    adm = probe(admin, '/health')
+    return {'listener': bool(user), 'console': bool(adm),
+            'version': (user or {}).get('version'), 'port': port, 'admin_port': admin,
+            'listeners': (user or {}).get('clients')}
+
+
+def wait_healthy(conf, version, timeout=HEALTH_TIMEOUT):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        h = health(conf)
+        if h['listener'] and h['console'] and (not version or h['version'] == version):
+            return True
+        time.sleep(2)
+    return False
+
+
+# ── the two kinds of install ─────────────────────────────────────────────────
+
+def docker_env(conf):
+    env = {}
+    path = home_of(conf) / '.env'
+    if path.is_file():
+        for line in path.read_text().splitlines():
+            if '=' in line and not line.startswith('#'):
+                k, v = line.split('=', 1)
+                env[k.strip()] = v.strip()
+    return env
+
+
+def set_docker_env(conf, values):
+    path = home_of(conf) / '.env'
+    lines = path.read_text().splitlines() if path.is_file() else []
+    keys = set(values)
+    kept = [l for l in lines if l.split('=', 1)[0].strip() not in keys]
+    path.write_text('\n'.join(kept + [f'{k}={v}' for k, v in values.items() if v is not None]) + '\n')
+
+
+def compose(conf, *args, release=None, capture=False, check=True):
+    release = Path(release or current_release(conf))
+    cmd = ['docker', 'compose', '-f', str(release / 'compose.yaml'),
+           '--project-directory', str(home_of(conf)), *args]
+    return run(cmd, capture=capture, check=check,
+               env={'EZY_VERSION': version_of(release) or 'local'})
+
+
+def systemctl(*args, check=True):
+    return run(['systemctl', *args], check=check, quiet=True)
+
+
+def services_state():
+    out = {}
+    for unit in SERVICE_UNITS:
+        r = run(['systemctl', 'is-active', unit], check=False, capture=True)
+        out[unit] = r.stdout.strip()
+    return out
+
+
+def native_units(conf):
+    home, state, user = conf['home'], conf['state'], conf['user']
+    units = {}
+    for unit, script, what in (('ezyspeech-user.service', 'app/user/server.py', 'listener and transcript server'),
+                               ('ezyspeech-admin.service', 'app/admin/server.py', "operator's console")):
+        units[unit] = f"""# Written by ezyspeech. Edit the install, not this file.
+[Unit]
+Description=EzySpeech {what}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={user}
+Group={user}
+WorkingDirectory={home}/current
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=EZY_STATE={state}
+ExecStart={home}/current/.venv/bin/python {script}
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths={state}
+
+[Install]
+WantedBy=multi-user.target
+"""
+    return units
+
+
+def start(conf):
+    if conf['mode'] == 'native':
+        systemctl('start', *SERVICE_UNITS)
+    else:
+        compose(conf, 'up', '-d', '--remove-orphans')
+
+
+def stop(conf):
+    if conf['mode'] == 'native':
+        systemctl('stop', *SERVICE_UNITS)
+    else:
+        compose(conf, 'stop')
+
+
+def restart(conf):
+    if conf['mode'] == 'native':
+        systemctl('restart', *SERVICE_UNITS)
+    else:
+        compose(conf, 'up', '-d', '--remove-orphans')
+        compose(conf, 'restart')
+
+
+def run_init(conf, release, env):
+    """Prepare the state for a release (first run, migrations); returns what
+    it printed, which on a new install includes the admin password."""
+    if conf['mode'] == 'native':
+        cmd = ['runuser', '-u', conf['user'], '--', 'env', f'EZY_STATE={conf["state"]}',
+               *[f'{k}={v}' for k, v in env.items() if v is not None],
+               str(Path(release) / '.venv/bin/python'), 'docker/init.py']
+        return run(cmd, capture=True, cwd=str(release)).stdout
+    args = ['run', '--rm', '--no-deps']
+    for k, v in env.items():
+        if v is not None:
+            args += ['-e', f'{k}={v}']
+    return compose(conf, *args, 'ezyspeech', 'init', release=release, capture=True).stdout
+
+
+# ── commands ─────────────────────────────────────────────────────────────────
+
+def cmd_install(a):
+    mode = a.mode
+    system = platform.system()
+    if mode == 'native' and (system != 'Linux' or not shutil.which('systemctl')):
+        raise Fail('A native install needs Linux with systemd. Use --mode docker here.')
+    if mode == 'native':
+        require_root()
+    as_root = os.geteuid() == 0
+    home = Path(a.home or ('/opt/ezyspeech' if as_root else Path.home() / 'ezyspeech'))
+    conf_path = Path('/etc/ezyspeech/install.conf') if as_root else CONF_PATHS[-1]
+    existing = load_conf(required=False)
+    if existing and not a.force:
+        raise Fail(f'EzySpeech is already installed ({existing["_path"]}). '
+                   'Use ezyspeech update, or uninstall first.')
+    conf = {'mode': mode, 'home': str(home), 'repo': REPO,
+            'port': str(a.port), 'admin_port': str(a.admin_port)}
+    if mode == 'native':
+        conf.update(state=a.state or '/var/lib/ezyspeech', user=a.user or 'ezyspeech')
+
+    source = Path(a.source).resolve()
+    version = version_of(source) if source.is_dir() else None
+    if not version:
+        with tempfile.TemporaryDirectory() as t:
+            root = extract(source, t)
+            version = version_of(root)
+    if not version:
+        raise Fail('The source has no VERSION file.')
+
+    Out.step(5, f'Installing EzySpeech {version} ({mode})')
+    home.mkdir(parents=True, exist_ok=True)
+    env = {'EZY_PORT': str(a.port), 'EZY_ADMIN_PORT': str(a.admin_port),
+           'EZY_HTTPS': a.https or None, 'EZY_HOSTNAMES': a.hostnames or None,
+           'EZY_EXTERNAL_URL': a.external_url or None,
+           'EZY_ADMIN_PASSWORD': os.environ.get('EZY_ADMIN_PASSWORD') or None,
+           'TZ': a.tz or None}
+
+    if mode == 'native':
+        Out.step(10, 'Packages Python needs')
+        ensure_native_packages()
+        Out.step(15, f'Service account {conf["user"]}')
+        if run(['id', '-u', conf['user']], check=False, capture=True).returncode != 0:
+            run(['useradd', '--system', '--home-dir', conf['state'], '--no-create-home',
+                 '--shell', '/usr/sbin/nologin', conf['user']])
+        state = Path(conf['state'])
+        for sub in set(STATE_LINKS.values()):
+            (state / sub).mkdir(parents=True, exist_ok=True)
+        if a.migrate_from:
+            Out.step(18, f'Bringing over settings and transcripts from {a.migrate_from}')
+            migrate_old_native(Path(a.migrate_from), state)
+        run(['chown', '-R', f'{conf["user"]}:{conf["user"]}', str(state)])
+        run(['chmod', '750', str(state)])
+        Out.step(20, 'Preparing the release')
+        release = stage_release(conf, source, version)
+        link_current(conf, release)
+        Out.step(70, 'First-run setup')
+        printed = run_init(conf, release, env)
+        Out.step(80, 'System services')
+        for unit, body in native_units(conf).items():
+            Path('/etc/systemd/system', unit).write_text(body)
+        systemctl('daemon-reload')
+        if a.migrate_from:
+            systemctl('stop', *SERVICE_UNITS, check=False)
+        systemctl('enable', '--now', *SERVICE_UNITS)
+    else:
+        if not shutil.which('docker') or run(['docker', 'info'], check=False, quiet=True).returncode:
+            raise Fail('Docker is not installed or not running.')
+        Out.step(15, 'Unpacking the release')
+        release = stage_release(conf, source, version)
+        link_current(conf, release)
+        set_docker_env(conf, {k: v for k, v in env.items() if k != 'EZY_ADMIN_PASSWORD' and v})
+        Out.step(25, 'Building the image (a minute or two)')
+        compose(conf, 'build', release=release)
+        Out.step(70, 'First-run setup')
+        printed = run_init(conf, release, env)
+        Out.step(80, 'Starting')
+        compose(conf, 'up', '-d', '--remove-orphans', release=release)
+
+    save_conf(conf, conf_path)
+    link_command(conf, release)
+    Out.step(90, 'Waiting for it to come up')
+    if not wait_healthy(conf, version):
+        raise Fail('It was installed but did not come up healthy. See: ezyspeech logs')
+    if a.cockpit:
+        Out.step(95, 'Cockpit module')
+        install_cockpit(a.cockpit)
+    Out.step(100, 'Done')
+    password = re.search(r'Password:\s+(\S+)', printed or '')
+    result = {'version': version, 'mode': mode, 'home': str(home), 'ports': list(ports(conf)),
+              'password': password.group(1) if password else None}
+    print('RESULT ' + json.dumps(result), flush=True)
+
+
+def ensure_native_packages():
+    try:
+        import venv  # noqa: F401
+        import ensurepip  # noqa: F401
+        return
+    except ImportError:
+        pass
+    if shutil.which('apt-get'):
+        run(['apt-get', 'update', '-qq'], quiet=True)
+        run(['apt-get', 'install', '-y', '-qq', 'python3-venv', 'python3-pip'], quiet=True)
+    elif shutil.which('dnf'):
+        run(['dnf', 'install', '-y', '-q', 'python3', 'python3-pip'], quiet=True)
+    else:
+        raise Fail("Python's venv module is missing; install it (python3-venv) and run this again.")
+
+
+def migrate_old_native(old, state):
+    """An install made by ezy_manager.py kept its settings inside the code."""
+    for rel, sub in (('config', 'config'), ('data', 'data'), ('exports', 'exports'),
+                     ('app/static/oem', 'oem')):
+        src = old / rel
+        if src.is_dir():
+            for item in src.iterdir():
+                dest = state / sub / item.name
+                if not dest.exists():
+                    (shutil.copytree if item.is_dir() else shutil.copy2)(item, dest)
+
+
+def link_command(conf, release):
+    """Put this command on the PATH, pointing at the release in use."""
+    target = home_of(conf) / 'current' / 'ops' / 'ezyspeech'
+    for bindir in ('/usr/local/bin', str(Path.home() / '.local/bin')):
+        try:
+            Path(bindir).mkdir(parents=True, exist_ok=True)
+            link = Path(bindir) / 'ezyspeech'
+            if link.is_symlink() or link.exists():
+                link.unlink()
+            link.symlink_to(target)
+            return
+        except OSError:
+            continue
+
+
+def install_cockpit(source):
+    """The Cockpit module: a package file, or a URL to one."""
+    dest = Path('/usr/share/cockpit/ezyspeech')
+    with tempfile.TemporaryDirectory() as t:
+        pkg = Path(source)
+        if not pkg.exists():
+            pkg = Path(t) / 'cockpit.tar.gz'
+            download(source, pkg)
+        root = extract(pkg, Path(t) / 'x')
+        if not (root / 'manifest.json').exists():
+            raise Fail('The Cockpit package has no manifest.json.')
+        shutil.rmtree(dest, ignore_errors=True)
+        shutil.copytree(root, dest)
+        run(['chmod', '-R', 'a+rX', str(dest)])
+
+
+def cmd_status(a):
+    conf = load_conf()
+    cur = current_release(conf)
+    data = {'mode': conf['mode'], 'home': conf['home'], 'version': version_of(cur) if cur else None,
+            'releases': [r.name for r in releases(conf)], 'health': health(conf)}
+    if conf['mode'] == 'native':
+        data['services'] = services_state()
+        data['state'] = conf['state']
+    else:
+        r = compose(conf, 'ps', '--format', 'json', capture=True, check=False)
+        rows = []
+        for line in (r.stdout or '').splitlines():
+            line = line.strip()
+            if line.startswith('{'):
+                rows.append(json.loads(line))
+            elif line.startswith('['):
+                rows.extend(json.loads(line))
+        data['containers'] = {row.get('Service', row.get('Name')): row.get('State') for row in rows}
+    data['running'] = bool(data['health']['listener'] and data['health']['console'])
+    if a.json:
+        print(json.dumps(data))
+        return
+    h = data['health']
+    print(f"EzySpeech {data['version']} ({conf['mode']}) in {conf['home']}")
+    print(f"  listener page  port {h['port']}: {'up' if h['listener'] else 'DOWN'}"
+          + (f", {h['listeners']} listening" if h.get('listeners') is not None else ''))
+    print(f"  console        port {h['admin_port']}: {'up' if h['console'] else 'DOWN'}")
+    print(f"  releases kept: {', '.join(data['releases'])}")
+
+
+def cmd_version(a):
+    conf = load_conf()
+    print(version_of(current_release(conf)) or 'unknown')
+
+
+def cmd_check(a):
+    conf = load_conf()
+    installed = version_of(current_release(conf))
+    rel = fetch_release()
+    newer = vtuple(rel['version']) > vtuple(installed or '0')
+    out = {'installed': installed, 'latest': rel['version'], 'update_available': newer,
+           'notes': rel['notes'], 'url': rel['url']}
+    if a.json:
+        print(json.dumps(out))
+    else:
+        print(f'Installed {installed}; latest release {rel["version"]}.')
+        print('An update is available: sudo ezyspeech update' if newer else 'Up to date.')
+
+
+def cmd_update(a):
+    conf = load_conf()
+    require_root(conf)
+    before = current_release(conf)
+    installed = version_of(before)
+    rel = fetch_release(a.to)
+    if not a.to and vtuple(rel['version']) <= vtuple(installed or '0') and not a.force:
+        Out.info(f'Already up to date ({installed}).')
+        return
+    if not a.yes and sys.stdin.isatty():
+        if input(f'Update EzySpeech {installed} -> {rel["version"]}? [y/N] ').strip().lower() not in ('y', 'yes'):
+            return
+    Out.step(5, f'Downloading {rel["version"]}')
+    with tempfile.TemporaryDirectory() as t:
+        pkg = verified_download(rel, t)
+        Out.step(15, 'Checked against its SHA-256; preparing it')
+        release = stage_release(conf, pkg, rel['version'])
+    if conf['mode'] == 'docker':
+        Out.step(50, 'Building its image')
+        compose(conf, 'build', release=release)
+    Out.step(70, 'Bringing the settings up to date')
+    run_init(conf, release, {})
+    Out.step(80, f'Switching to {rel["version"]}')
+    link_current(conf, release)
+    restart(conf)
+    Out.step(90, 'Checking it came up')
+    if not wait_healthy(conf, rel['version']):
+        Out.info(f'{rel["version"]} did not come up healthy; going back to {installed}.')
+        link_current(conf, before)
+        restart(conf)
+        wait_healthy(conf, installed)
+        raise Fail(f'Update to {rel["version"]} failed and was rolled back to {installed}. '
+                   'Its log: ezyspeech logs')
+    link_command(conf, release)
+    prune(conf)
+    Out.step(100, f'Updated to {rel["version"]}')
+
+
+def cmd_rollback(a):
+    conf = load_conf()
+    require_root(conf)
+    cur = current_release(conf)
+    older = [r for r in releases(conf) if vtuple(r.name) < vtuple(cur.name)]
+    if not older:
+        raise Fail('There is no earlier release kept to go back to.')
+    target = older[-1]
+    link_current(conf, target)
+    restart(conf)
+    if not wait_healthy(conf, version_of(target)):
+        raise Fail(f'{target.name} did not come up healthy either. See: ezyspeech logs')
+    link_command(conf, target)
+    Out.info(f'Back on {target.name}.')
+
+
+def cmd_service(a):
+    conf = load_conf()
+    require_root(conf)
+    {'start': start, 'stop': stop, 'restart': restart}[a.command](conf)
+
+
+def cmd_logs(a):
+    conf = load_conf()
+    if conf['mode'] == 'native':
+        cmd = ['journalctl', '-n', str(a.lines), '--no-pager', '-o', 'short-iso']
+        for u in SERVICE_UNITS:
+            cmd += ['-u', u]
+        if a.follow:
+            cmd.append('-f')
+        os.execvp(cmd[0], cmd)
+    else:
+        cur = current_release(conf)
+        cmd = ['docker', 'compose', '-f', str(cur / 'compose.yaml'), '--project-directory',
+               conf['home'], 'logs', '--tail', str(a.lines)] + (['-f'] if a.follow else [])
+        os.environ['EZY_VERSION'] = version_of(cur) or 'local'
+        os.execvp(cmd[0], cmd)
+
+
+def cmd_password(a):
+    conf = load_conf()
+    require_root(conf)
+    password = None
+    if a.generate:
+        alphabet = 'abcdefghjkmnpqrstuvwxyz23456789'
+        raw = ''.join(secrets.choice(alphabet) for _ in range(16))
+        password = '-'.join(raw[i:i + 4] for i in range(0, 16, 4))
+    elif not a.json:
+        import getpass
+        password = getpass.getpass('New admin password: ')
+        if getpass.getpass('Again: ') != password:
+            raise Fail('They do not match; nothing was changed.')
+    if not password or len(password) < 8:
+        raise Fail('At least 8 characters; nothing was changed.')
+    cur = current_release(conf)
+    if conf['mode'] == 'native':
+        run(['runuser', '-u', conf['user'], '--', 'env', f'EZY_STATE={conf["state"]}',
+             str(cur / '.venv/bin/python'), 'docker/init.py', 'password', password],
+            cwd=str(cur), capture=True)
+    else:
+        compose(conf, 'exec', '-T', 'ezyspeech', 'ezyspeech', 'password', password, capture=True)
+    restart(conf)
+    if a.json:
+        print(json.dumps({'password': password}))
+    else:
+        print('Admin password set' + (f': {password}' if a.generate else '') + '. The servers restarted.')
+
+
+def cmd_backup(a):
+    conf = load_conf()
+    require_root(conf)
+    dest = Path(a.file or f'ezyspeech-backup-{time.strftime("%Y%m%d-%H%M%S")}.tar.gz').resolve()
+    if conf['mode'] == 'native':
+        run(['tar', 'czf', str(dest), '-C', conf['state'], '.'])
+    else:
+        with open(dest, 'wb') as out:
+            cur = current_release(conf)
+            subprocess.run(['docker', 'compose', '-f', str(cur / 'compose.yaml'), '--project-directory',
+                            conf['home'], 'run', '--rm', '--no-deps', '--entrypoint', 'tar', 'ezyspeech',
+                            'czf', '-', '-C', '/var/lib/ezyspeech', '.'],
+                           stdout=out, check=True, env={**os.environ, 'EZY_VERSION': version_of(cur)})
+    print(f'Saved {dest}')
+
+
+def cmd_uninstall(a):
+    conf = load_conf()
+    require_root(conf)
+    if not a.yes and sys.stdin.isatty():
+        what = ' and DELETE its settings, secrets and transcripts' if a.purge else ''
+        if input(f'Uninstall EzySpeech{what}? [y/N] ').strip().lower() not in ('y', 'yes'):
+            return
+    if conf['mode'] == 'native':
+        systemctl('disable', '--now', *SERVICE_UNITS, check=False)
+        for u in SERVICE_UNITS:
+            unit = Path('/etc/systemd/system', u)
+            if unit.exists():
+                unit.unlink()
+        systemctl('daemon-reload', check=False)
+        if a.purge:
+            shutil.rmtree(conf['state'], ignore_errors=True)
+            run(['userdel', conf['user']], check=False, quiet=True)
+    else:
+        compose(conf, 'down', *(['-v'] if a.purge else []), check=False)
+        for r in releases(conf):
+            run(['docker', 'image', 'rm', f'ezyspeech:{r.name}'], check=False, quiet=True)
+    shutil.rmtree(conf['home'], ignore_errors=True)
+    for link in (Path('/usr/local/bin/ezyspeech'), Path.home() / '.local/bin/ezyspeech'):
+        if link.is_symlink():
+            link.unlink()
+    Path(conf['_path']).unlink()
+    print('EzySpeech is uninstalled.' + ('' if a.purge else
+          ' Its settings and transcripts were kept' + (f' in {conf["state"]}.' if conf['mode'] == 'native'
+                                                         else ' in the Docker volume ezyspeech_ezyspeech.')))
+
+
+def cmd_menu(a):
+    conf = load_conf()
+    script = current_release(conf) / 'install.sh'
+    os.execvp('bash', ['bash', str(script), '--manage'])
+
+
+def main(argv):
+    p = argparse.ArgumentParser(prog='ezyspeech', description='Install, update and run EzySpeech.')
+    sub = p.add_subparsers(dest='command', required=True)
+    s = sub.add_parser('status'); s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_status)
+    sub.add_parser('version').set_defaults(func=cmd_version)
+    s = sub.add_parser('check-update'); s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_check)
+    s = sub.add_parser('update')
+    s.add_argument('--yes', '-y', action='store_true'); s.add_argument('--to')
+    s.add_argument('--force', action='store_true'); s.add_argument('--progress', action='store_true')
+    s.set_defaults(func=cmd_update)
+    sub.add_parser('rollback').set_defaults(func=cmd_rollback)
+    sub.add_parser('menu', help='the installer\'s management screens').set_defaults(func=cmd_menu)
+    for name in ('start', 'stop', 'restart'):
+        sub.add_parser(name).set_defaults(func=cmd_service)
+    s = sub.add_parser('logs'); s.add_argument('-f', '--follow', action='store_true')
+    s.add_argument('-n', '--lines', type=int, default=100); s.set_defaults(func=cmd_logs)
+    s = sub.add_parser('password'); s.add_argument('--generate', action='store_true')
+    s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_password)
+    s = sub.add_parser('backup'); s.add_argument('file', nargs='?'); s.set_defaults(func=cmd_backup)
+    s = sub.add_parser('uninstall'); s.add_argument('--purge', action='store_true')
+    s.add_argument('--yes', '-y', action='store_true'); s.set_defaults(func=cmd_uninstall)
+    s = sub.add_parser('install')
+    s.add_argument('--mode', choices=['native', 'docker'], required=True)
+    s.add_argument('--source', required=True, help='release package (.tar.gz) or code directory')
+    s.add_argument('--home'); s.add_argument('--state'); s.add_argument('--user')
+    s.add_argument('--port', type=int, default=1915); s.add_argument('--admin-port', type=int, default=1916)
+    s.add_argument('--https', choices=['off', 'self-signed']); s.add_argument('--hostnames')
+    s.add_argument('--external-url'); s.add_argument('--tz')
+    s.add_argument('--cockpit', help='Cockpit module package or URL to install')
+    s.add_argument('--migrate-from', help='an ezy_manager.py install to bring settings over from')
+    s.add_argument('--force', action='store_true'); s.add_argument('--progress', action='store_true')
+    s.set_defaults(func=cmd_install)
+    a = p.parse_args(argv)
+    Out.progress = getattr(a, 'progress', False)
+    try:
+        a.func(a)
+    except Fail as e:
+        print(f'ezyspeech: {e}', file=sys.stderr)
+        if Out.progress:
+            print(f'FAILED {e}', flush=True)
+        return 1
+    except KeyboardInterrupt:
+        return 130
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

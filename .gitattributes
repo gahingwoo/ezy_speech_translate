@@ -1,0 +1,11 @@
+# Left out of release packages (git archive). The release is what runs; these
+# are for working on it.
+.github/                export-ignore
+.idea/                  export-ignore
+.secrets.baseline       export-ignore
+.mcp.json               export-ignore
+tools/patternfly/backup export-ignore
+tools/patternfly/design export-ignore
+tools/tests_legacy      export-ignore
+scripts/tests           export-ignore
+sample_transcriptions.json export-ignore

@@ -12,7 +12,9 @@ name: ezyspeech
 services:
   ezyspeech:
     build: .
-    image: ezyspeech:local
+    # Tagged by version, so an update builds the new one beside the old and
+    # a rollback only has to point back at it.
+    image: ezyspeech:${EZY_VERSION:-local}
     restart: unless-stopped
     environment:
       # Listener page, and the operator's console. The container listens on

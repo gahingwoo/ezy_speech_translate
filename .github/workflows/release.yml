@@ -1,0 +1,60 @@
+# Publish a release when a tag v<version> is pushed.
+#
+# The tag must match VERSION. The files are built by ops/make-release.sh,
+# the same script used to test them, and the Cockpit module is built from
+# gahingwoo/ezy_speech_cockpit at the same time, so one release carries both.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: The tag and VERSION agree
+        run: |
+          test "${GITHUB_REF_NAME#v}" = "$(cat VERSION)" \
+            || { echo "Tag $GITHUB_REF_NAME does not match VERSION $(cat VERSION)"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          repository: gahingwoo/ezy_speech_cockpit
+          path: cockpit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the release files
+        run: COCKPIT_DIR=cockpit ops/make-release.sh
+
+      - name: Notes
+        run: |
+          previous="$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)"
+          {
+            echo "Install or update:"
+            echo
+            echo '```bash'
+            echo "curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/install.sh | sudo bash"
+            echo '```'
+            echo
+            echo "An existing install updates with \`sudo ezyspeech update\`, from Cockpit, or from the installer's menu."
+            echo
+            echo "## Changes"
+            echo
+            git log --no-merges --format='- %s' ${previous:+"$previous.."}"$GITHUB_REF_NAME"
+          } > notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "EzySpeech ${GITHUB_REF_NAME#v}" --notes-file notes.md
