@@ -1009,6 +1009,13 @@ def build():
                 data-i18n-title="export" title="Export"
                 onclick="showSettings('export')">%(share)s</button>
 
+        <!-- The theme, one tap from anywhere rather than two dialogs deep. The
+             moon and the sun are both in it; the stylesheet shows the one for
+             the theme it switches to, and updateThemeUI() keeps the label. -->
+        <button class="pf-v6-c-button pf-m-plain masthead-action theme-toggle" type="button"
+                id="themeToggle" aria-label="Dark Mode" title="Dark Mode"
+                onclick="toggleTheme()">%(moon)s%(sun)s</button>
+
         <button class="pf-v6-c-button pf-m-plain masthead-action" type="button"
                 id="aboutToggle" aria-label="About"
                 data-i18n-title="about" title="About"
@@ -1840,6 +1847,8 @@ def build():
         "volume": icon("volume-up"),
         "share": icon("share-alt"),
         "info": icon("info-circle"),
+        "moon": icon("moon", "pf-v6-svg icon-moon"),
+        "sun": icon("sun", "pf-v6-svg icon-sun"),
         "search": icon("search"),
         "status_icon": icon("exclamation-circle"),
         "times_plain": icon("times"),

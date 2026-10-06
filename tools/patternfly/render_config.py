@@ -234,6 +234,12 @@ def build():
 
       <div class="pf-v6-c-masthead__content">
 %(back)s
+        <!-- The theme, one tap from anywhere rather than two dialogs deep. The
+             moon and the sun are both in it; the stylesheet shows the one for
+             the theme it switches to, and updateThemeUI() keeps the label. -->
+        <button class="pf-v6-c-button pf-m-plain masthead-action theme-toggle" type="button"
+                id="themeToggle" aria-label="Dark Mode" title="Dark Mode"
+                onclick="toggleTheme()">%(moon)s%(sun)s</button>
 %(logout)s
       </div>
     </header>
@@ -331,6 +337,8 @@ def build():
         "lock": icon("lock"),
         "eye": icon("eye", "pf-v6-svg icon-eye"),
         "eyeslash": icon("eye-slash", "pf-v6-svg icon-eye-slash"),
+        "moon": icon("moon", "pf-v6-svg icon-moon"),
+        "sun": icon("sun", "pf-v6-svg icon-sun"),
         "back": button("Dashboard", "window.location.href='/admin'", "angle-left",
                        "link pf-m-inline", extra=' aria-label="Back to the dashboard"',
                        indent=8),

@@ -344,6 +344,7 @@ window.saveRawConfig = saveRawConfig;
 document.addEventListener('DOMContentLoaded', function () {
     const theme = localStorage.getItem('theme') || 'light';
     paintTheme(theme);
+    updateThemeUI(theme);
 
     authToken = localStorage.getItem('authToken');
     if (!authToken) { window.location.href = '/login'; return; }
@@ -376,3 +377,17 @@ function togglePasswordField(btn) {
     input.focus();
 }
 window.togglePasswordField = togglePasswordField;
+
+/* The masthead's theme button. This page has no translations of its own, so
+   the label is English, as everything else here is. */
+function toggleTheme() {
+    toggleThemeTo(updateThemeUI);
+}
+
+function updateThemeUI(theme) {
+    const quick = document.getElementById('themeToggle');
+    if (!quick) return;
+    const label = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+    quick.setAttribute('aria-label', label);
+    quick.setAttribute('title', label);
+}

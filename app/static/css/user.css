@@ -836,6 +836,14 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   }
 }
 
+/* Narrower still, the theme switch goes too: with it the row needs a third
+   line below 340px. It is in Settings as well, as Share is in the sidebar. */
+@media (max-width: 21.24rem) {
+  #themeToggle {
+    display: none;
+  }
+}
+
 
 /* The shared popover the label help opens, placed by the page the way the
    shared tooltip above it is. Unlike the tooltip it takes clicks: it is a

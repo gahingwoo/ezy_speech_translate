@@ -1237,6 +1237,12 @@ def build():
           </span>
         </span>
 
+        <!-- The theme, one tap from anywhere rather than two dialogs deep. The
+             moon and the sun are both in it; the stylesheet shows the one for
+             the theme it switches to, and updateThemeUI() keeps the label. -->
+        <button class="pf-v6-c-button pf-m-plain masthead-action theme-toggle" type="button"
+                id="themeToggle" aria-label="Dark Mode" title="Dark Mode"
+                onclick="toggleTheme()">%(moon)s%(sun)s</button>
 %(settings)s
 
 %(config)s
@@ -1493,6 +1499,8 @@ def build():
         # The three masthead actions carry their label from md up; the cog
         # alone showed none, which left the icon to speak for itself.
         "status_icon": icon("exclamation-circle"),
+        "moon": icon("moon", "pf-v6-svg icon-moon"),
+        "sun": icon("sun", "pf-v6-svg icon-sun"),
         "settings": button("Settings", "showSettings()", "cog",
                            "plain masthead-action", el_id="settingsToggle",
                            i18n="settings",
@@ -1524,7 +1532,7 @@ def build():
         # so on a desktop console there was no way in. Same dialog, same
         # handler as the listener's.
         "about": button("About", "showAbout()", "info-circle",
-                        "plain masthead-action", i18n="about",
+                        "plain masthead-action", el_id="aboutToggle", i18n="about",
                         extra=' aria-label="About" title="About"'
                               ' data-i18n-title="about"', indent=8),
         "logout": button("Logout", "logout()", "sign-out-alt",

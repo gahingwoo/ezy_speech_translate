@@ -129,6 +129,33 @@ html.pf-v6-theme-dark .icon-moon {
   .masthead-action .pf-v6-c-button__text {
     display: none;
   }
+
+}
+
+/* The row beside the hamburger is a third of a phone wide, and at the group's
+   own gap five icons and the state wrapped onto a third line: at 360px before
+   the theme switch was added, and at every phone width after. Just above md,
+   where the buttons get their words back, the switch tipped the row onto a
+   second line until about 810px. Half the gap keeps it to one in both. */
+@media (max-width: 51.99rem) {
+  .pf-v6-c-masthead__content {
+    column-gap: var(--pf-t--global--spacer--sm);
+  }
+}
+
+/* About is in the sidebar too, so on a small phone it leaves the masthead,
+   and on the smallest the theme switch follows it; it is in the sidebar as
+   well. */
+@media (max-width: 26rem) {
+  #aboutToggle {
+    display: none;
+  }
+}
+
+@media (max-width: 21.24rem) {
+  #themeToggle {
+    display: none;
+  }
 }
 
 /* Nothing in the masthead shrinks: a squeezed row turns "main" into "m". */

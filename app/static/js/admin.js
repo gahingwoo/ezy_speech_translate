@@ -274,6 +274,13 @@ function updateThemeUI(theme) {
             ? t('lightMode', 'Light Mode')
             : t('darkMode', 'Dark Mode');
     }
+    // The masthead button names what it does, so it changes with the theme.
+    const quick = document.getElementById('themeToggle');
+    if (quick) {
+        const label = theme === 'dark' ? t('lightMode', 'Light Mode') : t('darkMode', 'Dark Mode');
+        quick.setAttribute('aria-label', label);
+        quick.setAttribute('title', label);
+    }
 }
 
 function logout() {
