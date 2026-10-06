@@ -349,7 +349,9 @@ def settings_in(text):
             continue
         m = re.match(r'^\s+([a-z_]+):\s*(.*?)\s*(#.*)?$', line)
         if m and section:
-            found[f'{section}.{m.group(1)}'] = m.group(2).strip('\'"')
+            value = m.group(2).strip('\'"')
+            if value not in ('', 'null', '~'):
+                found[f'{section}.{m.group(1)}'] = value
     return found
 
 
@@ -718,6 +720,11 @@ def cmd_status(a):
     cur = current_release(conf)
     data = {'mode': conf['mode'], 'home': conf['home'], 'version': version_of(cur) if cur else None,
             'releases': [r.name for r in releases(conf)], 'health': health(conf)}
+    found = settings(conf)
+    data['addresses'] = {'listener': found.get('server.external_url') or None,
+                         'console': found.get('admin_server.external_url') or None,
+                         'https': found.get('server.use_https') == 'true',
+                         'console_https': found.get('admin_server.use_https') == 'true'}
     if conf['mode'] == 'native':
         data['services'] = services_state()
         data['state'] = conf['state']

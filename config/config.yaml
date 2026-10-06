@@ -43,6 +43,7 @@ admin_server:
   port: 1916                         # Admin port (separate from main)
   debug: false                       # NEVER enable in production  
   use_https: false                   # Use HTTPS (true) or HTTP (false), must enable in production for web-speech-api
+  # external_url: "https://console.example.com"  # Its public address, if it has one; the Cockpit module links to it
 # ============================================
 # Authentication Settings
 # ============================================
