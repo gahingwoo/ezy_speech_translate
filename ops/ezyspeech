@@ -583,6 +583,8 @@ def cmd_install(a):
             migrate_old_native(Path(a.migrate_from), state)
         run(['chown', '-R', f'{conf["user"]}:{conf["user"]}', str(state)])
         run(['chmod', '750', str(state)])
+        if shutil.which('restorecon'):          # SELinux: copies keep their old labels
+            run(['restorecon', '-R', str(state)], check=False, quiet=True)
         Out.step(20, 'Preparing the release')
         release = stage_release(conf, source, version)
         link_current(conf, release)
