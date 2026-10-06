@@ -253,12 +253,9 @@ let renderBatchSize = 30;            // Render this many items at once (was rend
 // page becomes laggy past ~1000 cards. The full set stays in the `translations`
 // array, so trimmed (older) cards are re-rendered from memory when scrolled to.
 const MAX_RENDERED_CARDS = 250;
-let scrollObserver = null;           // unused: the list ends in a button now
 let isRenderingMore = false;         // Prevent duplicate render operations
 
 // Translation queue - prevents rate limit when admin bulk imports
-let translationQueue = [];           // Queue of {item, resolve} waiting to translate
-let translationQueueRunning = false; // Is the queue processor running
 let translationConcurrency = 0;      // Current concurrent translation count
 const MAX_TRANSLATION_CONCURRENCY = 3;  // Max parallel translations
 const TRANSLATION_DELAY_MS = 300;    // Delay between translations (ms)
@@ -275,9 +272,6 @@ const PSYCHOLOGICAL_STATUS_CHANGE_MS = 1000; // Change status every ~1 second (0
 const UNDERSTANDING_AUTO_PROGRESS_MS = 4000; // Auto-progress to 'preparing' at 4s
 const PREPARING_AUTO_PROGRESS_MS = 6000;     // Auto-progress to 'translating' at 6s
 
-// Animation helpers
-const CURSOR_PULSE = ['▌', '▎', '▍', '▌']; // Typing cursor animation
-
 // PatternFly icons for the markup this file builds as strings. The paths are
 // in the page once, as <symbol>s in the sprite render_user.py emits; this only
 // points at them. Never put an emoji here — the page is PatternFly 6.
@@ -287,8 +281,6 @@ function svgIcon(name, cls) {
         + '<use href="#i-' + name + '"></use></svg>';
 }
 const DOT_PULSE = ['.', '..', '...', '..'];  // Dot animation
-let cursorIndex = 0;
-let dotIndex = 0;
 let newTranslationTimer = null;      // Timer for debouncing
 
 // Translation fallback system
@@ -302,69 +294,6 @@ const translationCache = {};         // Cache translations locally for fallback
 /* =========================
    Settings
    ========================= */
-function loadSettings() {
-    const savedDisplay = localStorage.getItem('displayLanguage');
-    if (savedDisplay && i18n[savedDisplay]) displayLanguage = savedDisplay;
-
-    const displaySelect = document.getElementById('displayLanguage');
-    if (displaySelect) displaySelect.value = displayLanguage;
-
-    const modeSelect = document.getElementById('displayMode');
-    if (modeSelect) {
-        modeSelect.value = displayMode;
-        modeSelect.addEventListener('change', () => {
-            displayMode = modeSelect.value;
-            localStorage.setItem('displayMode', displayMode);
-            applyDisplayMode();
-        });
-    }
-
-    const targetSelect = document.getElementById('targetLang');
-    if (targetSelect) {
-        targetSelect.value = targetLang;
-        targetSelect.addEventListener('change', () => {
-            targetLang = targetSelect.value;
-            localStorage.setItem('targetLang', targetLang);
-            loadVoices();
-            // Only re-render in translation mode - in transcription mode, target language doesn't affect display
-            if (displayMode !== 'transcription') {
-                renderTranslations();
-            }
-        });
-    }
-
-    const fontSlider = document.getElementById('fontSizeSlider');
-    if (fontSlider) {
-        fontSlider.value = fontSize;
-        fontSlider.addEventListener('input', () => {
-            fontSize = parseInt(fontSlider.value, 10);
-            localStorage.setItem('fontSize', fontSize);
-            applyFontSize();
-        });
-    }
-
-    // Setup source text toggle button
-    const sourceTextToggle = document.getElementById('sourceTextToggle');
-    if (sourceTextToggle) {
-        updateSourceTextToggleUI();
-        sourceTextToggle.addEventListener('click', () => {
-            toggleSourceText();
-        });
-    }
-
-    applyFontSize();
-}
-
-function applyFontSize() {
-    let style = document.getElementById('dynamicFontStyle');
-    if (!style) {
-        style = document.createElement('style');
-        style.id = 'dynamicFontStyle';
-        document.head.appendChild(style);
-    }
-    style.textContent = `.text-target, .sc-line { font-size: ${fontSize}px !important; }`;
-}
-
 function applyDisplayMode() {
     const languageGroup = document.getElementById('languageSelectGroup');
     const ttsSection = document.querySelector('.sidebar-section:has(#toggleTTS)');
@@ -749,11 +678,6 @@ function initBibleFeature() {
     updateBibleToggleUI();
 }
 
-function _restoreBibleTranslationSelectors() {
-    // Legacy stub — options are now populated dynamically by loadBibleTranslationOptions().
-    // Called by initBibleFeature() indirectly; keeping for backward compat.
-}
-
 function onBibleTranslationChange() {
     const tgtSel = document.getElementById('bibleTargetTranslation');
     if (tgtSel) bibleTargetTrans = tgtSel.value;
@@ -799,17 +723,6 @@ function updateBibleToggleUI() {
     const onText = (i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseHide) || (i18n && i18n.en && i18n.en.bibleVerseHide) || 'Hide Bible Verses';
     const offText = (i18n && i18n[displayLanguage] && i18n[displayLanguage].bibleVerseShow) || (i18n && i18n.en && i18n.en.bibleVerseShow) || 'Show Bible Verses';
     textSpan.textContent = showBibleVerse ? onText : offText;
-}
-
-/**
- * Returns 'simplified', 'traditional', or null based on the user's current language setting.
- */
-function _bibleChineseScript() {
-    const lang = (typeof displayLanguage !== 'undefined' ? displayLanguage : null)
-        || localStorage.getItem('displayLanguage')
-        || (typeof targetLang !== 'undefined' ? targetLang : null)
-        || '';
-    return (_LANG_BIBLE[lang] || {}).script || null;
 }
 
 /**
@@ -996,11 +909,6 @@ function pickVersions(ref) {
         secondary = source;
     }
     return { primary: primary, secondary: secondary };
-}
-
-/* Kept for the callers that only ever need one. */
-function pickVersion(ref) {
-    return pickVersions(ref).primary;
 }
 
 function buildShowAll(ref, total) {
@@ -2906,94 +2814,6 @@ function tryBasicTranslation(text, targetLang) {
     return (result !== text.toLowerCase()) ? result : null;
 }
 
-function extractAllTranslations(data) {
-    // Google Translate API returns different structures for different languages
-    // Simplified Chinese: splits into multiple segments in data[0]
-    // Traditional Chinese: returns as single complete segment in data[0][0][0]
-    
-    if (!data || !Array.isArray(data) || data.length === 0) {
-        console.warn('extractAllTranslations: data is empty or not array');
-        return '';
-    }
-    
-    trace('API Response - data[0] length:', data[0] ? data[0].length : 'undefined');
-    
-    // Method 1: Iterate through all items in data[0] and collect all translations
-    // This handles BOTH single-segment (zh-tw) and multi-segment (zh) responses
-    if (data[0] && Array.isArray(data[0])) {
-        let result = '';
-        let foundCount = 0;
-        
-        for (let i = 0; i < data[0].length; i++) {
-            const item = data[0][i];
-            
-            // Check if item is [translation, original, ...]
-            if (Array.isArray(item) && item.length > 0) {
-                const segment = item[0];
-                if (typeof segment === 'string' && segment.trim().length > 0) {
-                    result += segment;
-                    foundCount++;
-                }
-            }
-        }
-        
-        if (foundCount > 0) {
-            trace('Merged', foundCount, 'segment(s):', result.substring(0, 80) + (result.length > 80 ? '...' : ''));
-            return result;
-        }
-    }
-    
-    // Method 2: Deep search for any string values in the response (fallback)
-    trace('Trying deep search...');
-    const allText = searchForTranslations(data);
-    if (allText && allText.length > 0) {
-        trace('Deep search found:', allText.length, 'chars');
-        return allText;
-    }
-    
-    console.warn('Could not extract translation from any method');
-    return '';
-}
-
-function searchForTranslations(obj, visited = new Set(), maxDepth = 10) {
-    // Recursively search for text that looks like translations
-    if (maxDepth <= 0 || visited.has(obj)) return '';
-    
-    if (typeof obj === 'string') {
-        // Return strings that look like they could be translations (not URLs, metadata, etc)
-        if (obj.length > 2 && obj.length < 5000 && !obj.includes('://')) {
-            return obj;
-        }
-        return '';
-    }
-    
-    if (!obj || typeof obj !== 'object') return '';
-    
-    visited.add(obj);
-    let result = '';
-    
-    if (Array.isArray(obj)) {
-        for (let i = 0; i < Math.min(obj.length, 20); i++) {
-            const nested = searchForTranslations(obj[i], visited, maxDepth - 1);
-            if (nested && nested.length > 0) {
-                result = nested; // Return the first non-empty string found
-                break;
-            }
-        }
-    } else {
-        const keys = Object.keys(obj);
-        for (let key of keys) {
-            const nested = searchForTranslations(obj[key], visited, maxDepth - 1);
-            if (nested && nested.length > 0) {
-                result = nested;
-                break;
-            }
-        }
-    }
-    
-    return result;
-}
-
 async function translateLongText(text, targetLang, translationLang) {
     try {
         // Split by sentences: periods, question marks, exclamation marks, or newlines
@@ -3534,12 +3354,6 @@ async function renderMoreVisibleItems() {
     isRenderingMore = false;
 }
 
-/* Kept because other code still calls them. Nothing watches the scroll
-   position: the list ends in a button, and it is pressed or it is not. */
-function setupScrollListener() {}
-
-function onTranslationsScroll(event) {}
-
 async function loadInitialTranslations() {
     // Load first batch of translations from server
     if (!apiSessionToken) {
@@ -3742,21 +3556,6 @@ async function processPendingTranslations() {
     }
 }
 
-/* PatternFly's label, in the green outline the design system uses for a
-   quiet positive mark. The pill this replaces was drawn by hand in the
-   stylesheet and looked like nothing else on the page. */
-/* The short tag that says which language the quiet line under a translation
-   is in. Without it the two lines are just a big one and a small one, and
-   which is the original is anyone's guess. */
-function langTag(code) {
-    const c = String(code || '').toLowerCase();
-    // Typed in by the admin rather than spoken: there is no language to name.
-    if (!c || c === 'manual' || c === 'auto') return '';
-    if (c.startsWith('yue')) return 'YUE';
-    if (c.startsWith('zh-tw') || c.includes('-hant')) return 'ZH-TW';
-    return (c.split('-')[0] || '').toUpperCase();
-}
-
 function correctedLabel() {
     return '<span class="pf-v6-c-label pf-m-green pf-m-compact pf-m-outline card-badge">'
         + '<span class="pf-v6-c-label__content">'
@@ -3904,12 +3703,6 @@ function streamGroup(o) {
 /* ===================================
    AI Thinking Status Machine
    =================================== */
-
-function getRandomStatus(lang, stage) {
-    const lib = window.sharedAiStatusLibrary || {};
-    const statuses = (lib[lang] || lib['en'] || {})[stage] || [];
-    return statuses[Math.floor(Math.random() * statuses.length)] || 'Processing...';
-}
 
 // Status machine for element
 function startListeningStateMachine(element, tempId) {
