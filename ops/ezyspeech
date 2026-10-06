@@ -894,6 +894,8 @@ def main(argv):
     s.set_defaults(func=cmd_install)
     a = p.parse_args(argv)
     Out.progress = getattr(a, 'progress', False)
+    # Machine-read output (Cockpit reads it) is the JSON and nothing else.
+    Out.quiet = getattr(a, 'json', False)
     try:
         a.func(a)
     except Fail as e:
