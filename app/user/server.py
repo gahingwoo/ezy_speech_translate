@@ -1336,6 +1336,51 @@ def bible_source_translation_post():
     return jsonify({'source_translation': BIBLE_SOURCE_TRANSLATION, 'updated': True})
 
 
+# How surely a passage was found, strongest first. A passage that comes up
+# twice is listed once, as the strongest of the ways it was found.
+_MATCH_STRENGTH = {'reference': 4, 'wording': 3, 'cited': 2, 'offer': 1}
+
+
+def _passage_key(ref: dict) -> str:
+    """The passage itself, not the words it was found by: John 3:16 cited
+    and John 3:16 recognised from its wording are one passage."""
+    if ref.get('book'):
+        return '|'.join(str(ref.get(k) if ref.get(k) is not None else '')
+                        for k in ('book', 'chapter', 'verse_start', 'verse_end'))
+    return str(ref.get('display') or '')
+
+
+@app.route('/api/scripture', methods=['GET'])
+@limiter.limit("60 per minute")
+@require_api_token
+def get_scripture():
+    """Every passage this room's service has been through, once each.
+
+    The listener's Scripture section used to be filled only by the lines it
+    had loaded, which is the newest thirty: a passage read before them was
+    missing from the one place meant to gather them all. This is the whole
+    record, oldest first, each passage with every time it came up and the
+    strongest way it was found.
+    """
+    room_id = normalize_room_id(request.args.get('room'))
+    passages = {}
+    for item in _room(room_id)['history']:
+        for ref in item.get('bible_refs') or []:
+            if not isinstance(ref, dict) or not ref.get('display'):
+                continue
+            ref = dict(ref, match=ref.get('match') or 'reference')
+            key = _passage_key(ref)
+            entry = passages.get(key)
+            if entry is None:
+                entry = passages[key] = dict(ref, times=[], ids=[])
+            elif _MATCH_STRENGTH.get(ref['match'], 0) > _MATCH_STRENGTH.get(entry['match'], 0):
+                entry.update({k: v for k, v in ref.items()})
+            if item.get('timestamp') and item['timestamp'] not in entry['times']:
+                entry['times'].append(item['timestamp'])
+            entry['ids'].append(item.get('id'))
+    return jsonify({'success': True, 'room_id': room_id, 'passages': list(passages.values())})
+
+
 @app.route('/api/translations', methods=['GET'])
 @limiter.limit("120 per minute")
 @require_api_token

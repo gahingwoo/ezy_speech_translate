@@ -955,18 +955,58 @@ function buildOffer(ref) {
    somebody who looked away can find the reading without scrolling the stream.
    Offers and citations are listed too: what was mentioned is part of the
    record even when it was not read out. */
-const scriptureSeen = new Set();
+/* One entry per passage. It was one per label and way of finding it, so a
+   verse that was cited and later recognised from its wording was listed
+   twice; a passage that comes up again now adds its time to the entry it
+   already has, and takes the surer way of finding it if this one is surer. */
+const scriptureSeen = new Map();     // passage -> {group, strength, times, hasText}
+const MATCH_STRENGTH = { reference: 4, wording: 3, cited: 2, offer: 1 };
 
-function addToScripture(ref, timestamp) {
+function passageKey(ref) {
+    if (ref.book) {
+        return [ref.book, ref.chapter, ref.verse_start, ref.verse_end]
+            .map(v => (v == null ? '' : String(v))).join('|');
+    }
+    return String(ref.display || '');
+}
+
+function addToScripture(ref, timestamps) {
     const list = document.getElementById('scriptureList');
     if (!list || !ref || !ref.display) return;
-    const key = ref.display + '|' + (ref.match || '');
-    if (scriptureSeen.has(key)) return;
-    scriptureSeen.add(key);
+    const key = passageKey(ref);
+    const times = [].concat(timestamps || []).filter(Boolean);
+    const strength = MATCH_STRENGTH[ref.match] || 0;
+    const hasText = !!(ref.source && ref.source.verses && ref.source.verses.length)
+        || !!(ref.target && ref.target.verses && ref.target.verses.length);
+    const known = scriptureSeen.get(key);
+    if (known) {
+        times.forEach(t => { if (known.times.indexOf(t) === -1) known.times.push(t); });
+        known.times.sort();
+        // Rebuilt when found more surely, or when its verses have arrived.
+        if (strength > known.strength || (hasText && !known.hasText && strength >= known.strength)) {
+            const fresh = buildScriptureEntry(ref, known.times);
+            known.group.replaceWith(fresh);
+            known.group = fresh;
+            known.strength = strength;
+            known.hasText = hasText;
+        } else {
+            const when = known.group.querySelector('.sc-time');
+            if (when) when.textContent = known.times.join(' · ');
+        }
+        return;
+    }
 
     const empty = list.querySelector('.scripture-empty');
     if (empty) empty.remove();
 
+    times.sort();
+    const group = buildScriptureEntry(ref, times);
+    scriptureSeen.set(key, { group, strength, times, hasText });
+    list.insertBefore(group, list.firstChild);
+}
+window.addToScripture = addToScripture;
+
+function buildScriptureEntry(ref, times) {
     const group = document.createElement('div');
     group.className = 'pf-v6-c-description-list__group';
 
@@ -979,7 +1019,7 @@ function addToScripture(ref, timestamp) {
     dtText.textContent = ref.display;
     const when = document.createElement('span');
     when.className = 'sc-time';
-    when.textContent = timestamp || '';
+    when.textContent = times.join(' · ');
     dtText.appendChild(when);
     dt.appendChild(dtText);
     group.appendChild(dt);
@@ -1027,9 +1067,63 @@ function addToScripture(ref, timestamp) {
 
     dd.appendChild(ddText);
     group.appendChild(dd);
-    list.insertBefore(group, list.firstChild);
+    return group;
 }
-window.addToScripture = addToScripture;
+
+/* The whole service's passages, not only those of the lines loaded. A
+   listener sees the newest thirty lines; a passage read before them never
+   reached this section, which is the one place meant to hold them all. */
+function clearScripture() {
+    const list = document.getElementById('scriptureList');
+    if (!list) return;
+    scriptureSeen.clear();
+    list.querySelectorAll('.pf-v6-c-description-list__group:not(.scripture-empty)')
+        .forEach(g => g.remove());
+    if (!list.querySelector('.scripture-empty')) {
+        const empty = document.createElement('div');
+        empty.className = 'pf-v6-c-description-list__group scripture-empty';
+        const dd = document.createElement('dd');
+        dd.className = 'pf-v6-c-description-list__description';
+        const text = document.createElement('div');
+        text.className = 'pf-v6-c-description-list__text meta';
+        text.setAttribute('data-i18n', 'sc_none');
+        text.textContent = t('sc_none', 'Passages read in this service will appear here.');
+        dd.appendChild(text);
+        empty.appendChild(dd);
+        list.appendChild(empty);
+    }
+}
+
+async function loadScriptureRecord() {
+    if (!bibleFeatureAvailable || !apiSessionToken) return;
+    try {
+        const res = await fetch('/api/scripture?api_token=' + encodeURIComponent(apiSessionToken)
+            + '&room=' + encodeURIComponent(window.CURRENT_ROOM_ID || 'main'));
+        if (!res.ok) return;
+        const passages = ((await res.json()) || {}).passages || [];
+        // Listed at once, each with a link to open it; the verses fill in as
+        // they arrive. Waiting for all of them held the section empty for ten
+        // seconds on a service with sixteen passages.
+        passages.forEach(function (p) {
+            addToScripture(Object.assign({}, p, { match: p.match || 'reference' }), p.times);
+        });
+        const tgt = displayMode === 'transcription' ? '' : bibleTargetTrans;
+        for (let i = 0; i < passages.length; i += 20) {
+            const batch = passages.slice(i, i + 20);
+            const enriched = await _fetchBibleVerses(batch, tgt) || [];
+            batch.forEach(function (original, j) {
+                const found = enriched.find(f => f.display === original.display) || enriched[j] || {};
+                addToScripture(Object.assign({}, original, found, {
+                    match: original.match || 'reference',
+                    verse_start: original.verse_start,
+                    verse_end: original.verse_end,
+                }), original.times);
+            });
+        }
+    } catch (e) {
+        console.warn('Scripture record could not be loaded:', e);
+    }
+}
 
 /* ── the window over a long passage ───────────────────────────────────────
    Up to three verses are shown whole. Beyond that the window has to contain
@@ -4818,6 +4912,7 @@ function setupSocketEventListeners() {
             if (!prevToken || prevToken !== apiSessionToken) {
                 await loadInitialTranslations();
             }
+            loadScriptureRecord();
         }
     });
 
@@ -5169,6 +5264,9 @@ function setupSocketEventListeners() {
 
     socket.on('history_cleared', () => {
         trace('History cleared');
+        // The service is gone, and its readings with it: they were left
+        // listed under a stream that no longer had any of them.
+        clearScripture();
         translations = [];
         translationsTotal = 0;
         hasMoreTranslations = false;
