@@ -873,6 +873,29 @@ function substituteVerse(card, text, ref) {
     writeVerseTag(card, ref, both);
 }
 
+/* A passage named in the reader's Bible, and as the speaker said it: the
+   lookup brings back each translation's own name for the book, so a reader of
+   the CUNPS sees 马太福音 5:17 with Matthew 5:17 beside it, the way the verse
+   itself is shown above its original. One name when the two are the same. */
+function passageNames(ref) {
+    const both = pickVersions(ref);
+    const said = ref.display || '';
+    const own = (both.primary && both.primary.display) || said;
+    return { main: own, original: own !== said ? said : '' };
+}
+
+function writePassageHeading(el, ref) {
+    const names = passageNames(ref);
+    el.textContent = names.main;
+    if (names.original) {
+        const original = document.createElement('span');
+        original.className = 'sc-original';
+        original.lang = 'en';
+        original.textContent = names.original;
+        el.appendChild(original);
+    }
+}
+
 /* The reference and how it was found belong against the timestamp, not in a
    header of their own: the row already has a place for saying what a line is. */
 function writeVerseTag(card, ref, both) {
@@ -881,7 +904,8 @@ function writeVerseTag(card, ref, both) {
     term.querySelectorAll('.stream-tag').forEach(el => el.remove());
     const tag = document.createElement('span');
     tag.className = 'stream-tag';
-    const bits = [ref.display];
+    const heading = passageNames(ref);
+    const bits = [heading.original ? heading.main + ' (' + heading.original + ')' : heading.main];
     const names = [both.primary && both.primary.translation,
                    both.secondary && both.secondary.translation]
         .filter(Boolean).map(n => n.toUpperCase());
@@ -1016,7 +1040,7 @@ function buildScriptureEntry(ref, times) {
     dt.className = 'pf-v6-c-description-list__term';
     const dtText = document.createElement('span');
     dtText.className = 'pf-v6-c-description-list__text';
-    dtText.textContent = ref.display;
+    writePassageHeading(dtText, ref);
     const when = document.createElement('span');
     when.className = 'sc-time';
     when.textContent = times.join(' · ');
@@ -1219,7 +1243,7 @@ function verseLine(v, ref, paired) {
 async function showPassage(ref) {
     const modal = document.getElementById('passageModal');
     if (!modal) return;
-    document.getElementById('passageTitle').textContent = ref.display || '';
+    writePassageHeading(document.getElementById('passageTitle'), ref);
     const sub = document.querySelector('#passageModal .modal-sub');
     if (sub) {
         const names = [ref.target && ref.target.translation, ref.source && ref.source.translation]

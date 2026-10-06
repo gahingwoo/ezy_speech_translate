@@ -339,6 +339,7 @@ def detect_refs(text: str) -> list[dict]:
 #   Returns: {pk, verse, text, comment?}
 _API_VERSE_URL    = "https://bolls.life/get-verse/{translation}/{book}/{chapter}/{verse}/"
 _API_LANGUAGES_URL = "https://bolls.life/static/bolls/app/views/languages.json"
+_API_BOOKS_URL    = "https://bolls.life/get-books/{translation}/"
 _API_TIMEOUT = 8          # seconds per HTTP request
 _API_MAX_WORKERS = 8      # concurrent verse fetches
 _SOURCE_TRANSLATION = "WEB"
@@ -478,6 +479,38 @@ def _resolve_verses_for_ref(ref: dict) -> list[int]:
     return list(range(v_start, min(v_end, v_start + _MAX_VERSES - 1) + 1))
 
 
+# Book names as each translation writes them, fetched once per translation:
+# a passage is headed 马太福音 5:17 for a reader of the CUNPS, not only
+# Matthew 5:17.
+_book_names: dict[str, dict[int, str]] = {}
+
+
+def _names_for(translation: str) -> dict[int, str]:
+    names = _book_names.get(translation)
+    if names is not None:
+        return names
+    names = {}
+    try:
+        resp = _requests.get(_API_BOOKS_URL.format(translation=translation), timeout=_API_TIMEOUT,
+                             headers={"User-Agent": "EzySpeechTranslate-BibleLookup/2.0"})
+        if resp.status_code == 200:
+            names = {int(b["bookid"]): str(b["name"]).strip()
+                     for b in resp.json() if b.get("bookid") and b.get("name")}
+    except Exception as exc:
+        logger.debug("Book names for %s unavailable: %s", translation, exc)
+    if names:                      # an empty answer is asked again next time
+        _book_names[translation] = names
+    return names
+
+
+def _display_in(ref: dict, name: str | None) -> str | None:
+    """The reference with its book named as a translation names it."""
+    display, book = ref.get("display") or "", ref.get("book") or ""
+    if not name or not display.startswith(book):
+        return None
+    return name + display[len(book):]
+
+
 def lookup(
     refs: Iterable[dict],
     source_translation: str | None = None,
@@ -565,7 +598,12 @@ def lookup(
                     text = _cache_get(trans, book_num, ref["chapter"], v_num)
                     if text:  # non-empty → verse exists
                         verses.append({"n": v_num, "text": text})
-            enriched[attr] = {"translation": trans, "verses": verses}
+            slot = {"translation": trans, "verses": verses}
+            name = _names_for(trans).get(book_num) if book_num else None
+            if name:
+                slot["book_name"] = name
+                slot["display"] = _display_in(ref, name) or ref.get("display")
+            enriched[attr] = slot
 
         out.append(enriched)
 

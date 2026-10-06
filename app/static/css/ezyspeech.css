@@ -141,6 +141,14 @@
   font-size: 1.0625rem;
   color: var(--pf-t--global--text--color--regular);
 }
+/* The passage as the speaker named it, beside the name in the reader's Bible. */
+.sc-original {
+  margin-inline-start: var(--pf-t--global--spacer--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  font-weight: var(--pf-t--global--font--weight--body--default);
+  font-size: var(--pf-t--global--font--size--body--default);
+}
+
 .sc-time {
   display: block;
   font-family: var(--pf-t--global--font--family--mono);
