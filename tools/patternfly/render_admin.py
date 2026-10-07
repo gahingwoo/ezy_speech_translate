@@ -878,10 +878,12 @@ def about_modal():
           <!-- One element, and the stylesheet picks which of the two files it
                draws: a hidden <img> is fetched anyway, so the pair cost every
                visitor both downloads to show one. -->
-          <a class="credit-badge__link" href="https://gahingwoo.com"
+          <!-- The badge is the engineering credit, so it goes to the code,
+               as the listener's does. -->
+          <a class="credit-badge__link" href="https://github.com/gahingwoo"
              rel="noopener noreferrer" target="_blank">
             <span class="credit-badge__art" role="img"
-                  aria-label="Engineered by gahingwoo"></span>
+                  aria-label="Engineered by gahingwoo"></span>%s
           </a>
         </p>
         <p class="pf-v6-c-about-modal-box__strapline" data-i18n="tagline">
@@ -889,7 +891,7 @@ def about_modal():
       </div>
     </div>
   </div>
-''' % (btn_icon("times"), rows)
+''' % (btn_icon("times"), rows, icon("external-link-alt", "pf-v6-svg about-link__icon"))
 
 
 def shortcuts_modal():

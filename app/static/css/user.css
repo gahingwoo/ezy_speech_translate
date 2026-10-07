@@ -574,8 +574,20 @@ html.pf-v6-theme-dark .icon-moon {
    <img> is still fetched: the light/dark pair cost every visitor both files
    to show one. A background-image on a rule that does not apply is never
    requested, so the theme picks exactly one. */
+/* The badge and, beside it, the same mark every other link out of this
+   dialog has: it opens a new tab. */
 .credit-badge__link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The artwork ends about a tenth short of its own box, so the icon is pulled
+   back across that margin, and down onto the baseline of the name, to sit
+   where it does after a text link. */
+.credit-badge__link .about-link__icon {
+  align-self: flex-end;
+  margin-inline-start: -0.75rem;
+  margin-block-end: 0.75rem;
 }
 
 .credit-badge__art {
