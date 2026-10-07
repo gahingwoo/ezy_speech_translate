@@ -16,7 +16,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -25,12 +25,12 @@ jobs:
           test "${GITHUB_REF_NAME#v}" = "$(cat VERSION)" \
             || { echo "Tag $GITHUB_REF_NAME does not match VERSION $(cat VERSION)"; exit 1; }
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: gahingwoo/ezy_speech_cockpit
           path: cockpit
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
