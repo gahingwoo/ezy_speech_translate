@@ -231,12 +231,17 @@ curl -fsSL https://github.com/gahingwoo/ezy_speech_translate/releases/latest/dow
 It asks how to install, then downloads the latest release from GitHub,
 checks it against the release's SHA-256 sums, and installs it:
 
-| | Native | Docker |
-|---|---|---|
-| Runs as | two systemd services under an `ezyspeech` account | one container |
-| Code | `/opt/ezyspeech/releases/<version>/`, each with its own Python environment | built as the image `ezyspeech:<version>` |
-| Settings, secrets, transcripts | `/var/lib/ezyspeech` | the volume `ezyspeech_ezyspeech` |
-| Needs | Linux with systemd | Docker (offered on Linux if missing) |
+| | Native | Docker | Podman |
+|---|---|---|---|
+| Runs as | two systemd services under an `ezyspeech` account | one container, run by Docker | one container, run by systemd as `ezyspeech.service` ([Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)) |
+| Code | `/opt/ezyspeech/releases/<version>/`, each with its own Python environment | built as the image `ezyspeech:<version>` | built as the image `localhost/ezyspeech:<version>` |
+| Settings, secrets, transcripts | `/var/lib/ezyspeech` | the volume `ezyspeech_ezyspeech` | the volume `ezyspeech` |
+| Needs | Linux with systemd | Docker (offered on Linux if missing) | Podman 4.4 or later and systemd (offered through dnf if missing) |
+
+Podman is what Fedora, RHEL, AlmaLinux and Rocky come with, and where it is
+there and Docker is not, the installer suggests it. Where `docker` is Podman
+under another name (podman-docker), use the Podman way: that `docker` has no
+Compose to run the Docker way with.
 
 The installer asks about ports, HTTPS (browsers allow the console's
 microphone only over HTTPS or on the machine itself), and the admin password,

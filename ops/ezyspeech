@@ -331,16 +331,29 @@ def link_current(conf, release):
     os.replace(tmp, link)                   # atomic: never a moment without one
 
 
+def discard(conf, release):
+    """A release and, for a container install, its image."""
+    shutil.rmtree(release, ignore_errors=True)
+    if conf['mode'] == 'docker':
+        run(['docker', 'image', 'rm', f'ezyspeech:{release.name}'], check=False, quiet=True)
+    elif conf['mode'] == 'podman':
+        run(['podman', 'image', 'rm', podman_image(release.name)], check=False, quiet=True)
+
+
 def prune(conf):
     """Keep the running release and the one before it."""
     keep = {current_release(conf)}
     olds = [r for r in releases(conf) if r not in keep]
     for r in olds[:-max(0, KEEP_RELEASES - 1)] if KEEP_RELEASES > 1 else olds:
-        shutil.rmtree(r, ignore_errors=True)
-        if conf['mode'] == 'docker':
-            run(['docker', 'image', 'rm', f'ezyspeech:{r.name}'], check=False, quiet=True)
-        elif conf['mode'] == 'podman':
-            run(['podman', 'image', 'rm', podman_image(r.name)], check=False, quiet=True)
+        discard(conf, r)
+
+
+def rollback_target(conf):
+    """The release `rollback` goes back to: the newest one older than the
+    one in use. The page asks for it too, so the two cannot disagree."""
+    cur = current_release(conf)
+    older = [r for r in releases(conf) if cur and vtuple(r.name) < vtuple(cur.name)]
+    return older[-1] if older else None
 
 
 # ── health ───────────────────────────────────────────────────────────────────
@@ -466,7 +479,7 @@ def podman_image(version):
 
 def podman_build(release, version):
     # Docker's format, which keeps the image's HEALTHCHECK; Podman's own drops it.
-    run(['podman', 'build', '--format', 'docker', '-t', podman_image(version), str(release)])
+    run(['podman', 'build', '--format', 'docker', '-t', podman_image(version), str(release)], quiet=True)
 
 
 def podman_run(conf, version, *args, env=None, capture=True, check=True, entrypoint=None, stdout=None):
@@ -891,6 +904,8 @@ def cmd_status(a):
     cur = current_release(conf)
     data = {'mode': conf['mode'], 'home': conf['home'], 'version': version_of(cur) if cur else None,
             'releases': [r.name for r in releases(conf)], 'health': health(conf)}
+    target = rollback_target(conf)
+    data['rollback_to'] = target.name if target else None
     found = settings(conf)
     data['addresses'] = {'listener': found.get('server.external_url') or None,
                          'console': found.get('admin_server.external_url') or None,
@@ -980,6 +995,8 @@ def cmd_update(a):
         link_current(conf, before)
         restart(conf)
         wait_healthy(conf, installed)
+        # Kept, it would be the "newer release" a rollback could be pointed at.
+        discard(conf, release)
         raise Fail(f'Update to {rel["version"]} failed and was rolled back to {installed}. '
                    'Its log: ezyspeech logs')
     prune(conf)
@@ -1011,11 +1028,9 @@ def cmd_finish_update(a):
 def cmd_rollback(a):
     conf = load_conf()
     require_root(conf)
-    cur = current_release(conf)
-    older = [r for r in releases(conf) if vtuple(r.name) < vtuple(cur.name)]
-    if not older:
+    target = rollback_target(conf)
+    if not target:
         raise Fail('There is no earlier release kept to go back to.')
-    target = older[-1]
     link_current(conf, target)
     restart(conf)
     if not wait_healthy(conf, version_of(target)):
@@ -1040,7 +1055,7 @@ def cmd_logs(a):
             cmd.append('-f')
         os.execvp(cmd[0], cmd)
     elif conf['mode'] == 'podman':
-        cmd = ['podman', 'logs', '--tail', str(a.lines), *(['-f'] if a.follow else []), PODMAN_NAME]
+        cmd = ['podman', 'logs', '--timestamps', '--tail', str(a.lines), *(['-f'] if a.follow else []), PODMAN_NAME]
         os.execvp(cmd[0], cmd)
     else:
         cur = current_release(conf)
