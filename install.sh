@@ -145,6 +145,16 @@ text_rows() {
     printf '%s' "$n"
 }
 
+# field LABEL_EN LABEL_ZH -> the label and a colon, padded to 16 columns, so
+# the values line up in either language (a Chinese character is two wide)
+field() {
+    local label chars bytes width
+    label="$(L "$1" "$2"):"
+    chars=$(printf '%s' "$label" | wc -m); bytes=$(printf '%s' "$label" | wc -c)
+    width=$(( chars + (bytes - chars) / 2 ))
+    printf '%s%*s' "$label" $(( width < 16 ? 16 - width : 1 )) ''
+}
+
 # Text that has to stay where it can be read and copied: on the terminal
 # itself, not in a box that takes it with it when it closes.
 keep() {  # keep TEXT
@@ -449,13 +459,19 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
     fi
 
     local summary
+    local mode_name
+    case "$MODE" in
+        native) mode_name="$(L "native (system services)" "原生（系统服务）")" ;;
+        podman) mode_name="$(L "Podman (a container run by systemd)" "Podman（由 systemd 运行的容器）")" ;;
+        *)      mode_name="$(L "Docker (a container)" "Docker（容器）")" ;;
+    esac
     summary="$(L "Ready to install:" "准备安装：")
-  $(L "Mode" "方式"):           $MODE
-  $(L "Listener page" "听众页面"):  port $PORT
-  $(L "Console" "操作台"):        port $ADMIN_PORT
-  HTTPS:          ${EXTERNAL_URL:-${HTTPS:-$(L "as before" "保持原样")}}
-  Cockpit:        ${COCKPIT:-no}${MIGRATE:+
-  $(L "Bring over" "迁移自"):     $MIGRATE}"
+  $(field "Mode" "方式")$mode_name
+  $(field "Listener page" "听众页面")$(L "port" "端口") $PORT
+  $(field "Console" "操作台")$(L "port" "端口") $ADMIN_PORT
+  $(field "HTTPS" "HTTPS")${EXTERNAL_URL:-${HTTPS:-$(L "as before" "保持原样")}}
+  $(field "Cockpit" "Cockpit")$( [ "$COCKPIT" = yes ] && L "yes" "安装" || L "no" "不装" )${MIGRATE:+
+  $(field "Bring over" "迁移自")$MIGRATE}"
     yesno "$summary" y || exit 0
 
     ensure_python
@@ -496,7 +512,7 @@ show_result() {
     pass="$(field "$1" password)"; user="$(field "$1" username)"; url="$(field "$1" external_url)"
     scheme=http; { [ "$HTTPS" = self-signed ] || [ -n "$(field "$1" https)" ]; } && scheme=https
     [ "$COCKPIT" = yes ] && [ -n "${COCKPIT_PKG:-}" ] && cockpit_line="
-  Cockpit:        https://$ip:9090  → EzySpeech"
+  $(field "Cockpit" "Cockpit")https://$ip:9090  → EzySpeech"
     if [ -n "$pass" ]; then pw_line="$pass
   $(L "Write it down: it is not shown again." "请记下：不会再显示。")"
     elif [ -n "${ADMIN_PASSWORD:-}" ]; then pw_line="$(L "(the one you typed)" "（你刚输入的那个）")"
@@ -504,11 +520,11 @@ show_result() {
     # On the terminal, so the password is still there to copy after the screens close
     keep "$(L "EzySpeech $VERSION is running." "EzySpeech $VERSION 已在运行。")
 
-  $(L "Listeners" "听众"):      ${url:-${EXTERNAL_URL:-$scheme://$ip:$PORT}}
-  $(L "Projection" "投影"):     $scheme://$ip:$PORT/projection
-  $(L "Console" "操作台"):        $scheme://$ip:$ADMIN_PORT
-  $(L "Sign in as" "登录名"):     ${user:-admin}
-  $(L "Password" "密码"):       $pw_line$cockpit_line
+  $(field "Listeners" "听众")${url:-${EXTERNAL_URL:-$scheme://$ip:$PORT}}
+  $(field "Projection" "投影")$scheme://$ip:$PORT/projection
+  $(field "Console" "操作台")$scheme://$ip:$ADMIN_PORT
+  $(field "Sign in as" "登录名")${user:-admin}
+  $(field "Password" "密码")$pw_line$cockpit_line
 
 $(L "To manage it later (update, restart, password, logs):" "以后管理（更新、重启、改密码、日志）：")
   sudo ezyspeech status | update | restart | password | logs
