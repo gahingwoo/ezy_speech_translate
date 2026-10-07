@@ -81,19 +81,98 @@ install_flow
 L() { if [ "$UI_LANG" = zh ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
 
 # ── the screens: whiptail, dialog, or plain prompts ──────────────────────────
+# whiptail and dialog draw on the terminal and hand back what was chosen on
+# stderr. Everything here draws on /dev/tty itself, so the screens show
+# whatever this script's own output is piped into, and a screen is never asked
+# to be bigger than the terminal: either can leave a box half-drawn, or wait
+# on a keyboard nobody is told to use.
 pick_ui() {
     UI=plain
-    if [ -z "$ASSUME_YES" ] && { : </dev/tty; } 2>/dev/null; then
-        if command -v whiptail >/dev/null 2>&1; then UI=whiptail
-        elif command -v dialog >/dev/null 2>&1; then UI=dialog
-        fi
+    interactive || return 0
+    case "${TERM:-dumb}" in dumb|unknown) return 0 ;; esac
+    if [ "$UI_LANG" = zh ] && ! utf8_locale; then return 0; fi
+    term_size
+    [ "$ROWS" -ge 15 ] && [ "$COLS" -ge 50 ] || return 0
+    if command -v whiptail >/dev/null 2>&1; then UI=whiptail
+    elif command -v dialog >/dev/null 2>&1; then UI=dialog
     fi
+    # Whatever ends the script, Ctrl-C included, the terminal is given back
+    # with its echo and its cursor.
+    trap 'restore_tty' EXIT
+    trap 'restore_tty; echo; exit 130' INT TERM
 }
 interactive() { [ -z "$ASSUME_YES" ] && { : </dev/tty; } 2>/dev/null; }
+restore_tty() { { stty sane; tput cnorm; } </dev/tty >/dev/tty 2>/dev/null || true; }
+
+# Chinese on the screens needs a UTF-8 locale; sudo often brings none.
+utf8_locale() {
+    case "$(locale charmap 2>/dev/null)" in UTF-8|utf8) return 0 ;; esac
+    # locale -a spells them C.utf8 or C.UTF-8, depending on the system
+    local have l
+    have="$(locale -a 2>/dev/null | tr 'A-Z' 'a-z' | tr -d '-')"
+    for l in C.UTF-8 en_US.UTF-8; do
+        if printf '%s\n' "$have" | grep -qx "$(printf '%s' "$l" | tr 'A-Z' 'a-z' | tr -d '-')"; then
+            export LC_ALL="$l"; return 0
+        fi
+    done
+    return 1
+}
+
+term_size() {
+    local size; size="$(stty size </dev/tty 2>/dev/null)" || size=""
+    ROWS="${size%% *}"; COLS="${size##* }"
+    [[ "$ROWS" =~ ^[0-9]+$ ]] || ROWS=24
+    [[ "$COLS" =~ ^[0-9]+$ ]] || COLS=80
+}
+
+# fit WANT_HEIGHT -> sets H and W: at most 76 wide, and within the terminal
+# as it is now (it may have been resized since the last screen)
+fit() {
+    term_size
+    W=$(( COLS - 4 < 76 ? COLS - 4 : 76 ))
+    H=$(( ROWS - 2 < $1 ? ROWS - 2 : $1 ))
+}
+
+# Lines a text takes in a box W wide. A Chinese character is three bytes and
+# two columns, a Latin one byte and one column, so columns are about the
+# characters plus half the bytes beyond them.
+text_rows() {
+    local n=0 line chars bytes
+    while IFS= read -r line; do
+        chars=$(printf '%s' "$line" | wc -m); bytes=$(printf '%s' "$line" | wc -c)
+        n=$(( n + 1 + (chars + (bytes - chars) / 2) / (W - 6) ))
+    done <<< "$1"
+    printf '%s' "$n"
+}
+
+# Text that has to stay where it can be read and copied: on the terminal
+# itself, not in a box that takes it with it when it closes.
+keep() {  # keep TEXT
+    printf '\n%s\n\n' "$1"
+    if interactive && [ "$UI" != plain ]; then
+        printf '%s' "$(L "Press Enter to go on." "按回车继续。")" >/dev/tty
+        read -r _ </dev/tty || true
+    fi
+}
+
+# the screen program, drawing on /dev/tty, its answer on stdout. whiptail
+# takes Ctrl-C as a key like any other and carries on, so the way out is
+# written across the top.
+screen() {
+    "$UI" --backtitle "$(L "EzySpeech   ·   Esc or Cancel to leave" "EzySpeech   ·   按 Esc 或「取消」退出")" \
+          --title "$TITLE" "$@" 3>&1 1>/dev/tty 2>&3 </dev/tty
+}
 
 msg() {   # msg TEXT
     case "$UI" in
-        whiptail|dialog) "$UI" --title "$TITLE" --msgbox "$1" 22 76 </dev/tty >/dev/tty 2>&1 ;;
+        whiptail|dialog)
+            fit 40; local rows; rows=$(text_rows "$1")
+            # Too long for the screen: on the terminal instead. whiptail's
+            # scrolling box breaks its border on Chinese, and starts with
+            # Enter scrolling the text rather than pressing OK.
+            if [ $(( rows + 7 )) -gt "$H" ]; then keep "$1"; return; fi
+            fit $(( rows + 7 ))
+            screen --msgbox "$1" "$H" "$W" >/dev/null ;;
         *) printf '\n%s\n' "$1" ;;
     esac
 }
@@ -102,8 +181,9 @@ yesno() { # yesno TEXT DEFAULT(y|n)
     if ! interactive; then [ "$2" = y ]; return; fi
     case "$UI" in
         whiptail|dialog)
-            local def=""; [ "$2" = n ] && def="--defaultno"
-            "$UI" --title "$TITLE" $def --yesno "$1" 14 72 </dev/tty >/dev/tty 2>&1 ;;
+            fit 40; local rows def=""; rows=$(text_rows "$1"); fit $(( rows + 7 ))
+            [ "$2" = n ] && def="--defaultno"
+            screen $def --yesno "$1" "$H" "$W" >/dev/null ;;
         *)
             local hint="[y/N]" reply; [ "$2" = y ] && hint="[Y/n]"
             printf '%s %s ' "$1" "$hint" >/dev/tty; read -r reply </dev/tty || reply=""
@@ -114,15 +194,22 @@ yesno() { # yesno TEXT DEFAULT(y|n)
 ask() {   # ask TEXT DEFAULT  -> prints the answer
     if ! interactive; then printf '%s' "$2"; return; fi
     case "$UI" in
-        whiptail|dialog) "$UI" --title "$TITLE" --inputbox "$1" 10 72 "$2" 3>&1 1>&2 2>&3 </dev/tty ;;
+        whiptail|dialog) fit 10; screen --inputbox "$1" "$H" "$W" "$2" ;;
         *) local reply; printf '%s [%s] ' "$1" "$2" >/dev/tty; read -r reply </dev/tty || reply=""; printf '%s' "${reply:-$2}" ;;
     esac
 }
 
 secret() { # secret TEXT -> prints what was typed
     case "$UI" in
-        whiptail|dialog) "$UI" --title "$TITLE" --passwordbox "$1" 10 72 3>&1 1>&2 2>&3 </dev/tty ;;
-        *) local reply; printf '%s ' "$1" >/dev/tty; stty -echo </dev/tty; read -r reply </dev/tty; stty echo </dev/tty; echo >/dev/tty; printf '%s' "$reply" ;;
+        whiptail|dialog) fit 10; screen --passwordbox "$1" "$H" "$W" ;;
+        *)
+            local reply
+            printf '%s ' "$1" >/dev/tty
+            # echo comes back even if Ctrl-C lands while it is off
+            trap 'stty echo </dev/tty; echo >/dev/tty; exit 130' INT
+            stty -echo </dev/tty; read -r reply </dev/tty; stty echo </dev/tty
+            trap - INT
+            echo >/dev/tty; printf '%s' "$reply" ;;
     esac
 }
 
@@ -131,7 +218,10 @@ choose() { # choose TEXT DEFAULT tag1 label1 tag2 label2 ... -> prints the tag
     if ! interactive; then printf '%s' "$def"; return; fi
     case "$UI" in
         whiptail|dialog)
-            "$UI" --title "$TITLE" --default-item "$def" --menu "$text" 20 76 8 "$@" 3>&1 1>&2 2>&3 </dev/tty ;;
+            local items=$(( $# / 2 )) list
+            fit $(( items + 9 )); list=$(( H - 8 < items ? H - 8 : items ))
+            [ "$list" -ge 1 ] || list=1
+            screen --default-item "$def" --menu "$text" "$H" "$W" "$list" "$@" ;;
         *)
             local i=1 tags=() reply
             printf '\n%s\n' "$text" >/dev/tty
@@ -147,12 +237,16 @@ gauge() { # gauge TEXT  (reads "PROGRESS n text" lines on stdin)
     local line pct txt
     case "$UI" in
         whiptail|dialog)
+            # The gauge reads its numbers on stdin, so stdin stays the pipe;
+            # it was once /dev/tty here, and the bar sat at 0% waiting on the
+            # keyboard while the install went on behind it.
+            fit 8
             while IFS= read -r line; do
                 case "$line" in
                     PROGRESS\ *) pct="${line#PROGRESS }"; txt="${pct#* }"; pct="${pct%% *}"
                                  printf 'XXX\n%s\n%s\nXXX\n' "$pct" "$txt" ;;
                 esac
-            done | "$UI" --title "$TITLE" --gauge "$1" 8 72 0 </dev/tty >/dev/tty 2>&1 ;;
+            done | "$UI" --title "$TITLE" --gauge "$1" "$H" "$W" 0 >/dev/tty 2>&1 ;;
         *)
             while IFS= read -r line; do
                 case "$line" in PROGRESS\ *) pct="${line#PROGRESS }"; printf '  [%3s%%] %s\n' "${pct%% *}" "${pct#* }" ;; esac
@@ -407,7 +501,8 @@ show_result() {
   $(L "Write it down: it is not shown again." "请记下：不会再显示。")"
     elif [ -n "${ADMIN_PASSWORD:-}" ]; then pw_line="$(L "(the one you typed)" "（你刚输入的那个）")"
     else pw_line="$(L "(kept from the earlier install)" "（沿用旧安装的密码）")"; fi
-    msg "$(L "EzySpeech $VERSION is running." "EzySpeech $VERSION 已在运行。")
+    # On the terminal, so the password is still there to copy after the screens close
+    keep "$(L "EzySpeech $VERSION is running." "EzySpeech $VERSION 已在运行。")
 
   $(L "Listeners" "听众"):      ${url:-${EXTERNAL_URL:-$scheme://$ip:$PORT}}
   $(L "Projection" "投影"):     $scheme://$ip:$PORT/projection
@@ -423,6 +518,9 @@ $(L "To manage it later (update, restart, password, logs):" "以后管理（更�
 # ── managing ─────────────────────────────────────────────────────────────────
 manage_menu() {
     local sudo_cmd=""; [ "$IS_ROOT" = 1 ] || sudo_cmd="sudo"
+    # sudo's password prompt, asked now in plain sight: later it would be
+    # behind a progress bar, waiting on a question nobody can see.
+    if [ -n "$sudo_cmd" ] && interactive; then sudo -v </dev/tty || exit 1; fi
     while :; do
         local installed latest choice
         installed="$(ezyspeech version 2>/dev/null)"
@@ -442,9 +540,10 @@ manage_menu() {
             update)   $sudo_cmd ezyspeech update --yes --progress 2>&1 | tee /tmp/ezyspeech-update.log | gauge "$(L "Updating..." "正在更新……")"
                       msg "$(grep -E '^(FAILED|PROGRESS 100)|up to date' /tmp/ezyspeech-update.log | tail -1 | sed 's/^PROGRESS 100 //; s/^FAILED /✗ /')" ;;
             restart)  $sudo_cmd ezyspeech restart && msg "$(L "Restarted." "已重启。")" ;;
-            password) msg "$($sudo_cmd ezyspeech password --generate 2>&1)" ;;
+            password) keep "$($sudo_cmd ezyspeech password --generate 2>&1)" ;;
             logs)     $sudo_cmd ezyspeech logs -n 60 >/tmp/ezyspeech-log.txt 2>&1
-                      if [ "$UI" = plain ]; then cat /tmp/ezyspeech-log.txt; else "$UI" --title "$TITLE" --textbox /tmp/ezyspeech-log.txt 24 100 </dev/tty >/dev/tty 2>&1; fi ;;
+                      if [ "$UI" = plain ]; then cat /tmp/ezyspeech-log.txt
+                      else term_size; screen --textbox /tmp/ezyspeech-log.txt $(( ROWS - 2 )) $(( COLS - 2 )) >/dev/null; fi ;;
             backup)   msg "$(cd "$HOME" && $sudo_cmd ezyspeech backup 2>&1)" ;;
             uninstall)
                       if yesno "$(L "Uninstall EzySpeech? Settings and transcripts are kept unless you also choose to delete them." "卸载 EzySpeech？除非接下来选择删除，设置和记录会保留。")" n; then
