@@ -5,13 +5,15 @@
 #
 # Asks how to install it, then installs the latest release:
 #   Docker   in a container, settings in a Docker volume
+#   Podman   in a container run by systemd (Quadlet), settings in a Podman
+#            volume; what Fedora, RHEL, AlmaLinux and Rocky have
 #   Native   as two system services run by an "ezyspeech" account, on Linux
 #            with systemd, settings in /var/lib/ezyspeech
 # Run again on a machine that has it, it is the place to update, restart,
 # change the admin password, read the log, back up, or uninstall.
 #
 # Options (all optional; with --yes nothing is asked):
-#   --docker | --native        how to install
+#   --docker | --podman | --native   how to install
 #   --port N  --admin-port N   listener page (1915) and console (1916)
 #   --https                    self-signed HTTPS, so the console's microphone
 #                              works from another computer
@@ -39,6 +41,7 @@ SOURCE=""; COCKPIT=""; ASSUME_YES=""; UI_LANG=""; MANAGE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --docker) MODE=docker ;;
+        --podman) MODE=podman ;;
         --native) MODE=native ;;
         --port) PORT="$2"; shift ;;
         --admin-port) ADMIN_PORT="$2"; shift ;;
@@ -168,7 +171,10 @@ as_root() {
 
 # ── what the machine has ─────────────────────────────────────────────────────
 has_systemd() { [ "$OS" = Linux ] && command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; }
-has_docker()  { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
+has_docker()  { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && ! docker_is_podman; }
+# podman-docker answers to "docker", but has no "docker compose" to run it with
+docker_is_podman() { docker --version 2>/dev/null | grep -qi podman; }
+has_podman()  { command -v podman >/dev/null 2>&1; }
 has_cockpit() { [ -d /usr/share/cockpit ] || command -v cockpit-bridge >/dev/null 2>&1; }
 
 lan_ip() {
@@ -257,15 +263,32 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
 接下来问几个问题，然后从 GitHub 下载最新版本、校验并安装。")"
 
     # How
-    local can_native=0; has_systemd && can_native=1
+    local can_native=0 pick=docker; has_systemd && can_native=1
+    # Where Podman is the container tool (Fedora, RHEL and their kin), it is
+    # the one to suggest; Docker otherwise.
+    if [ "$can_native" = 1 ] && has_podman && ! has_docker; then pick=podman; fi
     if [ -z "$MODE" ]; then
         if [ "$can_native" = 1 ]; then
-            MODE="$(choose "$(L "How should it be installed?" "选择安装方式：")" docker \
+            MODE="$(choose "$(L "How should it be installed?" "选择安装方式：")" "$pick" \
                 docker "$(L "Docker   — in a container; simplest to remove" "Docker  —— 装在容器里，最容易卸载")" \
+                podman "$(L "Podman   — a container run by systemd (Fedora, RHEL, AlmaLinux)" "Podman  —— 由 systemd 运行的容器（Fedora、RHEL、AlmaLinux）")" \
                 native "$(L "Native   — system services under an 'ezyspeech' account" "原生    —— 系统服务，用 ezyspeech 账户运行")")" || exit 1
         else
             MODE=docker
         fi
+    fi
+    if [ "$MODE" = podman ] && { [ "$can_native" = 0 ] || [ "$IS_ROOT" = 0 ]; }; then
+        die "$(L "A Podman install runs as a system service: it needs Linux with systemd, and root (sudo)." "Podman 安装以系统服务运行：需要带 systemd 的 Linux，并用 root（sudo）运行。")"
+    fi
+    if [ "$MODE" = podman ] && ! has_podman; then
+        if command -v dnf >/dev/null 2>&1 && yesno "$(L "Podman is not installed. Install it now (dnf install podman)?" "还没有 Podman。现在安装吗（dnf install podman）？")" y; then
+            as_root dnf install -y -q podman >/dev/null 2>&1 || die "$(L "Installing Podman failed." "Podman 安装失败。")"
+        else
+            die "$(L "Podman is needed for this. Install it, or choose another way." "这种方式需要 Podman。请先安装，或选择别的安装方式。")"
+        fi
+    fi
+    if [ "$MODE" = docker ] && docker_is_podman; then
+        die "$(L "The docker command here is Podman's (podman-docker), which cannot run Docker Compose. Install with --podman instead." "这里的 docker 命令其实是 Podman（podman-docker），不能运行 Docker Compose。请改用 --podman 安装。")"
     fi
     if [ "$MODE" = native ] && [ "$can_native" = 0 ]; then
         die "$(L "A native install needs Linux with systemd. Use Docker here." "原生安装需要带 systemd 的 Linux，这里请用 Docker。")"

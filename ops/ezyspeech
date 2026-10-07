@@ -62,6 +62,10 @@ CONF_PATHS = [Path(p) for p in filter(None, [
     str(Path.home() / '.config/ezyspeech/install.conf'),
 ])]
 SERVICE_UNITS = ['ezyspeech-user.service', 'ezyspeech-admin.service']
+# Podman: one container, run by systemd from a Quadlet file
+QUADLET = Path('/etc/containers/systemd/ezyspeech.container')
+PODMAN_UNIT = 'ezyspeech.service'
+PODMAN_NAME = 'ezyspeech'                   # the container, and the volume
 STATE_LINKS = {           # path in a release -> directory in the state
     'config': 'config', 'data': 'data', 'logs': 'logs',
     'exports': 'exports', 'app/static/oem': 'oem',
@@ -335,6 +339,8 @@ def prune(conf):
         shutil.rmtree(r, ignore_errors=True)
         if conf['mode'] == 'docker':
             run(['docker', 'image', 'rm', f'ezyspeech:{r.name}'], check=False, quiet=True)
+        elif conf['mode'] == 'podman':
+            run(['podman', 'image', 'rm', podman_image(r.name)], check=False, quiet=True)
 
 
 # ── health ───────────────────────────────────────────────────────────────────
@@ -362,8 +368,12 @@ def settings(conf):
             return settings_in((Path(conf['state']) / 'config' / 'config.yaml').read_text())
         except OSError:
             return {}
-    r = compose(conf, 'exec', '-T', 'ezyspeech', 'cat', '/var/lib/ezyspeech/config/config.yaml',
+    if conf['mode'] == 'podman':
+        r = run(['podman', 'exec', PODMAN_NAME, 'cat', '/var/lib/ezyspeech/config/config.yaml'],
                 capture=True, check=False)
+    else:
+        r = compose(conf, 'exec', '-T', 'ezyspeech', 'cat', '/var/lib/ezyspeech/config/config.yaml',
+                    capture=True, check=False)
     return settings_in(r.stdout) if r.returncode == 0 else {}
 
 
@@ -413,7 +423,7 @@ def wait_healthy(conf, version, timeout=HEALTH_TIMEOUT):
     return False
 
 
-# ── the two kinds of install ─────────────────────────────────────────────────
+# ── the kinds of install ─────────────────────────────────────────────────────
 
 def docker_env(conf):
     env = {}
@@ -448,6 +458,71 @@ def compose(conf, *args, release=None, capture=False, check=True):
     cmd = [*compose_cmd(conf, release), *args]
     return run(cmd, capture=capture, check=check,
                env={'EZY_VERSION': version_of(release) or 'local'})
+
+
+def podman_image(version):
+    return f'localhost/ezyspeech:{version}'
+
+
+def podman_build(release, version):
+    # Docker's format, which keeps the image's HEALTHCHECK; Podman's own drops it.
+    run(['podman', 'build', '--format', 'docker', '-t', podman_image(version), str(release)])
+
+
+def podman_run(conf, version, *args, env=None, capture=True, check=True, entrypoint=None, stdout=None):
+    """A one-off container from a release's image, on the install's volume
+    and settings. Values in env are handed over by name (`-e NAME`), so a
+    password never appears on a command line."""
+    env = {k: v for k, v in (env or {}).items() if v is not None}
+    env_file = home_of(conf) / '.env'
+    cmd = ['podman', 'run', '--rm', '-v', f'{PODMAN_NAME}:/var/lib/ezyspeech',
+           *(['--env-file', str(env_file)] if env_file.exists() else []),
+           *[x for k in env for x in ('-e', k)],
+           *(['--entrypoint', entrypoint] if entrypoint else []),
+           podman_image(version), *args]
+    if stdout is not None:
+        return subprocess.run(cmd, stdout=stdout, check=check, env={**os.environ, **env})
+    return run(cmd, capture=capture, check=check, env=env)
+
+
+def write_quadlet(conf, version):
+    """The Quadlet file systemd turns into ezyspeech.service: the image of
+    the release in use, its ports, its volume. A rollback or an update is this
+    file pointing at another image, and a restart."""
+    env = docker_env(conf)
+    port, admin = env.get('EZY_PORT', conf.get('port', '1915')), env.get('EZY_ADMIN_PORT', conf.get('admin_port', '1916'))
+    QUADLET.parent.mkdir(parents=True, exist_ok=True)
+    QUADLET.write_text(f"""# Written by ezyspeech; it is rewritten on every update and rollback.
+[Unit]
+Description=EzySpeech, live speech translation (Podman)
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName={PODMAN_NAME}
+Image={podman_image(version)}
+EnvironmentFile={home_of(conf) / '.env'}
+# The container listens on the same numbers it publishes: the console builds
+# the transcript server's address from its port, so the two must agree.
+PublishPort={port}:{port}
+PublishPort={admin}:{admin}
+Volume={PODMAN_NAME}:/var/lib/ezyspeech
+StopTimeout=15
+
+[Service]
+Restart=always
+# The first start may pull nothing but still has to set up the volume.
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
+""")
+    systemctl('daemon-reload')
+
+
+def podman_version():
+    r = run(['podman', 'version', '--format', '{{.Client.Version}}'], check=False, capture=True)
+    return vtuple(r.stdout.strip()) if r.returncode == 0 else None
 
 
 def systemctl(*args, check=True):
@@ -498,7 +573,8 @@ def usage(conf):
         data_bytes = _size(data) if data.is_dir() else None
         where = conf['state']
     else:
-        r = run(['docker', 'stats', '--no-stream', '--format', '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}'],
+        tool = 'podman' if conf['mode'] == 'podman' else 'docker'
+        r = run([tool, 'stats', '--no-stream', '--format', '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}'],
                 check=False, capture=True)
         for line in (r.stdout or '').splitlines():
             parts = line.split('|')
@@ -506,8 +582,12 @@ def usage(conf):
                 cpu = parts[1].rstrip('%')
                 procs.append({'name': 'container', 'memory': _bytes(parts[2].split('/')[0]),
                               'cpu_percent': float(cpu) if cpu.replace('.', '', 1).isdigit() else None})
-        r = compose(conf, 'exec', '-T', 'ezyspeech', 'du', '-sb', '/var/lib/ezyspeech/data',
+        if tool == 'podman':
+            r = run(['podman', 'exec', PODMAN_NAME, 'du', '-sb', '/var/lib/ezyspeech/data'],
                     capture=True, check=False)
+        else:
+            r = compose(conf, 'exec', '-T', 'ezyspeech', 'du', '-sb', '/var/lib/ezyspeech/data',
+                        capture=True, check=False)
         data_bytes = int(r.stdout.split()[0]) if r.returncode == 0 and r.stdout.split()[:1] and \
             r.stdout.split()[0].isdigit() else None
         where = conf['home']
@@ -563,6 +643,9 @@ WantedBy=multi-user.target
 def start(conf):
     if conf['mode'] == 'native':
         systemctl('start', *SERVICE_UNITS)
+    elif conf['mode'] == 'podman':
+        write_quadlet(conf, version_of(current_release(conf)))
+        systemctl('start', PODMAN_UNIT)
     else:
         compose(conf, 'up', '-d', '--remove-orphans')
 
@@ -570,6 +653,8 @@ def start(conf):
 def stop(conf):
     if conf['mode'] == 'native':
         systemctl('stop', *SERVICE_UNITS)
+    elif conf['mode'] == 'podman':
+        systemctl('stop', PODMAN_UNIT)
     else:
         compose(conf, 'stop')
 
@@ -577,6 +662,10 @@ def stop(conf):
 def restart(conf):
     if conf['mode'] == 'native':
         systemctl('restart', *SERVICE_UNITS)
+    elif conf['mode'] == 'podman':
+        # the Quadlet file names the image, so it follows the current release
+        write_quadlet(conf, version_of(current_release(conf)))
+        systemctl('restart', PODMAN_UNIT)
     else:
         compose(conf, 'up', '-d', '--remove-orphans')
         compose(conf, 'restart')
@@ -590,6 +679,8 @@ def run_init(conf, release, env):
                *[f'{k}={v}' for k, v in env.items() if v is not None],
                str(Path(release) / '.venv/bin/python'), 'docker/init.py']
         return run(cmd, capture=True, cwd=str(release)).stdout
+    if conf['mode'] == 'podman':
+        return podman_run(conf, version_of(release), 'init', env=env).stdout
     args = ['run', '--rm', '--no-deps']
     for k, v in env.items():
         if v is not None:
@@ -604,7 +695,7 @@ def cmd_install(a):
     system = platform.system()
     if mode == 'native' and (system != 'Linux' or not shutil.which('systemctl')):
         raise Fail('A native install needs Linux with systemd. Use --mode docker here.')
-    if mode == 'native':
+    if mode in ('native', 'podman'):
         require_root()
     as_root = os.geteuid() == 0
     home = Path(a.home or ('/opt/ezyspeech' if as_root else Path.home() / 'ezyspeech'))
@@ -664,6 +755,22 @@ def cmd_install(a):
         if a.migrate_from:
             systemctl('stop', *SERVICE_UNITS, check=False)
         systemctl('enable', '--now', *SERVICE_UNITS)
+    elif mode == 'podman':
+        if not shutil.which('podman') or not shutil.which('systemctl'):
+            raise Fail('Podman is not installed. On Fedora, RHEL, AlmaLinux or Rocky: dnf install podman')
+        if (podman_version() or (0,)) < (4, 4, 0):
+            raise Fail('Podman 4.4 or later is needed: it runs EzySpeech as a system service through Quadlet.')
+        Out.step(15, 'Unpacking the release')
+        release = stage_release(conf, source, version)
+        link_current(conf, release)
+        set_docker_env(conf, {k: v for k, v in env.items() if k != 'EZY_ADMIN_PASSWORD' and v})
+        Out.step(25, 'Building the image (a minute or two)')
+        podman_build(release, version)
+        Out.step(70, 'First-run setup')
+        printed = run_init(conf, release, env)
+        Out.step(80, 'System service')
+        write_quadlet(conf, version)
+        systemctl('start', PODMAN_UNIT)
     else:
         if not shutil.which('docker') or run(['docker', 'info'], check=False, quiet=True).returncode:
             raise Fail('Docker is not installed or not running.')
@@ -792,6 +899,11 @@ def cmd_status(a):
     if conf['mode'] == 'native':
         data['services'] = services_state()
         data['state'] = conf['state']
+    elif conf['mode'] == 'podman':
+        r = run(['podman', 'ps', '-a', '--filter', f'name=^{PODMAN_NAME}$', '--format', 'json'],
+                capture=True, check=False)
+        rows = json.loads(r.stdout or '[]') if r.returncode == 0 else []
+        data['containers'] = {PODMAN_NAME: (rows[0].get('State') if rows else 'missing')}
     else:
         r = compose(conf, 'ps', '--format', 'json', capture=True, check=False)
         rows = []
@@ -854,6 +966,9 @@ def cmd_update(a):
     if conf['mode'] == 'docker':
         Out.step(50, 'Building its image')
         compose(conf, 'build', release=release)
+    elif conf['mode'] == 'podman':
+        Out.step(50, 'Building its image')
+        podman_build(release, rel['version'])
     Out.step(70, 'Bringing the settings up to date')
     run_init(conf, release, {})
     Out.step(80, f'Switching to {rel["version"]}')
@@ -924,6 +1039,9 @@ def cmd_logs(a):
         if a.follow:
             cmd.append('-f')
         os.execvp(cmd[0], cmd)
+    elif conf['mode'] == 'podman':
+        cmd = ['podman', 'logs', '--tail', str(a.lines), *(['-f'] if a.follow else []), PODMAN_NAME]
+        os.execvp(cmd[0], cmd)
     else:
         cur = current_release(conf)
         cmd = [*compose_cmd(conf, cur), 'logs', '--tail', str(a.lines)] + (['-f'] if a.follow else [])
@@ -953,6 +1071,9 @@ def cmd_password(a):
         run(['runuser', '-u', conf['user'], '--', 'env', f'EZY_STATE={conf["state"]}',
              str(cur / '.venv/bin/python'), 'docker/init.py', 'password'],
             cwd=str(cur), capture=True, env={'EZY_ADMIN_PASSWORD': password})
+    elif conf['mode'] == 'podman':
+        run(['podman', 'exec', '-e', 'EZY_ADMIN_PASSWORD', PODMAN_NAME, 'ezyspeech', 'password'],
+            capture=True, env={'EZY_ADMIN_PASSWORD': password})
     else:
         compose(conf, 'exec', '-T', 'ezyspeech', 'ezyspeech', 'password', password, capture=True)
     restart(conf)
@@ -968,6 +1089,10 @@ def cmd_backup(a):
     dest = Path(a.file or f'ezyspeech-backup-{time.strftime("%Y%m%d-%H%M%S")}.tar.gz').resolve()
     if conf['mode'] == 'native':
         run(['tar', 'czf', str(dest), '-C', conf['state'], '.'])
+    elif conf['mode'] == 'podman':
+        with open(dest, 'wb') as out:
+            podman_run(conf, version_of(current_release(conf)), 'czf', '-', '-C', '/var/lib/ezyspeech', '.',
+                       entrypoint='tar', stdout=out)
     else:
         with open(dest, 'wb') as out:
             cur = current_release(conf)
@@ -994,6 +1119,16 @@ def cmd_uninstall(a):
         if a.purge:
             shutil.rmtree(conf['state'], ignore_errors=True)
             run(['userdel', conf['user']], check=False, quiet=True)
+    elif conf['mode'] == 'podman':
+        systemctl('stop', PODMAN_UNIT, check=False)
+        if QUADLET.exists():
+            QUADLET.unlink()
+        systemctl('daemon-reload', check=False)
+        run(['podman', 'rm', '-f', PODMAN_NAME], check=False, quiet=True)
+        for r in releases(conf):
+            run(['podman', 'image', 'rm', podman_image(r.name)], check=False, quiet=True)
+        if a.purge:
+            run(['podman', 'volume', 'rm', PODMAN_NAME], check=False, quiet=True)
     else:
         compose(conf, 'down', *(['-v'] if a.purge else []), check=False)
         for r in releases(conf):
@@ -1005,8 +1140,10 @@ def cmd_uninstall(a):
             link.unlink()
     Path(conf['_path']).unlink()
     print('EzySpeech is uninstalled.' + ('' if a.purge else
-          ' Its settings and transcripts were kept' + (f' in {conf["state"]}.' if conf['mode'] == 'native'
-                                                         else ' in the Docker volume ezyspeech_ezyspeech.')))
+          ' Its settings and transcripts were kept' + (
+              f' in {conf["state"]}.' if conf['mode'] == 'native'
+              else f' in the Podman volume {PODMAN_NAME}.' if conf['mode'] == 'podman'
+              else ' in the Docker volume ezyspeech_ezyspeech.')))
 
 
 def cmd_menu(a):
@@ -1039,7 +1176,7 @@ def main(argv):
     s = sub.add_parser('uninstall'); s.add_argument('--purge', action='store_true')
     s.add_argument('--yes', '-y', action='store_true'); s.set_defaults(func=cmd_uninstall)
     s = sub.add_parser('install')
-    s.add_argument('--mode', choices=['native', 'docker'], required=True)
+    s.add_argument('--mode', choices=['native', 'docker', 'podman'], required=True)
     s.add_argument('--source', required=True, help='release package (.tar.gz) or code directory')
     s.add_argument('--home'); s.add_argument('--state'); s.add_argument('--user')
     s.add_argument('--port', type=int, default=1915); s.add_argument('--admin-port', type=int, default=1916)

@@ -5,7 +5,9 @@
 # The listener page and the operator's console run as two processes that talk
 # to each other over localhost, so they share a container rather than a network.
 
-FROM python:3.12-slim
+# Named in full: Podman on RHEL and its kin will not guess a registry for a
+# short name when there is no one to ask, as in an install script.
+FROM docker.io/library/python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
