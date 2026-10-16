@@ -654,6 +654,9 @@ function setupRecognitionHandlers() {
 
     recognition.onend = () => {
         trace('Speech recognition ended');
+        // A final result comes before this, and clears currentTempId; if it
+        // is still set, the words sent as interim were let go of.
+        abandonInterim();
 
         if (isRecording && autoRestartEnabled) {
             trace('Auto-restarting in 300ms...');
@@ -761,6 +764,15 @@ function setupRecognitionHandlers() {
             updateInterimDisplay(interimTranscript, true);
         }
     };
+}
+
+/* The recogniser ended with words sent as interim and no final line for
+   them (silence, a network blip, a restart). Listeners showing them are told
+   to take them off; otherwise they stayed on every screen, untranslated. */
+function abandonInterim() {
+    if (!currentTempId) return;
+    if (socket && socket.connected) socket.emit('cancel_interim', { temp_id: currentTempId });
+    currentTempId = null;
 }
 
 function updateInterimDisplay(text, active) {

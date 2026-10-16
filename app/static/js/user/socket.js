@@ -87,6 +87,12 @@ function setupSocketEventListeners() {
         trace('History message received (ignored, using HTTP API)');
     });
 
+    // Words the recogniser heard and then let go of, with no line to follow:
+    // the console says so, and the half-said row goes, rather than staying on
+    // every screen untranslated.
+    socket.on('interim_cancelled', (data) => dropInterim(data && data.temp_id));
+    startInterimSweep();
+
     socket.on('realtime_transcription', async (data) => {
         // In transcription mode, show interim transcriptions with typewriter effect
         // In translation mode, skip interim display (only show final results)
@@ -175,6 +181,8 @@ function setupSocketEventListeners() {
                 }
             }
         }
+
+        tempCard._updatedAt = Date.now();
 
         // Update transcription text with typewriter effect
         if (nothingToTranslate(data)) {
@@ -484,3 +492,40 @@ function dismissAnnouncement() {
 }
 
 trace('EzySpeechTranslate Client Ready');
+
+
+/* A row of words still being said, taken off the screen: the recogniser let
+   them go, or nothing has added to them in a while. Its animations stop with
+   it, and an empty list shows its waiting message again. */
+function dropInterim(tempId) {
+    const list = document.getElementById('translationsList');
+    if (!list || !tempId) return;
+    const card = list.querySelector('[data-temp-id="' + CSS.escape(tempId) + '"]');
+    if (!card) return;
+    const textEl = card.querySelector('.text-target');
+    if (textEl) {
+        stopListeningStateMachine(textEl);
+        stopIntermediateStateMachine(textEl);
+        stopAIThinkingMachine(textEl);
+    }
+    if (card._sourceAnimTimer) clearTimeout(card._sourceAnimTimer);
+    delete activeChunkTracking[tempId];
+    card.remove();
+    if (translations.length === 0 && !list.querySelector('.translation-card')) renderTranslations();
+}
+
+/* For a console too old to say it let go of some words, or one that closed
+   mid-sentence: a row nothing has added to for fifteen seconds is let go of
+   here. Someone still talking updates it several times a second. */
+const INTERIM_STALE_MS = 15000;
+let _interimSweep = null;
+function startInterimSweep() {
+    if (_interimSweep) return;
+    _interimSweep = setInterval(() => {
+        const list = document.getElementById('translationsList');
+        if (!list) return;
+        list.querySelectorAll('[data-temp-id]').forEach(card => {
+            if (Date.now() - (card._updatedAt || 0) > INTERIM_STALE_MS) dropInterim(card.getAttribute('data-temp-id'));
+        });
+    }, 5000);
+}

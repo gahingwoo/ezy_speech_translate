@@ -401,6 +401,21 @@ def handle_new_transcription(data):
         emit('transcription_confirmed', translation_data)
         logger.info(f"[FINAL] room={room_id} ID={translation_data.get('id')}")
 
+@socketio.on('cancel_interim')
+def handle_cancel_interim(data):
+    """The console's recogniser let go of words it had sent as interim, with
+    no final line to replace them (it stopped, or restarted on silence or a
+    network blip): the screens showing them are told to take them off."""
+    if not is_admin(request.sid):
+        return
+    temp_id = (data or {}).get('temp_id') if isinstance(data, dict) else None
+    if not isinstance(temp_id, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', temp_id):
+        return
+    room_id = _admin_room(request.sid)
+    socketio.emit('interim_cancelled', {'temp_id': temp_id, 'room_id': room_id},
+                  room=f'room:{room_id}', skip_sid=[request.sid])
+
+
 @socketio.on('correct_translation')
 def handle_correct_translation(data):
     """Handle translation correction with validation"""
