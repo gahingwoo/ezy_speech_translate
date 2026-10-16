@@ -1161,6 +1161,9 @@
         </div>
       </div>
             </form>
+            <!-- Filled in by showWelcome() when the language was taken from the
+                 phone's own, so nobody wonders where it came from. -->
+            <p class="pf-v6-c-helper-text setup-detected" id="setupDetected" hidden></p>
           </div>
           <div class="pf-v6-c-wizard__main-body setup-step" id="setup-speech" hidden>
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_speech">Reading aloud speaks each translation as it arrives. Turn it on now, or later.</p>
@@ -1300,6 +1303,11 @@
       if (!el) return;
       el.value = value;
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      // chosen now, not taken from the phone
+      if (targetId === 'targetLang') {
+        const note = document.getElementById('setupDetected');
+        if (note) note.hidden = true;
+      }
     }
     window.setupApply = setupApply;
 

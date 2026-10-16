@@ -904,3 +904,10 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
 .translation-list.kv .pf-v6-c-description-list__description {
   max-width: none;
 }
+
+/* Under the wizard's language: where it came from, quietly. */
+.setup-detected {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}

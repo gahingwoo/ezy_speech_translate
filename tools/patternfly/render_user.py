@@ -544,6 +544,9 @@ def setup_wizard():
             <p class="pf-v6-c-content--p" data-i18n="welcome_step_language">%s</p>
             <form class="pf-v6-c-form" onsubmit="return false;">
 %s            </form>
+            <!-- Filled in by showWelcome() when the language was taken from the
+                 phone's own, so nobody wonders where it came from. -->
+            <p class="pf-v6-c-helper-text setup-detected" id="setupDetected" hidden></p>
           </div>
 ''' % (SETUP_STEPS[0][4],
        form_group("Reading", "nav_reading",
@@ -1365,6 +1368,11 @@ def build():
       if (!el) return;
       el.value = value;
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      // chosen now, not taken from the phone
+      if (targetId === 'targetLang') {
+        const note = document.getElementById('setupDetected');
+        if (note) note.hidden = true;
+      }
     }
     window.setupApply = setupApply;
 

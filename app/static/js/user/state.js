@@ -279,6 +279,8 @@ let displayLanguage = localStorage.getItem('displayLanguage') || detectDisplayLa
 })();
 let displayMode = localStorage.getItem('displayMode') || 'translation';
 let targetLang = localStorage.getItem('targetLang') || 'en';
+// True when no one chose it: it was taken from the phone's language this visit.
+let targetLangDetected = false;
 let showSourceText = localStorage.getItem('showSourceText') !== 'false';  // Default true, unless explicitly set to false
 let fontSize = parseInt(localStorage.getItem('fontSize') || '18', 10);
 let translations = [];

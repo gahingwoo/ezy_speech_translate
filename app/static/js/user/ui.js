@@ -213,6 +213,7 @@ function loadSettings() {
         trace('Using saved language:', savedLang);
     } else {
         targetLang = detectUserLanguage();
+        targetLangDetected = true;
         localStorage.setItem('targetLang', targetLang);
         trace('Auto-detected and saved language:', targetLang);
     }
@@ -815,7 +816,21 @@ function hideShortcuts(event) {
     if (event && event.target !== event.currentTarget) return;
     __closeModal('shortcutsModal');
 }
-function showWelcome() { __openModal('welcomeModal'); }
+function showWelcome() {
+    // The wizard's choice stands in for the settings' one, so it starts at
+    // whatever that is now. It used to start at the first in its list,
+    // English, while the page was already reading the phone's language.
+    const sel = document.getElementById('setupTargetLanguage');
+    if (sel) sel.value = targetLang;
+    const note = document.getElementById('setupDetected');
+    if (note && sel && targetLangDetected) {
+        const name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : targetLang;
+        note.textContent = t('setupDetected', 'Chosen from your phone\'s language: {lang}. If it is not right, choose another here.')
+            .replace('{lang}', name);
+        note.hidden = false;
+    }
+    __openModal('welcomeModal');
+}
 function hideWelcome(event) {
     if (event && event.target !== event.currentTarget) return;
     __closeModal('welcomeModal');
