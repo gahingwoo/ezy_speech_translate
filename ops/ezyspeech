@@ -1081,6 +1081,9 @@ def cmd_service(a):
     conf = load_conf()
     require_root(conf)
     {'start': start, 'stop': stop, 'restart': restart}[a.command](conf)
+    # Done means answering again, not merely asked to start
+    if a.command != 'stop' and not wait_healthy(conf, version_of(current_release(conf))):
+        raise Fail('It did not come back up healthy. See: ezyspeech logs')
 
 
 def cmd_logs(a):
@@ -1130,6 +1133,9 @@ def cmd_password(a):
     else:
         compose(conf, 'exec', '-T', 'ezyspeech', 'ezyspeech', 'password', password, capture=True)
     restart(conf)
+    # Back up before saying so, so the new password can be used at once
+    if not wait_healthy(conf, version_of(cur)):
+        raise Fail('The password is set, but the servers did not come back up healthy. See: ezyspeech logs')
     if a.json:
         print(json.dumps({'password': password if a.generate else None}))
     else:
