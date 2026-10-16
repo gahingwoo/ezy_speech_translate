@@ -116,6 +116,8 @@ def init_db(db_path: str, enabled: bool = True) -> None:
         _migrate_schema(conn)
         # 3) Now safe to create indexes and the rest of the schema
         conn.executescript(_DDL)
+        # What has been done once to this database, so it is not done again
+        conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
         conn.commit()
     logger.info("Database initialised: %s", db_path)
 
@@ -501,3 +503,44 @@ def glossary_delete(entry_id: int) -> bool:
         except Exception as exc:
             logger.warning("DB glossary_delete error: %s", exc)
             return False
+
+
+def seed_default_glossary(path: str) -> int:
+    """The default glossary (app/data/default_glossary.json), added once to a
+    database: a term the church already has for a language is left as it is,
+    and once added, an entry deleted or changed in the console stays so.
+    Returns how many entries were added."""
+    if not _enabled or not _db_path or not os.path.exists(path):
+        return 0
+    import json
+    from datetime import datetime as _dt
+    with _lock:
+        try:
+            with _get_conn() as conn:
+                if conn.execute("SELECT 1 FROM meta WHERE key = 'default_glossary'").fetchone():
+                    return 0
+                have = {(r[0].lower(), r[1]) for r in
+                        conn.execute("SELECT source_term, target_lang FROM glossary").fetchall()}
+                with open(path, encoding='utf-8') as f:
+                    entries = json.load(f).get('entries', [])
+                added = 0
+                now = _dt.utcnow().isoformat()
+                for e in entries:
+                    term = e.get('source_term', '').strip()
+                    for lang, translation in e.items():
+                        if lang == 'source_term' or not term or not translation:
+                            continue
+                        if (term.lower(), lang) in have:
+                            continue
+                        conn.execute(
+                            "INSERT INTO glossary (room_id, source_term, target_lang, translation,"
+                            " case_sensitive, enabled, created_by, created_at)"
+                            " VALUES (NULL, ?, ?, ?, 0, 1, 'ezyspeech', ?)",
+                            (term, lang, translation, now))
+                        added += 1
+                conn.execute("INSERT INTO meta (key, value) VALUES ('default_glossary', ?)", (now,))
+                conn.commit()
+                return added
+        except Exception as exc:
+            logger.warning("DB seed_default_glossary error: %s", exc)
+            return 0

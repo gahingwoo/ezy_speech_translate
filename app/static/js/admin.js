@@ -265,6 +265,134 @@ function toggleTheme() {
     toggleThemeTo(updateThemeUI);
 }
 
+/* ── Check before starting ─────────────────────────────────────────────────
+   Everything a service needs, tried in turn: the browser can recognise
+   speech here, the microphone hears the speaker, the listener server is
+   there, a line translates, and listeners can reach their page. Each row
+   says what is wrong and what to do, so it can be run by whoever is on the
+   desk, not only whoever set it up. */
+function showPreflight() { document.getElementById('preflightModal').classList.add('active'); }
+function hidePreflight(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('preflightModal').classList.remove('active');
+}
+
+function pfRow(key, state, text) {
+    const row = document.getElementById('pf-' + key);
+    if (!row) return;
+    row.className = 'preflight-row preflight-' + state;
+    row.querySelector('.preflight-mark').textContent = { run: '…', ok: '✓', warn: '!', fail: '✗', wait: '' }[state];
+    row.querySelector('.preflight-detail').textContent = text || '';
+}
+
+async function pfMicrophone() {
+    if (isRecording) return ['ok', t('pfMicInUse', 'In use by the recording now.')];
+    let stream;
+    try {
+        // The default microphone: it is the one speech recognition listens to,
+        // whatever is chosen in the list.
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+        if (e.name === 'NotAllowedError') return ['fail', t('pfMicDenied', 'Not allowed: allow the microphone for this page (the icon in the address bar).')];
+        if (e.name === 'NotFoundError') return ['fail', t('pfMicNone', 'No microphone found. Plug one in, or choose it as the system\'s input.')];
+        return ['fail', e.message];
+    }
+    pfRow('mic', 'run', t('pfMicSpeak', 'Listening for three seconds: say a few words.'));
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = ctx.createAnalyser();
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    let peak = 0;
+    const until = Date.now() + 3000;
+    while (Date.now() < until) {
+        analyser.getFloatTimeDomainData(buf);
+        let sum = 0;
+        for (const v of buf) sum += v * v;
+        peak = Math.max(peak, Math.sqrt(sum / buf.length));
+        await new Promise(r => setTimeout(r, 100));
+    }
+    stream.getTracks().forEach(tr => tr.stop());
+    ctx.close();
+    if (peak < 0.01) return ['fail', t('pfMicSilent', 'Nothing heard. Is it the right microphone, and is it muted?')];
+    if (peak < 0.03) return ['warn', t('pfMicQuiet', 'Very quiet. Move it closer, or turn up its input level.')];
+    return ['ok', t('pfMicGood', 'Hearing you clearly.')];
+}
+
+async function runPreflight() {
+    showPreflight();
+    const again = document.getElementById('preflightAgain');
+    if (again) again.disabled = true;
+    ['speech', 'mic', 'server', 'translate', 'listeners'].forEach(k => pfRow(k, 'wait', ''));
+
+    pfRow('speech', 'run');
+    const canRecognise = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+    if (!window.isSecureContext) pfRow('speech', 'fail', t('pfSpeechInsecure', 'Not on this address: the microphone needs HTTPS, or the console opened on the server itself.'));
+    else if (!canRecognise) pfRow('speech', 'fail', t('pfSpeechNone', 'This browser cannot recognise speech. Use Chrome or Edge.'));
+    else pfRow('speech', 'ok', t('pfSpeechOk', 'Ready.'));
+
+    pfRow('mic', 'run');
+    const [micState, micText] = await pfMicrophone();
+    pfRow('mic', micState, micText);
+
+    pfRow('server', 'run');
+    const serverUp = !!(socket && socket.connected);
+    pfRow('server', serverUp ? 'ok' : 'fail', serverUp ? t('pfServerOk', 'Connected.')
+        : t('pfServerDown', 'Not connected. Is it running? On the server: sudo ezyspeech status'));
+
+    pfRow('translate', 'run');
+    try {
+        const spoken = recognitionLanguage.split('-')[0];
+        const target = spoken === 'zh' ? 'en' : 'zh';
+        const text = 'Good morning, and welcome. ' + new Date().toLocaleTimeString();
+        const began = performance.now();
+        const r = await fetch(SERVER_URL + '/api/translate', { method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, target_lang: target }) });
+        const d = await r.json();
+        const secs = ((performance.now() - began) / 1000).toFixed(1);
+        const health = await fetch(SERVER_URL + '/api/health').then(x => x.json()).catch(() => ({}));
+        if (!d.success || !d.translated || d.translated === text) {
+            pfRow('translate', 'fail', t('pfTranslateFail', 'Nothing came back. Listeners\' phones will try for themselves; add another provider, such as DeepL, in Server configuration.'));
+        } else if (health.translation === 'degraded') {
+            pfRow('translate', 'warn', t('pfTranslateBackup', 'Works ({secs} s), through the backup provider: the first one is refusing.').replace('{secs}', secs));
+        } else {
+            pfRow('translate', 'ok', t('pfTranslateOk', 'Works: {secs} s. “{text}”').replace('{secs}', secs).replace('{text}', d.translated));
+        }
+    } catch (e) {
+        pfRow('translate', 'fail', e.message);
+    }
+
+    pfRow('listeners', 'run');
+    try {
+        const h = await fetch(SERVER_URL + '/api/health').then(x => x.json());
+        pfRow('listeners', 'ok', t('pfListenersOk', 'Reachable; {n} listening now.').replace('{n}', h.clients ?? 0));
+    } catch (e) {
+        pfRow('listeners', 'fail', t('pfListenersDown', 'Cannot be reached from here, so neither can listeners.'));
+    }
+    if (again) again.disabled = false;
+}
+
+/* How translation is going on the server, said above the hearing card only
+   when it is not going well: what is wrong, what listeners get meanwhile,
+   and what would help. */
+function showTranslationHealth(h) {
+    const box = document.getElementById('translationHealth');
+    if (!box || !h) return;
+    if (h.state === 'ok') { box.hidden = true; return; }
+    const others = Object.keys(h.answered_by || {}).filter(p => p !== h.first).join(', ');
+    const fill = s => s.replace('{tried}', h.tried).replace('{failed}', h.failed)
+        .replace('{reason}', h.reason || '?').replace('{first}', h.first).replace('{used}', others || '?');
+    const failing = h.state === 'failing';
+    box.classList.toggle('pf-m-danger', failing);
+    box.classList.toggle('pf-m-warning', !failing);
+    document.getElementById('translationHealthTitle').textContent = failing
+        ? t('trFailingTitle', 'Translation is failing on the server')
+        : t('trDegradedTitle', 'The first translation provider is refusing');
+    document.getElementById('translationHealthText').textContent = fill(failing
+        ? t('trFailingText', 'Of the last {tried} lines, {failed} got no translation ({reason}). Listeners\' phones are translating for themselves, which is slower and may stop. In Server configuration, add another provider under Translation, such as DeepL.')
+        : t('trDegradedText', '{first} is refusing ({reason}), and {used} is translating instead. Listeners will not notice.'));
+    box.hidden = false;
+}
+
 // A newer release, named in the masthead: the console cannot update itself
 // (the servers do not run as root), so the label says where to, and links to
 // what changed.
@@ -454,6 +582,8 @@ function connectWebSocket() {
             socket.emit('admin_connect', {token: authToken, room: window.CURRENT_ROOM_ID});
         }
     });
+
+    socket.on('translation_health', showTranslationHealth);
 
     socket.on('admin_connected', (response) => {
         trace('Admin connected response:', response);

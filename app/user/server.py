@@ -37,7 +37,7 @@ if _BASE not in sys.path:
 # The shared part, then each module adding its routes and events to it.
 from app.user.core import *  # noqa: E402,F401,F403
 from app.user import routes_pages, routes_translate, routes_admin, sockets  # noqa: E402,F401
-from app.user.sockets import _heartbeat_cleanup_loop  # noqa: E402
+from app.user.sockets import _heartbeat_cleanup_loop, _translation_health_loop  # noqa: E402
 
 # ──────────────────────────────────────────
 # Error Handlers
@@ -96,6 +96,9 @@ if __name__ == '__main__':
         db_enabled = get_config('database', 'enabled', default=False)
         db_path    = get_config('database', 'path', default='data/translations.db')
         db.init_db(os.path.join(BASE_DIR, db_path), enabled=db_enabled)
+        _seeded = db.seed_default_glossary(os.path.join(BASE_DIR, 'app', 'data', 'default_glossary.json'))
+        if _seeded:
+            logger.info(f"Default glossary: {_seeded} church terms added (edit them in the console)")
         if db_enabled:
             persisted = db.load_all()
             if persisted:
@@ -116,6 +119,7 @@ if __name__ == '__main__':
 
     # Start heartbeat cleanup greenlet
     eventlet.spawn(_heartbeat_cleanup_loop)
+    eventlet.spawn(_translation_health_loop)
     logger.info("Heartbeat cleanup greenlet started (timeout=45s, interval=15s)")
 
     for directory in ['logs']:

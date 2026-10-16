@@ -742,6 +742,41 @@ function t(key, fallback) {
 /* ===================================
    Connection Status helper (additive)
    =================================== */
+/* The connection, said across the top of the page when it has been gone for
+   a few seconds (a blip that heals itself goes unremarked), and that it is
+   back, briefly, once it is. */
+const CONNECTION_GRACE_MS = 3000;
+let _connectionTimer = null, _connectionShown = false;
+function connectionBanner(state) {
+    const box = document.getElementById('connectionBanner');
+    const text = document.getElementById('connectionBannerText');
+    if (!box || !text) return;
+    if (state === 'online') {
+        clearTimeout(_connectionTimer);
+        _connectionTimer = null;
+        if (!_connectionShown) return;
+        box.classList.replace('pf-m-warning', 'pf-m-success');
+        text.textContent = t('connectionBack', 'Connected again.');
+        setTimeout(() => { if (_connectionTimer === null) { box.hidden = true; _connectionShown = false; } }, 2000);
+        return;
+    }
+    // Gone: counted from the first moment, however often a reconnect attempt
+    // says so again meanwhile.
+    if (_connectionShown) {                 // gone again while saying it was back
+        box.classList.replace('pf-m-success', 'pf-m-warning');
+        text.textContent = t('connectionLost', 'Connection lost. Reconnecting…');
+        _connectionTimer = -1;              // and not to be hidden by that message's timer
+        return;
+    }
+    if (_connectionTimer) return;
+    _connectionTimer = setTimeout(() => {
+        box.classList.replace('pf-m-success', 'pf-m-warning');
+        text.textContent = t('connectionLost', 'Connection lost. Reconnecting…');
+        box.hidden = false;
+        _connectionShown = true;
+    }, CONNECTION_GRACE_MS);
+}
+
 function setConnectionStatus(state) {
     const badge = document.getElementById('statusBadge');
     if (!badge) return;
@@ -763,6 +798,7 @@ function setConnectionStatus(state) {
                                   waiting: 'info-circle' }[cls]);
     }
     badge.title = t(cls, cls);
+    connectionBanner(cls);
 }
 
 /* ===================================

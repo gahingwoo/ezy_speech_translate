@@ -1183,6 +1183,15 @@ def build():
             </aside>
 
             <div class="page-content">
+              <!-- The connection, when it has been gone a few seconds: the
+                   status label in the masthead is too small to notice on a
+                   phone. connectionBanner() in ui.js shows and words it. -->
+              <div class="pf-v6-c-alert pf-m-inline pf-m-warning connection-banner" id="connectionBanner"
+                   role="status" aria-live="polite" hidden>
+                <div class="pf-v6-c-alert__icon">%(warn_icon)s</div>
+                <p class="pf-v6-c-alert__title" id="connectionBannerText"
+                   data-i18n="connectionLost">Connection lost. Reconnecting…</p>
+              </div>
               <div class="page-head">
                 <h1 class="page-title" id="mainTitle">
                   <span id="mainTitleText" data-i18n="liveTranslations">Live translation</span>
@@ -1934,6 +1943,7 @@ def build():
         "sun": icon("sun", "pf-v6-svg icon-sun"),
         "search": icon("search"),
         "status_icon": icon("exclamation-circle"),
+        "warn_icon": icon("exclamation-triangle"),
         "times_plain": icon("times"),
         "angle_right": icon("angle-right"),
         "empty": empty_group(),

@@ -300,6 +300,7 @@ def handle_admin_connect(data):
         join_room(f'admin:{room_id}')
         # Send room-scoped history
         emit('history', _room(room_id)['history'])
+        emit('translation_health', get_translation_service().health_summary())
         emit('admin_connected', {
             'success':      True,
             'role':         decoded.get('role', 'admin'),
@@ -400,6 +401,23 @@ def handle_new_transcription(data):
         # Echo back to the sending admin for confirmation
         emit('transcription_confirmed', translation_data)
         logger.info(f"[FINAL] room={room_id} ID={translation_data.get('id')}")
+
+def _translation_health_loop():
+    """Tells the consoles how translation is going: when it changes, and every
+    minute while it is not well, so one opened later hears of it too."""
+    last_state, last_sent = 'ok', 0.0
+    while True:
+        eventlet.sleep(10)
+        try:
+            health = get_translation_service().health_summary()
+        except Exception as exc:                # never the reason the server stops
+            logger.warning(f"Translation health unavailable: {exc}")
+            continue
+        now = time.time()
+        if health['state'] != last_state or (health['state'] != 'ok' and now - last_sent > 60):
+            socketio.emit('translation_health', health, room='admins')
+            last_state, last_sent = health['state'], now
+
 
 @socketio.on('cancel_interim')
 def handle_cancel_interim(data):

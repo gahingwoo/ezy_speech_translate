@@ -156,6 +156,47 @@ class TranslationQueue:
                 logger.error(f"Worker error: {e}")
 
 
+class TranslationHealth:
+    """How translation has gone lately, for the console to see: the last few
+    minutes of attempts, which provider answered each, and why one did not."""
+
+    WINDOW = 300                        # seconds looked back over
+
+    def __init__(self):
+        self._lock = Lock()
+        self._events = []               # (time, answered_by or None, refusals: [(provider, why)])
+
+    def record(self, answered_by: Optional[str], refusals: list):
+        now = time.time()
+        with self._lock:
+            self._events.append((now, answered_by, list(refusals)))
+            cut = now - self.WINDOW
+            while self._events and self._events[0][0] < cut:
+                self._events.pop(0)
+
+    def summary(self, first_provider: str) -> dict:
+        """state: ok; degraded (the first provider refuses, another answers);
+        failing (half or more of three or more attempts got nothing)."""
+        cut = time.time() - self.WINDOW
+        with self._lock:
+            recent = [e for e in self._events if e[0] >= cut]
+        tried = len(recent)
+        failed = sum(1 for e in recent if e[1] is None)
+        answered = {}
+        for e in recent:
+            if e[1]:
+                answered[e[1]] = answered.get(e[1], 0) + 1
+        last_why = next((r[-1][1] for e in reversed(recent) for r in [e[2]] if r), None)
+        if tried >= 3 and failed * 2 >= tried:
+            state = 'failing'
+        elif any(p != first_provider for p in answered):
+            state = 'degraded'
+        else:
+            state = 'ok'
+        return {'state': state, 'tried': tried, 'failed': failed, 'answered_by': answered,
+                'first': first_provider, 'reason': last_why, 'window': self.WINDOW}
+
+
 class GoogleTranslateService:
     """Translation with caching, glossary protection, and backends tried in
     order (see backends.py). The name is from when Google's web endpoint was
@@ -170,6 +211,7 @@ class GoogleTranslateService:
         })
         self.backends = backends if backends is not None else [GoogleWebBackend(self.session)]
         self.timeout = 10
+        self.health = TranslationHealth()
         # Lines being fetched right now, so a second asker waits for the first.
         self._inflight: Dict[Tuple[str, str], dict] = {}
         self._inflight_lock = Lock()
@@ -258,6 +300,7 @@ class GoogleTranslateService:
         protected_text, placeholders = self._apply_glossary_protect(
             text, applicable_terms
         )
+        refusals = []
         for backend in self.backends:
             if not backend.supports(target_lang):
                 continue
@@ -270,6 +313,7 @@ class GoogleTranslateService:
                     if attempt == 0:
                         time.sleep(1)
                         continue
+                    refusals.append((backend.name, 'timed out'))
                     break
                 except requests.exceptions.HTTPError as e:
                     status = e.response.status_code if e.response is not None else '?'
@@ -277,17 +321,22 @@ class GoogleTranslateService:
                     # waiting changes nothing. The browser asks it directly
                     # when every backend here has said no.
                     logger.warning(f"{backend.name}: refused ({status})")
+                    refusals.append((backend.name, f'refused ({status})'))
                     break
                 except Exception as e:
                     logger.error(f"{backend.name}: {e}")
+                    refusals.append((backend.name, type(e).__name__))
                     break
                 if result:
                     final = self._apply_glossary_restore(result, placeholders)
                     self.cache.set(text, cache_lang_key, final)
+                    self.health.record(backend.name, refusals)
                     logger.info(f"Translated to {target_lang} by {backend.name}: "
                                 f"{text[:50]}...{final[:50]}...")
                     return True, final, False
+                refusals.append((backend.name, 'no answer'))
                 break
+        self.health.record(None, refusals)
         logger.error(f"No translation backend answered for {target_lang}")
         return False, text, False
 
@@ -340,6 +389,9 @@ class GoogleTranslateService:
             )
         return result
     
+    def health_summary(self) -> dict:
+        return self.health.summary(self.backends[0].name if self.backends else 'none')
+
     def clear_cache(self):
         """Clear translation cache"""
         self.cache.clear()

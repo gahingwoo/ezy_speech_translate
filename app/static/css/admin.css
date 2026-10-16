@@ -975,3 +975,40 @@ a.pf-v6-c-masthead__logo:focus-visible {
 .update-badge[hidden] {
   display: none;
 }
+
+/* The page head's buttons: the check, and recording. */
+.page-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: center;
+}
+
+/* Check before starting: a row a check, its mark in its state's colour. */
+.preflight-list {
+  list-style: none;
+  margin: var(--pf-t--global--spacer--md) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--pf-t--global--spacer--md);
+}
+.preflight-row {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: var(--pf-t--global--spacer--sm);
+  align-items: start;
+}
+.preflight-mark {
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  text-align: center;
+}
+.preflight-detail {
+  display: block;
+  color: var(--pf-t--global--text--color--subtle);
+  font-size: var(--pf-t--global--font--size--body--sm);
+}
+.preflight-ok .preflight-mark { color: var(--pf-t--global--icon--color--status--success--default); }
+.preflight-warn .preflight-mark { color: var(--pf-t--global--icon--color--status--warning--default); }
+.preflight-fail .preflight-mark { color: var(--pf-t--global--icon--color--status--danger--default); }
+.preflight-run .preflight-mark { color: var(--pf-t--global--icon--color--status--info--default); }
+.preflight-wait { opacity: 0.6; }

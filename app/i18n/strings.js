@@ -16,6 +16,21 @@ window.sharedI18n = {
         "waiting": "Waiting",
         "online": "Online",
         "updateAvailable": "Update {version}",
+        "pfButton": "Check before starting",
+        "pfTitle": "Check before starting",
+        "pfAgain": "Check again",
+        "pfIntro": "Run this before the service. When the microphone check starts, say a few words.",
+        "pfSpeech": "Speech recognition in this browser",
+        "pfMic": "The microphone",
+        "pfServer": "The listener server",
+        "pfTranslate": "Translation",
+        "pfListeners": "The listener page",
+        "connectionLost": "Connection lost. Reconnecting…",
+        "connectionBack": "Connected again.",
+        "trFailingTitle": "Translation is failing on the server",
+        "trFailingText": "Of the last {tried} lines, {failed} got no translation ({reason}). Listeners' phones are translating for themselves, which is slower and may stop. In Server configuration, add another provider under Translation, such as DeepL.",
+        "trDegradedTitle": "The first translation provider is refusing",
+        "trDegradedText": "{first} is refusing ({reason}), and {used} is translating instead. Listeners will not notice.",
         "setupDetected": "Chosen from your phone's language: {lang}. If it is not right, choose another here.",
         "updateHow": "{version} is out. Update it from Cockpit, or on the server: sudo ezyspeech update",
         "offline": "Offline",
@@ -190,6 +205,38 @@ window.sharedI18n = {
         "waiting": "等待中",
         "online": "在线",
         "updateAvailable": "可更新到 {version}",
+        "pfButton": "开始前检查",
+        "pfTitle": "开始前检查",
+        "pfAgain": "再检查一次",
+        "pfIntro": "聚会开始前做一次。检查麦克风时，请说几句话。",
+        "pfSpeech": "这个浏览器的语音识别",
+        "pfMic": "麦克风",
+        "pfServer": "听众服务器",
+        "pfTranslate": "翻译",
+        "pfListeners": "听众页面",
+        "pfSpeechOk": "可以用。",
+        "pfSpeechInsecure": "这个地址不行：麦克风需要 HTTPS，或者在服务器本机上打开操作台。",
+        "pfSpeechNone": "这个浏览器不能识别语音，请用 Chrome 或 Edge。",
+        "pfMicInUse": "正在录音，麦克风在用。",
+        "pfMicDenied": "没有权限：请允许这个页面使用麦克风（地址栏里的图标）。",
+        "pfMicNone": "没找到麦克风。请插上，或在系统里把它设为输入设备。",
+        "pfMicSpeak": "正在听 3 秒：请说几句话。",
+        "pfMicSilent": "什么也没听到。麦克风选对了吗？是不是静音了？",
+        "pfMicQuiet": "声音很小。把麦克风靠近一点，或调高输入音量。",
+        "pfMicGood": "听得很清楚。",
+        "pfServerOk": "已连接。",
+        "pfServerDown": "没连上。服务在运行吗？在服务器上运行：sudo ezyspeech status",
+        "pfTranslateFail": "没有翻译回来。听众的手机会自己尝试翻译；可以在“服务器配置”里加一个后备，比如 DeepL。",
+        "pfTranslateBackup": "能用（{secs} 秒），但用的是后备：第一个翻译服务在拒绝。",
+        "pfTranslateOk": "能用：{secs} 秒。“{text}”",
+        "pfListenersOk": "能访问；现在有 {n} 人在听。",
+        "pfListenersDown": "从这里访问不了，听众也一样访问不了。",
+        "connectionLost": "连接中断，正在重新连接…",
+        "connectionBack": "已重新连上。",
+        "trFailingTitle": "服务器上的翻译出问题了",
+        "trFailingText": "最近 {tried} 句里有 {failed} 句没翻译成（{reason}）。现在是听众的手机自己在翻，会慢一些，也可能停掉。可以在“服务器配置”的“翻译”里加一个后备，比如 DeepL。",
+        "trDegradedTitle": "第一个翻译服务在拒绝",
+        "trDegradedText": "{first} 在拒绝（{reason}），现在由 {used} 翻译。听众不会察觉。",
         "setupDetected": "根据你手机的语言，选好了 {lang}。不对的话在这里换。",
         "updateHow": "{version} 已发布。可以在 Cockpit 里更新，或在服务器上运行：sudo ezyspeech update",
         "offline": "离线",
@@ -363,6 +410,38 @@ window.sharedI18n = {
         "waiting": "等緊",
         "online": "在線",
         "updateAvailable": "可以更新到 {version}",
+        "pfButton": "開始前檢查",
+        "pfTitle": "開始前檢查",
+        "pfAgain": "再檢查一次",
+        "pfIntro": "聚會開始前做一次。檢查麥克風時，請說幾句話。",
+        "pfSpeech": "這個瀏覽器的語音辨識",
+        "pfMic": "麥克風",
+        "pfServer": "聽眾伺服器",
+        "pfTranslate": "翻譯",
+        "pfListeners": "聽眾頁面",
+        "pfSpeechOk": "可以用。",
+        "pfSpeechInsecure": "這個位址不行：麥克風需要 HTTPS，或在伺服器本機上開啟操作台。",
+        "pfSpeechNone": "這個瀏覽器不能辨識語音，請用 Chrome 或 Edge。",
+        "pfMicInUse": "正在錄音，麥克風使用中。",
+        "pfMicDenied": "沒有權限：請允許這個頁面使用麥克風（網址列裡的圖示）。",
+        "pfMicNone": "沒找到麥克風。請接上，或在系統裡把它設為輸入裝置。",
+        "pfMicSpeak": "正在聽 3 秒：請說幾句話。",
+        "pfMicSilent": "什麼也沒聽到。麥克風選對了嗎？是不是靜音了？",
+        "pfMicQuiet": "聲音很小。把麥克風靠近一點，或調高輸入音量。",
+        "pfMicGood": "聽得很清楚。",
+        "pfServerOk": "已連線。",
+        "pfServerDown": "沒連上。服務在執行嗎？在伺服器上執行：sudo ezyspeech status",
+        "pfTranslateFail": "沒有翻譯回來。聽眾的手機會自己嘗試翻譯；可以在「伺服器設定」裡加一個後備，例如 DeepL。",
+        "pfTranslateBackup": "能用（{secs} 秒），但用的是後備：第一個翻譯服務在拒絕。",
+        "pfTranslateOk": "能用：{secs} 秒。「{text}」",
+        "pfListenersOk": "能存取；現在有 {n} 人在聽。",
+        "pfListenersDown": "從這裡存取不了，聽眾也一樣存取不了。",
+        "connectionLost": "斷咗線，重新連緊…",
+        "connectionBack": "連返啦。",
+        "trFailingTitle": "伺服器嘅翻譯出咗問題",
+        "trFailingText": "最近 {tried} 句入面有 {failed} 句冇翻譯到（{reason}）。而家係聽眾部手機自己翻，會慢啲，亦可能會停。可以喺「伺服器設定」嘅「翻譯」度加多個後備，例如 DeepL。",
+        "trDegradedTitle": "第一個翻譯服務拒絕緊",
+        "trDegradedText": "{first} 拒絕緊（{reason}），而家由 {used} 翻譯。聽眾唔會察覺。",
         "setupDetected": "跟住你部手機嘅語言，揀咗 {lang}。唔啱嘅話喺度轉。",
         "updateHow": "{version} 出咗。可以喺 Cockpit 更新，或者喺伺服器行：sudo ezyspeech update",
         "offline": "離線",
@@ -522,6 +601,38 @@ window.sharedI18n = {
         "waiting": "等待中",
         "online": "線上",
         "updateAvailable": "可更新至 {version}",
+        "pfButton": "開始前檢查",
+        "pfTitle": "開始前檢查",
+        "pfAgain": "再檢查一次",
+        "pfIntro": "聚會開始前做一次。檢查麥克風時，請說幾句話。",
+        "pfSpeech": "這個瀏覽器的語音辨識",
+        "pfMic": "麥克風",
+        "pfServer": "聽眾伺服器",
+        "pfTranslate": "翻譯",
+        "pfListeners": "聽眾頁面",
+        "pfSpeechOk": "可以用。",
+        "pfSpeechInsecure": "這個位址不行：麥克風需要 HTTPS，或在伺服器本機上開啟操作台。",
+        "pfSpeechNone": "這個瀏覽器不能辨識語音，請用 Chrome 或 Edge。",
+        "pfMicInUse": "正在錄音，麥克風使用中。",
+        "pfMicDenied": "沒有權限：請允許這個頁面使用麥克風（網址列裡的圖示）。",
+        "pfMicNone": "沒找到麥克風。請接上，或在系統裡把它設為輸入裝置。",
+        "pfMicSpeak": "正在聽 3 秒：請說幾句話。",
+        "pfMicSilent": "什麼也沒聽到。麥克風選對了嗎？是不是靜音了？",
+        "pfMicQuiet": "聲音很小。把麥克風靠近一點，或調高輸入音量。",
+        "pfMicGood": "聽得很清楚。",
+        "pfServerOk": "已連線。",
+        "pfServerDown": "沒連上。服務在執行嗎？在伺服器上執行：sudo ezyspeech status",
+        "pfTranslateFail": "沒有翻譯回來。聽眾的手機會自己嘗試翻譯；可以在「伺服器設定」裡加一個後備，例如 DeepL。",
+        "pfTranslateBackup": "能用（{secs} 秒），但用的是後備：第一個翻譯服務在拒絕。",
+        "pfTranslateOk": "能用：{secs} 秒。「{text}」",
+        "pfListenersOk": "能存取；現在有 {n} 人在聽。",
+        "pfListenersDown": "從這裡存取不了，聽眾也一樣存取不了。",
+        "connectionLost": "連線中斷，正在重新連線…",
+        "connectionBack": "已重新連上。",
+        "trFailingTitle": "伺服器上的翻譯出問題了",
+        "trFailingText": "最近 {tried} 句裡有 {failed} 句沒翻譯成（{reason}）。現在是聽眾的手機自己在翻，會慢一些，也可能停掉。可以在「伺服器設定」的「翻譯」裡加一個後備，例如 DeepL。",
+        "trDegradedTitle": "第一個翻譯服務在拒絕",
+        "trDegradedText": "{first} 在拒絕（{reason}），現在由 {used} 翻譯。聽眾不會察覺。",
         "setupDetected": "依照你手機的語言，選好了 {lang}。不對的話在這裡換。",
         "updateHow": "{version} 已發佈。可以在 Cockpit 裡更新，或在伺服器上執行：sudo ezyspeech update",
         "offline": "離線",
@@ -675,6 +786,9 @@ window.sharedI18n = {
         "exportSrtDesc": "字幕檔"
     },
     es: {
+        "setupDetected": "Elegido según el idioma de tu teléfono: {lang}. Si no es el correcto, elige otro aquí.",
+        "connectionLost": "Se perdió la conexión. Reconectando…",
+        "connectionBack": "Conectado de nuevo.",
 
         "waiting": "Esperando",
         "online": "En línea",
@@ -815,6 +929,9 @@ window.sharedI18n = {
         },
     // French
     fr: {
+        "setupDetected": "Choisie d'après la langue de votre téléphone : {lang}. Si ce n'est pas la bonne, choisissez-en une autre ici.",
+        "connectionLost": "Connexion perdue. Reconnexion…",
+        "connectionBack": "Reconnecté.",
 
         "waiting": "En attente",
         "online": "En ligne",
@@ -955,6 +1072,9 @@ window.sharedI18n = {
         },
     // German
     de: {
+        "setupDetected": "Nach der Sprache Ihres Telefons gewählt: {lang}. Wenn sie nicht stimmt, wählen Sie hier eine andere.",
+        "connectionLost": "Verbindung unterbrochen. Verbinde neu…",
+        "connectionBack": "Wieder verbunden.",
 
         "waiting": "Warten",
         "online": "Online",
@@ -1095,6 +1215,9 @@ window.sharedI18n = {
         },
     // Russian
     ru: {
+        "setupDetected": "Выбрано по языку вашего телефона: {lang}. Если не подходит, выберите другой здесь.",
+        "connectionLost": "Соединение потеряно. Переподключение…",
+        "connectionBack": "Снова на связи.",
 
         "waiting": "Ожидание",
         "online": "В сети",
@@ -1235,6 +1358,9 @@ window.sharedI18n = {
         },
     // Polish
     pl: {
+        "setupDetected": "Wybrano według języka telefonu: {lang}. Jeśli to nie ten, wybierz inny tutaj.",
+        "connectionLost": "Utracono połączenie. Łączenie ponownie…",
+        "connectionBack": "Połączono ponownie.",
 
         "waiting": "Oczekiwanie",
         "online": "Online",
@@ -1375,6 +1501,9 @@ window.sharedI18n = {
         },
     // Turkish
     tr: {
+        "setupDetected": "Telefonunuzun diline göre seçildi: {lang}. Doğru değilse buradan başka birini seçin.",
+        "connectionLost": "Bağlantı kesildi. Yeniden bağlanılıyor…",
+        "connectionBack": "Yeniden bağlandı.",
 
         "waiting": "Bekleniyor",
         "online": "Çevrimiçi",
@@ -1515,6 +1644,9 @@ window.sharedI18n = {
         },
     // Japanese (localized)
     ja: {
+        "setupDetected": "スマートフォンの言語から選びました：{lang}。違う場合はここで選び直してください。",
+        "connectionLost": "接続が切れました。再接続しています…",
+        "connectionBack": "再接続しました。",
 
         "waiting": "待機中",
         "online": "オンライン",
@@ -1655,6 +1787,9 @@ window.sharedI18n = {
         },
     // Korean (localized)
     ko: {
+        "setupDetected": "휴대폰 언어에 맞춰 선택했습니다: {lang}. 맞지 않으면 여기서 바꾸세요.",
+        "connectionLost": "연결이 끊겼습니다. 다시 연결하는 중…",
+        "connectionBack": "다시 연결되었습니다.",
 
         "waiting": "대기 중",
         "online": "온라인",
@@ -1795,6 +1930,9 @@ window.sharedI18n = {
         },
     // Vietnamese
     vi: {
+        "setupDetected": "Đã chọn theo ngôn ngữ điện thoại của bạn: {lang}. Nếu chưa đúng, hãy chọn ngôn ngữ khác tại đây.",
+        "connectionLost": "Mất kết nối. Đang kết nối lại…",
+        "connectionBack": "Đã kết nối lại.",
 
         "waiting": "Đang chờ",
         "online": "Trực tuyến",
@@ -1935,6 +2073,9 @@ window.sharedI18n = {
         },
     // Thai
     th: {
+        "setupDetected": "เลือกตามภาษาของโทรศัพท์คุณ: {lang} ถ้าไม่ถูก เลือกภาษาอื่นได้ที่นี่",
+        "connectionLost": "การเชื่อมต่อขาดหาย กำลังเชื่อมต่อใหม่…",
+        "connectionBack": "เชื่อมต่อแล้ว",
 
         "waiting": "กำลังรอ",
         "online": "ออนไลน์",
@@ -2075,6 +2216,9 @@ window.sharedI18n = {
         },
     // Indonesian
     id: {
+        "setupDetected": "Dipilih sesuai bahasa ponsel Anda: {lang}. Jika tidak tepat, pilih yang lain di sini.",
+        "connectionLost": "Koneksi terputus. Menghubungkan ulang…",
+        "connectionBack": "Terhubung kembali.",
 
         "waiting": "Menunggu",
         "online": "Online",
@@ -2215,6 +2359,9 @@ window.sharedI18n = {
         },
     // Malay
     ms: {
+        "setupDetected": "Dipilih mengikut bahasa telefon anda: {lang}. Jika tidak betul, pilih yang lain di sini.",
+        "connectionLost": "Sambungan terputus. Menyambung semula…",
+        "connectionBack": "Disambung semula.",
 
         "waiting": "Menunggu",
         "online": "Dalam talian",
@@ -2355,6 +2502,9 @@ window.sharedI18n = {
         },
     // Hindi
     hi: {
+        "setupDetected": "आपके फ़ोन की भाषा से चुना गया: {lang}। अगर यह सही नहीं है, तो यहाँ कोई दूसरी चुनें।",
+        "connectionLost": "कनेक्शन टूट गया। फिर से जोड़ रहे हैं…",
+        "connectionBack": "फिर से जुड़ गए।",
 
         "waiting": "प्रतीक्षा कर रहा है",
         "online": "ऑनलाइन",
@@ -2495,6 +2645,9 @@ window.sharedI18n = {
         },
     // Arabic
     ar: {
+        "setupDetected": "اخترناها حسب لغة هاتفك: {lang}. إن لم تكن الصحيحة فاختر غيرها هنا.",
+        "connectionLost": "انقطع الاتصال. جارٍ إعادة الاتصال…",
+        "connectionBack": "تمت إعادة الاتصال.",
 
         "waiting": "في الانتظار",
         "online": "متصل",
@@ -2636,6 +2789,9 @@ window.sharedI18n = {
 
     // Portuguese
     pt: {
+        "setupDetected": "Escolhido pelo idioma do seu celular: {lang}. Se não for o certo, escolha outro aqui.",
+        "connectionLost": "Conexão perdida. Reconectando…",
+        "connectionBack": "Conectado de novo.",
 
         "waiting": "Aguardando",
         "online": "Online",
@@ -2777,6 +2933,9 @@ window.sharedI18n = {
 
     // Italian
     it: {
+        "setupDetected": "Scelta in base alla lingua del telefono: {lang}. Se non è quella giusta, scegline un'altra qui.",
+        "connectionLost": "Connessione persa. Riconnessione…",
+        "connectionBack": "Di nuovo connesso.",
 
         "waiting": "In attesa",
         "online": "Online",
@@ -2918,6 +3077,9 @@ window.sharedI18n = {
 
     // Dutch
     nl: {
+        "setupDetected": "Gekozen op basis van de taal van je telefoon: {lang}. Klopt dat niet, kies hier een andere.",
+        "connectionLost": "Verbinding verbroken. Opnieuw verbinden…",
+        "connectionBack": "Weer verbonden.",
 
         "waiting": "Wachten",
         "online": "Online",
@@ -3058,6 +3220,9 @@ window.sharedI18n = {
         },
     // Tamil
     ta: {
+        "setupDetected": "உங்கள் தொலைபேசியின் மொழியின்படி தேர்ந்தெடுக்கப்பட்டது: {lang}. சரியில்லை என்றால் இங்கே வேறொன்றைத் தேர்ந்தெடுக்கவும்.",
+        "connectionLost": "இணைப்பு துண்டிக்கப்பட்டது. மீண்டும் இணைக்கிறது…",
+        "connectionBack": "மீண்டும் இணைக்கப்பட்டது.",
 
         "waiting": "காத்திருக்கிறது",
         "online": "ஆன்லைன்",
@@ -4936,6 +5101,9 @@ window.sharedAiStatusLibrary = {
     const lib = window.sharedAiStatusLibrary || (window.sharedAiStatusLibrary = {});
     const strings = {
         "tl": {
+            "setupDetected": "Pinili batay sa wika ng iyong telepono: {lang}. Kung hindi tama, pumili ng iba rito.",
+            "connectionLost": "Naputol ang koneksyon. Kumokonekta muli…",
+            "connectionBack": "Nakakonekta na ulit.",
             "waiting": "Naghihintay",
             "online": "Online",
             "offline": "Offline",
@@ -5218,6 +5386,9 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Ipakita ang mga naunang linya"
         },
         "mi": {
+            "setupDetected": "I kōwhiria mā te reo o tō waea: {lang}. Ki te hē, kōwhiria tētahi atu i konei.",
+            "connectionLost": "Kua motu te hononga. E tūhono anō ana…",
+            "connectionBack": "Kua tūhono anō.",
             "waiting": "E tatari ana",
             "online": "Kei te ipurangi",
             "offline": "Kua motu",
@@ -5500,6 +5671,9 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Whakaatuhia ngā rārangi o mua"
         },
         "sm": {
+            "setupDetected": "Filifilia e tusa ma le gagana o lau telefoni: {lang}. Afai e le saʻo, filifili se isi iinei.",
+            "connectionLost": "Ua motu le fesoʻotaʻiga. O loʻo toe fesoʻotaʻi…",
+            "connectionBack": "Ua toe fesoʻotaʻi.",
             "waiting": "O loʻo faatali",
             "online": "Fesoʻotaʻi",
             "offline": "Motusia",
@@ -5782,6 +5956,9 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Faaali laina muamua"
         },
         "to": {
+            "setupDetected": "Fili ʻo fakatatau ki he lea ʻo hoʻo telefoní: {lang}. Kapau ʻoku ʻikai totonu, fili ha taha kehe heni.",
+            "connectionLost": "Kuo motu ʻa e fetuʻutaki. ʻOku toe fakafehokotaki…",
+            "connectionBack": "Kuo toe fehokotaki.",
             "waiting": "ʻOku tatali",
             "online": "Fehokotaki",
             "offline": "Motuhi",
