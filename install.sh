@@ -24,6 +24,9 @@
 #   --yes                      take the defaults, ask nothing
 #   --lang en|zh               the language of these screens
 #
+# EZY_ADMIN_PASSWORD in the environment sets the admin password (8 or more
+# characters); otherwise one is made and shown once.
+#
 # Copyright (C) 2025-2026 Ga Hing Woo (Jiaxing Hu)
 # This file is part of EzySpeech, and is free software under the GNU Affero
 # General Public License, version 3 or later. See LICENSE and TRADEMARK.md.
@@ -55,7 +58,8 @@ while [ $# -gt 0 ]; do
         --yes|-y) ASSUME_YES=1 ;;
         --lang) UI_LANG="$2"; shift ;;
         --manage) MANAGE=1 ;;
-        -h|--help) sed -n '2,26p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null || echo "See the top of install.sh"; return 0 ;;
+        -h|--help) awk 'NR > 1 && /^# Copyright/ { exit } NR > 1' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null \
+                       || echo "See the top of install.sh"; return 0 ;;
         *) echo "Unknown option: $1 (try --help)" >&2; return 2 ;;
     esac
     shift
@@ -440,8 +444,9 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
     fi
 
     # The admin password
-    ADMIN_PASSWORD=""
-    if [ -z "$MIGRATE" ] && interactive && ! yesno "$(L "Make a strong admin password for you? (No: type your own)" "要自动生成一个强管理员密码吗？（否：自己输入）")" y; then
+    # EZY_ADMIN_PASSWORD, for an install with no one to ask (--yes, a script)
+    ADMIN_PASSWORD="${EZY_ADMIN_PASSWORD:-}"
+    if [ -z "$MIGRATE" ] && [ -z "$ADMIN_PASSWORD" ] && interactive && ! yesno "$(L "Make a strong admin password for you? (No: type your own)" "要自动生成一个强管理员密码吗？（否：自己输入）")" y; then
         while :; do
             ADMIN_PASSWORD="$(secret "$(L "Admin password (8 or more characters):" "管理员密码（至少 8 位）：")")" || exit 1
             [ "${#ADMIN_PASSWORD}" -ge 8 ] && [ "$ADMIN_PASSWORD" = "$(secret "$(L "Again:" "再输一次：")")" ] && break
