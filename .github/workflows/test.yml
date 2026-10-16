@@ -1,0 +1,86 @@
+# Installs this checkout each of the three ways, on a throwaway runner, and
+# uses it from the outside as people do: see tests/smoke/check.py. The
+# release workflow runs this first, and publishes nothing unless it passes.
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  install-and-use:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [native, docker, podman]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install, ${{ matrix.mode }}
+        run: |
+          PW=$(openssl rand -hex 12)
+          echo "::add-mask::$PW"
+          echo "PW=$PW" >> "$GITHUB_ENV"
+          # echo: translations made here, so nothing leaves the runner
+          sudo env EZY_ADMIN_PASSWORD="$PW" EZY_TRANSLATION_PROVIDERS=echo \
+               python3 ops/ezyspeech install --mode ${{ matrix.mode }} --source . --progress
+
+      - name: Python for the checks
+        run: |
+          python3 -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install -q requests "python-socketio[client]==5.16.2"
+
+      - name: Used as people use it
+        run: /tmp/smoke/bin/python tests/smoke/check.py live --password "$PW"
+
+      - name: Status says what it is
+        run: |
+          sudo ezyspeech status
+          sudo ezyspeech status --json | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d["mode"] == "${{ matrix.mode }}", d["mode"]
+          assert d["running"], d["health"]
+          assert d["usage"]["processes"], d["usage"]'
+
+      - name: Backed up, and put back
+        run: |
+          sudo ezyspeech backup /tmp/before.tar.gz
+          /tmp/smoke/bin/python tests/smoke/check.py live --password "$PW" --say "Said after the backup"
+          sudo ezyspeech restore /tmp/before.tar.gz --yes
+          /tmp/smoke/bin/python tests/smoke/check.py history \
+              --has "Grace and peace to you" --has-not "Said after the backup"
+          sudo ezyspeech backup --list
+
+      - name: A new admin password, typed in
+        run: |
+          NEW=$(openssl rand -hex 12)
+          echo "::add-mask::$NEW"
+          printf '%s\n' "$NEW" | sudo ezyspeech password --stdin --json
+          /tmp/smoke/bin/python tests/smoke/check.py live --password "$NEW" --say "With the new password"
+
+      - name: Backups on a timer
+        run: |
+          sudo ezyspeech auto-backup status --json | python3 -c '
+          import json, sys; d = json.load(sys.stdin); assert d["on"], d'
+          sudo systemctl start ezyspeech-backup.service
+          sudo ezyspeech backup --list --json | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          assert any(b["auto"] for b in d["backups"]), d'
+
+      - name: Uninstalled
+        run: |
+          sudo ezyspeech uninstall --yes
+          ! sudo ezyspeech status 2>/dev/null
+
+      - name: The log, when something failed
+        if: failure()
+        run: sudo ezyspeech logs -n 200 || sudo journalctl -n 200 --no-pager

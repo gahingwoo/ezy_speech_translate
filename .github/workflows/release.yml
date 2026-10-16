@@ -13,7 +13,12 @@ permissions:
   contents: write
 
 jobs:
+  # Installed each of the three ways and used, before anything is published
+  test:
+    uses: ./.github/workflows/test.yml
+
   release:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

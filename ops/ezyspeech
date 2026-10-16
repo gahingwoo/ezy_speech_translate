@@ -298,6 +298,8 @@ def _stage(conf, source, version, work):
 
 
 def prepare_native(conf, release):
+    # an update too: a machine installed on Python 3.9 gets 3.10+ here
+    ensure_native_packages()
     state = Path(conf['state'])
     # The shipped config.yaml is the default a new install starts from; the
     # live one is in the state, like everything the servers write.
@@ -314,7 +316,7 @@ def prepare_native(conf, release):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.symlink_to(state / sub)
     Out.info('    creating its Python environment (a minute or so)')
-    run([sys.executable, '-m', 'venv', str(release / '.venv')])
+    run([app_python(), '-m', 'venv', str(release / '.venv')])
     pip = [str(release / '.venv/bin/python'), '-m', 'pip', '--disable-pip-version-check', '-q']
     cache = {'PIP_CACHE_DIR': '/var/cache/ezyspeech/pip'}
     run(pip + ['install', '--upgrade', 'pip'], quiet=True, env=cache)
@@ -473,6 +475,11 @@ def compose(conf, *args, release=None, capture=False, check=True):
                env={'EZY_VERSION': version_of(release) or 'local'})
 
 
+# Handed to the first setup only, never kept in .env: the container applies
+# .env on every start, which would undo a change made later on the settings page.
+ONCE_ONLY = ('EZY_ADMIN_PASSWORD', 'EZY_TRANSLATION_PROVIDERS')
+
+
 def podman_image(version):
     return f'localhost/ezyspeech:{version}'
 
@@ -482,19 +489,21 @@ def podman_build(release, version):
     run(['podman', 'build', '--format', 'docker', '-t', podman_image(version), str(release)], quiet=True)
 
 
-def podman_run(conf, version, *args, env=None, capture=True, check=True, entrypoint=None, stdout=None):
+def podman_run(conf, version, *args, env=None, capture=True, check=True, entrypoint=None, stdout=None,
+               stdin=None):
     """A one-off container from a release's image, on the install's volume
     and settings. Values in env are handed over by name (`-e NAME`), so a
     password never appears on a command line."""
     env = {k: v for k, v in (env or {}).items() if v is not None}
     env_file = home_of(conf) / '.env'
-    cmd = ['podman', 'run', '--rm', '-v', f'{PODMAN_NAME}:/var/lib/ezyspeech',
+    cmd = ['podman', 'run', '--rm', *(['-i'] if stdin is not None else []),
+           '-v', f'{PODMAN_NAME}:/var/lib/ezyspeech',
            *(['--env-file', str(env_file)] if env_file.exists() else []),
            *[x for k in env for x in ('-e', k)],
            *(['--entrypoint', entrypoint] if entrypoint else []),
            podman_image(version), *args]
-    if stdout is not None:
-        return subprocess.run(cmd, stdout=stdout, check=check, env={**os.environ, **env})
+    if stdout is not None or stdin is not None:
+        return subprocess.run(cmd, stdout=stdout, stdin=stdin, check=check, env={**os.environ, **env})
     return run(cmd, capture=capture, check=check, env=env)
 
 
@@ -737,6 +746,7 @@ def cmd_install(a):
            'EZY_HTTPS': a.https or None, 'EZY_HOSTNAMES': a.hostnames or None,
            'EZY_EXTERNAL_URL': a.external_url or None,
            'EZY_ADMIN_PASSWORD': os.environ.get('EZY_ADMIN_PASSWORD') or None,
+           'EZY_TRANSLATION_PROVIDERS': os.environ.get('EZY_TRANSLATION_PROVIDERS') or None,
            'TZ': a.tz or None}
 
     if mode == 'native':
@@ -776,7 +786,7 @@ def cmd_install(a):
         Out.step(15, 'Unpacking the release')
         release = stage_release(conf, source, version)
         link_current(conf, release)
-        set_docker_env(conf, {k: v for k, v in env.items() if k != 'EZY_ADMIN_PASSWORD' and v})
+        set_docker_env(conf, {k: v for k, v in env.items() if k not in ONCE_ONLY and v})
         Out.step(25, 'Building the image (a minute or two)')
         podman_build(release, version)
         Out.step(70, 'First-run setup')
@@ -790,7 +800,7 @@ def cmd_install(a):
         Out.step(15, 'Unpacking the release')
         release = stage_release(conf, source, version)
         link_current(conf, release)
-        set_docker_env(conf, {k: v for k, v in env.items() if k != 'EZY_ADMIN_PASSWORD' and v})
+        set_docker_env(conf, {k: v for k, v in env.items() if k not in ONCE_ONLY and v})
         Out.step(25, 'Building the image (a minute or two)')
         compose(conf, 'build', release=release)
         Out.step(70, 'First-run setup')
@@ -799,7 +809,11 @@ def cmd_install(a):
         compose(conf, 'up', '-d', '--remove-orphans', release=release)
 
     save_conf(conf, conf_path)
+    conf['_path'] = str(conf_path)
     link_command(conf, release)
+    if as_root and shutil.which('systemctl') and not a.no_auto_backup:
+        Out.step(88, f'Backups every {AUTO_BACKUP_WHEN}, the newest {AUTO_BACKUP_KEEP} kept')
+        set_auto_backup(conf, True)
     Out.step(90, 'Waiting for it to come up')
     if not wait_healthy(conf, version):
         raise Fail('It was installed but did not come up healthy. See: ezyspeech logs')
@@ -817,20 +831,43 @@ def cmd_install(a):
     print('RESULT ' + json.dumps(result), flush=True)
 
 
+# The servers' dependencies (Flask, requests, cryptography, ...) have left
+# Python 3.9 behind, and their fixed versions with it.
+APP_PYTHON_MIN = (3, 10)
+
+
+def _python_ok(exe):
+    r = run([exe, '-c', 'import sys, venv, ensurepip; print("%d.%d" % sys.version_info[:2])'],
+            check=False, capture=True)
+    return r.returncode == 0 and vtuple(r.stdout.strip()) >= APP_PYTHON_MIN + (0,)
+
+
+def app_python():
+    """The Python the servers run on: 3.10 or later, with venv. This command
+    may run on an older one (it needs only the standard library); the
+    servers' environment is made with this."""
+    candidates = [sys.executable] + [shutil.which(f'python3.{m}') for m in range(14, 9, -1)]
+    for exe in filter(None, candidates):
+        if _python_ok(exe):
+            return exe
+    raise Fail('The servers need Python 3.10 or later with venv; this machine has none. '
+               'On RHEL, AlmaLinux or Rocky 9: dnf install python3.12')
+
+
 def ensure_native_packages():
+    """Python 3.10 or later with venv and pip, installed from the system's
+    own packages when it is missing: RHEL 9 and its kin come with 3.9."""
     try:
-        import venv  # noqa: F401
-        import ensurepip  # noqa: F401
+        app_python()
         return
-    except ImportError:
+    except Fail:
         pass
-    if shutil.which('apt-get'):
+    if shutil.which('dnf'):
+        run(['dnf', 'install', '-y', '-q', 'python3.12', 'python3.12-pip'], quiet=True, check=False)
+    elif shutil.which('apt-get'):
         run(['apt-get', 'update', '-qq'], quiet=True)
-        run(['apt-get', 'install', '-y', '-qq', 'python3-venv', 'python3-pip'], quiet=True)
-    elif shutil.which('dnf'):
-        run(['dnf', 'install', '-y', '-q', 'python3', 'python3-pip'], quiet=True)
-    else:
-        raise Fail("Python's venv module is missing; install it (python3-venv) and run this again.")
+        run(['apt-get', 'install', '-y', '-qq', 'python3-venv', 'python3-pip'], quiet=True, check=False)
+    app_python()                            # still none: says what to do
 
 
 def migrate_old_native(old, state):
@@ -1098,23 +1135,210 @@ def cmd_password(a):
         print('Admin password set' + (f': {password}' if a.generate else '') + '. The servers restarted.')
 
 
-def cmd_backup(a):
-    conf = load_conf()
-    require_root(conf)
-    dest = Path(a.file or f'ezyspeech-backup-{time.strftime("%Y%m%d-%H%M%S")}.tar.gz').resolve()
+# ── backups ──────────────────────────────────────────────────────────────────
+# A backup is the whole state (settings, secrets, transcripts) as one .tar.gz,
+# laid out the same whichever way it was installed, so one made natively can
+# be restored into Docker or Podman and the other way round.
+
+BACKUP_UNITS = ('ezyspeech-backup.service', 'ezyspeech-backup.timer')
+AUTO_BACKUP_WHEN = 'Sun 14:00'              # after a Sunday morning service
+AUTO_BACKUP_KEEP = 8
+
+
+def backup_dir(conf):
+    if os.geteuid() == 0:
+        return Path(conf.get('backup_dir') or '/var/backups/ezyspeech')
+    return home_of(conf) / 'backups'
+
+
+def write_backup(conf, dest):
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_name(dest.name + '.part')
     if conf['mode'] == 'native':
-        run(['tar', 'czf', str(dest), '-C', conf['state'], '.'])
+        run(['tar', 'czf', str(tmp), '-C', conf['state'], '.'])
     elif conf['mode'] == 'podman':
-        with open(dest, 'wb') as out:
+        with open(tmp, 'wb') as out:
             podman_run(conf, version_of(current_release(conf)), 'czf', '-', '-C', '/var/lib/ezyspeech', '.',
                        entrypoint='tar', stdout=out)
     else:
-        with open(dest, 'wb') as out:
+        with open(tmp, 'wb') as out:
             cur = current_release(conf)
-            subprocess.run([*compose_cmd(conf, cur), 'run', '--rm', '--no-deps', '--entrypoint', 'tar',
+            subprocess.run([*compose_cmd(conf, cur), 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'tar',
                             'ezyspeech', 'czf', '-', '-C', '/var/lib/ezyspeech', '.'],
                            stdout=out, check=True, env={**os.environ, 'EZY_VERSION': version_of(cur)})
+    os.chmod(tmp, 0o600)                    # it holds the secrets
+    os.replace(tmp, dest)                   # never half a file under the real name
+    return dest
+
+
+def list_backups(conf):
+    found = []
+    d = backup_dir(conf)
+    if d.is_dir():
+        for f in sorted(d.glob('ezyspeech-*.tar.gz'), key=lambda p: p.stat().st_mtime, reverse=True):
+            st = f.stat()
+            found.append({'file': str(f), 'name': f.name, 'size': st.st_size, 'time': int(st.st_mtime),
+                          'auto': f.name.startswith('ezyspeech-auto-')})
+    return found
+
+
+def cmd_backup(a):
+    conf = load_conf()
+    if a.list:
+        items = list_backups(conf)
+        if a.json:
+            print(json.dumps({'dir': str(backup_dir(conf)), 'backups': items, 'auto': auto_backup_state(conf)}))
+        else:
+            for b in items:
+                print(f"{time.strftime('%Y-%m-%d %H:%M', time.localtime(b['time']))}  "
+                      f"{b['size'] / 1e6:6.1f} MB  {b['file']}")
+        return
+    require_root(conf)
+    stamp = time.strftime('%Y%m%d-%H%M%S')
+    if a.file:
+        dest = Path(a.file).resolve()
+    else:
+        dest = backup_dir(conf) / f"ezyspeech-{'auto-' if a.auto else ''}{stamp}.tar.gz"
+    write_backup(conf, dest)
+    if a.auto:                              # the timer's: keep the newest few
+        keep = int(conf.get('auto_backup_keep') or AUTO_BACKUP_KEEP)
+        for old in [b for b in list_backups(conf) if b['auto']][keep:]:
+            Path(old['file']).unlink(missing_ok=True)
     print(f'Saved {dest}')
+
+
+def check_backup(path):
+    """A backup of this program's state, and nothing that would land outside it."""
+    try:
+        with tarfile.open(path) as tar:
+            names = tar.getnames()
+    except (OSError, tarfile.TarError) as exc:
+        raise Fail(f'{path} is not a backup this can read: {exc}')
+    for n in names:
+        if n.startswith('/') or '..' in Path(n).parts:
+            raise Fail(f'{path} has a path that would land outside the state ({n}); not restoring it.')
+    if not any(n.lstrip('./') == 'config/config.yaml' for n in names):
+        raise Fail(f'{path} has no config/config.yaml: not an EzySpeech backup.')
+
+
+def cmd_restore(a):
+    conf = load_conf()
+    require_root(conf)
+    path = Path(a.file).resolve()
+    if not path.is_file():
+        raise Fail(f'No such file: {path}')
+    check_backup(path)
+    if not a.yes and sys.stdin.isatty():
+        if input(f'Replace the settings, admin password and transcripts with those in {path.name}? '
+                 'The ones there now are backed up first. [y/N] ').strip().lower() not in ('y', 'yes'):
+            return
+    cur = current_release(conf)
+    Out.step(10, 'Backing up what is there now')
+    before = write_backup(conf, backup_dir(conf) / f"ezyspeech-before-restore-{time.strftime('%Y%m%d-%H%M%S')}.tar.gz")
+    Out.step(30, 'Stopping')
+    stop(conf)
+    Out.step(50, f'Restoring {path.name}')
+    clear_and_extract = 'find /var/lib/ezyspeech -mindepth 1 -delete && tar xzf - -C /var/lib/ezyspeech'
+    if conf['mode'] == 'native':
+        state = Path(conf['state'])
+        for item in state.iterdir():
+            shutil.rmtree(item) if item.is_dir() and not item.is_symlink() else item.unlink()
+        with tarfile.open(path) as tar:
+            try:
+                tar.extractall(state, filter='data')
+            except TypeError:               # Python before 3.12
+                tar.extractall(state)
+        run(['chown', '-R', f'{conf["user"]}:{conf["user"]}', str(state)])
+        run(['chmod', '750', str(state)])
+        if shutil.which('restorecon'):
+            run(['restorecon', '-R', str(state)], check=False, quiet=True)
+    elif conf['mode'] == 'podman':
+        with open(path, 'rb') as src:
+            podman_run(conf, version_of(cur), '-c', clear_and_extract, entrypoint='sh', stdin=src)
+    else:
+        with open(path, 'rb') as src:
+            subprocess.run([*compose_cmd(conf, cur), 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'sh',
+                            'ezyspeech', '-c', clear_and_extract],
+                           stdin=src, check=True, env={**os.environ, 'EZY_VERSION': version_of(cur)})
+    Out.step(70, 'Bringing the settings up to date')
+    run_init(conf, cur, {})                 # an older backup may lack newer settings
+    Out.step(85, 'Starting')
+    start(conf)
+    if not wait_healthy(conf, version_of(cur)):
+        raise Fail(f'Restored, but it did not come up healthy. What was there before is in {before}; '
+                   f'ezyspeech restore {before} puts it back.')
+    Out.step(100, f'Restored {path.name}')
+    Out.info(f'What was there before is kept in {before}.')
+
+
+# ── backups, on a timer ──────────────────────────────────────────────────────
+
+def auto_backup_state(conf):
+    on = Path('/etc/systemd/system', BACKUP_UNITS[1]).exists()
+    active = on and run(['systemctl', 'is-enabled', BACKUP_UNITS[1]], check=False,
+                        capture=True).stdout.strip() == 'enabled'
+    return {'on': bool(active), 'when': conf.get('auto_backup_when') or AUTO_BACKUP_WHEN,
+            'keep': int(conf.get('auto_backup_keep') or AUTO_BACKUP_KEEP),
+            'possible': bool(shutil.which('systemctl')) and os.geteuid() == 0}
+
+
+def set_auto_backup(conf, on, when=None, keep=None):
+    if not shutil.which('systemctl'):
+        raise Fail('Backups on a timer need systemd.')
+    if when:
+        r = run(['systemd-analyze', 'calendar', when], check=False, capture=True)
+        if r.returncode != 0:
+            raise Fail(f'"{when}" is not a time systemd understands, such as "Sun 14:00" or "daily".')
+        conf['auto_backup_when'] = when
+    if keep:
+        conf['auto_backup_keep'] = str(int(keep))
+    save_conf(conf, conf['_path'])
+    service, timer = (Path('/etc/systemd/system', u) for u in BACKUP_UNITS)
+    if on:
+        service.write_text(f"""[Unit]
+Description=EzySpeech: back up settings, secrets and transcripts
+
+[Service]
+Type=oneshot
+ExecStart={home_of(conf) / 'current' / 'ops' / 'ezyspeech'} backup --auto
+""")
+        timer.write_text(f"""[Unit]
+Description=EzySpeech: regular backup
+
+[Timer]
+OnCalendar={conf.get('auto_backup_when') or AUTO_BACKUP_WHEN}
+# Missed while the machine was off: run at the next start
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
+""")
+        systemctl('daemon-reload')
+        systemctl('enable', '--now', BACKUP_UNITS[1])
+    else:
+        systemctl('disable', '--now', BACKUP_UNITS[1], check=False)
+        for u in (service, timer):
+            if u.exists():
+                u.unlink()
+        systemctl('daemon-reload', check=False)
+
+
+def cmd_auto_backup(a):
+    conf = load_conf()
+    if a.state == 'status':
+        st = auto_backup_state(conf)
+        if a.json:
+            print(json.dumps(st))
+        else:
+            print(f"Backups on a timer: {'on' if st['on'] else 'off'}; when: {st['when']}; "
+                  f"keeping the newest {st['keep']}, in {backup_dir(conf)}")
+        return
+    require_root(conf)
+    set_auto_backup(conf, a.state == 'on', a.when, a.keep)
+    st = auto_backup_state(conf)
+    print(f"Backups on a timer: {'on, ' + st['when'] + ', keeping ' + str(st['keep']) if st['on'] else 'off'}")
 
 
 def cmd_uninstall(a):
@@ -1124,6 +1348,8 @@ def cmd_uninstall(a):
         what = ' and DELETE its settings, secrets and transcripts' if a.purge else ''
         if input(f'Uninstall EzySpeech{what}? [y/N] ').strip().lower() not in ('y', 'yes'):
             return
+    if Path('/etc/systemd/system', BACKUP_UNITS[1]).exists():
+        set_auto_backup(conf, False)        # the backups made are left where they are
     if conf['mode'] == 'native':
         systemctl('disable', '--now', *SERVICE_UNITS, check=False)
         for u in SERVICE_UNITS:
@@ -1176,6 +1402,7 @@ def main(argv):
     s = sub.add_parser('update')
     s.add_argument('--yes', '-y', action='store_true'); s.add_argument('--to')
     s.add_argument('--force', action='store_true'); s.add_argument('--progress', action='store_true')
+    s.add_argument('--no-auto-backup', action='store_true', help='no backups on a timer')
     s.set_defaults(func=cmd_update)
     sub.add_parser('rollback').set_defaults(func=cmd_rollback)
     sub.add_parser('finish-update', help='run by update; safe to repeat').set_defaults(func=cmd_finish_update)
@@ -1187,7 +1414,19 @@ def main(argv):
     s = sub.add_parser('password'); s.add_argument('--generate', action='store_true')
     s.add_argument('--stdin', action='store_true', help='read it from standard input')
     s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_password)
-    s = sub.add_parser('backup'); s.add_argument('file', nargs='?'); s.set_defaults(func=cmd_backup)
+    s = sub.add_parser('backup', help='back up now; --list the backups kept')
+    s.add_argument('file', nargs='?'); s.add_argument('--list', action='store_true')
+    s.add_argument('--json', action='store_true')
+    s.add_argument('--auto', action='store_true', help=argparse.SUPPRESS)   # the timer's
+    s.set_defaults(func=cmd_backup)
+    s = sub.add_parser('restore', help='put a backup back, after backing up what is there')
+    s.add_argument('file'); s.add_argument('--yes', '-y', action='store_true')
+    s.add_argument('--progress', action='store_true'); s.set_defaults(func=cmd_restore)
+    s = sub.add_parser('auto-backup', help='backups on a timer: on, off or status')
+    s.add_argument('state', choices=['on', 'off', 'status'])
+    s.add_argument('--when', help='a systemd calendar time, such as "Sun 14:00" or daily')
+    s.add_argument('--keep', type=int, help='how many to keep')
+    s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_auto_backup)
     s = sub.add_parser('uninstall'); s.add_argument('--purge', action='store_true')
     s.add_argument('--yes', '-y', action='store_true'); s.set_defaults(func=cmd_uninstall)
     s = sub.add_parser('install')

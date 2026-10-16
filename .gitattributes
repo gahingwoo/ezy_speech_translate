@@ -8,4 +8,5 @@ tools/patternfly/backup export-ignore
 tools/patternfly/design export-ignore
 tools/tests_legacy      export-ignore
 scripts/tests           export-ignore
+tests/                  export-ignore
 sample_transcriptions.json export-ignore
