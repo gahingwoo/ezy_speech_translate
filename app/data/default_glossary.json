@@ -1,0 +1,155 @@
+{
+ "_about": "Terms a church's sermon uses that machine translation gets wrong or unevenly, given their Chinese Union Version (和合本) wording. Added to the glossary once, on a new database; edit or delete them in the console. \"God\" is left out on purpose: 神 or 上帝 is each church's own choice.",
+ "entries": [
+  {
+   "source_term": "Holy Spirit",
+   "zh": "圣灵",
+   "zh-tw": "聖靈",
+   "yue": "聖靈"
+  },
+  {
+   "source_term": "Holy Ghost",
+   "zh": "圣灵",
+   "zh-tw": "聖靈",
+   "yue": "聖靈"
+  },
+  {
+   "source_term": "Lord's Supper",
+   "zh": "主的晚餐",
+   "zh-tw": "主的晚餐",
+   "yue": "主的晚餐"
+  },
+  {
+   "source_term": "Holy Communion",
+   "zh": "圣餐",
+   "zh-tw": "聖餐",
+   "yue": "聖餐"
+  },
+  {
+   "source_term": "Lord's table",
+   "zh": "主的筵席",
+   "zh-tw": "主的筵席",
+   "yue": "主的筵席"
+  },
+  {
+   "source_term": "Lamb of God",
+   "zh": "神的羔羊",
+   "zh-tw": "神的羔羊",
+   "yue": "神的羔羊"
+  },
+  {
+   "source_term": "Son of Man",
+   "zh": "人子",
+   "zh-tw": "人子",
+   "yue": "人子"
+  },
+  {
+   "source_term": "Kingdom of God",
+   "zh": "神的国",
+   "zh-tw": "神的國",
+   "yue": "神的國"
+  },
+  {
+   "source_term": "Kingdom of Heaven",
+   "zh": "天国",
+   "zh-tw": "天國",
+   "yue": "天國"
+  },
+  {
+   "source_term": "Body of Christ",
+   "zh": "基督的身体",
+   "zh-tw": "基督的身體",
+   "yue": "基督的身體"
+  },
+  {
+   "source_term": "Word of God",
+   "zh": "神的道",
+   "zh-tw": "神的道",
+   "yue": "神的道"
+  },
+  {
+   "source_term": "Pentecost",
+   "zh": "五旬节",
+   "zh-tw": "五旬節",
+   "yue": "五旬節"
+  },
+  {
+   "source_term": "Passover",
+   "zh": "逾越节",
+   "zh-tw": "逾越節",
+   "yue": "逾越節"
+  },
+  {
+   "source_term": "Sabbath",
+   "zh": "安息日",
+   "zh-tw": "安息日",
+   "yue": "安息日"
+  },
+  {
+   "source_term": "Good Friday",
+   "zh": "受难日",
+   "zh-tw": "受難日",
+   "yue": "受難日"
+  },
+  {
+   "source_term": "Hallelujah",
+   "zh": "哈利路亚",
+   "zh-tw": "哈利路亞",
+   "yue": "哈利路亞"
+  },
+  {
+   "source_term": "Amen",
+   "zh": "阿们",
+   "zh-tw": "阿們",
+   "yue": "阿們"
+  },
+  {
+   "source_term": "baptism",
+   "zh": "洗礼",
+   "zh-tw": "洗禮",
+   "yue": "洗禮"
+  },
+  {
+   "source_term": "repentance",
+   "zh": "悔改",
+   "zh-tw": "悔改",
+   "yue": "悔改"
+  },
+  {
+   "source_term": "salvation",
+   "zh": "救恩",
+   "zh-tw": "救恩",
+   "yue": "救恩"
+  },
+  {
+   "source_term": "Bible study",
+   "zh": "查经",
+   "zh-tw": "查經",
+   "yue": "查經"
+  },
+  {
+   "source_term": "small group",
+   "zh": "小组",
+   "zh-tw": "小組",
+   "yue": "小組"
+  },
+  {
+   "source_term": "worship team",
+   "zh": "敬拜团队",
+   "zh-tw": "敬拜團隊",
+   "yue": "敬拜團隊"
+  },
+  {
+   "source_term": "deacon",
+   "zh": "执事",
+   "zh-tw": "執事",
+   "yue": "執事"
+  },
+  {
+   "source_term": "pastor",
+   "zh": "牧师",
+   "zh-tw": "牧師",
+   "yue": "牧師"
+  }
+ ]
+}

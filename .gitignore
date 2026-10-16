@@ -21,7 +21,7 @@ config/ssl/
 # The transcript database. It holds what was actually said in a service —
 # a congregation's own words — and this repository is public. It was only
 # ever untracked, which is one `git add -A` away from being published.
-data/
+/data/
 *.db
 
 # Tooling reports
