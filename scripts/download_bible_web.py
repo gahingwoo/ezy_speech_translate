@@ -109,7 +109,8 @@ def fetch_chapter(slug: str, chap: int, retries: int = 3) -> list[dict]:
     last_err: Exception | None = None
     for attempt in range(retries):
         try:
-            with urllib.request.urlopen(url, timeout=30) as resp:
+            # Fixed https URLs (bandit B310)
+            with urllib.request.urlopen(url, timeout=30) as resp:  # nosec B310
                 payload = json.loads(resp.read().decode("utf-8"))
             return payload.get("data", [])
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:

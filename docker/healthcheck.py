@@ -28,7 +28,8 @@ for section, default_port, path in (('server', 1915, '/api/health'),
     scheme = 'https' if conf.get('use_https') else 'http'
     url = f"{scheme}://127.0.0.1:{conf.get('port', default_port)}{path}"
     try:
-        urllib.request.urlopen(url, timeout=4, context=insecure).read()
+        # Http(s) to 127.0.0.1, built above (bandit B310)
+        urllib.request.urlopen(url, timeout=4, context=insecure).read()  # nosec B310
     except Exception as exc:
         print(f'{url}: {exc}')
         sys.exit(1)

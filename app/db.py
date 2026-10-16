@@ -250,12 +250,14 @@ def delete_ids(ids: list, room_id: str | None = None) -> None:
                 placeholders = ",".join("?" * len(safe_ids))
                 if room_id is None:
                     conn.execute(
-                        f"DELETE FROM translations WHERE id IN ({placeholders})",
+                        # Only "?"s; the ids are bound (bandit B608)
+                        f"DELETE FROM translations WHERE id IN ({placeholders})",  # nosec B608
                         safe_ids,
                     )
                 else:
                     conn.execute(
-                        f"DELETE FROM translations WHERE room_id = ? AND id IN ({placeholders})",
+                        # As above (bandit B608)
+                        f"DELETE FROM translations WHERE room_id = ? AND id IN ({placeholders})",  # nosec B608
                         [room_id, *safe_ids],
                     )
                 conn.commit()
@@ -472,7 +474,8 @@ def glossary_update(entry_id: int, **fields) -> bool:
         try:
             with _get_conn() as conn:
                 conn.execute(
-                    f"UPDATE glossary SET {', '.join(sets)} WHERE id = ?", vals
+                    # Columns from the allowed set; values bound (bandit B608)
+                    f"UPDATE glossary SET {', '.join(sets)} WHERE id = ?", vals  # nosec B608
                 )
                 conn.commit()
             return True

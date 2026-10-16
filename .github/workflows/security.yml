@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   pip-audit:
     runs-on: ubuntu-latest
@@ -13,11 +16,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       - name: Install pip-audit
         run: pip install pip-audit
-      - name: Run pip-audit
-        run: pip-audit -r requirements.txt --progress=no
+      - name: Known vulnerabilities in the dependencies
+        run: pip-audit -r requirements.txt --progress-spinner off
 
   bandit:
     runs-on: ubuntu-latest
@@ -26,8 +29,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       - name: Install bandit
         run: pip install bandit
-      - name: Run bandit
-        run: bandit -r . -x venv -f json -o bandit-github-report.json
+      # Medium severity and up. tools/ is left out: page generators and data
+      # builders run by a developer, never on a server. A finding that is
+      # deliberate says so with "# nosec <id>" and a comment above saying why.
+      - name: Static analysis
+        run: bandit -r . -x ./venv,./.venv,./tools,./node_modules -ll

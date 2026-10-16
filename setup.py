@@ -52,10 +52,11 @@ def print_step(step_num, text):
 
 
 def run_command(cmd):
-    """Run shell command and return True/False."""
+    """Run a command, given as a list (no shell, so paths with spaces in them
+    are fine), and return True/False."""
     try:
         result = subprocess.run(
-            cmd, shell=True, check=False,
+            cmd, check=False,
             capture_output=True, text=True
         )
         if result.returncode == 0:
@@ -166,9 +167,9 @@ def check_python_version():
 
 def check_openssl_availability():
     print_step(2, "Checking OpenSSL availability...")
-    if run_command("openssl version"):
-        result = subprocess.run("openssl version", shell=True,
-                                 capture_output=True, text=True)
+    if run_command(["openssl", "version"]):
+        result = subprocess.run(["openssl", "version"],
+                                capture_output=True, text=True)
         print(f"OpenSSL available: {result.stdout.strip()}")
         return True
     else:
@@ -187,7 +188,7 @@ def create_venv():
         print("venv already exists")
         return True
 
-    if run_command(f"{sys.executable} -m venv venv"):
+    if run_command([sys.executable, "-m", "venv", "venv"]):
         print("venv created")
         return True
     else:
@@ -209,10 +210,10 @@ def install_dependencies():
     pip_exec = get_pip_executable()
 
     print("Upgrading pip...")
-    run_command(f"{pip_exec} install --upgrade pip")
+    run_command([pip_exec, "install", "--upgrade", "pip"])
 
     print("Installing requirements.txt...")
-    if run_command(f"{pip_exec} install -r requirements.txt"):
+    if run_command([pip_exec, "install", "-r", "requirements.txt"]):
         print("Dependencies installed")
         return True
 
@@ -331,11 +332,9 @@ def generate_ssl_certificate():
         return True
 
     print("Generating self-signed certificate (valid 365 days)...")
-    cmd = (
-        "openssl req -x509 -newkey rsa:2048 -nodes "
-        f"-keyout {key_path} -out {cert_path} -days 365 "
-        '-subj "/CN=localhost"'
-    )
+    cmd = ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+           "-keyout", key_path, "-out", cert_path, "-days", "365",
+           "-subj", "/CN=localhost"]
 
     if run_command(cmd):
         print("SSL generated")
@@ -365,8 +364,8 @@ def create_run_scripts():
         with open("start_admin.sh", "w") as f:
             f.write("#!/bin/bash\n")
             f.write("venv/bin/python app/admin/server.py\n")
-        run_command("chmod +x start_server.sh")
-        run_command("chmod +x start_admin.sh")
+        os.chmod("start_server.sh", 0o744)
+        os.chmod("start_admin.sh", 0o744)
 
     print("Run scripts created")
     return True

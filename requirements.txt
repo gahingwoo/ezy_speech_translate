@@ -1,96 +1,26 @@
-# EzySpeechTranslate Dependencies
-# Version 3
+# EzySpeech: what the two servers need. Python 3.10 or later: the fixed
+# releases of Flask, requests, PyJWT and cryptography have left 3.9 behind.
+# Speech is recognised in the browser (Web Speech API), so nothing here
+# handles audio.
 
-# ============================================
-# Core Framework
-# ============================================
-Flask==3.0.0
-Flask-SocketIO==5.3.5
+# Web framework
+Flask==3.1.3
+Flask-SocketIO==5.6.1
 Flask-CORS==6.0.0
 
-# ============================================
-# WebSocket Communication
-# ============================================
-python-socketio==5.14.0
-python-socketio[client]==5.14.0
+# WebSocket (the client extra is for scripts/tests, which talk to a server)
+python-socketio==5.16.2
+python-socketio[client]==5.16.2
 eventlet==0.40.3
 
-# ============================================
-# Audio Processing (Optional - for future features)
-# ============================================
-# sounddevice==0.4.6
-# numpy==1.24.3
-# av==12.0.0  # Uncomment if using audio recording features
-
-# ============================================
-# Speech Recognition (Optional - if using server-side recognition)
-# ============================================
-# faster-whisper==1.2.0  # Uncomment if using Whisper on server
-# openai-whisper==20231117
-
-# ============================================
-# Authentication & Security
-# ============================================
-PyJWT==2.8.0
-cryptography>=41.0.0,<45.0.0
+# Sign-in and security
+PyJWT==2.15.0
+cryptography>=50.0.0,<51.0.0
 flask-limiter==3.5.0
 flask-talisman==1.1.0
-python-dotenv==1.0.0
 
-# ============================================
-# Configuration Management
-# ============================================
+# Configuration
 PyYAML==6.0.1
 
-# ============================================
-# HTTP Requests
-# ============================================
-requests==2.32.4
-
-# ============================================
-# Date/Time Utilities
-# ============================================
-python-dateutil==2.8.2
-
-# ============================================
-# Production Server (Recommended)
-# ============================================
-gunicorn==22.0.0
-
-# ============================================
-# Database Support (Optional)
-# ============================================
-# Uncomment if using database storage:
-# SQLAlchemy==2.0.23
-# psycopg2-binary==2.9.9  # For PostgreSQL
-# PyMySQL==1.1.0          # For MySQL
-
-# ============================================
-# Development Tools (Optional)
-# ============================================
-# Uncomment for development:
-# pytest==7.4.3           # Testing framework
-# black==23.12.1          # Code formatter
-# flake8==6.1.0           # Linter
-# mypy==1.7.1             # Type checker
-
-# ============================================
-# NOTES
-# ============================================
-# 1. This minimal setup uses Web Speech API (browser-based)
-#    for speech recognition, reducing server requirements
-#
-# 2. If you need server-side speech recognition:
-#    - Uncomment faster-whisper and openai-whisper
-#    - Ensure FFmpeg is installed on system
-#    - Requires more RAM (2GB+)
-#
-# 3. For production deployments:
-#    - Use gunicorn with eventlet worker
-#    - Enable database support if needed
-#    - Consider adding monitoring tools
-#
-# 4. Python version compatibility: 3.8-3.12
-#
-# 5. Installation:
-#    pip install -r requirements.txt
+# Translation and Scripture lookups
+requests==2.33.0

@@ -92,7 +92,8 @@ class SystemTester:
                 self.config = yaml.safe_load(f)
 
             host = self.config.get('server', {}).get('host', 'localhost')
-            if host == '0.0.0.0':
+            # A comparison, not a bind (bandit B104)
+            if host == '0.0.0.0':  # nosec B104
                 host = 'localhost'
 
             main_port = self.config.get('server', {}).get('port', 1915)
@@ -275,7 +276,8 @@ class SystemTester:
             response = requests.get(
                 f"{self.base_url}/api/health",
                 timeout=5,
-                verify=False
+                # The server under test has a self-signed certificate (bandit B501)
+                verify=False  # nosec B501
             )
 
             if response.status_code == 200:
@@ -317,7 +319,8 @@ class SystemTester:
             response = requests.get(
                 f"{self.admin_url}/health",
                 timeout=5,
-                verify=False
+                # The server under test has a self-signed certificate (bandit B501)
+                verify=False  # nosec B501
             )
 
             if response.status_code == 200:
@@ -355,7 +358,8 @@ class SystemTester:
                 f"{self.base_url}/api/login",
                 json={'username': username, 'password': password},
                 timeout=5,
-                verify=False
+                # The server under test has a self-signed certificate (bandit B501)
+                verify=False  # nosec B501
             )
 
             if response.status_code == 200:
@@ -399,7 +403,8 @@ class SystemTester:
             all_passed = True
             for endpoint, name in endpoints:
                 url = f"{self.base_url}{endpoint}"
-                response = requests.get(url, headers=headers, timeout=5, verify=False)
+                # Self-signed, as above (bandit B501)
+                response = requests.get(url, headers=headers, timeout=5, verify=False)  # nosec B501
 
                 if response.status_code not in [200, 201]:
                     print_fail(f"{name} returned {response.status_code}")

@@ -176,9 +176,11 @@ socketio = SocketIO(app, cors_allowed_origins=_admin_cors_origins)
 # Server Settings
 # ──────────────────────────────────────────
 ADMIN_PORT = get_config("admin_server", "port", default=5001)
-ADMIN_HOST = get_config("admin_server", "host", default="0.0.0.0")
+# A server for the network, by design (bandit B104)
+ADMIN_HOST = get_config("admin_server", "host", default="0.0.0.0")  # nosec B104
 MAIN_SERVER_PORT = get_config("server", "port", default=1915)
-MAIN_SERVER_HOST = get_config("server", "host", default="0.0.0.0")
+# As above (bandit B104)
+MAIN_SERVER_HOST = get_config("server", "host", default="0.0.0.0")  # nosec B104
 
 # ──────────────────────────────────────────
 # Security Settings
