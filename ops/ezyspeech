@@ -81,12 +81,60 @@ class Fail(Exception):
 
 # ── output ───────────────────────────────────────────────────────────────────
 
+# The steps' words in Chinese, for whoever is watching them in Chinese: the
+# installer's screens and the Cockpit module say so with EZY_LANG. Matched on
+# the English, so the code that says a step needs no change to be translated.
+STEP_ZH = [(re.compile(p), r) for p, r in (
+    (r'^Installing EzySpeech (\S+) \((\w+)\)$', r'正在安装 EzySpeech \1（\2）'),
+    (r'^Packages Python needs$', '安装 Python 所需的软件包'),
+    (r'^Service account (\S+)$', r'创建服务账户 \1'),
+    (r'^Bringing over settings and transcripts from (.+)$', r'从 \1 迁移设置和记录'),
+    (r'^Preparing the release$', '准备新版本'),
+    (r'^Unpacking the release$', '解压新版本'),
+    (r'^Building the image \(a minute or two\)$', '构建镜像（需要一两分钟）'),
+    (r'^Building its image$', '构建镜像'),
+    (r'^First-run setup$', '首次运行设置'),
+    (r'^System services?$', '系统服务'),
+    (r'^Starting$', '启动中'),
+    (r'^Stopping$', '停止中'),
+    (r'^Backups every (.+), the newest (\d+) kept$', r'定时备份：\1，保留最近 \2 份'),
+    (r'^Waiting for it to come up$', '等待服务启动'),
+    (r'^Cockpit module$', '安装 Cockpit 模块'),
+    (r'^Done$', '完成'),
+    (r'^Downloading (\S+)$', r'下载 \1'),
+    (r'^Checked against its SHA-256; preparing it$', '已核对 SHA-256，正在准备'),
+    (r'^Bringing the settings up to date$', '更新设置'),
+    (r'^Switching to (\S+)$', r'切换到 \1'),
+    (r'^Checking it came up$', '检查是否正常启动'),
+    (r'^Finishing$', '收尾'),
+    (r'^Updated to (\S+)$', r'已更新到 \1'),
+    (r'^Backing up what is there now$', '先备份现在的数据'),
+    (r'^Restoring (.+)$', r'恢复 \1'),
+    (r'^Restored (.+)$', r'已恢复 \1'),
+)]
+
+
+def step_words(text):
+    lang = os.environ.get('EZY_LANG', '').lower()
+    if lang.startswith('zh') or lang == 'yue':
+        for pattern, zh in STEP_ZH:
+            if pattern.match(text):
+                text = pattern.sub(zh, text)
+                # systemd's day names, in a timer's time
+                for en, day in (('Mon', '周一'), ('Tue', '周二'), ('Wed', '周三'), ('Thu', '周四'),
+                                ('Fri', '周五'), ('Sat', '周六'), ('Sun', '周日'), ('daily', '每天')):
+                    text = re.sub(rf'\b{en}\b', '每' + day if day.startswith('周') else day, text)
+                return text
+    return text
+
+
 class Out:
     progress = False      # PROGRESS <percent> <text> lines, for install.sh's gauge
     quiet = False
 
     @classmethod
     def step(cls, percent, text):
+        text = step_words(text)
         if cls.progress:
             print(f'PROGRESS {int(percent)} {text}', flush=True)
         elif not cls.quiet:

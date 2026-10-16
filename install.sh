@@ -485,7 +485,7 @@ It asks a few questions, then downloads the latest release from GitHub, checks i
     [ "$COCKPIT" = yes ] && [ -n "${COCKPIT_PKG:-}" ] && args+=(--cockpit "$COCKPIT_PKG")
     [ -n "$MIGRATE" ] && args+=(--migrate-from "$MIGRATE")
     log="$WORK/install.log"
-    EZY_ADMIN_PASSWORD="$ADMIN_PASSWORD" python3 "$tool" "${args[@]}" 2>&1 | tee "$log" \
+    EZY_ADMIN_PASSWORD="$ADMIN_PASSWORD" EZY_LANG="$UI_LANG" python3 "$tool" "${args[@]}" 2>&1 | tee "$log" \
         | gauge "$(L "Installing EzySpeech $VERSION..." "正在安装 EzySpeech $VERSION……")"
     local code=${PIPESTATUS[0]}
     if [ "$code" != 0 ]; then
@@ -553,7 +553,7 @@ manage_menu() {
             quit "$(L "Quit" "退出")")" || return 0
         case "$choice" in
             status)   msg "$(ezyspeech status 2>&1)" ;;
-            update)   $sudo_cmd ezyspeech update --yes --progress 2>&1 | tee /tmp/ezyspeech-update.log | gauge "$(L "Updating..." "正在更新……")"
+            update)   $sudo_cmd env EZY_LANG="$UI_LANG" ezyspeech update --yes --progress 2>&1 | tee /tmp/ezyspeech-update.log | gauge "$(L "Updating..." "正在更新……")"
                       msg "$(grep -E '^(FAILED|PROGRESS 100)|up to date' /tmp/ezyspeech-update.log | tail -1 | sed 's/^PROGRESS 100 //; s/^FAILED /✗ /')" ;;
             restart)  $sudo_cmd ezyspeech restart && msg "$(L "Restarted." "已重启。")" ;;
             password) keep "$($sudo_cmd ezyspeech password --generate 2>&1)" ;;
