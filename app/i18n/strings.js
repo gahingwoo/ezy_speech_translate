@@ -15,6 +15,8 @@ window.sharedI18n = {
         // Header
         "waiting": "Waiting",
         "online": "Online",
+        "updateAvailable": "Update {version}",
+        "updateHow": "{version} is out. Update it from Cockpit, or on the server: sudo ezyspeech update",
         "offline": "Offline",
         "search": "Search...",
         "toggleMenu": "Toggle mobile menu",
@@ -186,6 +188,8 @@ window.sharedI18n = {
         // Header
         "waiting": "等待中",
         "online": "在线",
+        "updateAvailable": "可更新到 {version}",
+        "updateHow": "{version} 已发布。可以在 Cockpit 里更新，或在服务器上运行：sudo ezyspeech update",
         "offline": "离线",
         "search": "搜索...",
         "toggleMenu": "切换移动菜单",
@@ -356,6 +360,8 @@ window.sharedI18n = {
 
         "waiting": "等緊",
         "online": "在線",
+        "updateAvailable": "可以更新到 {version}",
+        "updateHow": "{version} 出咗。可以喺 Cockpit 更新，或者喺伺服器行：sudo ezyspeech update",
         "offline": "離線",
         "search": "搜尋…",
         "toggleMenu": "切換流動選單",
@@ -512,6 +518,8 @@ window.sharedI18n = {
 
         "waiting": "等待中",
         "online": "線上",
+        "updateAvailable": "可更新至 {version}",
+        "updateHow": "{version} 已發佈。可以在 Cockpit 裡更新，或在伺服器上執行：sudo ezyspeech update",
         "offline": "離線",
         "search": "搜尋…",
         "toggleMenu": "切換行動選單",

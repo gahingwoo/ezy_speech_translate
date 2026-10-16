@@ -26,7 +26,7 @@ OUT = ROOT / "tools/patternfly/icons.json"
 # Kebab-case names as @patternfly/react-icons files them. A name that does not
 # exist in the package stops the run rather than silently leaving a hole.
 NAMES = """
-angle-down angle-left angle-right bars bell book bullhorn bullseye chart-line
+angle-down angle-left angle-right arrow-circle-up bars bell book bullhorn bullseye chart-line
 check check-circle cog comments copy database desktop download edit ellipsis-v
 exclamation-circle exclamation-triangle expand external-link-alt eye eye-slash
 file-export

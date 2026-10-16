@@ -265,6 +265,28 @@ function toggleTheme() {
     toggleThemeTo(updateThemeUI);
 }
 
+// A newer release, named in the masthead: the console cannot update itself
+// (the servers do not run as root), so the label says where to, and links to
+// what changed.
+async function checkForUpdate() {
+    try {
+        const r = await fetch('/api/update-info', { headers: { Authorization: 'Bearer ' + authToken } });
+        if (!r.ok) return;
+        const info = await r.json();
+        if (!info.available) return;
+        const badge = document.getElementById('updateBadge');
+        const link = document.getElementById('updateBadgeLink');
+        if (!badge || !link) return;
+        const fill = s => s.replace('{version}', info.latest);
+        document.getElementById('updateBadgeText').textContent = fill(t('updateAvailable', 'Update {version}'));
+        link.title = fill(t('updateHow', '{version} is out. Update it from Cockpit, or on the server: sudo ezyspeech update'));
+        if (info.url) link.href = info.url;
+        badge.hidden = false;
+    } catch (e) {
+        // no answer is no news: the console works the same without it
+    }
+}
+
 function updateThemeUI(theme) {
     // The sun and the moon are both in the button; the stylesheet shows the
     // one that matches the theme, so only the label changes here.
@@ -335,6 +357,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/login';
         return;
     }
+    checkForUpdate();
 
     // Listen for display language changes
     const displayLangSelect = document.getElementById('displayLanguage');

@@ -1228,6 +1228,16 @@ def build():
       </div>
 
       <div class="pf-v6-c-masthead__content">
+        <!-- A newer release, when there is one; checkForUpdate() in admin.js
+             names it and links to its notes. -->
+        <span class="pf-v6-c-label pf-m-blue pf-m-clickable update-badge" id="updateBadge" hidden>
+          <a class="pf-v6-c-label__content" id="updateBadgeLink" href="#"
+             target="_blank" rel="noopener noreferrer">
+            <span class="pf-v6-c-label__icon">%(update_icon)s</span>
+            <span class="pf-v6-c-label__text" id="updateBadgeText">Update</span>
+          </a>
+        </span>
+
         <!-- updateStatus() in admin.js replaces this class list outright, so
              what it writes and what is written here have to agree. The label's
              colour carries the state; an icon as well would say it twice. -->
@@ -1503,6 +1513,7 @@ def build():
         # The three masthead actions carry their label from md up; the cog
         # alone showed none, which left the icon to speak for itself.
         "status_icon": icon("exclamation-circle"),
+        "update_icon": icon("arrow-circle-up"),
         "moon": icon("moon", "pf-v6-svg icon-moon"),
         "sun": icon("sun", "pf-v6-svg icon-sun"),
         "settings": button("Settings", "showSettings()", "cog",

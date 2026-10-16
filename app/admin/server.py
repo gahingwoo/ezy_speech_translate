@@ -36,6 +36,7 @@ import logging
 import hashlib
 import hmac
 import jwt
+import re
 import time
 import requests
 from datetime import datetime, timedelta
@@ -725,6 +726,41 @@ def proxy_save_config_fields():
 def protected_endpoint():
     """Example protected endpoint"""
     return jsonify({"message": "Access granted"})
+
+# ── is there a newer release? ────────────────────────────────────────────────
+# Asked of GitHub at most every six hours (half an hour after a failure), and
+# only while someone is signed in to look; features.update_check: false stops it.
+_RELEASES = "https://api.github.com/repos/gahingwoo/ezy_speech_translate/releases/latest"
+_update_seen = {"at": 0.0, "ttl": 0, "latest": None, "url": None}
+
+
+def _version_key(v):
+    return tuple(int(x) for x in re.findall(r"\d+", str(v))[:3])
+
+
+@app.route("/api/update-info")
+@require_auth
+def update_info():
+    if not get_config("features", "update_check", default=True):
+        return {"enabled": False, "current": APP_VERSION}
+    now = time.time()
+    if now - _update_seen["at"] > _update_seen["ttl"]:
+        try:
+            r = requests.get(_RELEASES, timeout=5, headers={"Accept": "application/vnd.github+json"})
+            r.raise_for_status()
+            found = r.json()
+            _update_seen.update(latest=str(found.get("tag_name", "")).lstrip("v") or None,
+                                url=found.get("html_url"), ttl=6 * 3600)
+        except (requests.RequestException, ValueError) as exc:
+            logger.info(f"Could not ask GitHub for the latest release: {exc}")
+            _update_seen["ttl"] = 1800
+        _update_seen["at"] = now
+    latest = _update_seen["latest"]
+    return {
+        "enabled": True, "current": APP_VERSION, "latest": latest, "url": _update_seen["url"],
+        "available": bool(latest) and _version_key(latest) > _version_key(APP_VERSION),
+    }
+
 
 @app.route("/health")
 def health():

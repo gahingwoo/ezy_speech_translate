@@ -969,3 +969,9 @@ a.pf-v6-c-masthead__logo:focus-visible {
 /* The content's old picture gives way to the new one at once rather than
    crossfading: it is the same text, rewrapped. */
 ::view-transition-old(page-main) { display: none; }
+
+/* The update label is hidden until there is one; the label's own display
+   would otherwise win over the hidden attribute. */
+.update-badge[hidden] {
+  display: none;
+}

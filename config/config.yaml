@@ -198,6 +198,7 @@ features:
   real_time_sync: true               # Enable real-time sync
   export_enabled: true               # Allow exports
   dark_mode: true                    # Dark mode toggle
+  update_check: true                 # Console asks GitHub for a newer release
 
   # ── Bible reference detection (church deployments) ───────────────
   # When enabled the server scans every finalized transcription for
