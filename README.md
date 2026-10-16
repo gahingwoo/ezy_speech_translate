@@ -266,6 +266,9 @@ sudo ezyspeech restart           # also start, stop
 sudo ezyspeech logs -f
 sudo ezyspeech password          # --generate makes one and shows it once
 sudo ezyspeech backup            # settings, secrets and transcripts, as .tar.gz
+sudo ezyspeech backup --list     # the backups kept
+sudo ezyspeech restore FILE      # put one back (what is there is backed up first)
+sudo ezyspeech auto-backup on    # or off, or status; --when "daily 03:00"
 sudo ezyspeech uninstall         # --purge deletes settings and transcripts too
 ```
 
@@ -274,12 +277,27 @@ switches over with a restart, and checks both servers come up reporting the
 new version. If they do not within a minute, it switches back and says so.
 The two most recent releases are kept, so `rollback` is a restart.
 
+Backups go to `/var/backups/ezyspeech`. A new install makes one every Sunday at
+14:00, after the service, keeping the newest eight; an older install starts
+doing so with its next update. A backup made one way of installing restores
+into another, which is also how EzySpeech moves to a new machine.
+
+Translation is tried with each provider in `config.yaml`'s
+`translation.providers`, in order: Google's web endpoint by default, which
+needs no key but is not a published API, and DeepL, Google Cloud Translation
+or a LibreTranslate server when their keys or address are set. Keys are
+secrets, kept out of the settings page.
+
 The Cockpit module does the same from a browser, through the same command,
-for either kind of install. Its source is
+for every kind of install. Its source is
 [gahingwoo/ezy_speech_cockpit](https://github.com/gahingwoo/ezy_speech_cockpit);
 each release carries a built copy.
 
 ### Releasing
+
+Every push to `main` installs the code natively, in Docker and in Podman on a
+fresh runner and uses each (`.github/workflows/test.yml`, with
+`tests/smoke/check.py`); a release does the same before it publishes anything.
 
 The version is in `VERSION`. To release, change it, commit, and push a tag
 `v<version>`. The release workflow checks the tag and `VERSION` agree, builds
