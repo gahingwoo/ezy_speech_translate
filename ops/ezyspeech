@@ -1101,6 +1101,15 @@ def cmd_finish_update(a):
     require_root(conf)
     cur = current_release(conf)
     link_command(conf, cur)
+    # Installed before backups ran on a timer: turned on once, as a new install
+    # has them. Once anyone has turned them on or off, that choice stands.
+    if not conf.get('auto_backup') and shutil.which('systemctl'):
+        try:
+            set_auto_backup(conf, True)
+            Out.info(f'Backups now run on a timer: {AUTO_BACKUP_WHEN}, the newest {AUTO_BACKUP_KEEP} kept '
+                     '(ezyspeech auto-backup off to stop them).')
+        except Fail as exc:
+            Out.info(f'Backups on a timer were not set up: {exc}')
     if COCKPIT_DIR.exists():
         try:
             rel = fetch_release(version_of(cur))
@@ -1348,6 +1357,7 @@ def set_auto_backup(conf, on, when=None, keep=None):
         conf['auto_backup_when'] = when
     if keep:
         conf['auto_backup_keep'] = str(int(keep))
+    conf['auto_backup'] = 'on' if on else 'off'     # chosen, so an update leaves it be
     save_conf(conf, conf['_path'])
     service, timer = (Path('/etc/systemd/system', u) for u in BACKUP_UNITS)
     if on:
