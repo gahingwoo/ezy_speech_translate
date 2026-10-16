@@ -398,6 +398,16 @@ def set_cache_headers(response):
                 connect_src_list.append(f"http://{external_host}")
                 connect_src_list.append(f"ws://{external_host}")
         
+        # The listener server on the host this page was opened at: a console
+        # opened on another computer, by the server's address or name, talks
+        # to it there. Only a plain host name or address is taken from the
+        # request, so nothing else can be written into the header.
+        page_host = request.host.rsplit(':', 1)[0] if not request.host.startswith('[') \
+            else request.host[:request.host.find(']') + 1]
+        if re.fullmatch(r'[A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\]', page_host or ''):
+            for scheme in ('http', 'https', 'ws', 'wss'):
+                connect_src_list.append(f"{scheme}://{page_host}:{MAIN_SERVER_PORT}")
+
         connect_src = ' '.join(connect_src_list)
         
         response.headers['Content-Security-Policy'] = (
