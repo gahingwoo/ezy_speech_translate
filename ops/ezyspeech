@@ -529,7 +529,8 @@ EnvironmentFile={home_of(conf) / '.env'}
 PublishPort={port}:{port}
 PublishPort={admin}:{admin}
 Volume={PODMAN_NAME}:/var/lib/ezyspeech
-StopTimeout=15
+# (No StopTimeout: Podman 4.9, Ubuntu 24.04's, refuses the whole file for it.
+# Both servers stop well within the default ten seconds.)
 
 [Service]
 Restart=always
@@ -1402,7 +1403,6 @@ def main(argv):
     s = sub.add_parser('update')
     s.add_argument('--yes', '-y', action='store_true'); s.add_argument('--to')
     s.add_argument('--force', action='store_true'); s.add_argument('--progress', action='store_true')
-    s.add_argument('--no-auto-backup', action='store_true', help='no backups on a timer')
     s.set_defaults(func=cmd_update)
     sub.add_parser('rollback').set_defaults(func=cmd_rollback)
     sub.add_parser('finish-update', help='run by update; safe to repeat').set_defaults(func=cmd_finish_update)
@@ -1439,6 +1439,7 @@ def main(argv):
     s.add_argument('--cockpit', help='Cockpit module package or URL to install')
     s.add_argument('--migrate-from', help='an ezy_manager.py install to bring settings over from')
     s.add_argument('--force', action='store_true'); s.add_argument('--progress', action='store_true')
+    s.add_argument('--no-auto-backup', action='store_true', help='no backups on a timer')
     s.set_defaults(func=cmd_install)
     a = p.parse_args(argv)
     Out.progress = getattr(a, 'progress', False)
