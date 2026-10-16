@@ -360,7 +360,10 @@ Operational cautions:
 
 ### 5.1 Code Structure
 
-- `app/user/server.py`: core backend + viewer APIs + websocket event hub
+- `app/user/server.py`: the listener server's entry; it patches eventlet and loads
+  `core.py` (configuration, the Flask app, security, rooms, sign-in), then the
+  modules that add to it: `routes_pages.py`, `routes_translate.py`,
+  `routes_admin.py` and `sockets.py`
 - `app/admin/server.py`: admin auth/frontend host + selected admin APIs
 - `app/static/js/user.js`: viewer state machine, pagination, translation/TTS pipelines
 - `app/static/js/admin.js`: operator workflow and microphone recognition handling
