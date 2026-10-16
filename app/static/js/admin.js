@@ -108,7 +108,7 @@ function showToast(message, type, duration) {
    =================================== */
 function t(key, fallback) {
     try {
-        const lang = localStorage.getItem('displayLanguage') || 'en';
+        const lang = window._displayLanguage || localStorage.getItem('displayLanguage') || 'en';
         const lib = window.sharedI18n || {};
         const langDict = lib[lang] || {};
         const enDict = lib.en || {};

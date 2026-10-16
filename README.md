@@ -351,6 +351,19 @@ Manual (development):
   - user server: `GET /api/health`
   - admin server: `GET /health`
 - Admin UI polls user health (`/api/health`) and shows client/translation counts.
+- Capacity, measured with `tools/loadtest/listeners.py` (October 2026, 4.1.17,
+  one listener server, a line every 3 s with interim words, two languages):
+
+  | Listeners | Line to the phone, median / p95 | CPU (one core) | Memory |
+  |---|---|---|---|
+  | 300 (10 min) | 44 / 53 ms | 5% | 155 MB |
+  | 1000 | 74 / 85 ms | 13% | 225 MB |
+  | 2500 | 152 / 310 ms | 28% | 365 MB |
+
+  No line was lost and no listener dropped. The server runs on one core, so a
+  slower machine than the test's (Apple silicon) reaches these numbers at a
+  few times the CPU; the time a translation provider takes comes on top.
+  Before 4.1.17 the server stopped at about 1000 listeners (open-file limit).
 
 ### Debugging and troubleshooting
 

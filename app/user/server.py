@@ -39,6 +39,9 @@ from app.user.core import *  # noqa: E402,F401,F403
 from app.user import routes_pages, routes_translate, routes_admin, sockets  # noqa: E402,F401
 from app.user.sockets import _heartbeat_cleanup_loop, _translation_health_loop  # noqa: E402
 
+# Connections served at once: listeners, consoles and page loads together
+MAX_LISTENER_CONNECTIONS = 10000
+
 # ──────────────────────────────────────────
 # Error Handlers
 # ──────────────────────────────────────────
@@ -125,8 +128,22 @@ if __name__ == '__main__':
     for directory in ['logs']:
         os.makedirs(directory, exist_ok=True)
 
+    # Every listener holds a socket and a green thread for as long as the page
+    # is open. systemd gives a service 1024 open files and eventlet serves 1024
+    # connections at once unless told otherwise: a ceiling of about a thousand
+    # phones, met in the load test. Raised here, for every way of installing.
     try:
-        listener = eventlet.listen((host, port))
+        import resource
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        want = MAX_LISTENER_CONNECTIONS + 1024 if hard == resource.RLIM_INFINITY else min(hard, MAX_LISTENER_CONNECTIONS + 1024)
+        if soft < want:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (want, hard))
+    except (ImportError, ValueError, OSError) as exc:
+        logger.warning(f"Open-file limit left as it is ({exc})")
+
+    try:
+        # A backlog for the moment a restart sends every phone back at once
+        listener = eventlet.listen((host, port), backlog=1024)
 
         if use_https:
             cert_file = os.path.join(SSL_DIR, 'cert.pem')
@@ -148,10 +165,10 @@ if __name__ == '__main__':
                 server_side=True
             )
             logger.info(f"Server running at https://{host}:{port}")
-            eventlet.wsgi.server(ssl_listener, app)
+            eventlet.wsgi.server(ssl_listener, app, max_size=MAX_LISTENER_CONNECTIONS)
         else:
             logger.info(f"Server running at http://{host}:{port}")
-            eventlet.wsgi.server(listener, app)
+            eventlet.wsgi.server(listener, app, max_size=MAX_LISTENER_CONNECTIONS)
 
     except PermissionError:
         logger.error(f"Permission denied on port {port}. Use port > 1024 or run with sudo.")
