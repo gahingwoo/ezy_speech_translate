@@ -2231,11 +2231,17 @@ _SENSITIVE_CONFIG_KEYS = (
 )
 
 
+def _is_sensitive(key) -> bool:
+    """A secret, by its name: the ones above, and every *_api_key (a
+    translation service's, which costs money in the wrong hands)."""
+    return key in _SENSITIVE_CONFIG_KEYS or str(key).endswith('_api_key')
+
+
 def _mask_sensitive(obj):
     """Recursively replace values for known sensitive keys with '***'."""
     if isinstance(obj, dict):
         return {
-            k: ('***' if k in _SENSITIVE_CONFIG_KEYS and v else _mask_sensitive(v))
+            k: ('***' if _is_sensitive(k) and v else _mask_sensitive(v))
             for k, v in obj.items()
         }
     if isinstance(obj, list):
@@ -2248,7 +2254,7 @@ def _strip_masked(new_obj, existing_obj):
     if isinstance(new_obj, dict) and isinstance(existing_obj, dict):
         out = {}
         for k, v in new_obj.items():
-            if k in _SENSITIVE_CONFIG_KEYS and v == '***':
+            if _is_sensitive(k) and v == '***':
                 if k in existing_obj:
                     out[k] = existing_obj[k]
                 # else: drop the masked placeholder
@@ -2454,7 +2460,7 @@ def save_config_fields():
                     not all(_CONFIG_PATH_SEGMENT.match(p) for p in parts):
                 errors[path] = 'not a setting name'
                 continue
-            if parts[-1] in _SENSITIVE_CONFIG_KEYS:
+            if _is_sensitive(parts[-1]):
                 errors[path] = 'secrets are not editable here'
                 continue
             holder, current = _config_lookup(config, parts)
@@ -3143,7 +3149,8 @@ if __name__ == '__main__':
                 "Update config/config.yaml before deploying to production!", label
             )
 
-    host = get_config('server', 'host', default='0.0.0.0')
+    # A server for the network, by design (bandit B104)
+    host = get_config('server', 'host', default='0.0.0.0')  # nosec B104
     port = get_config('server', 'port', default=1915)
     use_https = get_config('server', 'use_https', default=True)
 

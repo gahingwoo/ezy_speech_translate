@@ -157,6 +157,13 @@
           </li>
           <li class="pf-v6-c-nav__item">
             <button class="pf-v6-c-nav__link" type="button"
+                    id="nav-translation" aria-current="false"
+                    onclick="showConfigGroup('translation')">
+              <span class="pf-v6-c-nav__link-text">Translation</span>
+            </button>
+          </li>
+          <li class="pf-v6-c-nav__item">
+            <button class="pf-v6-c-nav__link" type="button"
                     id="nav-connections" aria-current="false"
                     onclick="showConfigGroup('connections')">
               <span class="pf-v6-c-nav__link-text">Connections</span>
@@ -867,6 +874,44 @@
           </span>
         </div>
         <div class="pf-v6-c-form__helper-text">1.0 is the normal size.</div>
+      </div>
+        </div>
+      </div>
+    </section>
+    <section class="pf-v6-c-card config-card" data-config-group="translation" hidden>
+      <div class="pf-v6-c-card__header">
+        <div class="pf-v6-c-card__header-main">
+          <h2 class="pf-v6-c-card__title-text">Translation</h2>
+        </div>
+      </div>
+      <div class="pf-v6-c-card__body config-card__intro">Where translations come from, tried in order until one answers. google_web needs no key but is not a published API, and can refuse a server; listeners' browsers then ask it themselves. API keys are secrets: they are shown as *** here, and set in the raw editor below.</div>
+      <div class="pf-v6-c-card__body">
+        <div class="pf-v6-c-form">
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="cfg-translation-providers">
+            <span class="pf-v6-c-form__label-text">Providers, in order</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <input type="text" id="cfg-translation-providers" data-config-path="translation.providers">
+          </span>
+        </div>
+        <div class="pf-v6-c-form__helper-text">Any of google_web, deepl, google_cloud, libretranslate, separated by commas.</div>
+      </div>
+      <div class="pf-v6-c-form__group">
+        <div class="pf-v6-c-form__group-label">
+          <label class="pf-v6-c-form__label" for="cfg-translation-libretranslate_url">
+            <span class="pf-v6-c-form__label-text">LibreTranslate address</span>
+          </label>
+        </div>
+        <div class="pf-v6-c-form__group-control">
+          <span class="pf-v6-c-form-control">
+            <input type="text" id="cfg-translation-libretranslate_url" data-config-path="translation.libretranslate_url">
+          </span>
+        </div>
+        <div class="pf-v6-c-form__helper-text">For libretranslate, e.g. http://127.0.0.1:5000.</div>
       </div>
         </div>
       </div>

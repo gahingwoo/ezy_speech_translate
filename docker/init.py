@@ -98,14 +98,53 @@ def seed_config():
     return True
 
 
+def add_missing_sections():
+    """A section a newer release added, copied in from the defaults with its
+    comments, so an older install's file has it to show and to set. Only
+    whole top-level sections that are missing; nothing already there moves."""
+    have = yaml.safe_load(CONFIG.read_text(encoding='utf-8')) or {}
+    default_text = Path(DEFAULT_CONFIG).read_text(encoding='utf-8')
+    default = yaml.safe_load(default_text) or {}
+    added = []
+    for name in default:
+        if name in have:
+            continue
+        block = section_text(default_text, name)
+        if block:
+            ends = CONFIG.read_text(encoding='utf-8').endswith('\n')
+            with open(CONFIG, 'a', encoding='utf-8') as f:
+                f.write(('\n' if ends else '\n\n') + block.rstrip() + '\n')
+            added.append(name)
+    if added:
+        say('Settings added from the new release: ' + ', '.join(added))
+
+
+def section_text(text, name):
+    """A top-level section of config.yaml, with the comment block above it."""
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines) if l.startswith(f'{name}:')), None)
+    if start is None:
+        return ''
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i] and not lines[i][0].isspace() and not lines[i].startswith('#')), len(lines))
+    while end > start + 1 and (not lines[end - 1].strip() or lines[end - 1].startswith('#')):
+        end -= 1                            # the next section's comments are its own
+    head = start
+    while head > 0 and lines[head - 1].startswith('#'):
+        head -= 1
+    return '\n'.join(lines[head:end])
+
+
 def apply_environment():
     """What the environment sets, written into the file so the settings screen
     shows what is really running. Anything not set is left as the file has it."""
     changes = {
         # In a container the servers must listen beyond loopback; which
         # outside interfaces reach them is decided by the published ports.
-        'server.host': '0.0.0.0',
-        'admin_server.host': '0.0.0.0',
+        # Inside a container, by design (bandit B104)
+        'server.host': '0.0.0.0',  # nosec B104
+        # As above (bandit B104)
+        'admin_server.host': '0.0.0.0',  # nosec B104
     }
     for env, key in (('EZY_PORT', 'server.port'), ('EZY_ADMIN_PORT', 'admin_server.port')):
         value = os.environ.get(env, '').strip()
@@ -120,6 +159,9 @@ def apply_environment():
     url = os.environ.get('EZY_EXTERNAL_URL', '').strip().rstrip('/')
     if url:
         changes['server.external_url'] = None if url.lower() == 'none' else url
+    providers = os.environ.get('EZY_TRANSLATION_PROVIDERS', '').strip()
+    if providers:
+        changes['translation.providers'] = providers
 
     text = CONFIG.read_text(encoding='utf-8')
     current = yaml.safe_load(text) or {}
@@ -137,7 +179,8 @@ def apply_environment():
         return current
     updated = write_in_place(text, pending)
     if updated is None:
-        raise SystemExit('config.yaml has been edited into a shape this cannot '
+        # A message, not SQL (bandit B608)
+        raise SystemExit('config.yaml has been edited into a shape this cannot '  # nosec B608
                          'update in place; set these in the file instead: '
                          + ', '.join(pending))
     CONFIG.write_text(updated, encoding='utf-8')
@@ -279,6 +322,7 @@ def ensure_certificate(config):
 def main(argv):
     make_directories()
     seed_config()
+    add_missing_sections()
     config = apply_environment()
     if argv[:1] == ['password']:
         given = argv[1] if len(argv) > 1 else os.environ.get('EZY_ADMIN_PASSWORD', '')

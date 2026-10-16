@@ -103,6 +103,19 @@ export:
   include_corrections: true
 
 # ============================================
+# Translation
+# ============================================
+# Tried in order until one answers. google_web needs no key but is not a
+# published API, and may refuse a server; listeners' browsers then ask it
+# themselves. deepl, google_cloud and libretranslate are official ones.
+translation:
+  providers: "google_web"            # e.g. "deepl, google_web"
+  deepl_api_key: ""                  # A free-plan key ends in ":fx"
+  google_cloud_api_key: ""
+  libretranslate_url: ""             # e.g. http://127.0.0.1:5000
+  libretranslate_api_key: ""
+
+# ============================================
 # Advanced Settings - Security Hardened
 # ============================================
 advanced:

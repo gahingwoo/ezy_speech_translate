@@ -24,6 +24,8 @@ from queue import Queue, Empty
 from threading import Thread, Lock, Event
 import json
 
+from .backends import GoogleWebBackend, build_backends
+
 logger = logging.getLogger(__name__)
 
 class TranslationCache:
@@ -38,7 +40,7 @@ class TranslationCache:
     def _make_key(self, text: str, target_lang: str) -> str:
         """Generate cache key from text and target language"""
         combined = f"{text}_{target_lang}"
-        return hashlib.md5(combined.encode()).hexdigest()
+        return hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
     
     def get(self, text: str, target_lang: str) -> Optional[str]:
         """Get cached translation if exists and not expired"""
@@ -155,55 +157,23 @@ class TranslationQueue:
 
 
 class GoogleTranslateService:
-    """Google Translate API service with rate limiting and caching"""
-    
-    # API endpoint (using the gtx client, no authentication needed)
-    API_URL = "https://translate.googleapis.com/translate_a/single"
-    
-    # Language code mapping
-    LANG_MAP = {
-        'zh': 'zh-CN',      # Simplified Chinese
-        'zh-tw': 'zh-TW',   # Traditional Chinese
-        'yue': 'yue',       # Cantonese
-        'ja': 'ja',
-        'ko': 'ko',
-        'es': 'es',
-        'fr': 'fr',
-        'de': 'de',
-        'ru': 'ru',
-        'ar': 'ar',
-        'pt': 'pt',
-        'it': 'it',
-        'nl': 'nl',
-        'pl': 'pl',
-        'tr': 'tr',
-        'vi': 'vi',
-        'th': 'th',
-        'id': 'id',
-        'ms': 'ms',
-        'hi': 'hi',
-        'ta': 'ta',
-        'te': 'te',
-        'bn': 'bn',
-        'kn': 'kn',
-        'ml': 'ml',
-        'mr': 'mr',
-        'ur': 'ur',
-    }
-    
-    def __init__(self, cache_size: int = 1000, cache_ttl_hours: int = 24):
+    """Translation with caching, glossary protection, and backends tried in
+    order (see backends.py). The name is from when Google's web endpoint was
+    the only one."""
+
+    def __init__(self, cache_size: int = 1000, cache_ttl_hours: int = 24, backends=None):
         self.cache = TranslationCache(max_size=cache_size, ttl_hours=cache_ttl_hours)
         self.queue = TranslationQueue(min_delay=0.5, max_concurrent=3)
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
-        self.retry_attempts = 3
-        self.retry_backoff = 2  # Exponential backoff factor
+        self.backends = backends if backends is not None else [GoogleWebBackend(self.session)]
+        self.timeout = 10
         # Lines being fetched right now, so a second asker waits for the first.
         self._inflight: Dict[Tuple[str, str], dict] = {}
         self._inflight_lock = Lock()
-    
+
     def translate(self, text: str, target_lang: str,
                   glossary: list | None = None) -> Tuple[bool, str, bool]:
         """
@@ -244,7 +214,7 @@ class GoogleTranslateService:
                     f"{t['term']}={t['translation']}:{int(t['case_sensitive'])}"
                     for t in sorted(applicable_terms, key=lambda x: x["term"])
                 )
-                glossary_sig = hashlib.md5(sig_src.encode("utf-8")).hexdigest()[:8]
+                glossary_sig = hashlib.md5(sig_src.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
 
         cache_lang_key = target_lang + (f"#{glossary_sig}" if glossary_sig else "")
 
@@ -283,54 +253,42 @@ class GoogleTranslateService:
 
     def _fetch(self, text: str, target_lang: str, cache_lang_key: str,
                applicable_terms: list) -> Tuple[bool, str, bool]:
-        """Ask the endpoint, with retries, and cache what comes back."""
-        # Normalize language code
-        target_lang_norm = self.LANG_MAP.get(target_lang, target_lang)
-
+        """Ask each backend in turn, and cache the first answer."""
         # Protect glossary terms with placeholders before translation
         protected_text, placeholders = self._apply_glossary_protect(
             text, applicable_terms
         )
-
-        # Attempt translation with retries
-        for attempt in range(self.retry_attempts):
-            try:
-                result = self._translate_with_timeout(protected_text, target_lang_norm)
-                if result:
-                    # Restore placeholders with their forced translations
-                    final = self._apply_glossary_restore(result, placeholders)
-                    # Cache successful translation
-                    self.cache.set(text, cache_lang_key, final)
-                    logger.info(f"Translated to {target_lang}: {text[:50]}...{final[:50]}...")
-                    return True, final, False
-
-            except requests.exceptions.Timeout:
-                logger.warning(f"Request timeout (attempt {attempt + 1}/{self.retry_attempts})")
-                wait_time = 2 ** attempt
-                if attempt < self.retry_attempts - 1:
-                    time.sleep(wait_time)
-
-            except requests.exceptions.HTTPError as e:
-                if e.response is not None and e.response.status_code == 429:
-                    # Give up at once. This endpoint does not rate-limit this
-                    # server by volume — it answers a browser and refuses a
-                    # Python client outright, so waiting ten seconds and then
-                    # twenty changes nothing except holding a worker for
-                    # thirty of them while the listener's own timeout expires.
-                    # The browser asks directly when this returns nothing.
-                    logger.warning("Translation endpoint refused this client (429); "
-                                   "the listener will translate in the browser")
+        for backend in self.backends:
+            if not backend.supports(target_lang):
+                continue
+            # A timeout is worth one more try; anything else, the next backend.
+            for attempt in range(2):
+                try:
+                    result = backend.translate(protected_text, target_lang, self.timeout)
+                except requests.exceptions.Timeout:
+                    logger.warning(f"{backend.name}: timed out (attempt {attempt + 1})")
+                    if attempt == 0:
+                        time.sleep(1)
+                        continue
                     break
-                raise
-
-            except Exception as e:
-                logger.error(f"Translation error (attempt {attempt + 1}): {e}")
-                if attempt < self.retry_attempts - 1:
-                    wait_time = 2 ** attempt
-                    time.sleep(wait_time)
-
-        # All retries failed, return original text
-        logger.error(f"Translation failed after {self.retry_attempts} attempts")
+                except requests.exceptions.HTTPError as e:
+                    status = e.response.status_code if e.response is not None else '?'
+                    # 429 from google_web: it refuses a server outright, and
+                    # waiting changes nothing. The browser asks it directly
+                    # when every backend here has said no.
+                    logger.warning(f"{backend.name}: refused ({status})")
+                    break
+                except Exception as e:
+                    logger.error(f"{backend.name}: {e}")
+                    break
+                if result:
+                    final = self._apply_glossary_restore(result, placeholders)
+                    self.cache.set(text, cache_lang_key, final)
+                    logger.info(f"Translated to {target_lang} by {backend.name}: "
+                                f"{text[:50]}...{final[:50]}...")
+                    return True, final, False
+                break
+        logger.error(f"No translation backend answered for {target_lang}")
         return False, text, False
 
     # ── Glossary helpers ──────────────────────────────────────────────────
@@ -382,44 +340,6 @@ class GoogleTranslateService:
             )
         return result
     
-    def _translate_with_timeout(self, text: str, target_lang: str, timeout: int = 10) -> Optional[str]:
-        """Make translation request with timeout"""
-        params = {
-            'client': 'gtx',
-            'sl': 'auto',
-            'tl': target_lang,
-            'dt': 't',
-            'q': text
-        }
-        
-        response = self.session.get(
-            self.API_URL,
-            params=params,
-            timeout=timeout
-        )
-        response.raise_for_status()
-        
-        data = response.json()
-        return self._extract_translation(data)
-    
-    @staticmethod
-    def _extract_translation(data) -> Optional[str]:
-        """Extract translation from Google API response"""
-        if not data or not isinstance(data, list) or len(data) < 1:
-            return None
-        
-        if not data[0] or not isinstance(data[0], list):
-            return None
-        
-        # Combine all translation segments
-        result = []
-        for item in data[0]:
-            if isinstance(item, list) and len(item) > 0:
-                if isinstance(item[0], str):
-                    result.append(item[0])
-        
-        return ''.join(result) if result else None
-    
     def clear_cache(self):
         """Clear translation cache"""
         self.cache.clear()
@@ -433,5 +353,12 @@ def get_translation_service() -> GoogleTranslateService:
     """Get or create global translation service instance"""
     global _translation_service
     if _translation_service is None:
-        _translation_service = GoogleTranslateService()
+        service = GoogleTranslateService()
+        try:
+            from app.core.config import get_config
+            service.backends = build_backends(
+                service.session, lambda key, default=None: get_config('translation', key, default=default))
+        except Exception as exc:          # no config to read: the default
+            logger.warning(f"Translation providers from config unavailable ({exc}); using google_web")
+        _translation_service = service
     return _translation_service

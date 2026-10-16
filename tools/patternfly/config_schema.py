@@ -127,6 +127,19 @@ GROUPS = (
          ("oem.advanced.icon_scale", "Icon scale", "number", "1.0 is the normal size.", None),
      )),
 
+    ("Translation",
+     "Where translations come from, tried in order until one answers. "
+     "google_web needs no key but is not a published API, and can refuse a "
+     "server; listeners' browsers then ask it themselves. API keys are secrets: "
+     "they are shown as *** here, and set in the raw editor below.",
+     (
+         ("translation.providers", "Providers, in order", "text",
+          "Any of google_web, deepl, google_cloud, libretranslate, separated by "
+          "commas.", None),
+         ("translation.libretranslate_url", "LibreTranslate address", "text",
+          "For libretranslate, e.g. http://127.0.0.1:5000.", None),
+     )),
+
     ("Connections",
      None,
      (
