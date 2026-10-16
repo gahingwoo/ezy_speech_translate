@@ -1837,7 +1837,17 @@
   <script src="{{ static_url('js/sidebar.js') }}"></script>
   <script src="{{ static_url('js/wizard.js') }}"></script>
   <script src="{{ static_url('js/typewriter.js') }}"></script>
-  <script src="{{ static_url('js/user.js') }}"></script>
+  <!-- The page's own code, in the order it was written: one scope, so a
+       part may use what an earlier one declares as it loads; what runs only
+       once the page has loaded may use any of them. -->
+  <script src="{{ static_url('js/user/state.js') }}"></script>
+  <script src="{{ static_url('js/user/scripture.js') }}"></script>
+  <script src="{{ static_url('js/user/init.js') }}"></script>
+  <script src="{{ static_url('js/user/ui.js') }}"></script>
+  <script src="{{ static_url('js/user/translate.js') }}"></script>
+  <script src="{{ static_url('js/user/render.js') }}"></script>
+  <script src="{{ static_url('js/user/data.js') }}"></script>
+  <script src="{{ static_url('js/user/socket.js') }}"></script>
 </body>
 
 </html>
