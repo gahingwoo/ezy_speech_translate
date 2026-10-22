@@ -1380,6 +1380,10 @@ def build():
                     <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#session">
                       <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
                             data-i18n="nav_thisService">This service</span></span></a></span></li>
+                  <li class="pf-v6-c-jump-links__item">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#services">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="pastServices">Past services</span></span></a></span></li>
                 </ul>
               </nav>
             </aside>
@@ -1527,6 +1531,40 @@ def build():
                 </div>
               </div>
 
+              <!-- Each service's transcript, to read again or to send to the
+                   people who were not there. A link opens one service and no
+                   other; admin.js fills the rows from /api/transcripts. -->
+              <div class="section">
+                <div class="pf-v6-c-card" id="services">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text" data-i18n="pastServices">Past services</h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <table class="pf-v6-c-table pf-m-compact pf-m-grid-md services-table" role="grid"
+                           aria-label="Past services" id="servicesTable" hidden>
+                      <thead class="pf-v6-c-table__thead">
+                        <tr class="pf-v6-c-table__tr" role="row">
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcDate">Date</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcRoom">Room</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcTime">Time</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcLines">Lines</th>
+                          <td class="pf-v6-c-table__td" role="columnheader"></td>
+                        </tr>
+                      </thead>
+                      <tbody class="pf-v6-c-table__tbody" role="rowgroup" id="servicesList"></tbody>
+                    </table>
+                    <template id="serviceIcons"><span data-icon="open">%(svc_open)s</span><span data-icon="copy">%(svc_copy)s</span><span data-icon="trash">%(svc_trash)s</span></template>
+                    <p class="meta" id="servicesEmpty" data-i18n="servicesEmpty">A service's
+                      transcript appears here once something has been said.</p>
+                  </div>
+                  <div class="pf-v6-c-card__footer">
+                    <p class="meta" data-i18n="servicesHelp">Anyone with a service's link can read
+                      it, in any language, and print it or save it as a PDF. Clearing the live
+                      screen keeps the transcript; delete it here.</p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
@@ -1553,6 +1591,7 @@ def build():
         "status_icon": icon("exclamation-circle"),
         "update_icon": icon("arrow-circle-up"),
         "health_icon": icon("exclamation-triangle"),
+        "svc_open": icon("external-link-alt"), "svc_copy": icon("copy"), "svc_trash": icon("trash"),
         "moon": icon("moon", "pf-v6-svg icon-moon"),
         "sun": icon("sun", "pf-v6-svg icon-sun"),
         "settings": button("Settings", "showSettings()", "cog",

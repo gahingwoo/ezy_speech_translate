@@ -177,6 +177,13 @@
         } finally {
             window._applyingDisplayLanguage = false;
         }
+        // What a page writes from script (a status, a label it builds, a
+        // table) is not in the markup this walks; each page listens and
+        // writes it again, so a language change reaches it without a reload.
+        try {
+            document.dispatchEvent(new CustomEvent('displaylanguagechange', { detail: resolved }));
+        } catch (e) { /* a listener's fault is its own */ }
+        return resolved;
     };
 
     window.changeDisplayLanguage = function (lang) {

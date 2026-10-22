@@ -374,7 +374,10 @@ async function runPreflight() {
 /* How translation is going on the server, said above the hearing card only
    when it is not going well: what is wrong, what listeners get meanwhile,
    and what would help. */
+let _lastHealth = null;
+
 function showTranslationHealth(h) {
+    _lastHealth = h;
     const box = document.getElementById('translationHealth');
     if (!box || !h) return;
     if (h.state === 'ok') { box.hidden = true; return; }
@@ -496,6 +499,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateSystemInfo();
         });
     }
+    // What the console writes from script, written again in the new language
+    // (the markup is i18n's): the theme button, the past services, and the
+    // translation warning if one is showing.
+    document.addEventListener('displaylanguagechange', () => {
+        updateThemeUI(document.documentElement.classList.contains('pf-v6-theme-dark') ? 'dark' : 'light');
+        renderServices();
+        if (_lastHealth) showTranslationHealth(_lastHealth);
+    });
 
     // Initialize app
     loadAudioDevices();
@@ -598,6 +609,7 @@ function connectWebSocket() {
                 localStorage.setItem('_admin_room_id', response.room_id);
                 updateRoomIndicator(response.room_id);
             }
+            loadServices();
             fetchTranslationHistory();
         }
     });
@@ -680,6 +692,7 @@ function connectWebSocket() {
     socket.on('history_cleared', () => {
         translations = [];
         renderTranscriptions();
+        loadServices();
     });
 
     socket.on('items_deleted', (data) => {
@@ -1400,9 +1413,112 @@ function cancelCorrection() {
 }
 
 function clearHistory() {
-    if (!confirm('Clear all transcriptions?\n\nThis cannot be undone.')) return;
+    if (!confirm(t('clearConfirm', 'Clear this service from the screens?\n\n'
+        + 'Its transcript is kept under Past services, where it can be deleted.'))) return;
     socket.emit('clear_history');
 }
+
+/* ── Past services ─────────────────────────────────────────────────────────
+   Each room's lines on a day, with a link that opens that service's
+   transcript on the listener server. Refreshed when the console connects,
+   when the screen is cleared, and every two minutes, so a service under way
+   appears without anyone asking. */
+let _services = [];
+// The row's three actions, as icons: the page writes them once into
+// #serviceIcons (render_admin.py), so the paths are PatternFly's own.
+const _SVC_ICONS = {};
+document.addEventListener('DOMContentLoaded', () => {
+    const tpl = document.getElementById('serviceIcons');
+    if (!tpl) return;
+    tpl.content.querySelectorAll('[data-icon]').forEach(el => {
+        _SVC_ICONS[el.dataset.icon] = '<span class="pf-v6-c-button__icon">' + el.innerHTML + '</span>';
+    });
+});
+
+async function loadServices() {
+    try {
+        const data = await _adminFetch('/api/transcripts');
+        _services = data.services || [];
+    } catch (e) {
+        console.warn('loadServices failed:', e);
+        return;
+    }
+    renderServices();
+}
+
+function _serviceUrl(s) {
+    return (SERVER_URL || window.location.origin) + s.path;
+}
+
+function _serviceDate(day) {
+    try {
+        const lang = window._displayLanguage || 'en';
+        return new Date(day + 'T12:00:00').toLocaleDateString(lang, {
+            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+        });
+    } catch (e) {
+        return day;
+    }
+}
+
+function renderServices() {
+    const table = document.getElementById('servicesTable');
+    const body = document.getElementById('servicesList');
+    const empty = document.getElementById('servicesEmpty');
+    if (!table || !body) return;
+    table.hidden = !_services.length;
+    if (empty) empty.hidden = !!_services.length;
+    body.innerHTML = _services.map((s, i) => `
+        <tr class="pf-v6-c-table__tr" role="row">
+          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcDate', 'Date'))}">${escapeHtml(_serviceDate(s.date))}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcRoom', 'Room'))}">${escapeHtml(s.room_name || s.room_id)}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcTime', 'Time'))}">${escapeHtml(s.first)}–${escapeHtml(s.last)}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcLines', 'Lines'))}">${s.lines}</td>
+          <td class="pf-v6-c-table__td pf-v6-c-table__action pf-m-fit-content" role="cell">
+            <div class="services-actions">
+              <a class="pf-v6-c-button pf-m-plain" href="${escapeHtml(_serviceUrl(s))}" target="_blank" rel="noopener"
+                 title="${escapeHtml(t('svcOpen', 'Open'))}" aria-label="${escapeHtml(t('svcOpen', 'Open'))}">${_SVC_ICONS.open}</a>
+              <button class="pf-v6-c-button pf-m-plain" type="button" onclick="copyServiceLink(${i})"
+                      title="${escapeHtml(t('svcCopyLink', 'Copy link'))}" aria-label="${escapeHtml(t('svcCopyLink', 'Copy link'))}">${_SVC_ICONS.copy}</button>
+              <button class="pf-v6-c-button pf-m-plain pf-m-danger" type="button" onclick="deleteService(${i})"
+                      title="${escapeHtml(t('svcDelete', 'Delete'))}" aria-label="${escapeHtml(t('svcDelete', 'Delete'))}">${_SVC_ICONS.trash}</button>
+            </div>
+          </td>
+        </tr>`).join('');
+}
+
+async function copyServiceLink(i) {
+    const s = _services[i];
+    if (!s) return;
+    const url = _serviceUrl(s);
+    try {
+        await navigator.clipboard.writeText(url);
+        showToast(t('svcLinkCopied', 'Link copied'), 'success');
+    } catch (e) {
+        // A console opened over plain http has no clipboard API: the link is
+        // offered to copy by hand instead.
+        window.prompt(t('svcCopyThisLink', 'Copy this link'), url);
+    }
+}
+
+async function deleteService(i) {
+    const s = _services[i];
+    if (!s) return;
+    const what = `${s.room_name || s.room_id}, ${_serviceDate(s.date)}`;
+    if (!confirm(t('svcDeleteConfirm', 'Delete the transcript of {service}?\n\n'
+        + 'Its links stop working, and its lines leave the screens. This cannot be undone.')
+        .replace('{service}', what))) return;
+    try {
+        await _adminFetch('/api/transcripts/' + encodeURIComponent(s.room_id) + '/'
+            + encodeURIComponent(s.date), { method: 'DELETE' });
+        showToast(t('svcDeleted', 'Transcript deleted'), 'success');
+    } catch (e) {
+        showToast(e.message, 'danger');
+    }
+    loadServices();
+}
+
+setInterval(() => { if (!document.hidden && authToken) loadServices(); }, 120000);
 
 function exportData(subset) {
     // Called with nothing from the action list, meaning the whole transcript;

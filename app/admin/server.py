@@ -679,6 +679,20 @@ def proxy_delete_glossary(entry_id):
 
 
 # ── Recording lock (per-room) ─────────────────────────────────────
+@app.route("/api/transcripts", methods=["GET"])
+@require_auth
+@rate_limit_check
+def proxy_list_transcripts():
+    return _proxy_to_user('GET', '/api/transcripts')
+
+
+@app.route("/api/transcripts/<room_id>/<day>", methods=["DELETE"])
+@require_auth
+@rate_limit_check
+def proxy_delete_transcript(room_id, day):
+    return _proxy_to_user('DELETE', f'/api/transcripts/{room_id}/{day}')
+
+
 @app.route("/api/recording/state", methods=["GET"])
 @require_auth
 @rate_limit_check

@@ -55,6 +55,21 @@ from collections import defaultdict
 import time
 import threading
 import types
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+
+def local_now() -> datetime:
+    """Now, in the church's own time. A container's clock is UTC unless TZ is
+    set and the zone data is there to read it; the installer sets TZ to the
+    host's zone, and `tzdata` (in requirements.txt) is the zone data where the
+    image has none. Without it Sunday morning in Auckland was Saturday."""
+    tz = os.environ.get('TZ', '').lstrip(':')
+    if tz:
+        try:
+            return datetime.now(ZoneInfo(tz)).replace(tzinfo=None)
+        except (ZoneInfoNotFoundError, ValueError):
+            pass
+    return datetime.now()
 
 from app.services.translation import get_translation_service  # noqa: E402
 
@@ -524,7 +539,9 @@ def _room(rid: str) -> dict:
                 state = {
                     'history': [],
                     'listeners': {},   # client_key -> sid
-                    'next_id': 0,
+                    # After every line the room has kept, so a new line never
+                    # takes the number of one already in a transcript.
+                    'next_id': db.next_id(rid) if db is not None else 0,
                     'display_name': rid.replace('_', ' ').title() if rid != DEFAULT_ROOM_ID else 'Main',
                     'recording': None,   # None or {'username': str, 'sid': str, 'started_at': iso}
                     'reading': {},       # sid -> the language that screen reads in
@@ -671,6 +688,9 @@ def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
 
     # Tag the record with its room so DB / clients can filter
     data['room_id'] = room_id
+    # When it was said, with the date: what a service's transcript is
+    # gathered by. An imported line is dated by when it was imported.
+    data.setdefault('at', local_now().isoformat(timespec='seconds'))
 
     # Bible reference detection — opt-in via config.
     if bible_detector is not None and 'bible_refs' not in data:
@@ -759,8 +779,11 @@ def _push_translations(room_id: str, item: dict) -> None:
                 'source': text, 'translated': None,
             }, room=_reading_room(room_id, lang))
             return
-        # Kept on the line, so a screen that loads it later has it already.
+        # Kept on the line, so a screen that loads it later has it already,
+        # and in the database, so the service's transcript has it too.
         item.setdefault('translations', {})[lang] = {'source': text, 'text': translated}
+        if db is not None and item.get('id') is not None:
+            db.save_line_translation(room_id, item['id'], lang, text, translated)
         socketio.emit('line_translated', {
             'id': item.get('id'), 'room_id': room_id, 'lang': lang,
             'source': text, 'translated': translated,

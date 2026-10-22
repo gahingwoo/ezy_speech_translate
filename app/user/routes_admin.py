@@ -116,7 +116,7 @@ def export_translations(export_format):
         }
 
     elif export_format == 'txt':
-        output = f"EzySpeechTranslate Export\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        output = f"EzySpeechTranslate Export\nGenerated: {local_now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         output += "=" * 60 + "\n\n"
 
         for item in export_data:

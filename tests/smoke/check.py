@@ -131,6 +131,25 @@ def live():
         fail(f'translated {done.get("translated")!r}, expected {expected!r}')
     ok('listener got its translation')
 
+    # The service's transcript: listed for the console, opened by its link,
+    # with the translation the listener was sent, and not without the link.
+    r = requests.get(f'{base}:{ARGS.port}/api/transcripts', timeout=10, verify=False,  # nosec B501
+                     headers={'Authorization': 'Bearer ' + token})
+    services = r.json().get('services', []) if r.status_code == 200 else []
+    service = next((s for s in services if s.get('room_id') == 'main'), None)
+    if not service:
+        fail(f'no transcript for the service: {r.status_code} {r.text[:200]}')
+    page = requests.get(f'{base}:{ARGS.port}{service["path"]}&lang=zh', timeout=30,
+                        verify=False)  # nosec B501
+    if page.status_code != 200 or expected not in page.text:
+        fail(f'the transcript page: {page.status_code}, line {"found" if expected in page.text else "missing"}')
+    ok(f'transcript of {service["date"]} opens by its link, translated')
+    wrong = requests.get(f'{base}:{ARGS.port}/transcript/main/{service["date"]}?k=0', timeout=10,
+                         verify=False)  # nosec B501
+    if wrong.status_code != 404:
+        fail(f'a transcript opened with a wrong link: {wrong.status_code}')
+    ok('transcript refused without its link')
+
     admin.disconnect()
     reader.disconnect()
 

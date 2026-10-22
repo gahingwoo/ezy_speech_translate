@@ -36,7 +36,7 @@ if _BASE not in sys.path:
 
 # The shared part, then each module adding its routes and events to it.
 from app.user.core import *  # noqa: E402,F401,F403
-from app.user import routes_pages, routes_translate, routes_admin, sockets  # noqa: E402,F401
+from app.user import routes_pages, routes_translate, routes_admin, sockets, transcripts  # noqa: E402,F401
 from app.user.sockets import _heartbeat_cleanup_loop, _translation_health_loop  # noqa: E402
 
 # Connections served at once: listeners, consoles and page loads together
@@ -114,7 +114,7 @@ if __name__ == '__main__':
                 # Restore per-room ID counters
                 for rid, state in _rooms.items():
                     max_id = max((it.get('id', -1) for it in state['history']), default=-1)
-                    state['next_id'] = max_id + 1
+                    state['next_id'] = max(max_id + 1, db.next_id(rid))
                 room_summary = ", ".join(
                     f"{rid}={len(state['history'])}" for rid, state in _rooms.items()
                 )

@@ -193,6 +193,13 @@ Gaps:
    - Speech results stream to viewers
    - Correct items as needed
    - Export transcript data
+   - After the service, the console's **Past services** lists each room's
+     service by day, with a link to its transcript: paragraphs, in any of the
+     listener's languages, with what was said beside it when wanted, to print
+     or save as a PDF or download as text. The link opens that one service
+     and needs no sign-in, so it can be sent to whoever was not there.
+     **Clear this service** takes the lines off the screens and keeps the
+     transcript; deleting it is in Past services.
 
 2. **Viewer follow-along**
    - Open user URL `/`
@@ -265,6 +272,7 @@ sudo ezyspeech rollback          # back to the release before
 sudo ezyspeech restart           # also start, stop
 sudo ezyspeech logs -f
 sudo ezyspeech password          # --generate makes one and shows it once
+sudo ezyspeech username NAME     # the console's sign-in name (admin by default)
 sudo ezyspeech backup            # settings, secrets and transcripts, as .tar.gz
 sudo ezyspeech backup --list     # the backups kept
 sudo ezyspeech restore FILE      # put one back (what is there is backed up first)
@@ -517,6 +525,12 @@ User server (`app/user/server.py`):
 - `GET /api/features` -> which optional features this install has on
 - `PATCH /api/translations/<id>/translated` -> cache one client's translation
   back on the server so the next listener does not repeat the call
+- `GET /api/transcripts` -> each room's services by day, with the link to
+  each transcript (admin)
+- `DELETE /api/transcripts/<room>/<day>` -> delete a service (admin)
+- `GET /transcript/<room>/<day>?k=&lang=` -> a service's transcript page;
+  `/transcript/<room>/<day>.txt?k=&lang=` as text. `k` is the link's
+  signature, made from the server secret, so it opens that service only
 
 Admin server (`app/admin/server.py`):
 - `POST /api/login` -> admin session + JWT

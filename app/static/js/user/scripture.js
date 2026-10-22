@@ -616,22 +616,37 @@ function passageKey(ref) {
 function addToScripture(ref, timestamps) {
     const list = document.getElementById('scriptureList');
     if (!list || !ref || !ref.display) return;
+    // Verses looked up in a Bible other than the one now chosen (a lookup
+    // made just before the reading language changed) are not this list's:
+    // the passage is kept, its translated text is not.
+    if (ref.target && ref.target.translation && bibleTargetTrans
+            && ref.target.translation !== bibleTargetTrans) {
+        ref = Object.assign({}, ref, { target: undefined });
+    }
     const key = passageKey(ref);
     const times = [].concat(timestamps || []).filter(Boolean);
     const strength = MATCH_STRENGTH[ref.match] || 0;
     const hasText = !!(ref.source && ref.source.verses && ref.source.verses.length)
         || !!(ref.target && ref.target.verses && ref.target.verses.length);
+    const version = (ref.target && ref.target.translation) || '';
     const known = scriptureSeen.get(key);
     if (known) {
         times.forEach(t => { if (known.times.indexOf(t) === -1) known.times.push(t); });
         known.times.sort();
-        // Rebuilt when found more surely, or when its verses have arrived.
-        if (strength > known.strength || (hasText && !known.hasText && strength >= known.strength)) {
-            const fresh = buildScriptureEntry(ref, known.times);
+        // Rebuilt when found more surely, when its verses have arrived, or
+        // when they have arrived in the Bible now chosen; a rebuild keeps the
+        // surest way it was found.
+        const newVersion = hasText && version && version !== known.version;
+        if (strength > known.strength || (hasText && !known.hasText && strength >= known.strength)
+                || newVersion) {
+            const surer = strength >= known.strength ? ref : Object.assign({}, ref, { match: known.match });
+            const fresh = buildScriptureEntry(surer, known.times);
             known.group.replaceWith(fresh);
             known.group = fresh;
-            known.strength = strength;
-            known.hasText = hasText;
+            known.strength = Math.max(strength, known.strength);
+            known.match = surer.match;
+            known.hasText = known.hasText || hasText;
+            if (version) known.version = version;
         } else {
             const when = known.group.querySelector('.sc-time');
             if (when) when.textContent = known.times.join(' · ');
@@ -644,7 +659,7 @@ function addToScripture(ref, timestamps) {
 
     times.sort();
     const group = buildScriptureEntry(ref, times);
-    scriptureSeen.set(key, { group, strength, times, hasText });
+    scriptureSeen.set(key, { group, strength, times, hasText, version, match: ref.match });
     list.insertBefore(group, list.firstChild);
 }
 window.addToScripture = addToScripture;

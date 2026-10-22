@@ -370,7 +370,7 @@ def handle_new_transcription(data):
         interim_data = {
             'temp_id': temp_id,
             'text': raw_text,
-            'timestamp': datetime.now().strftime('%H:%M:%S'),
+            'timestamp': local_now().strftime('%H:%M:%S'),
             'source_language': data.get('language', 'en')[:10],
             'confidence': data.get('confidence'),
             'is_interim': True,
@@ -384,7 +384,7 @@ def handle_new_transcription(data):
         translation_data = {
             'id': None,  # Will be assigned by add_translation()
             'temp_id': temp_id,
-            'timestamp': datetime.now().strftime('%H:%M:%S'),
+            'timestamp': local_now().strftime('%H:%M:%S'),
             'original': raw_text,
             'corrected': raw_text,
             'translated': data.get('translated'),
@@ -487,7 +487,7 @@ def handle_correct_translation(data):
     # Persist correction to DB
     if db is not None:
         db.update_correction(
-            translation_id, corrected_text, True,
+            room_id, translation_id, corrected_text, True,
             bible_refs=target_item.get('bible_refs'),
             full_item=target_item,
         )
@@ -509,9 +509,11 @@ def handle_clear_history():
     room_id = _admin_room(request.sid)
     state = _room(room_id)
     state['history'].clear()
-    state['next_id'] = 0
+    # Off the live screens only: the lines stay in the database for the
+    # transcript of the service they were said in, and the room goes on
+    # numbering after them. Deleting a service is in the console's Services.
     if db is not None:
-        db.clear_all(room_id=room_id)
+        db.clear_live(room_id)
     socketio.emit('history_cleared', {'room_id': room_id}, room=f'room:{room_id}')
     socketio.emit('history_cleared', {'room_id': room_id}, room=f'admin:{room_id}')
     logger.info(f"[CLEARED] room={room_id} by {_admin_username(request.sid)}")
@@ -538,7 +540,7 @@ def handle_import_transcription(data):
     # Sanitize and prepare import data
     translation_data = {
         'id': data.get('id'),  # Use provided ID if available
-        'timestamp': data.get('timestamp', datetime.now().strftime('%H:%M:%S')),
+        'timestamp': data.get('timestamp', local_now().strftime('%H:%M:%S')),
         'original': sanitize_text(data.get('original', ''), max_length=5000),
         'corrected': sanitize_text(data.get('corrected', ''), max_length=5000),
         'translated': data.get('translated'),
@@ -636,7 +638,7 @@ def handle_send_announcement(data):
         'duration':  duration,
         'type':      ann_type,
         'sender':    _admin_username(request.sid),
-        'timestamp': datetime.now().strftime('%H:%M:%S'),
+        'timestamp': local_now().strftime('%H:%M:%S'),
     }
     # Broadcast to clients in the admin's room (skip the sender)
     room_id = _admin_room(request.sid)

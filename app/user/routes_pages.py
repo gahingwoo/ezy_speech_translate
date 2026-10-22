@@ -420,7 +420,7 @@ def save_translated(translation_id):
 
     # Persist to DB
     if db is not None:
-        db.update_translated(translation_id, translated, lang)
+        db.update_translated(room_id, translation_id, translated, lang)
 
     return jsonify({'success': True})
 
@@ -434,7 +434,9 @@ def clear_translations():
                                 (request.get_json(silent=True) or {}).get('room'))
     state = _room(room_id)
     state['history'].clear()
-    state['next_id'] = 0
+    # As the console's clear: off the screens, kept for the transcript.
+    if db is not None:
+        db.clear_live(room_id)
     socketio.emit('history_cleared', {'room_id': room_id}, room=f'room:{room_id}')
     socketio.emit('history_cleared', {'room_id': room_id}, room=f'admin:{room_id}')
     logger.info(f"Translation history cleared for room '{room_id}' by {request.user.get('username')}")

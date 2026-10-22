@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import sqlite3
+import re
 from threading import Lock
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,23 @@ _enabled = False
 
 DEFAULT_ROOM_ID = "main"
 
-_DDL = """
+# A language code as the pages send it: "zh", "zh-tw", "yue"
+_LANG = re.compile(r"^[a-z]{2,3}(-[a-z0-9]{2,8})?$")
+
+# A line is known by its room and its number in that room. The number alone
+# was the key until 4.1.19, and each room counts from 0, so a second room's
+# lines replaced the first room's in this table, silently.
+#
+# `at` is when the line was said, date and time, which is what a service's
+# transcript is gathered by. `cleared` marks lines taken off the live screen:
+# they stay here, for the transcript, until a service is deleted.
+_TRANSLATIONS = """
 CREATE TABLE IF NOT EXISTS translations (
-    id               INTEGER PRIMARY KEY,
+    room_id          TEXT    NOT NULL DEFAULT 'main',
+    id               INTEGER NOT NULL,
     ts               TEXT    NOT NULL,
+    at               TEXT,
+    cleared          INTEGER NOT NULL DEFAULT 0,
     original         TEXT    NOT NULL,
     corrected        TEXT    NOT NULL,
     translated       TEXT,
@@ -38,11 +52,12 @@ CREATE TABLE IF NOT EXISTS translations (
     confidence       REAL,
     bible_refs       TEXT,
     raw_json         TEXT    NOT NULL,
-    room_id          TEXT    NOT NULL DEFAULT 'main'
-);
-CREATE INDEX IF NOT EXISTS idx_ts        ON translations(ts);
-CREATE INDEX IF NOT EXISTS idx_id        ON translations(id);
-CREATE INDEX IF NOT EXISTS idx_room_id   ON translations(room_id);
+    PRIMARY KEY (room_id, id)
+)
+"""
+
+_DDL = """
+CREATE INDEX IF NOT EXISTS idx_room_at ON translations(room_id, at);
 
 -- Multi-room registry (admin-created rooms)
 CREATE TABLE IF NOT EXISTS rooms (
@@ -71,17 +86,44 @@ CREATE INDEX IF NOT EXISTS idx_glossary_lookup ON glossary(room_id, target_lang,
 
 
 def _migrate_schema(conn: sqlite3.Connection) -> None:
-    """Add missing columns to existing tables (for upgrades from older versions)."""
+    """Bring an older translations table to the current shape: keyed by room
+    and number, with `at` and `cleared`. The rows are copied as they are; an
+    old row has no `at`, so it is not part of any service's transcript."""
+    cols = {r[1]: r[5] for r in conn.execute("PRAGMA table_info(translations)").fetchall()}
+    if not cols:
+        return
+    if cols.get("room_id") and cols.get("id") and "cleared" in cols:
+        return                                  # already current
+    room_expr = "room_id" if "room_id" in cols else "'main'"
+    # All of it or none: a failure half way must not leave the lines in a
+    # table the server no longer reads.
+    level, conn.isolation_level = conn.isolation_level, None
+    conn.execute("BEGIN IMMEDIATE")
     try:
-        cols = [r[1] for r in conn.execute("PRAGMA table_info(translations)").fetchall()]
-        if "room_id" not in cols:
-            conn.execute(
-                "ALTER TABLE translations ADD COLUMN room_id TEXT NOT NULL DEFAULT 'main'"
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_room_id ON translations(room_id)")
-            logger.info("Migrated translations table: added room_id column")
-    except Exception as exc:
-        logger.warning("Schema migration error: %s", exc)
+        _rebuild_translations(conn, room_expr)
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.isolation_level = level
+    logger.info("Migrated translations table: keyed by room and number")
+
+
+def _rebuild_translations(conn: sqlite3.Connection, room_expr: str) -> None:
+    conn.execute("ALTER TABLE translations RENAME TO translations_old")
+    conn.execute(_TRANSLATIONS)
+    conn.execute(f"""
+        INSERT OR IGNORE INTO translations
+            (room_id, id, ts, at, cleared, original, corrected, translated,
+             is_corrected, source_language, confidence, bible_refs, raw_json)
+        SELECT {room_expr}, id, ts, NULL, 0, original, corrected, translated,
+               is_corrected, source_language, confidence, bible_refs, raw_json
+        FROM translations_old
+    """)  # nosec B608 - room_expr is one of two literals above
+    conn.execute("DROP TABLE translations_old")
+    for old in ("idx_ts", "idx_id", "idx_room_id"):
+        conn.execute(f"DROP INDEX IF EXISTS {old}")  # nosec B608 - fixed names
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -96,25 +138,8 @@ def init_db(db_path: str, enabled: bool = True) -> None:
         return
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     with _get_conn() as conn:
-        # 1) Ensure base tables exist (won't add new columns to existing tables)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS translations (
-                id               INTEGER PRIMARY KEY,
-                ts               TEXT    NOT NULL,
-                original         TEXT    NOT NULL,
-                corrected        TEXT    NOT NULL,
-                translated       TEXT,
-                is_corrected     INTEGER DEFAULT 0,
-                source_language  TEXT,
-                confidence       REAL,
-                bible_refs       TEXT,
-                raw_json         TEXT    NOT NULL,
-                room_id          TEXT    NOT NULL DEFAULT 'main'
-            )
-        """)
-        # 2) Migrate existing tables to add any missing columns
         _migrate_schema(conn)
-        # 3) Now safe to create indexes and the rest of the schema
+        conn.execute(_TRANSLATIONS)
         conn.executescript(_DDL)
         # What has been done once to this database, so it is not done again
         conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
@@ -123,13 +148,14 @@ def init_db(db_path: str, enabled: bool = True) -> None:
 
 
 def load_all() -> list:
-    """Return all persisted translations ordered by id asc."""
+    """The lines still on the live screens, every room, oldest first."""
     if not _enabled or not _db_path:
         return []
     try:
         with _get_conn() as conn:
             rows = conn.execute(
-                "SELECT raw_json, room_id FROM translations ORDER BY id ASC"
+                "SELECT raw_json, room_id FROM translations WHERE cleared = 0 "
+                "ORDER BY room_id, id"
             ).fetchall()
         items: list = []
         for raw, room_id in rows:
@@ -148,6 +174,21 @@ def load_all() -> list:
         return []
 
 
+def next_id(room_id: str) -> int:
+    """The number a room's next line takes: after every line the room has
+    kept, cleared from the screen or not, so a new one never replaces one."""
+    if not _enabled or not _db_path:
+        return 0
+    try:
+        with _get_conn() as conn:
+            row = conn.execute("SELECT MAX(id) FROM translations WHERE room_id = ?",
+                               (room_id,)).fetchone()
+        return (row[0] + 1) if row and row[0] is not None else 0
+    except Exception as exc:
+        logger.warning("DB next_id error: %s", exc)
+        return 0
+
+
 def persist(item: dict) -> None:
     """Insert or replace a translation record."""
     if not _enabled or not _db_path:
@@ -158,14 +199,16 @@ def persist(item: dict) -> None:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO translations
-                        (id, ts, original, corrected, translated,
-                         is_corrected, source_language, confidence,
-                         bible_refs, raw_json, room_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (room_id, id, ts, at, cleared, original, corrected,
+                         translated, is_corrected, source_language, confidence,
+                         bible_refs, raw_json)
+                    VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
+                        item.get("room_id") or DEFAULT_ROOM_ID,
                         item.get("id"),
                         item.get("timestamp", ""),
+                        item.get("at"),
                         item.get("original", ""),
                         item.get("corrected", ""),
                         item.get("translated"),
@@ -175,7 +218,6 @@ def persist(item: dict) -> None:
                         json.dumps(item.get("bible_refs"), ensure_ascii=False)
                         if item.get("bible_refs") else None,
                         json.dumps(item, ensure_ascii=False),
-                        item.get("room_id") or DEFAULT_ROOM_ID,
                     ),
                 )
                 conn.commit()
@@ -183,8 +225,8 @@ def persist(item: dict) -> None:
             logger.warning("DB persist error: %s", exc)
 
 
-def update_correction(item_id: int, corrected: str, is_corrected: bool,
-                       bible_refs=None, full_item: dict | None = None) -> None:
+def update_correction(room_id: str, item_id: int, corrected: str, is_corrected: bool,
+                      bible_refs=None, full_item: dict | None = None) -> None:
     """Update the corrected text and optionally the full JSON blob."""
     if not _enabled or not _db_path:
         return
@@ -196,7 +238,7 @@ def update_correction(item_id: int, corrected: str, is_corrected: bool,
                     UPDATE translations
                     SET corrected = ?, is_corrected = ?, bible_refs = ?,
                         raw_json = COALESCE(?, raw_json)
-                    WHERE id = ?
+                    WHERE room_id = ? AND id = ?
                     """,
                     (
                         corrected,
@@ -205,6 +247,7 @@ def update_correction(item_id: int, corrected: str, is_corrected: bool,
                         if bible_refs else None,
                         json.dumps(full_item, ensure_ascii=False)
                         if full_item else None,
+                        room_id,
                         item_id,
                     ),
                 )
@@ -213,7 +256,7 @@ def update_correction(item_id: int, corrected: str, is_corrected: bool,
             logger.warning("DB update_correction error: %s", exc)
 
 
-def update_translated(item_id: int, translated: str, lang: str) -> None:
+def update_translated(room_id: str, item_id: int, translated: str, lang: str) -> None:
     """Cache the translated text and the language it was translated into."""
     if not _enabled or not _db_path:
         return
@@ -227,13 +270,39 @@ def update_translated(item_id: int, translated: str, lang: str) -> None:
                         raw_json = json_set(COALESCE(raw_json, '{}'),
                                            '$.translated', ?,
                                            '$.translated_lang', ?)
-                    WHERE id = ?
+                    WHERE room_id = ? AND id = ?
                     """,
-                    (translated, translated, lang, item_id),
+                    (translated, translated, lang, room_id, item_id),
                 )
                 conn.commit()
         except Exception as exc:
             logger.warning("DB update_translated error: %s", exc)
+
+
+def save_line_translation(room_id: str, item_id: int, lang: str,
+                          source: str, text: str) -> None:
+    """Keep one language's translation on its line, with the wording it was
+    made from, so the transcript does not translate it again (and knows to,
+    if the line has been corrected since)."""
+    if not _enabled or not _db_path or not _LANG.match(lang or ""):
+        return
+    with _lock:
+        try:
+            with _get_conn() as conn:
+                conn.execute(
+                    # The language is checked against _LANG above; the JSON
+                    # path cannot be bound as a parameter.
+                    f"""
+                    UPDATE translations
+                    SET raw_json = json_set(raw_json, '$.translations."{lang}"',
+                                            json_object('source', ?, 'text', ?))
+                    WHERE room_id = ? AND id = ?
+                    """,  # nosec B608
+                    (source, text, room_id, item_id),
+                )
+                conn.commit()
+        except Exception as exc:
+            logger.warning("DB save_line_translation error: %s", exc)
 
 
 def delete_ids(ids: list, room_id: str | None = None) -> None:
@@ -267,20 +336,86 @@ def delete_ids(ids: list, room_id: str | None = None) -> None:
             logger.warning("DB delete_ids error: %s", exc)
 
 
-def clear_all(room_id: str | None = None) -> None:
-    """Delete every record, optionally scoped to a specific room."""
+def clear_live(room_id: str) -> None:
+    """Take a room's lines off the live screens. They are kept for the
+    transcript of the service they were said in."""
     if not _enabled or not _db_path:
         return
     with _lock:
         try:
             with _get_conn() as conn:
-                if room_id is None:
-                    conn.execute("DELETE FROM translations")
-                else:
-                    conn.execute("DELETE FROM translations WHERE room_id = ?", (room_id,))
+                conn.execute("UPDATE translations SET cleared = 1 WHERE room_id = ?", (room_id,))
                 conn.commit()
         except Exception as exc:
-            logger.warning("DB clear_all error: %s", exc)
+            logger.warning("DB clear_live error: %s", exc)
+
+
+# ── Services: what was said in a room on a day ───────────────────────────────
+
+def services(limit: int = 200) -> list:
+    """Each room and day lines were said on, newest first, with how many and
+    from when to when."""
+    if not _enabled or not _db_path:
+        return []
+    try:
+        with _get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT room_id, substr(at, 1, 10) AS day, COUNT(*), MIN(at), MAX(at)
+                FROM translations
+                WHERE at IS NOT NULL
+                GROUP BY room_id, day
+                ORDER BY day DESC, room_id
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [{"room_id": r[0], "date": r[1], "lines": r[2], "first": r[3], "last": r[4]}
+                for r in rows]
+    except Exception as exc:
+        logger.warning("DB services error: %s", exc)
+        return []
+
+
+def service_lines(room_id: str, day: str) -> list:
+    """A service's lines, in the order they were said."""
+    if not _enabled or not _db_path:
+        return []
+    try:
+        with _get_conn() as conn:
+            rows = conn.execute(
+                # `at` is ISO, "2026-10-18T09:31:05", so a day is a range of it
+                "SELECT raw_json FROM translations WHERE room_id = ? AND at >= ? AND at < ? "
+                "ORDER BY at, id",
+                (room_id, day + "T", day + "U"),
+            ).fetchall()
+        out = []
+        for (raw,) in rows:
+            try:
+                out.append(json.loads(raw))
+            except ValueError:
+                pass
+        return out
+    except Exception as exc:
+        logger.warning("DB service_lines error: %s", exc)
+        return []
+
+
+def delete_service(room_id: str, day: str) -> int:
+    """Delete a service's lines for good, live or cleared. Returns how many."""
+    if not _enabled or not _db_path:
+        return 0
+    with _lock:
+        try:
+            with _get_conn() as conn:
+                cur = conn.execute(
+                    "DELETE FROM translations WHERE room_id = ? AND at >= ? AND at < ?",
+                    (room_id, day + "T", day + "U"))
+                conn.commit()
+                return cur.rowcount
+        except Exception as exc:
+            logger.warning("DB delete_service error: %s", exc)
+            return 0
 
 
 def get_stats() -> dict:

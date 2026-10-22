@@ -22,5 +22,9 @@ flask-talisman==1.1.0
 # Configuration
 PyYAML==6.0.1
 
+# Time zones, for a container whose image carries none: without them TZ is
+# ignored and a Sunday morning service is dated the Saturday (UTC).
+tzdata==2026.5
+
 # Translation and Scripture lookups
 requests==2.33.0

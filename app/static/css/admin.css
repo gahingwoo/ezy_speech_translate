@@ -1012,3 +1012,17 @@ a.pf-v6-c-masthead__logo:focus-visible {
 .preflight-fail .preflight-mark { color: var(--pf-t--global--icon--color--status--danger--default); }
 .preflight-run .preflight-mark { color: var(--pf-t--global--icon--color--status--info--default); }
 .preflight-wait { opacity: 0.6; }
+
+/* Past services: the date, the hours and the actions each stay on one line;
+   the room is the column that gives. The three actions are icons, close
+   together, as a table row's actions are. */
+.services-table .pf-v6-c-table__td:not(:nth-child(2)),
+.services-table .pf-v6-c-table__th {
+  white-space: nowrap;
+}
+
+.services-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--pf-t--global--spacer--xs);
+}

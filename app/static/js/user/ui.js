@@ -426,9 +426,14 @@ function changeLanguage() {
     // Re-render with new language (will trigger translation)
     renderTranslations();
 
-    // Auto-match Bible target translation to the new target language
+    // Auto-match Bible target translation to the new target language, then
+    // list the service's passages again in it: they were fetched in the old
+    // one, book names and all, and stayed so until a reload.
     if (bibleFeatureAvailable) {
-        loadBibleTranslationOptions(targetLang);
+        Promise.resolve(loadBibleTranslationOptions(targetLang)).then(function () {
+            clearScripture();
+            loadScriptureRecord();
+        });
     }
 
     // The page follows the reading language. The dialog said so itself after
@@ -800,6 +805,21 @@ function setConnectionStatus(state) {
     badge.title = t(cls, cls);
     connectionBanner(cls);
 }
+
+/* The page's language changed: what this page wrote from script (the
+   connection badge, the reading-aloud button) is written again in it. The
+   markup is i18n's to translate; these are not in it. */
+document.addEventListener('displaylanguagechange', function (e) {
+    if (e.detail) displayLanguage = e.detail;
+    const badge = document.getElementById('statusBadge');
+    if (badge) {
+        const cls = ['online', 'offline', 'waiting'].find(c => badge.classList.contains(c)) || 'waiting';
+        const sp = badge.querySelector('.pf-v6-c-label__text');
+        if (sp) sp.textContent = t(cls, sp.textContent || cls);
+        badge.title = t(cls, cls);
+    }
+    if (typeof syncTTSQuickToggle === 'function') syncTTSQuickToggle();
+});
 
 /* ===================================
    Modal helpers for shortcuts/welcome (additive)

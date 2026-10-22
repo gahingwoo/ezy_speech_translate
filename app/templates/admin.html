@@ -208,6 +208,10 @@
                     <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#session">
                       <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
                             data-i18n="nav_thisService">This service</span></span></a></span></li>
+                  <li class="pf-v6-c-jump-links__item">
+                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#services">
+                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
+                            data-i18n="pastServices">Past services</span></span></a></span></li>
                 </ul>
               </nav>
             </aside>
@@ -432,6 +436,40 @@
                   <div class="pf-v6-c-card__footer">
                     <p class="meta"><span data-i18n="updated">Updated</span>
                       <span id="statsUpdated">—</span></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Each service's transcript, to read again or to send to the
+                   people who were not there. A link opens one service and no
+                   other; admin.js fills the rows from /api/transcripts. -->
+              <div class="section">
+                <div class="pf-v6-c-card" id="services">
+                  <div class="pf-v6-c-card__title">
+                    <h2 class="pf-v6-c-card__title-text" data-i18n="pastServices">Past services</h2>
+                  </div>
+                  <div class="pf-v6-c-card__body">
+                    <table class="pf-v6-c-table pf-m-compact pf-m-grid-md services-table" role="grid"
+                           aria-label="Past services" id="servicesTable" hidden>
+                      <thead class="pf-v6-c-table__thead">
+                        <tr class="pf-v6-c-table__tr" role="row">
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcDate">Date</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcRoom">Room</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcTime">Time</th>
+                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcLines">Lines</th>
+                          <td class="pf-v6-c-table__td" role="columnheader"></td>
+                        </tr>
+                      </thead>
+                      <tbody class="pf-v6-c-table__tbody" role="rowgroup" id="servicesList"></tbody>
+                    </table>
+                    <template id="serviceIcons"><span data-icon="open"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432,320H400a16,16,0,0,0-16,16V448H64V128H208a16,16,0,0,0,16-16V80a16,16,0,0,0-16-16H48A48,48,0,0,0,0,112V464a48,48,0,0,0,48,48H400a48,48,0,0,0,48-48V336A16,16,0,0,0,432,320ZM488,0h-128c-21.37,0-32.05,25.91-17,41l35.73,35.73L135,320.37a24,24,0,0,0,0,34L157.67,377a24,24,0,0,0,34,0L435.28,133.32,471,169c15,15,41,4.5,41-17V24A24,24,0,0,0,488,0Z"/></svg></span><span data-icon="copy"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M320 448v40c0 13.255-10.745 24-24 24H24c-13.255 0-24-10.745-24-24V120c0-13.255 10.745-24 24-24h72v296c0 30.879 25.121 56 56 56h168zm0-344V0H152c-13.255 0-24 10.745-24 24v368c0 13.255 10.745 24 24 24h272c13.255 0 24-10.745 24-24V128H344c-13.2 0-24-10.8-24-24zm120.971-31.029L375.029 7.029A24 24 0 0 0 358.059 0H352v96h96v-6.059a24 24 0 0 0-7.029-16.97z"/></svg></span><span data-icon="trash"><svg class="pf-v6-svg" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h245.8a48 48 0 0 0 47.9-45L416 128H32z"/></svg></span></template>
+                    <p class="meta" id="servicesEmpty" data-i18n="servicesEmpty">A service's
+                      transcript appears here once something has been said.</p>
+                  </div>
+                  <div class="pf-v6-c-card__footer">
+                    <p class="meta" data-i18n="servicesHelp">Anyone with a service's link can read
+                      it, in any language, and print it or save it as a PDF. Clearing the live
+                      screen keeps the transcript; delete it here.</p>
                   </div>
                 </div>
               </div>

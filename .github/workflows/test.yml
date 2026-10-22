@@ -59,12 +59,17 @@ jobs:
               --has "Grace and peace to you" --has-not "Said after the backup"
           sudo ezyspeech backup --list
 
-      - name: A new admin password, typed in
+      - name: A new admin password, typed in, and a new username
         run: |
           NEW=$(openssl rand -hex 12)
           echo "::add-mask::$NEW"
           printf '%s\n' "$NEW" | sudo ezyspeech password --stdin --json
           /tmp/smoke/bin/python tests/smoke/check.py live --password "$NEW" --say "With the new password"
+          sudo ezyspeech username smoke.user --json
+          sudo ezyspeech status --json | python3 -c '
+          import json, sys; d = json.load(sys.stdin); assert d["username"] == "smoke.user", d.get("username")'
+          /tmp/smoke/bin/python tests/smoke/check.py live --user smoke.user --password "$NEW" \
+              --say "With a new name"
 
       - name: Backups on a timer
         run: |

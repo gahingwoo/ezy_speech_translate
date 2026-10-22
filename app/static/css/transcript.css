@@ -1,0 +1,150 @@
+/* A service's transcript — what PatternFly does not already provide.
+ *
+ * The page is text to be read, so the one thing it sets is a reading measure
+ * and a reading size; the rest is PatternFly's page, masthead, toolbar and
+ * switch. Printed (or saved as a PDF) it is the text alone.
+ */
+
+/* The masthead's mark and name, as the listener page and the console size
+   them (user.css, admin.css). */
+.pf-v6-c-masthead__logo {
+  --pf-v6-c-masthead__logo--Width: auto;
+}
+
+.pf-v6-c-masthead__logo .brand-mark {
+  flex-shrink: 0;
+  width: auto;
+  height: 1.75rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--pf-t--global--spacer--sm);
+  font-family: var(--pf-t--global--font--family--heading);
+  font-size: var(--pf-t--global--font--size--heading--sm);
+  font-weight: var(--pf-t--global--font--weight--body--bold);
+  white-space: nowrap;
+}
+
+/* The page has one masthead action, the theme, and it sits at the far end. */
+.pf-v6-c-masthead__content {
+  justify-content: flex-end;
+}
+
+.icon-sun { display: none; }
+html.pf-v6-theme-dark .icon-sun { display: inline-block; }
+html.pf-v6-theme-dark .icon-moon { display: none; }
+
+/* About 70 characters a line: the width text is comfortable to read at. */
+.transcript-measure {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+.transcript-when {
+  margin-block-start: var(--pf-t--global--spacer--xs);
+  color: var(--pf-t--global--text--color--subtle);
+}
+
+.transcript-hours::before {
+  content: "·";
+  margin-inline: var(--pf-t--global--spacer--sm);
+}
+
+.transcript-tools {
+  margin-block-start: var(--pf-t--global--spacer--md);
+  padding-block: 0;
+  background: none;
+}
+
+.transcript-tools .pf-v6-c-toolbar__content {
+  padding-inline: 0;
+}
+
+.transcript-body {
+  padding-block-start: 0;
+}
+
+/* The time sits in the margin beside its paragraph where there is a margin,
+   and above it where there is not. */
+.transcript-paragraph {
+  position: relative;
+  margin-block-end: var(--pf-t--global--spacer--lg);
+}
+
+.transcript-time {
+  display: block;
+  font-size: var(--pf-t--global--font--size--body--sm);
+  color: var(--pf-t--global--text--color--subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 62rem) {
+  .transcript-time {
+    position: absolute;
+    inset-inline-end: calc(100% + var(--pf-t--global--spacer--lg));
+    inset-block-start: 0.3em;
+  }
+}
+
+.transcript-read {
+  font-size: var(--pf-t--global--font--size--body--lg);
+  line-height: 1.7;
+}
+
+/* What the speaker said, under the translation: the same words, quieter. */
+.transcript-said {
+  margin-block-start: var(--pf-t--global--spacer--sm);
+  padding-inline-start: var(--pf-t--global--spacer--md);
+  border-inline-start: var(--pf-t--global--border--width--regular) solid
+    var(--pf-t--global--border--color--default);
+  color: var(--pf-t--global--text--color--subtle);
+  line-height: 1.6;
+}
+
+/* A line the translation service did not answer for: shown as said, and
+   marked, rather than left out. */
+.transcript-untranslated {
+  color: var(--pf-t--global--text--color--subtle);
+  font-style: italic;
+}
+
+@media print {
+  .pf-v6-c-masthead,
+  .transcript-tools {
+    display: none !important;
+  }
+
+  .pf-v6-c-page,
+  .pf-v6-c-page__main-container,
+  .pf-v6-c-page__main,
+  .pf-v6-c-page__main-section {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: none;
+  }
+
+  .transcript-head {
+    margin-block-end: 1.5em;
+  }
+
+  .transcript-measure {
+    max-width: none;
+  }
+
+  .transcript-time {
+    position: static;
+  }
+
+  .transcript-read {
+    font-size: 11pt;
+  }
+
+  .transcript-paragraph {
+    break-inside: avoid;
+  }
+}
