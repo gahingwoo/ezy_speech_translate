@@ -1878,10 +1878,18 @@ async function refreshAnalytics() {
     }
 }
 
+// For text and for attribute values alike. The innerHTML trick it replaced
+// left quotes as they were, so a value written into an attribute could close
+// it; nothing that reaches one today can hold a quote, and now nothing can.
+// The same as the listener page's (user/render.js).
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
 }
 
 trace('EzySpeechTranslate Admin Panel Ready');
