@@ -615,10 +615,20 @@ def _account_verifier(acct: dict):
 
 
 def _build_accounts():
+    admin_name = get_config('authentication', 'admin_username', default='admin')
     raw_accounts = get_config('authentication', 'accounts', default=None)
     if raw_accounts and isinstance(raw_accounts, list):
         for acct in raw_accounts:
             uname = acct.get('username', '')
+            # The shipped config lists the one admin as an account, by the
+            # default name and with no password of its own. That entry is
+            # admin_username, whatever it has been changed to: read as
+            # "admin", the console's sign-in and this server disagreed about
+            # who was signed in once the name was changed, and the old name
+            # went on working here.
+            if (uname == 'admin' and admin_name != 'admin'
+                    and not acct.get('password') and not acct.get('password_hash')):
+                uname = admin_name
             if uname:
                 _accounts[uname] = {
                     'verifier':     _account_verifier(acct),
@@ -626,9 +636,9 @@ def _build_accounts():
                     'channel':      acct.get('channel', 'main'),
                     'display_name': acct.get('display_name', uname),
                 }
-    # Always ensure the legacy admin account is present
-    if not _accounts:
-        uname = get_config('authentication', 'admin_username', default='admin')
+    # The admin the console signs in as is always an admin here
+    if admin_name not in _accounts:
+        uname = admin_name
         _accounts[uname] = {
             'verifier':     get_config('authentication', 'admin_password_hash', default=None),
             'role':         'admin',
