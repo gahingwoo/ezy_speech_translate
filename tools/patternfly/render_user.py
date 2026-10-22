@@ -1092,7 +1092,7 @@ def build():
 
     <div class="pf-v6-c-page__sidebar" id="sidebar" aria-label="Site">
       <div class="pf-v6-c-page__sidebar-body">
-        <nav class="pf-v6-c-nav" aria-label="Site">
+        <nav class="pf-v6-c-nav" aria-label="Site" data-follow-scroll>
           <!-- The rooms, when there is more than one: which service this is,
                and the others one tap away. Filled from /api/rooms. -->
           <section class="pf-v6-c-nav__section" aria-labelledby="nav-room-title"
@@ -1153,7 +1153,7 @@ def build():
                  documentation. Expandable below xl, a sticky list above it. -->
             <aside class="page-rail no-print">
               <nav class="pf-v6-c-jump-links pf-m-vertical pf-m-expandable pf-m-non-expandable-on-xl"
-                   aria-label="On this page" id="jumpNav">
+                   aria-label="On this page" id="jumpNav" data-follow-scroll>
                 <div class="pf-v6-c-jump-links__header" id="jumpHeader">
                   <div class="pf-v6-c-jump-links__toggle">
                     <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"

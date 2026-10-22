@@ -1352,9 +1352,12 @@ function addNewItem() {
                 showToast(validation.error, 'danger');
                 return;
             }
+            // In the language the console is set to hear: it was sent as
+            // "manual", which the listeners' header showed as the language.
+            const heard = document.getElementById('sourceLangSelect');
             socket.emit('new_transcription', {
                 text: validation.text,
-                language: 'manual'
+                language: (heard && heard.value) || 'en-US'
             });
         }
     });
@@ -1458,9 +1461,10 @@ function showView() {
     if (services) {
         window.scrollTo(0, 0);
         loadServices();
-    } else if (window.location.hash) {
-        const place = document.querySelector(window.location.hash);
-        if (place) requestAnimationFrame(() => place.scrollIntoView());
+    } else {
+        const place = document.querySelector(window.location.hash || '#hearing');
+        if (place && window.location.hash) requestAnimationFrame(() => place.scrollIntoView());
+        if (place && window.markPlace) window.markPlace(place.id);
     }
 }
 window.addEventListener('hashchange', showView);

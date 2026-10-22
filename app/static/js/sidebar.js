@@ -123,3 +123,109 @@
         if (!sidebarIsWide()) setSidebarOpen(false);
     };
 })();
+
+/* Which place on the page is current, in the navigation and in the rail of
+ * places beside the content. Both were written once in the markup, on the
+ * first place, and never moved: going to Scripture left Live translation
+ * marked, and PatternFly's bar, which grows in on the item that becomes
+ * current, never had an item become current.
+ *
+ * A nav that wants it says data-follow-scroll. Its links to places on the
+ * page follow the reading: the place whose top has passed the upper third of
+ * the window, or the last one at the foot of the page. A click marks its
+ * place at once and holds while the page scrolls there. A place that is not
+ * shown (the console's other view) is not a candidate, and a nav none of
+ * whose places is shown is left as it is.
+ *
+ * The page scrolls inside PatternFly's main container rather than the window,
+ * so scrolling is heard on the document, as it passes.
+ */
+(function () {
+    // The place a click went to, kept until the reader scrolls themselves: a
+    // short page cannot bring it up to the line, and the foot-of-the-page
+    // rule would hand the mark straight to the last place instead.
+    let pinned = null;
+    let queued = false;
+
+    function placeOf(link) {
+        const id = (link.getAttribute('href') || '').slice(1);
+        return id ? document.getElementById(id) : null;
+    }
+
+    function shown(el) {
+        return !!el && el.offsetParent !== null;
+    }
+
+    function followers() {
+        return [...document.querySelectorAll('[data-follow-scroll]')];
+    }
+
+    function mark(id) {
+        followers().forEach(function (nav) {
+            const links = [...nav.querySelectorAll('a[href^="#"]')].filter(a => shown(placeOf(a)));
+            if (!links.some(a => a.getAttribute('href') === '#' + id)) return;
+            links.forEach(function (a) {
+                const on = a.getAttribute('href') === '#' + id;
+                const holder = a.closest('.pf-v6-c-jump-links__item') || a;
+                holder.classList.toggle('pf-m-current', on);
+                if (a.classList.contains('pf-v6-c-nav__link')) {
+                    if (on) a.setAttribute('aria-current', 'page');
+                    else a.removeAttribute('aria-current');
+                }
+            });
+        });
+    }
+
+    function currentPlace() {
+        const seen = new Set();
+        const places = [];
+        followers().forEach(function (nav) {
+            nav.querySelectorAll('a[href^="#"]').forEach(function (a) {
+                const el = placeOf(a);
+                if (shown(el) && !seen.has(el)) { seen.add(el); places.push(el); }
+            });
+        });
+        if (!places.length) return null;
+        places.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+        const line = window.innerHeight / 3;
+        let best = places[0];
+        places.forEach(function (el) { if (el.getBoundingClientRect().top <= line) best = el; });
+        // At the foot of the page the last place may never reach the line.
+        const last = places[places.length - 1];
+        if (last.getBoundingClientRect().bottom <= window.innerHeight + 2) best = last;
+        return best.id;
+    }
+
+    function follow() {
+        queued = false;
+        if (pinned) return;
+        const id = currentPlace();
+        if (id) mark(id);
+    }
+
+    document.addEventListener('scroll', function () {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(follow);
+    }, { capture: true, passive: true });
+
+    document.addEventListener('click', function (e) {
+        const a = e.target.closest && e.target.closest('[data-follow-scroll] a[href^="#"]');
+        if (!a || !placeOf(a)) return;
+        pinned = a.getAttribute('href').slice(1);
+        mark(pinned);
+    });
+
+    ['wheel', 'touchmove', 'keydown'].forEach(function (type) {
+        document.addEventListener(type, function () { pinned = null; }, { capture: true, passive: true });
+    });
+
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(follow, 300); });
+    window.followScroll = follow;
+    // For a page that shows a place itself, as the console does when it
+    // comes back from its other view: marked once it can be seen.
+    window.markPlace = function (id) {
+        pinned = id;
+        mark(id);
+    };
+})();
