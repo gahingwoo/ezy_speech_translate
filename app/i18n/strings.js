@@ -38,6 +38,10 @@ window.sharedI18n = {
         "tr_notTranslated": "Not translated",
         "tr_missingTitle": "This transcript is not here",
         "tr_missingText": "The link may be cut short, or the service may have been deleted. Ask whoever sent it for the link again.",
+        "nav_services": "Services",
+        "svcAllRooms": "All rooms",
+        "svcSummary": "{services} services · {lines} lines",
+        "svcNoneTitle": "No services yet",
         "pfButton": "Check before starting",
         "pfTitle": "Check before starting",
         "pfAgain": "Check again",
@@ -249,6 +253,10 @@ window.sharedI18n = {
         "tr_notTranslated": "未翻译",
         "tr_missingTitle": "找不到这份文稿",
         "tr_missingText": "链接可能不完整，或者这场聚会的文稿已经删除了。请向发链接给你的人再要一次。",
+        "nav_services": "聚会",
+        "svcAllRooms": "所有房间",
+        "svcSummary": "{services} 场聚会 · {lines} 句",
+        "svcNoneTitle": "还没有聚会文稿",
         "pfButton": "开始前检查",
         "pfTitle": "开始前检查",
         "pfAgain": "再检查一次",
@@ -476,6 +484,10 @@ window.sharedI18n = {
         "tr_notTranslated": "未翻譯",
         "tr_missingTitle": "搵唔到呢份文稿",
         "tr_missingText": "條連結可能唔完整，或者呢場聚會嘅文稿已經刪咗。請搵傳俾你嘅人再攞過一次。",
+        "nav_services": "聚會",
+        "svcAllRooms": "所有房間",
+        "svcSummary": "{services} 場聚會 · {lines} 句",
+        "svcNoneTitle": "仲未有聚會文稿",
         "pfButton": "開始前檢查",
         "pfTitle": "開始前檢查",
         "pfAgain": "再檢查一次",
@@ -689,6 +701,10 @@ window.sharedI18n = {
         "tr_notTranslated": "未翻譯",
         "tr_missingTitle": "找不到這份文稿",
         "tr_missingText": "連結可能不完整，或者這場聚會的文稿已經刪除了。請向傳連結給你的人再要一次。",
+        "nav_services": "聚會",
+        "svcAllRooms": "所有房間",
+        "svcSummary": "{services} 場聚會 · {lines} 句",
+        "svcNoneTitle": "還沒有聚會文稿",
         "pfButton": "開始前檢查",
         "pfTitle": "開始前檢查",
         "pfAgain": "再檢查一次",
@@ -874,8 +890,12 @@ window.sharedI18n = {
         "exportSrtDesc": "字幕檔"
     },
     es: {
+        "nav_services": "Cultos",
+        "svcAllRooms": "Todas las salas",
+        "svcSummary": "{services} cultos · {lines} líneas",
+        "svcNoneTitle": "Aún no hay cultos",
         "updateAvailable": "Actualizar a {version}",
-        "pastServices": "Servicios anteriores",
+        "pastServices": "Cultos anteriores",
         "servicesEmpty": "La transcripción de un servicio aparece aquí en cuanto se dice algo.",
         "servicesHelp": "Quien tenga el enlace de un servicio puede leerlo, en cualquier idioma, e imprimirlo o guardarlo como PDF. Al borrar la pantalla en vivo, la transcripción se conserva; para eliminarla, hágalo aquí.",
         "svcDate": "Fecha",
@@ -889,7 +909,7 @@ window.sharedI18n = {
         "svcCopyThisLink": "Copiar este enlace",
         "svcDeleteConfirm": "¿Eliminar la transcripción de {service}?\n\nSus enlaces dejarán de funcionar y sus líneas desaparecerán de las pantallas. Esto no se puede deshacer.",
         "svcDeleted": "Transcripción eliminada",
-        "clearConfirm": "¿Quitar este servicio de las pantallas?\n\nSu transcripción se conserva en Servicios anteriores, donde se puede eliminar.",
+        "clearConfirm": "¿Quitar este servicio de las pantallas?\n\nSu transcripción se conserva en Cultos anteriores, donde se puede eliminar.",
         "tr_language": "Idioma",
         "tr_showSaid": "Mostrar lo que se dijo",
         "tr_print": "Imprimir o guardar como PDF",
@@ -1054,6 +1074,10 @@ window.sharedI18n = {
         },
     // French
     fr: {
+        "nav_services": "Cultes",
+        "svcAllRooms": "Toutes les salles",
+        "svcSummary": "{services} cultes · {lines} lignes",
+        "svcNoneTitle": "Aucun culte pour le moment",
         "updateAvailable": "Mettre à jour vers {version}",
         "pastServices": "Cultes précédents",
         "servicesEmpty": "La transcription d'un culte apparaît ici dès que quelque chose a été dit.",
@@ -1234,6 +1258,10 @@ window.sharedI18n = {
         },
     // German
     de: {
+        "nav_services": "Gottesdienste",
+        "svcAllRooms": "Alle Räume",
+        "svcSummary": "{services} Gottesdienste · {lines} Zeilen",
+        "svcNoneTitle": "Noch keine Gottesdienste",
         "updateAvailable": "Auf {version} aktualisieren",
         "pastServices": "Frühere Gottesdienste",
         "servicesEmpty": "Das Protokoll eines Gottesdienstes erscheint hier, sobald etwas gesagt wurde.",
@@ -1414,6 +1442,10 @@ window.sharedI18n = {
         },
     // Russian
     ru: {
+        "nav_services": "Богослужения",
+        "svcAllRooms": "Все залы",
+        "svcSummary": "{services} богослужений · {lines} строк",
+        "svcNoneTitle": "Богослужений пока нет",
         "updateAvailable": "Обновить до {version}",
         "pastServices": "Прошедшие богослужения",
         "servicesEmpty": "Запись богослужения появится здесь, как только что-нибудь будет сказано.",
@@ -1594,6 +1626,10 @@ window.sharedI18n = {
         },
     // Polish
     pl: {
+        "nav_services": "Nabożeństwa",
+        "svcAllRooms": "Wszystkie sale",
+        "svcSummary": "{services} nabożeństw · {lines} wierszy",
+        "svcNoneTitle": "Brak nabożeństw",
         "updateAvailable": "Aktualizuj do {version}",
         "pastServices": "Poprzednie nabożeństwa",
         "servicesEmpty": "Zapis nabożeństwa pojawi się tutaj, gdy tylko coś zostanie powiedziane.",
@@ -1774,8 +1810,12 @@ window.sharedI18n = {
         },
     // Turkish
     tr: {
+        "nav_services": "İbadetler",
+        "svcAllRooms": "Tüm odalar",
+        "svcSummary": "{services} ibadet · {lines} satır",
+        "svcNoneTitle": "Henüz ibadet yok",
         "updateAvailable": "{version} sürümüne güncelle",
-        "pastServices": "Geçmiş ayinler",
+        "pastServices": "Geçmiş ibadetler",
         "servicesEmpty": "Bir ayinin metni, bir şey söylenir söylenmez burada görünür.",
         "servicesHelp": "Bir ayinin bağlantısına sahip olan herkes onu istediği dilde okuyabilir, yazdırabilir veya PDF olarak kaydedebilir. Canlı ekranı temizlemek metni korur; metni buradan silebilirsiniz.",
         "svcDate": "Tarih",
@@ -1789,7 +1829,7 @@ window.sharedI18n = {
         "svcCopyThisLink": "Bu bağlantıyı kopyala",
         "svcDeleteConfirm": "{service} ayininin metni silinsin mi?\n\nBağlantıları çalışmaz olur ve satırları ekranlardan kalkar. Bu işlem geri alınamaz.",
         "svcDeleted": "Metin silindi",
-        "clearConfirm": "Bu ayin ekranlardan kaldırılsın mı?\n\nMetni Geçmiş ayinler bölümünde saklanır ve oradan silinebilir.",
+        "clearConfirm": "Bu ayin ekranlardan kaldırılsın mı?\n\nMetni Geçmiş ibadetler bölümünde saklanır ve oradan silinebilir.",
         "tr_language": "Dil",
         "tr_showSaid": "Söylenenleri göster",
         "tr_print": "Yazdır veya PDF olarak kaydet",
@@ -1954,6 +1994,10 @@ window.sharedI18n = {
         },
     // Japanese (localized)
     ja: {
+        "nav_services": "礼拝",
+        "svcAllRooms": "すべての部屋",
+        "svcSummary": "礼拝 {services} 件 · {lines} 行",
+        "svcNoneTitle": "まだ礼拝はありません",
         "updateAvailable": "{version} に更新",
         "pastServices": "過去の礼拝",
         "servicesEmpty": "礼拝の記録は、何か話されるとここに表示されます。",
@@ -2134,6 +2178,10 @@ window.sharedI18n = {
         },
     // Korean (localized)
     ko: {
+        "nav_services": "예배",
+        "svcAllRooms": "모든 방",
+        "svcSummary": "예배 {services}건 · {lines}줄",
+        "svcNoneTitle": "아직 예배가 없습니다",
         "updateAvailable": "{version}(으)로 업데이트",
         "pastServices": "지난 예배",
         "servicesEmpty": "예배의 기록은 말씀이 시작되면 여기에 나타나요.",
@@ -2314,8 +2362,12 @@ window.sharedI18n = {
         },
     // Vietnamese
     vi: {
+        "nav_services": "Buổi thờ phượng",
+        "svcAllRooms": "Tất cả phòng",
+        "svcSummary": "{services} buổi thờ phượng · {lines} dòng",
+        "svcNoneTitle": "Chưa có buổi thờ phượng nào",
         "updateAvailable": "Cập nhật lên {version}",
-        "pastServices": "Các buổi nhóm đã qua",
+        "pastServices": "Các buổi thờ phượng đã qua",
         "servicesEmpty": "Bản ghi của buổi nhóm sẽ hiện ở đây ngay khi có người nói.",
         "servicesHelp": "Ai có liên kết của buổi nhóm đều có thể đọc bằng bất kỳ ngôn ngữ nào, in ra hoặc lưu thành PDF. Xóa màn hình trực tiếp vẫn giữ lại bản ghi; bạn có thể xóa bản ghi tại đây.",
         "svcDate": "Ngày",
@@ -2329,7 +2381,7 @@ window.sharedI18n = {
         "svcCopyThisLink": "Sao chép liên kết này",
         "svcDeleteConfirm": "Xóa bản ghi của {service}?\n\nCác liên kết sẽ ngừng hoạt động và các dòng sẽ biến mất khỏi màn hình. Không thể hoàn tác.",
         "svcDeleted": "Đã xóa bản ghi",
-        "clearConfirm": "Xóa buổi nhóm này khỏi màn hình?\n\nBản ghi vẫn được giữ trong mục Các buổi nhóm đã qua, nơi bạn có thể xóa nó.",
+        "clearConfirm": "Xóa buổi nhóm này khỏi màn hình?\n\nBản ghi vẫn được giữ trong mục Các buổi thờ phượng đã qua, nơi bạn có thể xóa nó.",
         "tr_language": "Ngôn ngữ",
         "tr_showSaid": "Hiện lời đã nói",
         "tr_print": "In hoặc lưu thành PDF",
@@ -2494,6 +2546,10 @@ window.sharedI18n = {
         },
     // Thai
     th: {
+        "nav_services": "การนมัสการ",
+        "svcAllRooms": "ทุกห้อง",
+        "svcSummary": "นมัสการ {services} ครั้ง · {lines} บรรทัด",
+        "svcNoneTitle": "ยังไม่มีการนมัสการ",
         "updateAvailable": "อัปเดตเป็น {version}",
         "pastServices": "การนมัสการที่ผ่านมา",
         "servicesEmpty": "บันทึกคำพูดของการนมัสการจะปรากฏที่นี่ทันทีที่มีการพูด",
@@ -2674,6 +2730,10 @@ window.sharedI18n = {
         },
     // Indonesian
     id: {
+        "nav_services": "Ibadah",
+        "svcAllRooms": "Semua ruangan",
+        "svcSummary": "{services} ibadah · {lines} baris",
+        "svcNoneTitle": "Belum ada ibadah",
         "updateAvailable": "Perbarui ke {version}",
         "pastServices": "Ibadah sebelumnya",
         "servicesEmpty": "Transkrip sebuah ibadah muncul di sini begitu ada yang diucapkan.",
@@ -2854,6 +2914,10 @@ window.sharedI18n = {
         },
     // Malay
     ms: {
+        "nav_services": "Ibadat",
+        "svcAllRooms": "Semua bilik",
+        "svcSummary": "{services} ibadat · {lines} baris",
+        "svcNoneTitle": "Belum ada ibadat",
         "updateAvailable": "Kemas kini ke {version}",
         "pastServices": "Ibadat lepas",
         "servicesEmpty": "Transkrip sesuatu ibadat akan muncul di sini sebaik sahaja ada yang diucapkan.",
@@ -3034,6 +3098,10 @@ window.sharedI18n = {
         },
     // Hindi
     hi: {
+        "nav_services": "आराधनाएँ",
+        "svcAllRooms": "सभी कमरे",
+        "svcSummary": "{services} आराधनाएँ · {lines} पंक्तियाँ",
+        "svcNoneTitle": "अभी कोई आराधना नहीं",
         "updateAvailable": "{version} पर अपडेट करें",
         "pastServices": "पिछली आराधनाएँ",
         "servicesEmpty": "आराधना का ट्रांसक्रिप्ट यहाँ तभी दिखेगा जब कुछ बोला जाएगा।",
@@ -3214,8 +3282,12 @@ window.sharedI18n = {
         },
     // Arabic
     ar: {
+        "nav_services": "اجتماعات العبادة",
+        "svcAllRooms": "كل القاعات",
+        "svcSummary": "{services} اجتماعات · {lines} أسطر",
+        "svcNoneTitle": "لا توجد اجتماعات بعد",
         "updateAvailable": "التحديث إلى {version}",
-        "pastServices": "الخدمات السابقة",
+        "pastServices": "اجتماعات العبادة السابقة",
         "servicesEmpty": "يظهر نص الخدمة هنا بمجرد أن يُقال شيء.",
         "servicesHelp": "يمكن لكل من لديه رابط الخدمة أن يقرأها بأي لغة، وأن يطبعها أو يحفظها بصيغة PDF. مسح الشاشة المباشرة يُبقي النص محفوظًا؛ ويمكن حذفه من هنا.",
         "svcDate": "التاريخ",
@@ -3229,7 +3301,7 @@ window.sharedI18n = {
         "svcCopyThisLink": "انسخ هذا الرابط",
         "svcDeleteConfirm": "هل تريد حذف نص {service}؟\n\nستتوقف روابطه عن العمل وستختفي أسطره من الشاشات. لا يمكن التراجع عن ذلك.",
         "svcDeleted": "تم حذف النص",
-        "clearConfirm": "هل تريد إزالة هذه الخدمة من الشاشات؟\n\nيبقى نصها محفوظًا ضمن الخدمات السابقة، ويمكن حذفه من هناك.",
+        "clearConfirm": "هل تريد إزالة هذه الخدمة من الشاشات؟\n\nيبقى نصها محفوظًا ضمن اجتماعات العبادة السابقة، ويمكن حذفه من هناك.",
         "tr_language": "اللغة",
         "tr_showSaid": "عرض ما قيل",
         "tr_print": "طباعة أو حفظ بصيغة PDF",
@@ -3395,6 +3467,10 @@ window.sharedI18n = {
 
     // Portuguese
     pt: {
+        "nav_services": "Cultos",
+        "svcAllRooms": "Todas as salas",
+        "svcSummary": "{services} cultos · {lines} linhas",
+        "svcNoneTitle": "Ainda não há cultos",
         "updateAvailable": "Atualizar para {version}",
         "pastServices": "Cultos anteriores",
         "servicesEmpty": "A transcrição de um culto aparece aqui assim que algo for dito.",
@@ -3576,6 +3652,10 @@ window.sharedI18n = {
 
     // Italian
     it: {
+        "nav_services": "Culti",
+        "svcAllRooms": "Tutte le sale",
+        "svcSummary": "{services} culti · {lines} righe",
+        "svcNoneTitle": "Ancora nessun culto",
         "updateAvailable": "Aggiorna a {version}",
         "pastServices": "Culti passati",
         "servicesEmpty": "La trascrizione di un culto compare qui non appena viene detto qualcosa.",
@@ -3757,6 +3837,10 @@ window.sharedI18n = {
 
     // Dutch
     nl: {
+        "nav_services": "Diensten",
+        "svcAllRooms": "Alle ruimtes",
+        "svcSummary": "{services} diensten · {lines} regels",
+        "svcNoneTitle": "Nog geen diensten",
         "updateAvailable": "Bijwerken naar {version}",
         "pastServices": "Eerdere diensten",
         "servicesEmpty": "De tekst van een dienst verschijnt hier zodra er iets gezegd is.",
@@ -3937,6 +4021,10 @@ window.sharedI18n = {
         },
     // Tamil
     ta: {
+        "nav_services": "ஆராதனைகள்",
+        "svcAllRooms": "அனைத்து அறைகள்",
+        "svcSummary": "{services} ஆராதனைகள் · {lines} வரிகள்",
+        "svcNoneTitle": "இன்னும் ஆராதனைகள் இல்லை",
         "updateAvailable": "{version} க்கு புதுப்பிக்கவும்",
         "pastServices": "கடந்த ஆராதனைகள்",
         "servicesEmpty": "ஆராதனையின் எழுத்துப்பதிவு, ஏதாவது பேசப்பட்டவுடன் இங்கே தோன்றும்.",
@@ -5855,6 +5943,10 @@ window.sharedAiStatusLibrary = {
     const lib = window.sharedAiStatusLibrary || (window.sharedAiStatusLibrary = {});
     const strings = {
         "tl": {
+            "nav_services": "Mga Serbisyo",
+            "svcAllRooms": "Lahat ng silid",
+            "svcSummary": "{services} serbisyo · {lines} linya",
+            "svcNoneTitle": "Wala pang serbisyo",
             "updateAvailable": "I-update sa {version}",
             "pastServices": "Mga nakaraang serbisyo",
             "servicesEmpty": "Lalabas dito ang transcript ng isang serbisyo kapag may nasabi na.",
@@ -6177,6 +6269,10 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Ipakita ang mga naunang linya"
         },
         "mi": {
+            "nav_services": "Ngā Karakia",
+            "svcAllRooms": "Ngā rūma katoa",
+            "svcSummary": "{services} karakia · {lines} rārangi",
+            "svcNoneTitle": "Kāore anō he karakia",
             "updateAvailable": "Whakahou ki te {version}",
             "pastServices": "Ngā karakia o mua",
             "servicesEmpty": "Ka puta mai i konei te tuhinga o tētahi karakia i te wā ka whakapuakina tētahi kupu.",
@@ -6499,8 +6595,12 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Whakaatuhia ngā rārangi o mua"
         },
         "sm": {
+            "nav_services": "Lotu",
+            "svcAllRooms": "Potu uma",
+            "svcSummary": "{services} lotu · {lines} laina",
+            "svcNoneTitle": "Ua leai ni lotu",
             "updateAvailable": "Faafouina i le {version}",
-            "pastServices": "Ona sauniga ua mavae",
+            "pastServices": "Lotu ua mavae",
             "servicesEmpty": "O le tusitusiga o se sauniga e aliali mai iinei pe a uma ona fai se upu.",
             "servicesHelp": "O so o se tasi e iai le so'otaga o se sauniga e mafai ona faitau i so o se gagana, ma lolomi pe teuina o se PDF. A faamama le lau ola, e tumau pea le tusitusiga; e mafai ona tape iinei.",
             "svcDate": "Aso",
@@ -6514,7 +6614,7 @@ window.sharedAiStatusLibrary = {
             "svcCopyThisLink": "Kopi lenei so'otaga",
             "svcDeleteConfirm": "Tape le tusitusiga o le {service}?\n\nE le toe galue ona so'otaga, ma o le a mou atu ona laina mai ona lau. E le mafai ona toe faafoi.",
             "svcDeleted": "Ua tapeina le tusitusiga",
-            "clearConfirm": "Aveese lenei sauniga mai ona lau?\n\nO le a tumau lona tusitusiga i Ona sauniga ua mavae, e mafai ona tape ai.",
+            "clearConfirm": "Aveese lenei sauniga mai ona lau?\n\nO le a tumau lona tusitusiga i Lotu ua mavae, e mafai ona tape ai.",
             "tr_language": "Gagana",
             "tr_showSaid": "Faaali mea na fai atu",
             "tr_print": "Lolomi pe teu o se PDF",
@@ -6821,8 +6921,12 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Faaali laina muamua"
         },
         "to": {
+            "nav_services": "Ngaahi Lotu",
+            "svcAllRooms": "Ngaahi loki kotoa",
+            "svcSummary": "{services} lotu · {lines} laine",
+            "svcNoneTitle": "‘Oku te‘eki ai ha lotu",
             "updateAvailable": "Fakamoʻoniʻi ki he {version}",
-            "pastServices": "Ngaahi sāvea kuo hili",
+            "pastServices": "Ngaahi lotu kuo hili",
             "servicesEmpty": "ʻOku ʻasi heni ʻa e tohi ʻo ha sāvea ʻi he taimi pē ʻoku lea ai ha taha.",
             "servicesHelp": "ʻE lava ʻe ha taha pē ʻoku ʻi ai ʻa e fehokotaki ʻo ha sāvea ʻo lau ia ʻi he lea kotoa pē, mo paaki pe tauhi ko ha PDF. ʻOku kei tuku pē ʻa e tohi ʻi he taimi ʻoku fakamamaʻo ai ʻa e sikilini moʻui; ʻe lava ke tāpuni heni.",
             "svcDate": "ʻAho",
@@ -6836,7 +6940,7 @@ window.sharedAiStatusLibrary = {
             "svcCopyThisLink": "Kopi ʻa e fehokotaki ni",
             "svcDeleteConfirm": "Tāpuni ʻa e tohi ʻo e {service}?\n\nʻE ʻikai toe ngāue ʻa hono ngaahi fehokotaki, pea ʻe mole hono ngaahi laine mei he ngaahi sikilini. ʻOku ʻikai lava ke toe fakafoki.",
             "svcDeleted": "Kuo tāpuni ʻa e tohi",
-            "clearConfirm": "Toʻo ʻa e sāvea ni mei he ngaahi sikilini?\n\nʻE kei tauhi hono tohi ʻi he Ngaahi sāvea kuo hili, ʻa ia ʻe lava ke tāpuni ai.",
+            "clearConfirm": "Toʻo ʻa e sāvea ni mei he ngaahi sikilini?\n\nʻE kei tauhi hono tohi ʻi he Ngaahi lotu kuo hili, ʻa ia ʻe lava ke tāpuni ai.",
             "tr_language": "Lea",
             "tr_showSaid": "Fakahā ʻa e meʻa naʻe lea ʻaki",
             "tr_print": "Paaki pe tauhi ko ha PDF",

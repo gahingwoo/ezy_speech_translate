@@ -1419,10 +1419,10 @@ function clearHistory() {
 }
 
 /* ── Past services ─────────────────────────────────────────────────────────
-   Each room's lines on a day, with a link that opens that service's
-   transcript on the listener server. Refreshed when the console connects,
-   when the screen is cleared, and every two minutes, so a service under way
-   appears without anyone asking. */
+   A second view of the console, at #past-services: each room's lines on a
+   day, a card a month, with a link that opens that service's transcript on
+   the listener server. Refreshed when the view is opened, when the console
+   connects or clears, and every two minutes while it is open. */
 let _services = [];
 // The row's three actions, as icons: the page writes them once into
 // #serviceIcons (render_admin.py), so the paths are PatternFly's own.
@@ -1434,6 +1434,37 @@ document.addEventListener('DOMContentLoaded', () => {
         _SVC_ICONS[el.dataset.icon] = '<span class="pf-v6-c-button__icon">' + el.innerHTML + '</span>';
     });
 });
+
+function _servicesShown() {
+    return window.location.hash === '#past-services';
+}
+
+/* Which view the address names. The console's own places (#hearing,
+   #transcript) are scrolled to once their view is showing, since the
+   browser looked for them while it was hidden. */
+function showView() {
+    const services = _servicesShown();
+    const consoleView = document.getElementById('viewConsole');
+    const servicesView = document.getElementById('viewServices');
+    if (!consoleView || !servicesView) return;
+    consoleView.hidden = services;
+    servicesView.hidden = !services;
+    document.querySelectorAll('#sidebar .pf-v6-c-nav__link[data-view]').forEach(link => {
+        const on = services ? link.dataset.view === 'services'
+            : link.getAttribute('href') === (window.location.hash || '#hearing');
+        link.classList.toggle('pf-m-current', on);
+        if (on) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+    });
+    if (services) {
+        window.scrollTo(0, 0);
+        loadServices();
+    } else if (window.location.hash) {
+        const place = document.querySelector(window.location.hash);
+        if (place) requestAnimationFrame(() => place.scrollIntoView());
+    }
+}
+window.addEventListener('hashchange', showView);
+document.addEventListener('DOMContentLoaded', showView);
 
 async function loadServices() {
     try {
@@ -1450,41 +1481,129 @@ function _serviceUrl(s) {
     return (SERVER_URL || window.location.origin) + s.path;
 }
 
+function _displayLang() {
+    return window._displayLanguage || 'en';
+}
+
 function _serviceDate(day) {
     try {
-        const lang = window._displayLanguage || 'en';
-        return new Date(day + 'T12:00:00').toLocaleDateString(lang, {
-            weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+        return new Date(day + 'T12:00:00').toLocaleDateString(_displayLang(), {
+            weekday: 'short', month: 'short', day: 'numeric',
         });
     } catch (e) {
         return day;
     }
 }
 
-function renderServices() {
-    const table = document.getElementById('servicesTable');
-    const body = document.getElementById('servicesList');
-    const empty = document.getElementById('servicesEmpty');
-    if (!table || !body) return;
-    table.hidden = !_services.length;
-    if (empty) empty.hidden = !!_services.length;
-    body.innerHTML = _services.map((s, i) => `
+function _monthName(month) {
+    try {
+        return new Date(month + '-15T12:00:00').toLocaleDateString(_displayLang(), {
+            year: 'numeric', month: 'long',
+        });
+    } catch (e) {
+        return month;
+    }
+}
+
+function _serviceRow(s, i) {
+    const label = (key, text) => escapeHtml(t(key, text));
+    return `
         <tr class="pf-v6-c-table__tr" role="row">
-          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcDate', 'Date'))}">${escapeHtml(_serviceDate(s.date))}</td>
-          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcRoom', 'Room'))}">${escapeHtml(s.room_name || s.room_id)}</td>
-          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcTime', 'Time'))}">${escapeHtml(s.first)}–${escapeHtml(s.last)}</td>
-          <td class="pf-v6-c-table__td" role="cell" data-label="${escapeHtml(t('svcLines', 'Lines'))}">${s.lines}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${label('svcDate', 'Date')}">${escapeHtml(_serviceDate(s.date))}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${label('svcRoom', 'Room')}">${escapeHtml(s.room_name || s.room_id)}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${label('svcTime', 'Time')}">${escapeHtml(s.first)}–${escapeHtml(s.last)}</td>
+          <td class="pf-v6-c-table__td" role="cell" data-label="${label('svcLines', 'Lines')}">${s.lines}</td>
           <td class="pf-v6-c-table__td pf-v6-c-table__action pf-m-fit-content" role="cell">
             <div class="services-actions">
               <a class="pf-v6-c-button pf-m-plain" href="${escapeHtml(_serviceUrl(s))}" target="_blank" rel="noopener"
-                 title="${escapeHtml(t('svcOpen', 'Open'))}" aria-label="${escapeHtml(t('svcOpen', 'Open'))}">${_SVC_ICONS.open}</a>
+                 title="${label('svcOpen', 'Open')}" aria-label="${label('svcOpen', 'Open')}">${_SVC_ICONS.open || ''}</a>
               <button class="pf-v6-c-button pf-m-plain" type="button" onclick="copyServiceLink(${i})"
-                      title="${escapeHtml(t('svcCopyLink', 'Copy link'))}" aria-label="${escapeHtml(t('svcCopyLink', 'Copy link'))}">${_SVC_ICONS.copy}</button>
+                      title="${label('svcCopyLink', 'Copy link')}" aria-label="${label('svcCopyLink', 'Copy link')}">${_SVC_ICONS.copy || ''}</button>
               <button class="pf-v6-c-button pf-m-plain pf-m-danger" type="button" onclick="deleteService(${i})"
-                      title="${escapeHtml(t('svcDelete', 'Delete'))}" aria-label="${escapeHtml(t('svcDelete', 'Delete'))}">${_SVC_ICONS.trash}</button>
+                      title="${label('svcDelete', 'Delete')}" aria-label="${label('svcDelete', 'Delete')}">${_SVC_ICONS.trash || ''}</button>
             </div>
           </td>
-        </tr>`).join('');
+        </tr>`;
+}
+
+function renderServices() {
+    const months = document.getElementById('servicesMonths');
+    if (!months) return;
+    const empty = document.getElementById('servicesEmpty');
+    const toolbar = document.getElementById('servicesToolbar');
+    const rail = document.getElementById('servicesRail');
+    const jump = document.getElementById('servicesJumpList');
+    const subtitle = document.getElementById('servicesSubtitle');
+    const roomSel = document.getElementById('servicesRoom');
+
+    // The room filter, when there is more than one room to choose between.
+    const rooms = [...new Map(_services.map(s => [s.room_id, s.room_name || s.room_id])).entries()];
+    const chosen = roomSel && rooms.some(([id]) => id === roomSel.value) ? roomSel.value : '';
+    if (roomSel) {
+        roomSel.innerHTML = `<option value="">${escapeHtml(t('svcAllRooms', 'All rooms'))}</option>`
+            + rooms.map(([id, name]) => `<option value="${escapeHtml(id)}"${id === chosen ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
+    }
+    if (toolbar) toolbar.hidden = rooms.length < 2;
+
+    const shown = _services.map((s, i) => [s, i]).filter(([s]) => !chosen || s.room_id === chosen);
+    const lines = shown.reduce((n, [s]) => n + (s.lines || 0), 0);
+    if (subtitle) {
+        subtitle.textContent = shown.length
+            ? t('svcSummary', '{services} services · {lines} lines')
+                .replace('{services}', shown.length).replace('{lines}', lines)
+            : '';
+    }
+    if (empty) empty.hidden = !!shown.length;
+
+    // A card a month, newest first, as the list already is.
+    const byMonth = new Map();
+    shown.forEach(([s, i]) => {
+        const m = s.date.slice(0, 7);
+        if (!byMonth.has(m)) byMonth.set(m, []);
+        byMonth.get(m).push([s, i]);
+    });
+    months.innerHTML = [...byMonth.entries()].map(([m, rows]) => `
+        <div class="section">
+          <div class="pf-v6-c-card" id="svc-${m}">
+            <div class="pf-v6-c-card__title">
+              <h2 class="pf-v6-c-card__title-text">${escapeHtml(_monthName(m))}
+                <span class="pf-v6-c-badge pf-m-read">${rows.length}</span></h2>
+            </div>
+            <div class="pf-v6-c-card__body">
+              <table class="pf-v6-c-table pf-m-compact pf-m-grid-md services-table" role="grid"
+                     aria-label="${escapeHtml(_monthName(m))}">
+                <thead class="pf-v6-c-table__thead">
+                  <tr class="pf-v6-c-table__tr" role="row">
+                    <th class="pf-v6-c-table__th" role="columnheader" scope="col">${escapeHtml(t('svcDate', 'Date'))}</th>
+                    <th class="pf-v6-c-table__th" role="columnheader" scope="col">${escapeHtml(t('svcRoom', 'Room'))}</th>
+                    <th class="pf-v6-c-table__th" role="columnheader" scope="col">${escapeHtml(t('svcTime', 'Time'))}</th>
+                    <th class="pf-v6-c-table__th" role="columnheader" scope="col">${escapeHtml(t('svcLines', 'Lines'))}</th>
+                    <td class="pf-v6-c-table__td" role="columnheader"></td>
+                  </tr>
+                </thead>
+                <tbody class="pf-v6-c-table__tbody" role="rowgroup">${rows.map(([s, i]) => _serviceRow(s, i)).join('')}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>`).join('');
+
+    // The months, on the rail, as the console lists its cards. A button
+    // rather than a link: the address names the view, not a month in it.
+    if (rail) rail.hidden = byMonth.size < 2;
+    if (jump) {
+        jump.innerHTML = [...byMonth.keys()].map((m, k) => `
+            <li class="pf-v6-c-jump-links__item${k === 0 ? ' pf-m-current' : ''}">
+              <span class="pf-v6-c-jump-links__link"><button class="pf-v6-c-button pf-m-link" type="button"
+                  onclick="jumpToMonth(this, 'svc-${m}')"><span class="pf-v6-c-button__text"><span
+                  class="pf-v6-c-jump-links__link-text">${escapeHtml(_monthName(m))}</span></span></button></span></li>`).join('');
+    }
+}
+
+function jumpToMonth(btn, id) {
+    const card = document.getElementById(id);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('#servicesJumpList .pf-v6-c-jump-links__item')
+        .forEach(li => li.classList.toggle('pf-m-current', li.contains(btn)));
 }
 
 async function copyServiceLink(i) {
@@ -1518,7 +1637,7 @@ async function deleteService(i) {
     loadServices();
 }
 
-setInterval(() => { if (!document.hidden && authToken) loadServices(); }, 120000);
+setInterval(() => { if (!document.hidden && authToken && _servicesShown()) loadServices(); }, 120000);
 
 function exportData(subset) {
     // Called with nothing from the action list, meaning the whole transcript;

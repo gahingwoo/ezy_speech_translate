@@ -1054,8 +1054,8 @@ PAGE_SCRIPT = '''  <script>
 
     /* The rail is PatternFly's expandable jump links: a toggle below xl, a
        plain sticky list above it. */
-    function toggleJumpLinks(btn) {
-      const nav = document.getElementById('jumpNav');
+    function toggleJumpLinks(btn, id) {
+      const nav = document.getElementById(id || 'jumpNav');
       const open = !nav.classList.contains('pf-m-expanded');
       nav.classList.toggle('pf-m-expanded', open);
       btn.setAttribute('aria-expanded', String(open));
@@ -1168,6 +1168,86 @@ def whole_service_section():
                button("Clear this service", "clearHistory()", "trash",
                       "danger pf-m-secondary", i18n="clearAll", indent=12)))
     return body
+
+
+def services_view():
+    """Past services, as a page of the console: the same head, the same rail
+    of places on the page, and a card a month, newest first. admin.js fills
+    it from /api/transcripts when it is shown (renderServices)."""
+    return """        <!-- Each service's transcript, to read again or to send to the
+             people who were not there. A link opens one service and no
+             other. -->
+        <section class="pf-v6-c-page__main-section pf-m-limit-width pf-m-fill"
+                 aria-label="Past services" id="viewServices" hidden>
+          <div class="pf-v6-c-page__main-body">
+
+            <aside class="page-rail no-print" id="servicesRail" hidden>
+              <nav class="pf-v6-c-jump-links pf-m-vertical pf-m-expandable pf-m-non-expandable-on-xl"
+                   aria-label="On this page" id="servicesJumpNav">
+                <div class="pf-v6-c-jump-links__header">
+                  <div class="pf-v6-c-jump-links__toggle">
+                    <button class="pf-v6-c-button pf-m-plain" type="button" aria-expanded="false"
+                            onclick="toggleJumpLinks(this, 'servicesJumpNav')">
+                      <span class="pf-v6-c-button__icon pf-m-start">
+                        <span class="pf-v6-c-jump-links__toggle-icon">%(angle_right)s</span></span>
+                      <span class="pf-v6-c-button__text" data-i18n="onThisPage">On this page</span>
+                    </button>
+                  </div>
+                  <div class="pf-v6-c-jump-links__label" data-i18n="onThisPage">On this page</div>
+                </div>
+                <ul class="pf-v6-c-jump-links__list" role="list" id="servicesJumpList"></ul>
+              </nav>
+            </aside>
+
+            <div class="page-content">
+              <div class="page-head">
+                <h1 class="page-title">
+                  <span data-i18n="pastServices">Past services</span>
+                  <span class="subtitle" id="servicesSubtitle"></span>
+                </h1>
+              </div>
+
+              <p class="meta services-intro" data-i18n="servicesHelp">Anyone with a service's link can
+                read it, in any language, and print it or save it as a PDF. Clearing the live
+                screen keeps the transcript; delete it here.</p>
+
+              <div class="pf-v6-c-toolbar services-toolbar" id="servicesToolbar" hidden>
+                <div class="pf-v6-c-toolbar__content">
+                  <div class="pf-v6-c-toolbar__content-section">
+                    <div class="pf-v6-c-toolbar__item">
+                      <span class="pf-v6-c-form-control">
+                        <select id="servicesRoom" aria-label="Room" data-i18n-aria-label="svcRoom"
+                                onchange="renderServices()"></select>
+                        <span class="pf-v6-c-form-control__utilities">
+                          <span class="pf-v6-c-form-control__toggle-icon">%(angle_down)s</span>
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="servicesMonths"></div>
+
+              <div class="pf-v6-c-empty-state" id="servicesEmpty" hidden>
+                <div class="pf-v6-c-empty-state__content">
+                  <div class="pf-v6-c-empty-state__header">
+                    <div class="pf-v6-c-empty-state__icon">%(book)s</div>
+                    <div class="pf-v6-c-empty-state__title">
+                      <h2 class="pf-v6-c-empty-state__title-text" data-i18n="svcNoneTitle">No services yet</h2>
+                    </div>
+                  </div>
+                  <div class="pf-v6-c-empty-state__body" data-i18n="servicesEmpty">A service's
+                    transcript appears here once something has been said.</div>
+                </div>
+              </div>
+
+              <template id="serviceIcons"><span data-icon="open">%(svc_open)s</span><span data-icon="copy">%(svc_copy)s</span><span data-icon="trash">%(svc_trash)s</span></template>
+            </div>
+          </div>
+        </section>
+""" % {"angle_right": icon("angle-right"), "angle_down": icon("angle-down"), "book": icon("book"),
+       "svc_open": icon("external-link-alt"), "svc_copy": icon("copy"), "svc_trash": icon("trash")}
 
 
 def build():
@@ -1302,14 +1382,20 @@ def build():
         <nav class="pf-v6-c-nav" aria-label="Site">
           <section class="pf-v6-c-nav__section" aria-labelledby="nav-service-title">
             <h2 class="pf-v6-c-nav__section-title" id="nav-service-title"
-                data-i18n="nav_thisService">This service</h2>
+                data-i18n="nav_services">Services</h2>
+            <!-- Two views of one page: the live console (Hearing and
+                 Transcript are places on it) and the past services. admin.js
+                 shows the one the address names and marks it current. -->
             <ul class="pf-v6-c-nav__list" role="list">
               <li class="pf-v6-c-nav__item">
-                <a href="#hearing" class="pf-v6-c-nav__link pf-m-current" aria-current="page">
+                <a href="#hearing" class="pf-v6-c-nav__link pf-m-current" aria-current="page" data-view="console">
                   <span class="pf-v6-c-nav__link-text" data-i18n="hearing">Hearing</span></a></li>
               <li class="pf-v6-c-nav__item">
-                <a href="#transcript" class="pf-v6-c-nav__link">
+                <a href="#transcript" class="pf-v6-c-nav__link" data-view="console">
                   <span class="pf-v6-c-nav__link-text" data-i18n="transcript">Transcript</span></a></li>
+              <li class="pf-v6-c-nav__item">
+                <a href="#past-services" class="pf-v6-c-nav__link" data-view="services">
+                  <span class="pf-v6-c-nav__link-text" data-i18n="pastServices">Past services</span></a></li>
             </ul>
           </section>
           <section class="pf-v6-c-nav__section" aria-labelledby="nav-setup-title">
@@ -1350,7 +1436,7 @@ def build():
     <div class="pf-v6-c-page__main-container">
       <main class="pf-v6-c-page__main doc-page with-rail" id="main-content" tabindex="-1">
         <section class="pf-v6-c-page__main-section pf-m-limit-width pf-m-fill"
-                 aria-label="Live console">
+                 aria-label="Live console" id="viewConsole">
           <div class="pf-v6-c-page__main-body">
 
             <aside class="page-rail no-print">
@@ -1380,10 +1466,6 @@ def build():
                     <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#session">
                       <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
                             data-i18n="nav_thisService">This service</span></span></a></span></li>
-                  <li class="pf-v6-c-jump-links__item">
-                    <span class="pf-v6-c-jump-links__link"><a class="pf-v6-c-button pf-m-link" href="#services">
-                      <span class="pf-v6-c-button__text"><span class="pf-v6-c-jump-links__link-text"
-                            data-i18n="pastServices">Past services</span></span></a></span></li>
                 </ul>
               </nav>
             </aside>
@@ -1531,44 +1613,10 @@ def build():
                 </div>
               </div>
 
-              <!-- Each service's transcript, to read again or to send to the
-                   people who were not there. A link opens one service and no
-                   other; admin.js fills the rows from /api/transcripts. -->
-              <div class="section">
-                <div class="pf-v6-c-card" id="services">
-                  <div class="pf-v6-c-card__title">
-                    <h2 class="pf-v6-c-card__title-text" data-i18n="pastServices">Past services</h2>
-                  </div>
-                  <div class="pf-v6-c-card__body">
-                    <table class="pf-v6-c-table pf-m-compact pf-m-grid-md services-table" role="grid"
-                           aria-label="Past services" id="servicesTable" hidden>
-                      <thead class="pf-v6-c-table__thead">
-                        <tr class="pf-v6-c-table__tr" role="row">
-                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcDate">Date</th>
-                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcRoom">Room</th>
-                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcTime">Time</th>
-                          <th class="pf-v6-c-table__th" role="columnheader" scope="col" data-i18n="svcLines">Lines</th>
-                          <td class="pf-v6-c-table__td" role="columnheader"></td>
-                        </tr>
-                      </thead>
-                      <tbody class="pf-v6-c-table__tbody" role="rowgroup" id="servicesList"></tbody>
-                    </table>
-                    <template id="serviceIcons"><span data-icon="open">%(svc_open)s</span><span data-icon="copy">%(svc_copy)s</span><span data-icon="trash">%(svc_trash)s</span></template>
-                    <p class="meta" id="servicesEmpty" data-i18n="servicesEmpty">A service's
-                      transcript appears here once something has been said.</p>
-                  </div>
-                  <div class="pf-v6-c-card__footer">
-                    <p class="meta" data-i18n="servicesHelp">Anyone with a service's link can read
-                      it, in any language, and print it or save it as a PDF. Clearing the live
-                      screen keeps the transcript; delete it here.</p>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
         </section>
-      </main>
+%(services_view)s      </main>
     </div>
   </div>
 
@@ -1591,7 +1639,7 @@ def build():
         "status_icon": icon("exclamation-circle"),
         "update_icon": icon("arrow-circle-up"),
         "health_icon": icon("exclamation-triangle"),
-        "svc_open": icon("external-link-alt"), "svc_copy": icon("copy"), "svc_trash": icon("trash"),
+        "services_view": services_view(),
         "moon": icon("moon", "pf-v6-svg icon-moon"),
         "sun": icon("sun", "pf-v6-svg icon-sun"),
         "settings": button("Settings", "showSettings()", "cog",
