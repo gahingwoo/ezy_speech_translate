@@ -156,6 +156,11 @@ class TranslationQueue:
                 logger.error(f"Worker error: {e}")
 
 
+# Chinese and Japanese characters and their punctuation, which are written
+# without spaces between them.
+_CJK = re.compile(r"[\u3000-\u303f\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]")
+
+
 class TranslationHealth:
     """How translation has gone lately, for the console to see: the last few
     minutes of attempts, which provider answered each, and why one did not."""
@@ -382,10 +387,21 @@ class GoogleTranslateService:
             return text
         result = text
         for ph, trans in placeholders.items():
-            # Translation engines sometimes uppercase or add spaces; be lenient
+            # Translation engines sometimes uppercase or add spaces; be lenient.
+            # The placeholder is Latin, so the engine puts spaces round it the
+            # way it would round an English word in Chinese; where the term
+            # and its neighbour are both Chinese or Japanese the space goes
+            # ("在 主的晚餐 中" is "在主的晚餐中").
+            def put(m, trans=trans):
+                before, left, right, after = m.group(1), m.group(2), m.group(3), m.group(4)
+                if left and _CJK.match(trans[:1]) and (not before or _CJK.match(before)):
+                    left = ""
+                if right and _CJK.match(trans[-1:]) and (not after or _CJK.match(after)):
+                    right = ""
+                return before + left + trans + right + after
             result = re.sub(
-                re.escape(ph), trans.replace("\\", r"\\"),
-                result, flags=re.IGNORECASE,
+                r"(^|.)([ \t]*)" + re.escape(ph) + r"([ \t]*)(.|$)", put,
+                result, flags=re.IGNORECASE | re.DOTALL,
             )
         return result
     
