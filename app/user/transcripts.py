@@ -65,22 +65,58 @@ def _wanted(lang: str, source_lang: str) -> bool:
 
 def _fill_translations(room_id: str, lines: list, lang: str) -> None:
     """Translate the lines that have no translation into `lang` yet, or whose
-    wording was corrected after it was made; eight at a time, as a live line
-    is, and keep each on its line."""
+    wording was corrected after it was made, and keep each on its line.
+
+    A service is hundreds of lines, and the first reader in a new language
+    asks for all of them: one request a line was enough to have Google's free
+    endpoint refuse the server (429), live service and all. So the lines go
+    six at a time, one per row of a single request, four requests at once;
+    a group that does not come back as as many rows is asked again line by
+    line, so nothing is put against the wrong line. A refusal stops the rest:
+    the page shows those lines as said, marked, and the next reader's visit
+    tries them again, rather than the server asking hundreds more times of a
+    service that has said no."""
     service = get_translation_service()
     glossary = _get_glossary_for(room_id, lang)
 
-    def one(item):
-        text = item.get('corrected') or item.get('original') or ''
+    def keep(item, text, translated):
+        item.setdefault('translations', {})[lang] = {'source': text, 'text': translated}
+        if db is not None:
+            db.save_line_translation(room_id, item['id'], lang, text, translated)
+
+    refused = []
+    done = []
+
+    def ask(text):
+        if refused:
+            return None
         try:
             ok, translated, _ = service.translate(text, lang, glossary=glossary)
         except Exception as exc:
             logger.warning(f"Transcript translation to {lang} failed: {exc}")
+            ok, translated = False, None
+        if not ok or not translated:
+            refused.append(True)
+            return None
+        return translated
+
+    def group(items):
+        texts = [(it.get('corrected') or it.get('original') or '').replace('\n', ' ') for it in items]
+        translated = ask('\n'.join(texts))
+        if translated is None:
             return
-        if ok and translated:
-            item.setdefault('translations', {})[lang] = {'source': text, 'text': translated}
-            if db is not None:
-                db.save_line_translation(room_id, item['id'], lang, text, translated)
+        rows = [r.strip() for r in translated.split('\n')]
+        if len(rows) == len(items) and all(rows):
+            for it, row in zip(items, rows):
+                keep(it, it.get('corrected') or it.get('original') or '', row)
+            done.extend(items)
+            return
+        for it, text in zip(items, texts):      # the rows did not line up
+            one = ask(text)
+            if one is None:
+                return
+            keep(it, it.get('corrected') or it.get('original') or '', one)
+            done.append(it)
 
     todo = []
     for item in lines:
@@ -89,12 +125,13 @@ def _fill_translations(room_id: str, lines: list, lang: str) -> None:
         if text and _wanted(lang, item.get('source_language')) and have.get('source') != text:
             todo.append(item)
     if todo:
-        pool = eventlet.GreenPool(8)
-        for item in todo:
-            pool.spawn_n(one, item)
+        pool = eventlet.GreenPool(4)
+        for k in range(0, len(todo), _LINES_PER_PARAGRAPH):
+            pool.spawn_n(group, todo[k:k + _LINES_PER_PARAGRAPH])
         pool.waitall()
-        logger.info(f"Transcript {room_id} {lines[0].get('at', '')[:10]}: "
-                    f"translated {len(todo)} line(s) into {lang}")
+        logger.info(f"Transcript {room_id} {lines[0].get('at', '')[:10]}: translated "
+                    f"{len(done)} of {len(todo)} line(s) into {lang}"
+                    + (" (the translation service refused the rest)" if refused else ""))
 
 
 # Chinese and Japanese put no space between sentences; everything else here does.
