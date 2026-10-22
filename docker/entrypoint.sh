@@ -4,6 +4,7 @@
 #   ezyspeech serve              both servers (the default)
 #   ezyspeech init               prepare the volume and exit
 #   ezyspeech password [new]     set the admin password (a new one if not given)
+#   ezyspeech username NAME      set the admin username
 #
 # Copyright (C) 2025-2026 Ga Hing Woo (Jiaxing Hu)
 # This file is part of EzySpeech, and is free software under the GNU Affero
@@ -18,6 +19,10 @@ case "${1:-serve}" in
   password)
     shift
     exec python docker/init.py password "$@"
+    ;;
+  username)
+    shift
+    exec python docker/init.py username "$@"
     ;;
   serve)
     python docker/init.py

@@ -997,6 +997,7 @@ def cmd_status(a):
                          'console': found.get('admin_server.external_url') or None,
                          'https': found.get('server.use_https') == 'true',
                          'console_https': found.get('admin_server.use_https') == 'true'}
+    data['username'] = found.get('authentication.admin_username') or 'admin'
     if conf['mode'] == 'native':
         data['services'] = services_state()
         data['state'] = conf['state']
@@ -1179,6 +1180,8 @@ def cmd_password(a):
             raise Fail('They do not match; nothing was changed.')
     if not password or len(password) < 8:
         raise Fail('At least 8 characters; nothing was changed.')
+    if a.username:
+        set_username(conf, a.username)
     cur = current_release(conf)
     if conf['mode'] == 'native':
         run(['runuser', '-u', conf['user'], '--', 'env', f'EZY_STATE={conf["state"]}',
@@ -1197,6 +1200,38 @@ def cmd_password(a):
         print(json.dumps({'password': password if a.generate else None}))
     else:
         print('Admin password set' + (f': {password}' if a.generate else '') + '. The servers restarted.')
+
+
+USERNAME_RE = re.compile(r'^[A-Za-z0-9._@-]{1,64}$')
+
+
+def set_username(conf, name):
+    """The console's sign-in name, written into the settings the way the
+    servers read it, in whichever way it is installed."""
+    if not USERNAME_RE.match(name or ''):
+        raise Fail('Letters, digits and . _ @ - only, up to 64 characters; nothing was changed.')
+    cur = current_release(conf)
+    if conf['mode'] == 'native':
+        run(['runuser', '-u', conf['user'], '--', 'env', f'EZY_STATE={conf["state"]}',
+             str(cur / '.venv/bin/python'), 'docker/init.py', 'username', name],
+            cwd=str(cur), capture=True)
+    elif conf['mode'] == 'podman':
+        run(['podman', 'exec', PODMAN_NAME, 'ezyspeech', 'username', name], capture=True)
+    else:
+        compose(conf, 'exec', '-T', 'ezyspeech', 'ezyspeech', 'username', name, capture=True)
+
+
+def cmd_username(a):
+    conf = load_conf()
+    require_root(conf)
+    set_username(conf, a.name)
+    restart(conf)
+    if not wait_healthy(conf, version_of(current_release(conf))):
+        raise Fail('The username is set, but the servers did not come back up healthy. See: ezyspeech logs')
+    if a.json:
+        print(json.dumps({'username': a.name}))
+    else:
+        print(f'Admin username set: {a.name}. The servers restarted.')
 
 
 # ── backups ──────────────────────────────────────────────────────────────────
@@ -1477,7 +1512,11 @@ def main(argv):
     s.add_argument('-n', '--lines', type=int, default=100); s.set_defaults(func=cmd_logs)
     s = sub.add_parser('password'); s.add_argument('--generate', action='store_true')
     s.add_argument('--stdin', action='store_true', help='read it from standard input')
+    s.add_argument('--username', help='set the sign-in name too')
     s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_password)
+    s = sub.add_parser('username', help='set the admin sign-in name')
+    s.add_argument('name'); s.add_argument('--json', action='store_true')
+    s.set_defaults(func=cmd_username)
     s = sub.add_parser('backup', help='back up now; --list the backups kept')
     s.add_argument('file', nargs='?'); s.add_argument('--list', action='store_true')
     s.add_argument('--json', action='store_true')

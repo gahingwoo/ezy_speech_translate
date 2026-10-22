@@ -25,6 +25,7 @@ import importlib.util
 import ipaddress
 import json
 import os
+import re
 import secrets
 import shutil
 import sys
@@ -135,6 +136,11 @@ def section_text(text, name):
     return '\n'.join(lines[head:end])
 
 
+# What a sign-in name may be: no spaces, nothing a YAML file or a log line
+# would have to quote.
+USERNAME = re.compile(r'^[A-Za-z0-9._@-]{1,64}$')
+
+
 def apply_environment():
     """What the environment sets, written into the file so the settings screen
     shows what is really running. Anything not set is left as the file has it."""
@@ -162,6 +168,12 @@ def apply_environment():
     providers = os.environ.get('EZY_TRANSLATION_PROVIDERS', '').strip()
     if providers:
         changes['translation.providers'] = providers
+    username = os.environ.get('EZY_ADMIN_USERNAME', '').strip()
+    if username:
+        if not USERNAME.match(username):
+            raise SystemExit(f'{username!r} cannot be the admin username: letters, digits '
+                             'and . _ @ - only, up to 64')
+        changes['authentication.admin_username'] = username
 
     text = CONFIG.read_text(encoding='utf-8')
     current = yaml.safe_load(text) or {}
@@ -320,10 +332,16 @@ def ensure_certificate(config):
 
 
 def main(argv):
+    if argv[:1] == ['username'] and len(argv) > 1:
+        os.environ['EZY_ADMIN_USERNAME'] = argv[1]
     make_directories()
     seed_config()
     add_missing_sections()
     config = apply_environment()
+    if argv[:1] == ['username']:
+        user = (config.get('authentication') or {}).get('admin_username') or 'admin'
+        say(f'Admin username: {user}')
+        return
     if argv[:1] == ['password']:
         given = argv[1] if len(argv) > 1 else os.environ.get('EZY_ADMIN_PASSWORD', '')
         password = ensure_secrets(new_password=given or readable_password())
