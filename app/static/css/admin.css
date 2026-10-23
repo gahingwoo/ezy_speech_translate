@@ -1053,10 +1053,15 @@ a.pf-v6-c-masthead__logo:focus-visible {
 }
 
 /* Below md PatternFly stacks each row as label and value; the actions are a
-   row of their own at the foot, not laid over the date. */
+   row of their own at the foot, not laid over the date. PatternFly puts a
+   row's action cell beside the first value (grid-row-start: 1;
+   grid-column-start: 2, under three classes), where the icons took 119px of a
+   278px row and squeezed the date onto two lines; one class more, and this
+   rule wins. */
 @media (max-width: 47.99rem) {
-  .services-table .pf-v6-c-table__action {
+  .pf-m-grid-md.pf-v6-c-table.services-table .pf-v6-c-table__action {
     position: static;
+    grid-row-start: auto;
     grid-column: 1 / -1;
   }
 
