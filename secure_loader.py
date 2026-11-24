@@ -254,6 +254,15 @@ class SecureConfig:
                 print(f"Warning: Failed to read secrets.key: {e}")
                 return
 
+            # The admin password is kept as a hash, which needs no key to read.
+            # A new checkout's secrets.key, made by app.auth.set_password, holds
+            # only the hash until a server first adds the key; returning before
+            # reading it left a console started at the same moment as the
+            # listener server with no password at all.
+            early = raw.get('admin_password_hash')
+            if is_verifier(early):
+                self.data.setdefault('authentication', {})['admin_password_hash'] = early
+
             fernet_key = raw.get('fernet_key')
             if not fernet_key:
                 print("Warning: secrets.key missing 'fernet_key' entry; using defaults from config.yaml")
