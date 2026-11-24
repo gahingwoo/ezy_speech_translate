@@ -33,7 +33,7 @@ file-export
 globe grip-vertical
 info-circle key keyboard language lightbulb list lock microphone minus
 moon paper-plane pause play plus print qrcode redo save search server share-alt
-sign-out-alt
+sign-out-alt star outlined-star
 stop sun sync-alt table times trash upload user users volume-mute volume-up wheelchair
 """.split()
 

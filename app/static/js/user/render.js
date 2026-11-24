@@ -531,6 +531,7 @@ function streamGroup(o) {
                         <div class="card-marks">' + (o.marks || '') + '</div>\
                     </div>\
                     <div class="stream-actions card-actions">\
+                        ' + markButton(o.itemNo) + '\
                         <button class="pf-v6-c-button pf-m-plain copy-btn" type="button" id="copy-btn-' + o.itemNo + '" data-translation-id="' + o.itemNo + '" onclick="copyTranslationFromButton(this)" aria-label="Copy this line">\
                             <span class="pf-v6-c-button__icon">' + svgIcon('copy') + '</span>\
                         </button>\

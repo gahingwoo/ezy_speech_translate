@@ -41,7 +41,7 @@ def btn_icon(name):
 # id through svgIcon() — see the helper of that name in user.js.
 SPRITE_ICONS = ("book", "bullhorn", "check", "check-circle", "copy", "edit",
                 "exclamation-circle", "exclamation-triangle", "globe",
-                "info-circle", "keyboard", "microphone", "search", "times",
+                "info-circle", "keyboard", "microphone", "outlined-star", "search", "star", "times",
                 "volume-mute", "volume-up", "wheelchair")
 
 
@@ -370,6 +370,26 @@ def passage_dialog():
     </div>
   </div>
 ''' % {"times": btn_icon("times"), "volume_btn": btn_icon("volume-up")}
+
+
+def marks_dialog():
+    """The lines this phone has marked, by service, newest first. They are kept
+    on the phone only (marks.js), with the words as they were shown, so a
+    cleared screen or a later correction does not change what was marked."""
+    return modal("marksModal", "marksTitle", "mk_title", "Marked lines",
+                 '          <div id="marksBody" class="marks-body"></div>\n',
+                 footer='''
+        <footer class="pf-v6-c-modal-box__footer">
+          <div class="modal-actions" id="marksActions">
+            <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="copyMarks()">
+              %(copy)s<span class="pf-v6-c-button__text" data-i18n="mk_copyAll">Copy all</span></button>
+            <button class="pf-v6-c-button pf-m-link" type="button" onclick="downloadMarks()">
+              %(download)s<span class="pf-v6-c-button__text" data-i18n="mk_download">Download text</span></button>
+            <button class="pf-v6-c-button pf-m-link pf-m-danger" type="button" onclick="clearMarks()">
+              <span class="pf-v6-c-button__text" data-i18n="mk_clearAll">Clear all</span></button>
+          </div>
+        </footer>''' % {"copy": btn_icon("copy"), "download": btn_icon("download")},
+                 close_fn="hideMarks()")
 
 
 def page_follows_reading():
@@ -1125,6 +1145,10 @@ def build():
                 <button type="button" class="pf-v6-c-nav__link" onclick="showSettings('view')">
                   <span class="pf-v6-c-nav__link-text" data-i18n="nav_textAndAudio">Text and audio</span></button></li>
               <li class="pf-v6-c-nav__item">
+                <button type="button" class="pf-v6-c-nav__link" onclick="showMarks()">
+                  <span class="pf-v6-c-nav__link-text"><span data-i18n="mk_nav">Marked lines</span>
+                    <span class="pf-v6-c-badge pf-m-read" id="marksCount" hidden>0</span></span></button></li>
+              <li class="pf-v6-c-nav__item">
                 <button type="button" class="pf-v6-c-nav__link" onclick="showSettings('export')">
                   <span class="pf-v6-c-nav__link-text" data-i18n="nav_saveCopy">Save a copy</span></button></li>
             </ul>
@@ -1329,7 +1353,7 @@ def build():
   <div class="sync-indicator" id="syncIndicator" data-i18n="translationsUpdated"
        role="status" aria-live="polite">Translations updated</div>
 
-%(settings)s%(language)s%(passage)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
+%(settings)s%(language)s%(passage)s%(marks)s%(about)s%(shortcuts)s%(welcome)s%(tour)s
 
   <!-- One popover for the whole page; anything carrying data-popover
        borrows it. It comes after the dialogs: it shares a z-index layer with
@@ -1928,6 +1952,7 @@ def build():
   <script src="{{ static_url('js/user/ui.js') }}"></script>
   <script src="{{ static_url('js/user/translate.js') }}"></script>
   <script src="{{ static_url('js/user/render.js') }}"></script>
+  <script src="{{ static_url('js/user/marks.js') }}"></script>
   <script src="{{ static_url('js/user/data.js') }}"></script>
   <script src="{{ static_url('js/user/socket.js') }}"></script>
 </body>
@@ -1954,6 +1979,7 @@ def build():
         "settings": settings_modal(panels),
         "language": language_dialog(),
         "passage": passage_dialog(),
+        "marks": marks_dialog(),
         "lang_names": json.dumps([
             {"code": c, "native": n, "english": e} for c, n, e in LANG_NAMES
         ], ensure_ascii=False),

@@ -911,3 +911,27 @@ html[data-ui-mode="elderly"] .pf-v6-c-button.pf-m-plain {
   color: var(--pf-t--global--text--color--subtle);
   font-size: var(--pf-t--global--font--size--body--sm);
 }
+
+/* Marked lines (marks.js). The star on a line is PatternFly's own favourite
+   button (pf-m-favorite / pf-m-favorited); the list needs only spacing. */
+.marks-service + .marks-service {
+  margin-block-start: var(--pf-t--global--spacer--xl);
+}
+
+.marks-service > .pf-v6-c-title {
+  margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.marks-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pf-t--global--spacer--sm);
+}
+
+.marks-line > div {
+  flex: 1;
+}
+
+.marks-line .meta {
+  display: block;
+}
