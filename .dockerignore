@@ -24,7 +24,6 @@ app/static/oem
 
 docs
 tools
-scripts/tests
 *.md
 !README.md
 !TRADEMARK.md

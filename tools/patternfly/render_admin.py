@@ -2,14 +2,13 @@
 """Generate app/templates/admin.html as PatternFly 6.
 
 Written from a blank file against the real components, not edited out of the
-old template. The old one is kept at tools/patternfly/backup/admin.html.orig
-and is the source of the contract: every id, inline handler and data-i18n key
-in it has to come out the other side, because admin.js is 78KB and finds its
-controls by id.
+old template (which git history keeps). Every id, inline handler and
+data-i18n key the page had has to come out the other side, because admin.js
+finds its controls by id: keep the previous output, re-render, and compare.
 
+    cp app/templates/admin.html /tmp/admin.before.html
     python3 tools/patternfly/render_admin.py
-    python3 tools/patternfly/check_contract.py \\
-        tools/patternfly/backup/admin.html.orig app/templates/admin.html
+    python3 tools/patternfly/check_contract.py /tmp/admin.before.html app/templates/admin.html
 
 Layout, top to bottom:
 

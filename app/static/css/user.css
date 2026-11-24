@@ -4,7 +4,7 @@
  * hand-made components wearing PatternFly's class names, and it spent its time
  * fighting the real ones: the connection badge was stretched to 202px, the
  * section headings were covered by the controls under them. None of it is
- * carried over. The original is kept at tools/patternfly/backup/user.css.orig.
+ * carried over; git history keeps the original.
  *
  * What is left here is only what the design system has no component for:
  *   - the translation cards, which user.js builds as HTML strings

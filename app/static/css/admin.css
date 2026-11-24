@@ -3,7 +3,7 @@
  * Written from a blank file against PatternFly 6. The previous file was 30KB
  * of hand-made components wearing PatternFly's class names, mixing PF4 and PF5
  * prefixes, with no PatternFly stylesheet loaded at all. None of it is carried
- * over; the original is kept at tools/patternfly/backup/admin.css.orig.
+ * over; git history keeps the original.
  *
  * What is left here is only what the design system has no component for:
  *   - the transcription cards, which admin.js builds as HTML strings

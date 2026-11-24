@@ -93,9 +93,10 @@ written for whoever actually uses it:
 - `app/translation_service.py`
   - Server-side translation service wrapper with cache and retry/backoff
 
-- `secure_loader.py` + `setup.py`
+- `secure_loader.py`
   - Loads and injects secrets from `config/secrets.key` (Fernet-encrypted)
-  - Generates initial secrets and optional self-signed SSL certs
+- `app/auth/set_password.py`
+  - Sets the admin password of a development checkout (kept as a hash)
 
 - `config/config.yaml`
   - Runtime configuration for ports, HTTPS flags, security limits, CORS, features, OEM branding
@@ -315,7 +316,7 @@ same files to test with.
 
 ### Other deployment paths
 
-- `python3 setup.py` (local development setup: secrets, venv, optional SSL)
+- A development checkout: see "Minimal local run" below
 - `docker compose up -d --build` in a copy of the code (development)
 
 ### Configuration
@@ -417,7 +418,7 @@ Operational cautions:
 - `app/translation_service.py`: translation API wrapper
 - `app/oem_manager.py`: brand config composition
 - `secure_loader.py`: encrypted secret loading/migration
-- `install.sh`, `ops/ezyspeech`: installer and the command that runs an install; `ops/make-release.sh` builds a release; `setup.py` sets up a development checkout
+- `install.sh`, `ops/ezyspeech`: installer and the command that runs an install; `ops/make-release.sh` builds a release
 
 ### 5.2 Core Logic
 
@@ -571,12 +572,15 @@ Outbound:
 
 ```bash
 cd ezy_speech_translate
-python3 setup.py
-python3 app/user/server.py
-python3 app/admin/server.py
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+venv/bin/python -m app.auth.set_password --generate   # shows the admin password once
+venv/bin/python app/user/server.py     # listener page, port 1915
+venv/bin/python app/admin/server.py    # console, port 1916
 ```
 
-Run the two server commands in separate terminals (or run one in background) so both services stay available.
+Run the two servers in separate terminals. Settings are `config/config.yaml`;
+the servers write `data/` and `logs/` beside the code, which git ignores.
 
 Open:
 - Viewer: `http(s)://localhost:1915/`
@@ -613,7 +617,7 @@ Nothing is compiled to run the app; everything below is committed, so a fresh
 checkout starts with no build step. The generators exist so that a change is
 made once instead of five times.
 
-- `setup.py` for local bootstrap and secret generation
+- `app/auth/set_password.py` for a development checkout's admin password
 - `install.sh` and `ezyspeech` for install, update, rollback and uninstall
 
 Regenerating the front end, after editing a generator:

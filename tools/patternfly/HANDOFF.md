@@ -158,12 +158,10 @@ path has to exist in `config/config.yaml` already.
 
 ## Verifying
 
-Only one server can hold port 5000. Kill both before starting one, or you will
-test the wrong page.
+Run both servers from the repository (see "Minimal local run" in the README):
 
-    pkill -f run_user.py; pkill -f run_admin.py
-    lsof -ti:5000 | xargs kill -9
-    venv/bin/python run_admin.py     # or run_user.py
+    venv/bin/python app/user/server.py     # port 1915
+    venv/bin/python app/admin/server.py    # port 1916
 
 The admin dashboard and the settings page both redirect to `/login` without a
 token, so they cannot be opened without the admin password. To look at one,

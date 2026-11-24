@@ -120,15 +120,16 @@ Network: Stable internet connection
 git clone https://github.com/gahingwoo/ezy_speech_translate.git
 cd ezy_speech_translate
 
-# 2. Run automated setup
-python setup.py
+# 2. A virtual environment with the dependencies
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
 
-# The setup script will:
-# - Create virtual environment
-# - Install dependencies
-# - Generate SSL certificates
-# - Configure ports and credentials
-# - Create necessary directories
+# 3. An admin password, kept only as a hash in config/secrets.key
+venv/bin/python -m app.auth.set_password --generate
+
+# 4. The two servers, each in its own terminal
+venv/bin/python app/user/server.py     # listener page, port 1915
+venv/bin/python app/admin/server.py    # console, port 1916
 ```
 
 ### Manual Installation
@@ -699,7 +700,6 @@ ezy_speech_translate/
 ├── LICENSE
 ├── README.md
 ├── requirements.txt
-├── setup.py
 ├── app/
 │   ├── admin/
 │   │   └── server.py
