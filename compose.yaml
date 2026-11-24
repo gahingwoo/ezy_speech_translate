@@ -32,6 +32,9 @@ services:
       EZY_EXTERNAL_URL: ${EZY_EXTERNAL_URL:-}
       # Read once, on the first start. Leave empty to have one made for you.
       EZY_ADMIN_PASSWORD: ${EZY_ADMIN_PASSWORD:-}
+      # How the servers serve: eventlet (empty, the default) or threading.
+      # Set with: ezyspeech concurrency threading
+      EZY_CONCURRENCY: ${EZY_CONCURRENCY:-}
       TZ: ${TZ:-UTC}
     ports:
       - "${EZY_PORT:-1915}:${EZY_PORT:-1915}"

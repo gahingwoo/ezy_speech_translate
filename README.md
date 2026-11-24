@@ -279,7 +279,15 @@ sudo ezyspeech backup --list     # the backups kept
 sudo ezyspeech restore FILE      # put one back (what is there is backed up first)
 sudo ezyspeech auto-backup on    # or off, or status; --when "daily 03:00"
 sudo ezyspeech uninstall         # --purge deletes settings and transcripts too
+sudo ezyspeech concurrency threading   # real threads instead of eventlet (see below)
 ```
+
+The servers run on eventlet, which is being retired; real threads under
+gunicorn are the way off it ([docs/EVENTLET_MIGRATION.md](docs/EVENTLET_MIGRATION.md)).
+`ezyspeech concurrency threading` switches an install over and restarts it,
+and switches back by itself if the servers do not come up healthy;
+`ezyspeech concurrency eventlet` goes back. Eventlet stays the default until
+threading has run a few Sundays.
 
 An update keeps the running release and prepares the new one beside it,
 switches over with a restart, and checks both servers come up reporting the

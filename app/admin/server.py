@@ -19,17 +19,22 @@ FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
 details.
 """
 
+import os
+
+# Under eventlet (EZY_CONCURRENCY unset or "eventlet"; see
+# app/core/concurrency.py), patched before anything else is imported.
 # The real select module first. On macOS eventlet's hub is kqueue, and
 # patching before select has been imported leaves it two copies of the module
 # whose kevent types do not match: the server dies at its first accept.
-import select  # noqa: F401
-import eventlet
 # Before anything that opens a socket. The console's proxy calls to the user
 # server use requests, and unpatched they hold the whole admin server until
 # they return: one slow call and every other tab, page and asset waits on it.
-eventlet.monkey_patch()
+# (Under threading each call has a thread of its own, so they do not.)
+if (os.environ.get('EZY_CONCURRENCY') or 'eventlet').strip().lower() == 'eventlet':
+    import select  # noqa: F401
+    import eventlet
+    eventlet.monkey_patch()
 
-import os
 import sys
 import yaml
 import logging

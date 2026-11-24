@@ -1,6 +1,6 @@
 # Moving off eventlet: a plan
 
-Status: steps 1 and 2 done (4.2.11, 4.2.12). Written October 2026, against 4.1.13.
+Status: steps 1 to 3 done (4.2.11 to 4.2.13). Written October 2026, against 4.1.13.
 
 ## Why
 
@@ -94,6 +94,18 @@ installing) passing.
    `EZY_CONCURRENCY=threading` (eventlet stays the default). gunicorn and
    simple-websocket join requirements.txt; the systemd units, the container
    entrypoint and the Quadlet file start gunicorn when it is chosen.
+   *Done in 4.2.13,* a little differently: `concurrency.serve` runs gunicorn's
+   gthread worker in-process, so every way of installing still starts
+   `python app/…/server.py` and only the environment differs. The native
+   units carry `Environment=EZY_CONCURRENCY=`, Docker and Podman read it from
+   `.env`; `ezyspeech concurrency threading|eventlet` sets it and restarts
+   (and goes back if the servers are not healthy). gunicorn forks its worker
+   and threads do not cross a fork, so the background loops started before
+   serving wait and start in the worker. Measured with 300 listeners for a
+   minute on a Mac: no line missed, a line in 33 ms at the median, 55 at
+   the 95th centile (eventlet: 33 and 38); the worker grows from 31 to 110 MB,
+   about four threads to each open WebSocket. A stop takes three seconds
+   while a phone is listening (`graceful_timeout`).
 4. **Both in CI.** The Tests matrix gains the concurrency mode, so every
    install way is exercised both ways; a load script (300 Socket.IO clients
    reading two languages, a line a second for ten minutes) is run against

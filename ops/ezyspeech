@@ -10,6 +10,7 @@
     ezyspeech logs [-f] [-n N]
     ezyspeech password [--generate] [--json]
     ezyspeech backup [FILE]            settings, secrets and transcripts, as .tar.gz
+    ezyspeech concurrency [MODE]       how the servers serve: eventlet or threading
     ezyspeech uninstall [--purge]      --purge also deletes settings and transcripts
     ezyspeech menu                     the same, as screens
     ezyspeech install --mode native|docker ...   (normally run by install.sh)
@@ -677,6 +678,34 @@ def usage(conf):
             'disk_free': free, 'at_ns': time.monotonic_ns()}
 
 
+# How the servers serve (app/core/concurrency.py, docs/EVENTLET_MIGRATION.md):
+# green threads under eventlet, the default, or real threads under gunicorn.
+# A native install keeps it in install.conf and its units; Docker and Podman in
+# .env, which the container reads on every start.
+CONCURRENCY_MODES = ('eventlet', 'threading')
+
+
+def concurrency_of(conf):
+    if conf['mode'] == 'native':
+        found = conf.get('concurrency')
+    else:
+        found = docker_env(conf).get('EZY_CONCURRENCY')
+    return found if found in CONCURRENCY_MODES else CONCURRENCY_MODES[0]
+
+
+def set_concurrency(conf, mode):
+    if mode not in CONCURRENCY_MODES:
+        raise Fail(f'The concurrency mode is one of {", ".join(CONCURRENCY_MODES)}, not {mode}.')
+    if conf['mode'] == 'native':
+        conf['concurrency'] = mode
+        save_conf(conf, conf['_path'])
+        for unit, body in native_units(conf).items():
+            Path('/etc/systemd/system', unit).write_text(body)
+        systemctl('daemon-reload')
+    else:
+        set_docker_env(conf, {'EZY_CONCURRENCY': mode})    # read at the next start
+
+
 def native_units(conf):
     home, state, user = conf['home'], conf['state'], conf['user']
     units = {}
@@ -696,6 +725,7 @@ WorkingDirectory={home}/current
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=EZY_STATE={state}
+Environment=EZY_CONCURRENCY={concurrency_of(conf)}
 ExecStart={home}/current/.venv/bin/python {script}
 Restart=always
 RestartSec=3
@@ -779,6 +809,11 @@ def cmd_install(a):
             'port': str(a.port), 'admin_port': str(a.admin_port)}
     if mode == 'native':
         conf.update(state=a.state or '/var/lib/ezyspeech', user=a.user or 'ezyspeech')
+    concurrency = (os.environ.get('EZY_CONCURRENCY') or '').strip().lower() or None
+    if concurrency and concurrency not in CONCURRENCY_MODES:
+        raise Fail(f'EZY_CONCURRENCY is one of {", ".join(CONCURRENCY_MODES)}, not {concurrency}.')
+    if mode == 'native' and concurrency:
+        conf['concurrency'] = concurrency
 
     source = Path(a.source).resolve()
     version = version_of(source) if source.is_dir() else None
@@ -796,6 +831,7 @@ def cmd_install(a):
            'EZY_EXTERNAL_URL': a.external_url or None,
            'EZY_ADMIN_PASSWORD': os.environ.get('EZY_ADMIN_PASSWORD') or None,
            'EZY_TRANSLATION_PROVIDERS': os.environ.get('EZY_TRANSLATION_PROVIDERS') or None,
+           'EZY_CONCURRENCY': concurrency if mode != 'native' else None,
            'TZ': a.tz or None}
 
     if mode == 'native':
@@ -1221,6 +1257,29 @@ def set_username(conf, name):
         compose(conf, 'exec', '-T', 'ezyspeech', 'ezyspeech', 'username', name, capture=True)
 
 
+def cmd_concurrency(a):
+    conf = load_conf()
+    changed = False
+    if a.mode and a.mode != concurrency_of(conf):
+        require_root(conf)
+        before = concurrency_of(conf)
+        set_concurrency(conf, a.mode)
+        restart(conf)
+        if not wait_healthy(conf, version_of(current_release(conf))):
+            set_concurrency(conf, before)
+            restart(conf)
+            raise Fail(f'The servers did not come up healthy with {a.mode}; '
+                       f'they are back on {before}. See: ezyspeech logs')
+        changed = True
+    mode = concurrency_of(conf)
+    if a.json:
+        print(json.dumps({'concurrency': mode, 'changed': changed}))
+    elif changed:
+        print(f'The servers serve with {mode} now; they restarted.')
+    else:
+        print(mode)
+
+
 def cmd_username(a):
     conf = load_conf()
     require_root(conf)
@@ -1514,6 +1573,9 @@ def main(argv):
     s.add_argument('--stdin', action='store_true', help='read it from standard input')
     s.add_argument('--username', help='set the sign-in name too')
     s.add_argument('--json', action='store_true'); s.set_defaults(func=cmd_password)
+    s = sub.add_parser('concurrency', help='how the servers serve: eventlet (green threads) or threading')
+    s.add_argument('mode', nargs='?', choices=CONCURRENCY_MODES); s.add_argument('--json', action='store_true')
+    s.set_defaults(func=cmd_concurrency)
     s = sub.add_parser('username', help='set the admin sign-in name')
     s.add_argument('name'); s.add_argument('--json', action='store_true')
     s.set_defaults(func=cmd_username)

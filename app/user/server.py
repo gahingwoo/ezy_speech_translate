@@ -19,14 +19,16 @@ FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
 details.
 """
 
-# Patched before anything else is imported: select first, as the admin server
-# explains, then eventlet over the standard library.
-import select  # noqa: F401,E402
-import eventlet  # noqa: E402
-import eventlet.wsgi  # noqa: E402,F401
-eventlet.monkey_patch()
-
 import os  # noqa: E402
+
+# Under eventlet (EZY_CONCURRENCY unset or "eventlet"; see
+# app/core/concurrency.py), patched before anything else is imported: select
+# first, as the admin server explains, then eventlet over the standard library.
+if (os.environ.get('EZY_CONCURRENCY') or 'eventlet').strip().lower() == 'eventlet':
+    import select  # noqa: F401,E402
+    import eventlet  # noqa: E402
+    eventlet.monkey_patch()
+
 import sys  # noqa: E402
 
 # The repository root, so `app` imports when this is run as a script
