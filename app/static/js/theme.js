@@ -19,6 +19,10 @@
         // PatternFly switches its own tokens on this class; data-theme stays
         // because the app's own CSS still reads it.
         root.classList.toggle('pf-v6-theme-dark', theme === 'dark');
+        // The phone's bar above a page added to the home screen, which takes
+        // its colour from here: the page's own ground, light or dark.
+        const bar = document.querySelector('meta[name=theme-color]');
+        if (bar) bar.setAttribute('content', theme === 'dark' ? '#151515' : '#f2f2f2');
     }
 
     function motionIsUnwelcome() {

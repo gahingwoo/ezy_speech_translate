@@ -17,6 +17,8 @@ FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
 details.
 """
 
+import json
+
 from app.user.core import *  # noqa: F401,F403  (one namespace, split by subject)
 
 # ──────────────────────────────────────────
@@ -456,6 +458,37 @@ def favicon():
         return redirect(value, code=302)
     return Response(value, mimetype='image/svg+xml',
                     headers={'Cache-Control': 'public, max-age=86400'})
+
+@app.route('/manifest.webmanifest', methods=['GET'])
+def web_manifest():
+    """What a phone needs to add the listener page to its home screen as an
+    app: a name, the church's icon, and to open full screen at the page.
+
+    The name follows the OEM branding (its defaults when branding is off).
+    There is no service worker: this is a live page, and one that answered
+    from a cache would show a listener last week's page."""
+    branding = (app.config.get('OEM') or {}).get('branding') or {}
+    name = (branding.get('user_title') or 'EzySpeech').strip()
+    short = (branding.get('app_name') or 'EzySpeech').strip()
+    manifest = {
+        'name': name,
+        'short_name': short,
+        'description': 'Live translation of what is said, on your phone.',
+        'start_url': '/',
+        'scope': '/',
+        'display': 'standalone',
+        'background_color': '#f2f2f2',
+        'theme_color': '#f2f2f2',
+        'icons': [
+            {'src': '/static/img/app-icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/img/app-icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+            {'src': '/static/img/app-icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png',
+             'purpose': 'maskable'},
+        ],
+    }
+    return Response(json.dumps(manifest, ensure_ascii=False), mimetype='application/manifest+json',
+                    headers={'Cache-Control': 'public, max-age=3600'})
+
 
 @app.route('/api/health', methods=['GET'])
 @limiter.limit("120 per minute")

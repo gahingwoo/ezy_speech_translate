@@ -956,12 +956,23 @@ def build():
        DOMContentLoaded, which is a frame too late: a reader who chose dark saw
        the page arrive light and turn over. Same two lines theme.js paints
        with, inline so nothing has to be fetched first. -->
+  <!-- Added to a home screen, the page opens as an app: full screen, with the
+       church's icon and name (/manifest.webmanifest). The bar colour is the
+       page's own ground; the script below darkens it with the theme. -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="{{ static_url('img/apple-touch-icon.png') }}">
+  <meta name="theme-color" content="#f2f2f2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="{{ oem_app_name or 'EzySpeech' }}">
   <script>
     try {
       var t = localStorage.getItem('theme');
       if (t) {
         document.documentElement.setAttribute('data-theme', t);
         document.documentElement.classList.toggle('pf-v6-theme-dark', t === 'dark');
+        if (t === 'dark') document.querySelector('meta[name=theme-color]').setAttribute('content', '#151515');
       }
     } catch (e) {}
   </script>

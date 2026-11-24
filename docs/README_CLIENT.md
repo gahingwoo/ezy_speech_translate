@@ -65,6 +65,13 @@ EzySpeechTranslate provides real-time translation of live speech in multiple lan
    - Choose from dropdown menu
    - Translations appear automatically
 
+4. **Keep it on your home screen** (optional)
+
+   - Android, Chrome: menu ⋮ → *Add to home screen* (or *Install app*)
+   - iPhone, Safari: Share → *Add to Home Screen*
+   - It then opens full screen with the church's icon, at the same room and
+     language as last time
+
 ---
 
 ## Using the Viewer Interface
