@@ -511,6 +511,7 @@ def health_check():
         'rooms': len(_rooms),
         'room_id': room_id,
         'translation': get_translation_service().health_summary()['state'],
+        'concurrency': concurrency.MODE,
     })
 
 @app.route('/api/history', methods=['GET'])

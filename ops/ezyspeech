@@ -1025,7 +1025,8 @@ def cmd_status(a):
     conf = load_conf()
     cur = current_release(conf)
     data = {'mode': conf['mode'], 'home': conf['home'], 'version': version_of(cur) if cur else None,
-            'releases': [r.name for r in releases(conf)], 'health': health(conf)}
+            'releases': [r.name for r in releases(conf)], 'health': health(conf),
+            'concurrency': concurrency_of(conf)}
     target = rollback_target(conf)
     data['rollback_to'] = target.name if target else None
     found = settings(conf)

@@ -84,7 +84,10 @@ def live():
         got = r.json().get('version')
         if got != version:
             fail(f'{name} is on {got}, expected {version}')
-        ok(f'{name} healthy, {version}')
+        serving = r.json().get('concurrency')
+        if ARGS.concurrency and serving != ARGS.concurrency:
+            fail(f'{name} serves with {serving}, expected {ARGS.concurrency}')
+        ok(f'{name} healthy, {version}' + (f', {serving}' if serving else ''))
 
     r = requests.get(f'{base}:{ARGS.port}/', timeout=5, verify=False)  # nosec B501
     if r.status_code != 200 or f'data-version="{version}"' not in r.text:
@@ -183,6 +186,7 @@ if __name__ == '__main__':
     s.add_argument('--user', default='admin')
     s.add_argument('--password', required=True)
     s.add_argument('--say', default='Grace and peace to you')
+    s.add_argument('--concurrency', help='eventlet or threading: what both servers must say they serve with')
     s = sub.add_parser('history')
     s.add_argument('--has', action='append', default=[])
     s.add_argument('--has-not', action='append', default=[])

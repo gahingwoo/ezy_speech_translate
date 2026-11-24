@@ -36,11 +36,16 @@ jobs:
           node tools/i18n/build.mjs
           git diff --exit-code -- app/templates app/static/js/i18n
 
+  # Each way of installing, serving each way (app/core/concurrency.py):
+  # eventlet's green threads, and real threads under gunicorn, which are to
+  # replace them (docs/EVENTLET_MIGRATION.md).
   install-and-use:
+    name: ${{ matrix.mode }}, ${{ matrix.concurrency }}
     strategy:
       fail-fast: false
       matrix:
         mode: [native, docker, podman]
+        concurrency: [eventlet, threading]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -52,18 +57,21 @@ jobs:
           echo "PW=$PW" >> "$GITHUB_ENV"
           # echo: translations made here, so nothing leaves the runner
           sudo env EZY_ADMIN_PASSWORD="$PW" EZY_TRANSLATION_PROVIDERS=echo \
+               EZY_CONCURRENCY=${{ matrix.concurrency }} \
                python3 ops/ezyspeech install --mode ${{ matrix.mode }} --source . --progress
 
       - name: Python for the checks
         run: |
           python3 -m venv /tmp/smoke
-          /tmp/smoke/bin/pip install -q requests "python-socketio[client]==5.16.2"
+          /tmp/smoke/bin/pip install -q requests "python-socketio[client,asyncio_client]==5.16.2" aiohttp
 
       - name: Used as people use it
-        run: /tmp/smoke/bin/python tests/smoke/check.py live --password "$PW"
+        run: |
+          /tmp/smoke/bin/python tests/smoke/check.py live --password "$PW" \
+              --concurrency ${{ matrix.concurrency }}
 
-      # The pages in a real browser, once: they are the same pages however
-      # EzySpeech is installed.
+      # The pages in a real browser, once for each way of serving: they are
+      # the same pages however EzySpeech is installed.
       - name: The pages, in a browser
         if: matrix.mode == 'native'
         run: |
@@ -78,8 +86,36 @@ jobs:
           import json, sys
           d = json.load(sys.stdin)
           assert d["mode"] == "${{ matrix.mode }}", d["mode"]
+          assert d["concurrency"] == "${{ matrix.concurrency }}", d["concurrency"]
           assert d["running"], d["health"]
           assert d["usage"]["processes"], d["usage"]'
+
+      # 300 listeners reading two languages for a minute while a speaker
+      # talks (tools/loadtest/listeners.py): every line reaches every one of
+      # them, none is dropped, and what it took goes in the job's summary,
+      # to compare the two ways of serving. The ten-minute run in the plan
+      # is for a machine of one's own; here it would hold up every release.
+      - name: Under load
+        run: |
+          ulimit -n 8192 || true
+          /tmp/smoke/bin/python tools/loadtest/listeners.py http://127.0.0.1 "$PW" "300:60" \
+              2>/tmp/load.log | tee /tmp/load.json
+          sudo ezyspeech status --json > /tmp/status.json
+          python3 - <<'PY'
+          import json, os
+          load = [json.loads(l) for l in open('/tmp/load.json') if l.startswith('{')][-1]
+          procs = json.load(open('/tmp/status.json'))['usage']['processes']
+          memory = ', '.join(f"{p['name']} {round(p['memory'] / 2**20)} MB" for p in procs if p.get('memory'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('### ${{ matrix.mode }}, ${{ matrix.concurrency }}: 300 listeners, 60 s\n\n'
+                        f"| line ms p50/p95/p99/max | interim ms p50/p95/p99/max | missed | disconnects | memory after |\n"
+                        f"|---|---|---|---|---|\n"
+                        f"| {load['line_ms_p50_p95_p99_max']} | {load['interim_ms_p50_p95_p99_max']} "
+                        f"| {load['lines_missed_pct']} % | {load['disconnects']} | {memory} |\n")
+          assert load['connected'] == 300 and load['connect_fail'] == 0, load
+          assert load['lines_missed_pct'] == 0 and load['disconnects'] == 0, load
+          assert load['line_ms_p50_p95_p99_max'][1] < 2000, load
+          PY
 
       - name: Backed up, and put back
         run: |

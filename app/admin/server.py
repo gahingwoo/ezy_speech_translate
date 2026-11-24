@@ -801,7 +801,8 @@ def update_info():
 @app.route("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "admin-frontend", "version": APP_VERSION}, 200
+    return {"status": "healthy", "service": "admin-frontend", "version": APP_VERSION,
+            "concurrency": concurrency.MODE}, 200
 
 @app.errorhandler(404)
 def not_found(error):
