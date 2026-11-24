@@ -587,6 +587,9 @@ def qr_section():
               "Room", None, "qrRoomSelect")
         + group(select("qrLangSelect", QR_LANGS, "QR language preset"),
                 "Language preset", None, "qrLangSelect")
+        + group(text_input("qrCardName", placeholder="Mt Albert Baptist Church",
+                           extra=' autocomplete="off" oninput="rememberQRCardName(this.value)"'),
+                "Name on the card", "qrc_name", "qrCardName")
         + '''      <div class="pf-v6-c-form__group">
         <div class="pf-v6-c-form__group-control">
 %s
@@ -599,7 +602,9 @@ def qr_section():
       </div>
 ''' % (button("Generate QR Code", "generateQR()", "qrcode", "primary pf-m-block"),
        button("Download PNG", "downloadQR()", "download", "secondary pf-m-block",
-              indent=12)))
+              indent=12)
+       + "\n" + button("Print cards", "printQRCards()", "print", "secondary pf-m-block",
+                        i18n="qrc_print", indent=12)))
     return '<div id="qrSection">\n%s      </div>\n' % body
 
 
@@ -1619,6 +1624,10 @@ def build():
 %(services_view)s      </main>
     </div>
   </div>
+
+  <!-- Two cards on an A4 sheet, for the noticeboard or the tables: filled by
+       printQRCards() in admin.js, shown only while printing. -->
+  <div class="qr-print-sheet" id="qrPrintSheet" aria-hidden="true"></div>
 
   <!-- admin.js clones this when it clears the list. -->
   <template id="emptyStateTemplate">

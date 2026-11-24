@@ -2523,3 +2523,50 @@ async function confirmConfigPassword() {
     }
 }
 window.confirmConfigPassword = confirmConfigPassword;
+/* ── Printed cards ─────────────────────────────────────────────────────────
+   The QR code above, on a card to cut out and leave on the tables or pin up:
+   the church's name, what it is, three steps, the address. Two to an A4
+   sheet. Printed from this page; while it prints, only the sheet shows. */
+function rememberQRCardName(value) {
+    try { localStorage.setItem('qrCardName', value); } catch (e) { /* fine */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const field = document.getElementById('qrCardName');
+    if (!field) return;
+    try { field.value = localStorage.getItem('qrCardName') || ''; } catch (e) { /* fine */ }
+});
+
+function printQRCards() {
+    const label = document.getElementById('qrUrlLabel');
+    if (!label || !label.textContent) generateQR();
+    const url = document.getElementById('qrUrlLabel').textContent;
+    const name = (document.getElementById('qrCardName') || {}).value || '';
+    const sheet = document.getElementById('qrPrintSheet');
+    const card = () => `
+        <section class="qr-card">
+          ${name ? `<p class="qr-card-name">${escapeHtml(name)}</p>` : ''}
+          <h1 class="qr-card-title">${escapeHtml(t('qrc_title', 'Live translation'))}</h1>
+          <div class="qr-card-code"></div>
+          <ol class="qr-card-steps">
+            <li>${escapeHtml(t('qrc_step1', 'Scan this with your phone camera.'))}</li>
+            <li>${escapeHtml(t('qrc_step2', 'Choose the language you read.'))}</li>
+            <li>${escapeHtml(t('qrc_step3', 'No app and no sign-in needed.'))}</li>
+          </ol>
+          <p class="qr-card-url">${escapeHtml(url)}</p>
+        </section>`;
+    sheet.innerHTML = card() + card();
+    // Drawn at print size, not scaled up from the 220px one on screen.
+    sheet.querySelectorAll('.qr-card-code').forEach(box => {
+        new QRCode(box, { text: url, width: 512, height: 512, colorDark: '#000000',
+                          colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    });
+    const done = () => {
+        document.documentElement.classList.remove('printing-qr');
+        window.removeEventListener('afterprint', done);
+    };
+    window.addEventListener('afterprint', done);
+    document.documentElement.classList.add('printing-qr');
+    // qrcodejs draws into a canvas and then an <img>; give it the frame.
+    setTimeout(() => window.print(), 150);
+}

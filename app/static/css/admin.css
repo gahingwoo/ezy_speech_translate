@@ -1069,3 +1069,83 @@ a.pf-v6-c-masthead__logo:focus-visible {
     justify-content: flex-start;
   }
 }
+
+/* Printed QR cards (printQRCards): nothing of them on screen; while printing,
+   nothing but them. Two to an A4 sheet, with a cut line between. */
+.qr-print-sheet {
+  display: none;
+}
+
+@media print {
+  html.printing-qr body > *:not(.qr-print-sheet) {
+    display: none !important;
+  }
+
+  html.printing-qr,
+  html.printing-qr body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  html.printing-qr .qr-print-sheet {
+    display: block;
+    color: #000;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .qr-card {
+    box-sizing: border-box;
+    height: 136mm;
+    padding: 10mm 14mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    break-inside: avoid;
+    font-family: var(--pf-t--global--font--family--body);
+  }
+
+  .qr-card + .qr-card {
+    border-top: 1px dashed #888;
+  }
+
+  .qr-card-name {
+    margin: 0;
+    font-size: 13pt;
+  }
+
+  .qr-card-title {
+    margin: 2mm 0 6mm;
+    font-family: var(--pf-t--global--font--family--heading);
+    font-size: 24pt;
+    font-weight: var(--pf-t--global--font--weight--heading--default);
+  }
+
+  .qr-card-code img,
+  .qr-card-code canvas {
+    width: 62mm !important;
+    height: 62mm !important;
+    /* square modules, not blurred ones, whatever the printer's scaling */
+    image-rendering: pixelated;
+  }
+
+  .qr-card-steps {
+    margin: 7mm 0 0;
+    padding: 0 0 0 1.2em;
+    text-align: start;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  .qr-card-url {
+    margin: auto 0 0;
+    font-size: 10pt;
+    color: #444;
+    word-break: break-all;
+  }
+}

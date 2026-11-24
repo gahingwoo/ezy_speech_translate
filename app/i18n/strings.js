@@ -982,6 +982,12 @@ window.sharedI18n = {
         "exportSrtDesc": "字幕檔"
     },
     es: {
+        "qrc_name": "Nombre en la tarjeta",
+        "qrc_print": "Imprimir tarjetas",
+        "qrc_title": "Traducción en vivo",
+        "qrc_step1": "Escanee esto con la cámara de su teléfono.",
+        "qrc_step2": "Elija el idioma que lee.",
+        "qrc_step3": "No necesita app ni iniciar sesión.",
         "wx_title": "Abierto en WeChat",
         "wx_text": "La página funciona aquí. Si la pantalla se oscurece sola, la lectura en voz alta no se oye o quiere guardar un archivo, toque ··· en la esquina superior derecha y elija Abrir en el navegador.",
         "wx_noDownload": "WeChat no puede guardar archivos. ¿Desea copiar el texto?\n\nPara obtener el archivo, toque ··· en la esquina superior derecha y elija Abrir en el navegador.",
@@ -1183,6 +1189,12 @@ window.sharedI18n = {
         },
     // French
     fr: {
+        "qrc_name": "Nom sur la carte",
+        "qrc_print": "Imprimer les cartes",
+        "qrc_title": "Traduction en direct",
+        "qrc_step1": "Scannez ceci avec l'appareil photo de votre téléphone.",
+        "qrc_step2": "Choisissez la langue que vous lisez.",
+        "qrc_step3": "Aucune appli ni connexion requise.",
         "wx_title": "Ouvert dans WeChat",
         "wx_text": "La page fonctionne ici. Si l'écran s'éteint tout seul, si la lecture à voix haute reste muette ou si vous souhaitez enregistrer un fichier, touchez ··· en haut à droite et choisissez Ouvrir dans le navigateur.",
         "wx_noDownload": "WeChat ne peut pas enregistrer de fichiers. Copier le texte à la place ?\n\nPour obtenir le fichier, touchez ··· en haut à droite et choisissez Ouvrir dans le navigateur.",
@@ -1384,6 +1396,12 @@ window.sharedI18n = {
         },
     // German
     de: {
+        "qrc_name": "Name auf der Karte",
+        "qrc_print": "Karten drucken",
+        "qrc_title": "Live-Übersetzung",
+        "qrc_step1": "Scannen Sie dies mit der Kamera Ihres Handys.",
+        "qrc_step2": "Wählen Sie die Sprache, die Sie lesen.",
+        "qrc_step3": "Keine App und keine Anmeldung nötig.",
         "wx_title": "In WeChat geöffnet",
         "wx_text": "Die Seite funktioniert hier. Wenn sich der Bildschirm von selbst abdunkelt, das Vorlesen stumm bleibt oder Sie eine Datei speichern möchten, tippen Sie oben rechts auf ··· und wählen Sie Im Browser öffnen.",
         "wx_noDownload": "WeChat kann keine Dateien speichern. Stattdessen den Text kopieren?\n\nFür die Datei tippen Sie oben rechts auf ··· und wählen Sie Im Browser öffnen.",
@@ -1585,6 +1603,12 @@ window.sharedI18n = {
         },
     // Russian
     ru: {
+        "qrc_name": "Название на карточке",
+        "qrc_print": "Печать карточек",
+        "qrc_title": "Перевод в реальном времени",
+        "qrc_step1": "Отсканируйте это камерой телефона.",
+        "qrc_step2": "Выберите язык, на котором вы читаете.",
+        "qrc_step3": "Приложение и вход не нужны.",
         "wx_title": "Открыто в WeChat",
         "wx_text": "Страница работает и здесь. Если экран гаснет сам, озвучивание текста не слышно или вы хотите сохранить файл, нажмите ··· в правом верхнем углу и выберите «Открыть в браузере».",
         "wx_noDownload": "WeChat не может сохранять файлы. Скопировать текст?\n\nЧтобы получить файл, нажмите ··· в правом верхнем углу и выберите «Открыть в браузере».",
@@ -1786,6 +1810,12 @@ window.sharedI18n = {
         },
     // Polish
     pl: {
+        "qrc_name": "Nazwa na karcie",
+        "qrc_print": "Drukuj karty",
+        "qrc_title": "Tłumaczenie na żywo",
+        "qrc_step1": "Zeskanuj to aparatem telefonu.",
+        "qrc_step2": "Wybierz język, w którym czytasz.",
+        "qrc_step3": "Nie potrzeba aplikacji ani logowania.",
         "wx_title": "Otwarto w WeChat",
         "wx_text": "Strona działa tutaj. Jeśli ekran sam się ciemnieje, czytanie na głos jest ciche lub chcesz zapisać plik, dotknij ··· w prawym górnym rogu i wybierz Otwórz w przeglądarce.",
         "wx_noDownload": "WeChat nie może zapisywać plików. Skopiować tekst?\n\nAby otrzymać plik, dotknij ··· w prawym górnym rogu i wybierz Otwórz w przeglądarce.",
@@ -1987,6 +2017,12 @@ window.sharedI18n = {
         },
     // Turkish
     tr: {
+        "qrc_name": "Kartta görünecek ad",
+        "qrc_print": "Kartları yazdır",
+        "qrc_title": "Canlı çeviri",
+        "qrc_step1": "Bunu telefonunuzun kamerasıyla tarayın.",
+        "qrc_step2": "Okuduğunuz dili seçin.",
+        "qrc_step3": "Uygulama ve giriş gerekmez.",
         "wx_title": "WeChat'te açıldı",
         "wx_text": "Sayfa burada çalışır. Ekran kendiliğinden kararırsa, sesli okuma sessiz kalırsa veya bir dosya kaydetmek isterseniz, sağ üstteki ··· simgesine dokunun ve Tarayıcıda aç seçeneğini seçin.",
         "wx_noDownload": "WeChat dosya kaydedemez. Bunun yerine metin kopyalansın mı?\n\nDosya için sağ üstteki ··· simgesine dokunun ve Tarayıcıda aç seçeneğini seçin.",
@@ -2188,6 +2224,12 @@ window.sharedI18n = {
         },
     // Japanese (localized)
     ja: {
+        "qrc_name": "カードに載せる名前",
+        "qrc_print": "カードを印刷",
+        "qrc_title": "ライブ翻訳",
+        "qrc_step1": "スマートフォンのカメラでこちらを読み取ってください。",
+        "qrc_step2": "読みたい言語を選んでください。",
+        "qrc_step3": "アプリもログインも必要ありません。",
         "wx_title": "WeChat で開いています",
         "wx_text": "このページはここでも使えます。画面が勝手に暗くなる、読み上げの音が出ない、ファイルを保存したい場合は、右上の ··· をタップして「ブラウザで開く」を選んでください。",
         "wx_noDownload": "WeChat ではファイルを保存できません。代わりにテキストをコピーしますか？\n\nファイルが必要な場合は、右上の ··· をタップして「ブラウザで開く」を選んでください。",
@@ -2389,6 +2431,12 @@ window.sharedI18n = {
         },
     // Korean (localized)
     ko: {
+        "qrc_name": "카드에 표시할 이름",
+        "qrc_print": "카드 인쇄",
+        "qrc_title": "실시간 번역",
+        "qrc_step1": "휴대전화 카메라로 스캔해 주세요.",
+        "qrc_step2": "읽을 언어를 선택해 주세요.",
+        "qrc_step3": "앱이나 로그인이 필요 없습니다.",
         "wx_title": "WeChat에서 열림",
         "wx_text": "이 페이지는 여기서도 작동합니다. 화면이 저절로 어두워지거나, 소리 내어 읽기가 들리지 않거나, 파일을 저장하고 싶다면 오른쪽 위의 ···를 누르고 '브라우저에서 열기'를 선택하세요.",
         "wx_noDownload": "WeChat에서는 파일을 저장할 수 없습니다. 대신 텍스트를 복사할까요?\n\n파일이 필요하면 오른쪽 위의 ···를 누르고 '브라우저에서 열기'를 선택하세요.",
@@ -2590,6 +2638,12 @@ window.sharedI18n = {
         },
     // Vietnamese
     vi: {
+        "qrc_name": "Tên trên thẻ",
+        "qrc_print": "In thẻ",
+        "qrc_title": "Dịch trực tiếp",
+        "qrc_step1": "Hãy quét mã này bằng camera điện thoại.",
+        "qrc_step2": "Chọn ngôn ngữ bạn đọc.",
+        "qrc_step3": "Không cần ứng dụng hay đăng nhập.",
         "wx_title": "Đã mở trong WeChat",
         "wx_text": "Trang vẫn hoạt động ở đây. Nếu màn hình tự tối đi, phần đọc to không có tiếng hoặc bạn muốn lưu tệp, hãy nhấn vào ··· ở góc trên bên phải và chọn Mở bằng trình duyệt.",
         "wx_noDownload": "WeChat không thể lưu tệp. Bạn có muốn sao chép văn bản không?\n\nĐể lấy tệp, hãy nhấn vào ··· ở góc trên bên phải và chọn Mở bằng trình duyệt.",
@@ -2791,6 +2845,12 @@ window.sharedI18n = {
         },
     // Thai
     th: {
+        "qrc_name": "ชื่อบนการ์ด",
+        "qrc_print": "พิมพ์การ์ด",
+        "qrc_title": "แปลสด",
+        "qrc_step1": "สแกนด้วยกล้องโทรศัพท์ของคุณ",
+        "qrc_step2": "เลือกภาษาที่คุณอ่าน",
+        "qrc_step3": "ไม่ต้องติดตั้งแอปและไม่ต้องลงชื่อเข้าใช้",
         "wx_title": "เปิดใน WeChat แล้ว",
         "wx_text": "หน้านี้ใช้งานได้ที่นี่ หากหน้าจอมืดลงเอง เสียงอ่านออกเสียงไม่ดัง หรือต้องการบันทึกไฟล์ ให้แตะ ··· ที่มุมขวาบนแล้วเลือก เปิดในเบราว์เซอร์",
         "wx_noDownload": "WeChat บันทึกไฟล์ไม่ได้ ต้องการคัดลอกข้อความแทนหรือไม่?\n\nหากต้องการไฟล์ ให้แตะ ··· ที่มุมขวาบนแล้วเลือก เปิดในเบราว์เซอร์",
@@ -2992,6 +3052,12 @@ window.sharedI18n = {
         },
     // Indonesian
     id: {
+        "qrc_name": "Nama pada kartu",
+        "qrc_print": "Cetak kartu",
+        "qrc_title": "Terjemahan langsung",
+        "qrc_step1": "Pindai ini dengan kamera ponsel Anda.",
+        "qrc_step2": "Pilih bahasa yang Anda baca.",
+        "qrc_step3": "Tanpa aplikasi dan tanpa perlu masuk akun.",
         "wx_title": "Dibuka di WeChat",
         "wx_text": "Halaman ini berfungsi di sini. Jika layar meredup sendiri, pembacaan suara tidak terdengar, atau Anda ingin menyimpan berkas, ketuk ··· di kanan atas lalu pilih Buka di Browser.",
         "wx_noDownload": "WeChat tidak dapat menyimpan berkas. Salin teksnya saja?\n\nUntuk mendapatkan berkasnya, ketuk ··· di kanan atas lalu pilih Buka di Browser.",
@@ -3193,6 +3259,12 @@ window.sharedI18n = {
         },
     // Malay
     ms: {
+        "qrc_name": "Nama pada kad",
+        "qrc_print": "Cetak kad",
+        "qrc_title": "Terjemahan langsung",
+        "qrc_step1": "Imbas ini dengan kamera telefon anda.",
+        "qrc_step2": "Pilih bahasa yang anda baca.",
+        "qrc_step3": "Tiada aplikasi atau log masuk diperlukan.",
         "wx_title": "Dibuka dalam WeChat",
         "wx_text": "Halaman ini berfungsi di sini. Jika skrin menjadi gelap sendiri, bacaan lantang senyap, atau anda ingin menyimpan fail, ketik ··· di penjuru kanan atas dan pilih Buka dalam Pelayar.",
         "wx_noDownload": "WeChat tidak dapat menyimpan fail. Salin teks sahaja?\n\nUntuk mendapatkan fail, ketik ··· di penjuru kanan atas dan pilih Buka dalam Pelayar.",
@@ -3394,6 +3466,12 @@ window.sharedI18n = {
         },
     // Hindi
     hi: {
+        "qrc_name": "कार्ड पर नाम",
+        "qrc_print": "कार्ड प्रिंट करें",
+        "qrc_title": "लाइव अनुवाद",
+        "qrc_step1": "इसे अपने फ़ोन के कैमरे से स्कैन करें।",
+        "qrc_step2": "वह भाषा चुनें जो आप पढ़ते हैं।",
+        "qrc_step3": "किसी ऐप या साइन-इन की ज़रूरत नहीं।",
         "wx_title": "WeChat में खोला गया",
         "wx_text": "यह पेज यहाँ भी काम करता है। अगर स्क्रीन अपने आप धुंधली हो जाए, पढ़कर सुनाने की आवाज़ न आए, या आप कोई फ़ाइल सहेजना चाहें, तो ऊपर दाईं ओर ··· पर टैप करें और ब्राउज़र में खोलें चुनें।",
         "wx_noDownload": "WeChat फ़ाइलें सहेज नहीं सकता। क्या इसके बजाय टेक्स्ट कॉपी करें?\n\nफ़ाइल के लिए ऊपर दाईं ओर ··· पर टैप करें और ब्राउज़र में खोलें चुनें।",
@@ -3595,6 +3673,12 @@ window.sharedI18n = {
         },
     // Arabic
     ar: {
+        "qrc_name": "الاسم على البطاقة",
+        "qrc_print": "اطبع البطاقات",
+        "qrc_title": "ترجمة فورية",
+        "qrc_step1": "امسح هذا الرمز بكاميرا هاتفك.",
+        "qrc_step2": "اختر اللغة التي تقرأ بها.",
+        "qrc_step3": "لا حاجة إلى تطبيق أو تسجيل دخول.",
         "wx_title": "تم الفتح في WeChat",
         "wx_text": "تعمل الصفحة هنا. إذا أظلمت الشاشة من تلقاء نفسها، أو كانت القراءة بصوت عالٍ صامتة، أو أردت حفظ ملف، فاضغط على ··· في أعلى اليمين ثم اختر فتح في المتصفح.",
         "wx_noDownload": "لا يستطيع WeChat حفظ الملفات. هل تريد نسخ النص بدلاً من ذلك؟\n\nللحصول على الملف، اضغط على ··· في أعلى اليمين ثم اختر فتح في المتصفح.",
@@ -3797,6 +3881,12 @@ window.sharedI18n = {
 
     // Portuguese
     pt: {
+        "qrc_name": "Nome no cartão",
+        "qrc_print": "Imprimir cartões",
+        "qrc_title": "Tradução ao vivo",
+        "qrc_step1": "Escaneie isto com a câmera do seu celular.",
+        "qrc_step2": "Escolha o idioma que você lê.",
+        "qrc_step3": "Não precisa de app nem de login.",
         "wx_title": "Aberto no WeChat",
         "wx_text": "A página funciona aqui. Se o ecrã escurecer sozinho, a leitura em voz alta ficar muda ou quiser guardar um ficheiro, toque em ··· no canto superior direito e escolha Abrir no navegador.",
         "wx_noDownload": "O WeChat não consegue guardar ficheiros. Copiar o texto em vez disso?\n\nPara obter o ficheiro, toque em ··· no canto superior direito e escolha Abrir no navegador.",
@@ -3999,6 +4089,12 @@ window.sharedI18n = {
 
     // Italian
     it: {
+        "qrc_name": "Nome sulla scheda",
+        "qrc_print": "Stampa le schede",
+        "qrc_title": "Traduzione dal vivo",
+        "qrc_step1": "Inquadra questo codice con la fotocamera del telefono.",
+        "qrc_step2": "Scegli la lingua che leggi.",
+        "qrc_step3": "Nessuna app e nessun accesso necessari.",
         "wx_title": "Aperto in WeChat",
         "wx_text": "La pagina funziona anche qui. Se lo schermo si oscura da solo, la lettura ad alta voce è muta o vuoi salvare un file, tocca ··· in alto a destra e scegli Apri nel browser.",
         "wx_noDownload": "WeChat non può salvare file. Vuoi copiare il testo?\n\nPer il file, tocca ··· in alto a destra e scegli Apri nel browser.",
@@ -4201,6 +4297,12 @@ window.sharedI18n = {
 
     // Dutch
     nl: {
+        "qrc_name": "Naam op de kaart",
+        "qrc_print": "Kaarten printen",
+        "qrc_title": "Live vertaling",
+        "qrc_step1": "Scan dit met de camera van uw telefoon.",
+        "qrc_step2": "Kies de taal die u leest.",
+        "qrc_step3": "Geen app en geen inlog nodig.",
         "wx_title": "Geopend in WeChat",
         "wx_text": "De pagina werkt hier. Als het scherm vanzelf donker wordt, het voorlezen stil blijft of u een bestand wilt opslaan, tikt u rechtsboven op ··· en kiest u Openen in browser.",
         "wx_noDownload": "WeChat kan geen bestanden opslaan. De tekst kopiëren?\n\nVoor het bestand tikt u rechtsboven op ··· en kiest u Openen in browser.",
@@ -4402,6 +4504,12 @@ window.sharedI18n = {
         },
     // Tamil
     ta: {
+        "qrc_name": "அட்டையில் உள்ள பெயர்",
+        "qrc_print": "அட்டைகளை அச்சிடுங்கள்",
+        "qrc_title": "நேரடி மொழிபெயர்ப்பு",
+        "qrc_step1": "இதை உங்கள் தொலைபேசி கேமராவால் ஸ்கேன் செய்யுங்கள்.",
+        "qrc_step2": "நீங்கள் படிக்கும் மொழியைத் தேர்ந்தெடுங்கள்.",
+        "qrc_step3": "ஆப் அல்லது உள்நுழைவு தேவையில்லை.",
         "wx_title": "WeChat-இல் திறக்கப்பட்டது",
         "wx_text": "இந்தப் பக்கம் இங்கேயும் வேலை செய்யும். திரை தானாக இருண்டுவிட்டால், சத்தமாகப் படிப்பது ஒலிக்காவிட்டால், அல்லது ஒரு கோப்பைச் சேமிக்க விரும்பினால், மேலே வலது மூலையில் உள்ள ··· ஐத் தட்டி உலாவியில் திற என்பதைத் தேர்ந்தெடுங்கள்.",
         "wx_noDownload": "WeChat-இல் கோப்புகளைச் சேமிக்க முடியாது. அதற்குப் பதிலாக உரையை நகலெடுக்கலாமா?\n\nகோப்புக்கு, மேலே வலது மூலையில் உள்ள ··· ஐத் தட்டி உலாவியில் திற என்பதைத் தேர்ந்தெடுங்கள்.",
@@ -6341,6 +6449,12 @@ window.sharedAiStatusLibrary = {
     const lib = window.sharedAiStatusLibrary || (window.sharedAiStatusLibrary = {});
     const strings = {
         "tl": {
+            "qrc_name": "Pangalan sa card",
+            "qrc_print": "I-print ang mga card",
+            "qrc_title": "Live na pagsasalin",
+            "qrc_step1": "I-scan ito gamit ang camera ng iyong telepono.",
+            "qrc_step2": "Piliin ang wikang binabasa mo.",
+            "qrc_step3": "Walang kailangang app at walang sign-in.",
             "wx_title": "Binuksan sa WeChat",
             "wx_text": "Gumagana ang pahina rito. Kung kusang dumidilim ang screen, walang tunog ang pagbabasa nang malakas, o gusto mong mag-save ng file, i-tap ang ··· sa kanang itaas at piliin ang Buksan sa Browser.",
             "wx_noDownload": "Hindi makapag-save ng mga file ang WeChat. Kopyahin na lang ang teksto?\n\nPara sa file, i-tap ang ··· sa kanang itaas at piliin ang Buksan sa Browser.",
@@ -6684,6 +6798,12 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Ipakita ang mga naunang linya"
         },
         "mi": {
+            "qrc_name": "Ingoa i runga i te kāri",
+            "qrc_print": "Tāngia ngā kāri",
+            "qrc_title": "Whakamāoritanga ora",
+            "qrc_step1": "Mātakihia tēnei ki te kamera o tō waea.",
+            "qrc_step2": "Kōwhiria te reo e pānui ana koe.",
+            "qrc_step3": "Kāore he taupānga, he takiuru rānei e hiahiatia ana.",
             "wx_title": "I tuwhera i WeChat",
             "wx_text": "Ka mahi te whārangi nei i konei. Mēnā ka pōuri noa te mata, ka noho puku te pānui reo, ka hiahia rānei koe ki te penapena kōnae, pāwhiria te ··· i te kaokao ake matau, ka kōwhiri Whakatuwhera ki te pūtirotiro.",
             "wx_noDownload": "Kāore e taea e WeChat te penapena kōnae. Tāruatia te kuputuhi hei utu?\n\nMō te kōnae, pāwhiria te ··· i te kaokao ake matau, ka kōwhiri Whakatuwhera ki te pūtirotiro.",
@@ -7027,6 +7147,12 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Whakaatuhia ngā rārangi o mua"
         },
         "sm": {
+            "qrc_name": "Igoa i luga o le kari",
+            "qrc_print": "Lomitusi kari",
+            "qrc_title": "Faaliliuga ola",
+            "qrc_step1": "Sikani lenei i le meapueata o lau telefoni.",
+            "qrc_step2": "Filifili le gagana e te faitau ai.",
+            "qrc_step3": "E le manaomia se app po o se ulufale.",
             "wx_title": "Ua tatala i le WeChat",
             "wx_text": "E aoga le itulau i iinei. Afai e pogisa na o le mata o le fesoasoani, e le lagona le faitauina leotele, pe e te manaʻo e teu se faila, tapuni le ··· i le pito i luga i le taumatau ma filifili Tatala i le polokalama suʻesuʻe upega tafaʻilagi.",
             "wx_noDownload": "E le mafai e le WeChat ona teu faila. Kopi le tusitusiga ae le o lena?\n\nMo le faila, tapuni le ··· i le pito i luga i le taumatau ma filifili Tatala i le polokalama suʻesuʻe upega tafaʻilagi.",
@@ -7370,6 +7496,12 @@ window.sharedAiStatusLibrary = {
             "loadMore": "Faaali laina muamua"
         },
         "to": {
+            "qrc_name": "Hingoa ʻi he kaati",
+            "qrc_print": "Paaki ʻa e ngaahi kaati",
+            "qrc_title": "Liliu ʻi he taimi tonu",
+            "qrc_step1": "Sikeni ʻeni ʻaki ho kamera telefoni.",
+            "qrc_step2": "Fili ʻa e lea ʻokú ke lau.",
+            "qrc_step3": "ʻOku ʻikai fiemaʻu ha ʻapi pe ha hū mai.",
             "wx_title": "Kuo fakaava ʻi he WeChat",
             "wx_text": "ʻOku ngāue ʻa e peesi ni ʻi heni. Kapau ʻoku fakapoʻuli ʻe he sikilini ʻo ia pē, pe ʻoku fakalongolongo ʻa e lau ʻaki e leʻo, pe te ke loto ke tauhi ha faile, tā ʻa e ··· ʻi he tuliki ʻolunga to'omataʻu pea fili Fakaava ʻi he polokalama vakai ʻinitaneti.",
             "wx_noDownload": "ʻOku ʻikai lava ʻe he WeChat ʻo tauhi ha faile. Kopi ʻa e tohi ka ko ia?\n\nKi he faile, tā ʻa e ··· ʻi he tuliki ʻolunga to'omataʻu pea fili Fakaava ʻi he polokalama vakai ʻinitaneti.",
