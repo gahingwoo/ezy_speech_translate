@@ -37,6 +37,7 @@ import hashlib
 import hmac
 import jwt
 import re
+import threading
 import time
 import requests
 from datetime import datetime, timedelta
@@ -142,6 +143,10 @@ login_attempts = defaultdict(lambda: {"count": 0, "timestamp": 0})
 blocked_ips = {}
 request_history = defaultdict(list)
 websocket_connections = defaultdict(int)
+# The four above, each read and then changed (a count, then a block), under
+# this lock: green under eventlet, and what keeps two attempts at once from
+# being counted as one on real threads (docs/EVENTLET_MIGRATION.md).
+_security_lock = threading.RLock()
 
 # ──────────────────────────────────────────
 # Flask App
@@ -212,16 +217,19 @@ from app.auth import (  # noqa: E402
 
 def is_ip_blocked(ip):
     """Check if IP is currently blocked"""
-    if ip in blocked_ips:
-        if time.time() < blocked_ips[ip]:
+    with _security_lock:
+        until = blocked_ips.get(ip)
+        if until is None:
+            return False
+        if time.time() < until:
             return True
-        else:
-            del blocked_ips[ip]
-    return False
+        blocked_ips.pop(ip, None)
+        return False
 
 def block_ip(ip, duration=LOCKOUT_DURATION):
     """Block an IP for specified duration"""
-    blocked_ips[ip] = time.time() + duration
+    with _security_lock:
+        blocked_ips[ip] = time.time() + duration
     security_logger.warning(f"IP blocked: {ip} for {duration}s")
 
 def check_login_attempts(ip):
@@ -233,23 +241,23 @@ def check_login_attempts(ip):
     Only call this for failed logins — successes reset the counter instead.
     """
     current_time = time.time()
-    data = login_attempts[ip]
+    with _security_lock:
+        data = login_attempts[ip]
 
-    # If more than 60 s have elapsed since the FIRST attempt in the window,
-    # start a fresh window.  Do NOT update timestamp on every attempt.
-    if current_time - data["timestamp"] > 60:
-        login_attempts[ip] = {"count": 0, "timestamp": current_time}
+        # If more than 60 s have elapsed since the FIRST attempt in the window,
+        # start a fresh window.  Do NOT update timestamp on every attempt.
+        if current_time - data["timestamp"] > 60:
+            login_attempts[ip] = {"count": 0, "timestamp": current_time}
 
-    login_attempts[ip]["count"] += 1
-    # Intentionally omit: login_attempts[ip]["timestamp"] = current_time
-    # Keeping timestamp at window-start prevents the sliding-window bypass.
+        login_attempts[ip]["count"] += 1
+        # Intentionally omit: login_attempts[ip]["timestamp"] = current_time
+        # Keeping timestamp at window-start prevents the sliding-window bypass.
 
-    # Block if exceeded max attempts within the window
-    if login_attempts[ip]["count"] >= MAX_LOGIN_ATTEMPTS:
-        block_ip(ip)
-        return False
-
-    return True
+        # Block if exceeded max attempts within the window
+        if login_attempts[ip]["count"] < MAX_LOGIN_ATTEMPTS:
+            return True
+    block_ip(ip)
+    return False
 
 def check_rate_limit(ip):
     """Check API rate limiting"""
@@ -257,19 +265,19 @@ def check_rate_limit(ip):
         return True
 
     current_time = time.time()
+    with _security_lock:
+        # Clean old requests (older than 1 minute)
+        request_history[ip] = [
+            timestamp for timestamp in request_history[ip]
+            if current_time - timestamp < 60
+        ]
 
-    # Clean old requests (older than 1 minute)
-    request_history[ip] = [
-        timestamp for timestamp in request_history[ip]
-        if current_time - timestamp < 60
-    ]
+        # Check if exceeded limit
+        if len(request_history[ip]) >= MAX_REQUESTS_PER_MINUTE:
+            return False
 
-    # Check if exceeded limit
-    if len(request_history[ip]) >= MAX_REQUESTS_PER_MINUTE:
-        return False
-
-    request_history[ip].append(current_time)
-    return True
+        request_history[ip].append(current_time)
+        return True
 
 def generate_token(username):
     """Generate JWT token for the admin session."""
@@ -487,8 +495,8 @@ def login():
     password_ok = verify_password(password_hash, ADMIN_VERIFIER)
     if username_ok and password_ok:
         # Reset login attempts on successful login
-        if ip in login_attempts:
-            del login_attempts[ip]
+        with _security_lock:
+            login_attempts.pop(ip, None)
 
         # Generate JWT token
         token = generate_token(username)
@@ -818,19 +826,25 @@ def handle_connect(auth):
         return False
 
     # Check WebSocket connection limit
-    if websocket_connections[ip] >= MAX_WS_CONNECTIONS:
+    with _security_lock:
+        if websocket_connections[ip] >= MAX_WS_CONNECTIONS:
+            full = True
+        else:
+            full = False
+            websocket_connections[ip] += 1
+            total = websocket_connections[ip]
+    if full:
         security_logger.warning(f"Too many WebSocket connections from {ip}")
         return False
-
-    websocket_connections[ip] += 1
-    security_logger.info(f"WebSocket connected: {ip} (total: {websocket_connections[ip]})")
+    security_logger.info(f"WebSocket connected: {ip} (total: {total})")
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle WebSocket disconnection"""
     ip = get_client_ip()
-    if websocket_connections[ip] > 0:
-        websocket_connections[ip] -= 1
+    with _security_lock:
+        if websocket_connections[ip] > 0:
+            websocket_connections[ip] -= 1
     security_logger.info(f"WebSocket disconnected: {ip}")
 
 # ──────────────────────────────────────────

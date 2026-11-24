@@ -62,20 +62,12 @@ def handle_connect():
 
     from flask_socketio import join_room as _join_room
 
-    # Only count user-type clients as listeners (not admin)
-    if client_type == 'user':
-        # If this client_key already has an old SID anywhere, evict it (handles page refresh)
-        for _rs in _rooms.values():
-            old_sid = _rs['listeners'].get(client_key)
-            if old_sid and old_sid != request.sid:
-                logger.info(f"Evicting stale SID {old_sid} for {client_key} (replaced by {request.sid})")
-                sid_to_client_key.pop(old_sid, None)
-                connected_clients.discard(f"{client_key}:{old_sid}")
-                _rs['listeners'].pop(client_key, None)
+    # Counted, with an earlier socket of the same phone forgotten (a reload),
+    # and known by its sid for the cleanup when it goes. Only user-type
+    # clients count as listeners.
+    listener_joined(room_id, client_key, request.sid, client_type)
 
-        client_id_full = f"{client_key}:{request.sid}"
-        connected_clients.add(client_id_full)
-        room_state['listeners'][client_key] = request.sid
+    if client_type == 'user':
         _join_room(f'room:{room_id}')
         logger.info(
             f"User client connected: {client_ip} (Client: {client_id}, Room: {room_id}, "
@@ -88,13 +80,7 @@ def handle_connect():
         logger.info(f"Caption client connected: {client_ip} (Client: {client_id}, Room: {room_id}, SID: {request.sid})")
 
     elif client_type == 'admin':
-        # Admin clients still need to be tracked, but not as listeners
-        client_id_full = f"{client_key}:{request.sid}"
-        connected_clients.add(client_id_full)
         logger.info(f"Admin client connected: {client_ip} (Client: {client_id}, SID: {request.sid})")
-
-    # Store mapping for reliable cleanup on disconnect (includes room_id)
-    sid_to_client_key[request.sid] = (client_key, client_type, room_id)
 
     # Notify client that history is available via HTTP API (pagination)
     # Don't send all history via WebSocket - use HTTP API for better performance
@@ -112,11 +98,8 @@ def handle_connect():
 
     # ── Feature 1: broadcast live viewer count to admins of this room ────
     if client_type == 'user':
-        _sid_last_seen[request.sid] = datetime.now()   # start heartbeat tracking
         room_count = len(room_state['listeners'])
         total_count = _all_listener_count()
-        if total_count > S._peak_clients:
-            S._peak_clients = total_count
         payload = {'count': room_count, 'room_id': room_id, 'total': total_count}
         socketio.emit('clients_update', payload, room=f'admin:{room_id}')
         socketio.emit('clients_update', payload, room='admins')  # legacy compat
@@ -124,69 +107,37 @@ def handle_connect():
     return True
 
 @socketio.on('disconnect')
-def handle_disconnect(sid=None):
-    """Handle client disconnection - find and clean up client info"""
+def handle_disconnect(reason=None, sid=None):
+    """A socket has gone: forget it, and tell the consoles the new count.
+
+    Socket.IO gives the reason it went ("transport close", "client
+    disconnect"); the heartbeat sweep calls this itself with the sid of a
+    listener that went quiet. Taking the reason as the sid, as this did, left
+    every socket counted until the sweep, and a console's never released."""
     sid_used = sid if sid is not None else request.sid
     
-    # Use stored mapping to find client_key and type reliably
-    mapping = sid_to_client_key.pop(sid_used, None)
-    
-    if mapping:
-        if len(mapping) >= 3:
-            client_key, client_type, room_id = mapping[0], mapping[1], mapping[2]
-        else:
-            client_key, client_type = mapping[0], mapping[1]
-            room_id = DEFAULT_ROOM_ID
-        room_id = normalize_room_id(room_id)
-
-        # Clean up only if it was a user (listener)
-        if client_type == 'user':
-            # Only remove from listener_clients if this SID is still the active one
-            # (avoids removing a newer connection when a stale disconnect fires late)
-            rs = _rooms.get(room_id)
-            if rs is not None and rs['listeners'].get(client_key) == sid_used:
-                del rs['listeners'][client_key]
-            if rs is not None:
-                rs.setdefault('reading', {}).pop(sid_used, None)
-            logger.info(
-                f"User client disconnected: SID {sid_used} from {client_key} "
-                f"(Room: {room_id}, Total listeners: {_all_listener_count()})"
-            )
-        else:
-            logger.info(f"Admin client disconnected: SID {sid_used} from {client_key}")
+    gone = client_left(sid_used)
+    client_type = gone.get('client_type')
+    room_id = gone.get('room_id', DEFAULT_ROOM_ID)
+    if not gone:
+        # Usually a reloaded phone's old socket, forgotten when the new one came.
+        logger.info(f"Disconnect: SID {sid_used} was already forgotten")
+    elif client_type == 'user':
+        logger.info(
+            f"User client disconnected: SID {sid_used} from {gone['client_key']} "
+            f"(Room: {room_id}, Total listeners: {_all_listener_count()})"
+        )
     else:
-        logger.warning(f"Disconnect: Unknown client mapping for SID {sid_used}")
-        client_type = None
-        room_id = DEFAULT_ROOM_ID
-    
-    # Always try to remove from connected_clients
-    connected_clients.discard(sid_used)
-    for key in list(connected_clients):
-        if key.endswith(f":{sid_used}"):
-            connected_clients.discard(key)
-            break
-    
-    admin_sessions.pop(sid_used, None)
+        logger.info(f"Admin client disconnected: SID {sid_used} from {gone['client_key']}")
 
-    # Release recording lock if this disconnecting admin held it
-    if client_type == 'admin':
-        rs = _rooms.get(room_id)
-        if rs and rs.get('recording') and rs['recording'].get('sid') == sid_used:
-            rs['recording'] = None
-            socketio.emit(
-                'recording_state',
-                {'room_id': room_id, 'recording': None},
-                room=f'admin:{room_id}',
-            )
-            logger.info(f"[RECORDING] auto-released room '{room_id}' on admin disconnect")
-
-    # Clean up API tokens associated with this SID
-    tokens_to_remove = [t for t, info in api_session_tokens.items() if info['sid'] == sid_used]
-    for token in tokens_to_remove:
-        del api_session_tokens[token]
-
-    # Remove heartbeat record
-    _sid_last_seen.pop(sid_used, None)
+    # The microphone this console held, now free
+    if gone.get('released'):
+        socketio.emit(
+            'recording_state',
+            {'room_id': room_id, 'recording': None},
+            room=f'admin:{room_id}',
+        )
+        logger.info(f"[RECORDING] auto-released room '{room_id}' on admin disconnect")
 
     # ── Feature 1: broadcast updated viewer count to admins of the room ───
     if client_type == 'user':
@@ -199,7 +150,7 @@ def handle_disconnect(sid=None):
 @socketio.on('heartbeat')
 def handle_heartbeat():
     """Client keepalive — update last-seen timestamp."""
-    _sid_last_seen[request.sid] = datetime.now()
+    heartbeat(request.sid)
 
 
 def _heartbeat_cleanup_loop():
@@ -214,21 +165,13 @@ def _heartbeat_cleanup_loop():
     CHECK_INTERVAL   = 15   # how often we scan
     while True:
         concurrency.sleep(CHECK_INTERVAL)
-        now = datetime.now()
-        stale = [
-            sid for sid, last in list(_sid_last_seen.items())
-            if (now - last).total_seconds() > HEARTBEAT_TIMEOUT
-        ]
-        for sid in stale:
-            _sid_last_seen.pop(sid, None)
-            mapping = sid_to_client_key.get(sid)
-            if mapping and mapping[1] == 'user':
-                logger.info(f"[HEARTBEAT] Evicting stale user SID {sid} (no heartbeat for >{HEARTBEAT_TIMEOUT}s)")
-                # Trigger the same cleanup path as a normal disconnect
-                try:
-                    handle_disconnect(sid)
-                except Exception as _e:
-                    logger.warning(f"[HEARTBEAT] Cleanup error for {sid}: {_e}")
+        for sid in stale_sids(HEARTBEAT_TIMEOUT):
+            logger.info(f"[HEARTBEAT] Evicting stale user SID {sid} (no heartbeat for >{HEARTBEAT_TIMEOUT}s)")
+            # Trigger the same cleanup path as a normal disconnect
+            try:
+                handle_disconnect(sid=sid)
+            except Exception as _e:
+                logger.warning(f"[HEARTBEAT] Cleanup error for {sid}: {_e}")
 
 
 @socketio.on('reading_language')
@@ -245,17 +188,13 @@ def handle_reading_language(data):
     if lang and not _READING_LANG.match(lang):
         return
     room_id = _sid_room(sid)
-    reading = _room(room_id).setdefault('reading', {})
-    previous = reading.get(sid)
+    previous, lang = set_reading(sid, room_id, lang)
     if previous == lang:
         return
     if previous:
         leave_room(_reading_room(room_id, previous))
     if lang:
-        reading[sid] = lang
         join_room(_reading_room(room_id, lang))
-    else:
-        reading.pop(sid, None)
 
 
 @socketio.on('admin_connect')
@@ -269,12 +208,12 @@ def handle_admin_connect(data):
     requested_room = normalize_room_id(data.get('room'))
 
     if not get_config('authentication', 'enabled', default=True):
-        admin_sessions[request.sid] = {'username': 'admin', 'room_id': requested_room}
+        set_admin_session(request.sid, 'admin', requested_room)
         from flask_socketio import join_room
         join_room('admins')
         join_room(f'admin:{requested_room}')
         # Send room-scoped history
-        emit('history', _room(requested_room)['history'])
+        emit('history', history_snapshot(requested_room))
         emit('admin_connected', {
             'success': True, 'role': 'admin', 'channel': requested_room,
             'display_name': 'Admin', 'room_id': requested_room,
@@ -291,15 +230,12 @@ def handle_admin_connect(data):
         room_id = normalize_room_id(
             data.get('room') or decoded.get('channel') or DEFAULT_ROOM_ID
         )
-        admin_sessions[request.sid] = {
-            'username': decoded['username'],
-            'room_id': room_id,
-        }
+        set_admin_session(request.sid, decoded['username'], room_id)
         from flask_socketio import join_room
         join_room('admins')
         join_room(f'admin:{room_id}')
         # Send room-scoped history
-        emit('history', _room(room_id)['history'])
+        emit('history', history_snapshot(room_id))
         emit('translation_health', get_translation_service().health_summary())
         emit('admin_connected', {
             'success':      True,
@@ -333,10 +269,9 @@ def handle_admin_switch_room(data):
     from flask_socketio import leave_room, join_room
     leave_room(f'admin:{old_room}')
     join_room(f'admin:{new_room}')
-    info['room_id'] = new_room
-    admin_sessions[request.sid] = info
+    set_admin_session(request.sid, info.get('username') or 'admin', new_room)
     # Make sure target room state exists and send its history
-    emit('history', _room(new_room)['history'])
+    emit('history', history_snapshot(new_room))
     emit('room_switched', {'success': True, 'room_id': new_room, 'changed': True})
     logger.info(f"[ROOM-SWITCH] {_admin_username(request.sid)}: {old_room} -> {new_room}")
 
@@ -393,7 +328,7 @@ def handle_new_transcription(data):
             'confidence': data.get('confidence'),
         }
 
-        add_translation(translation_data, room_id=room_id)
+        translation_data = add_translation(translation_data, room_id=room_id)
         # Emit to listeners in this room only
         socketio.emit('new_translation', translation_data,
                       room=f'room:{room_id}', skip_sid=[request.sid])
@@ -459,30 +394,27 @@ def handle_correct_translation(data):
 
     # Find translation by ID within the admin's room
     room_id = _admin_room(request.sid)
-    history = _room(room_id)['history']
-    target_item = None
-    for item in history:
-        if item['id'] == translation_id:
-            target_item = item
-            break
+    # Re-detect Bible references in the corrected text so the panel updates
+    # if the admin fixed a transcription error into a proper Bible citation.
+    new_refs = None
+    if bible_detector is not None:
+        try:
+            new_refs = bible_detector.detect_and_lookup(corrected_text) or []
+        except Exception:
+            new_refs = None  # keep original refs on failure
 
+    def correct(line):
+        line['corrected'] = corrected_text
+        line['is_corrected'] = True
+        # Translations of the old wording are no longer this line's.
+        line.pop('translations', None)
+        if new_refs is not None:
+            line['bible_refs'] = new_refs
+
+    target_item = update_line(room_id, translation_id, correct)
     if target_item is None:
         emit('error', {'message': 'Translation not found (may have been removed from history)'})
         return
-
-    target_item['corrected'] = corrected_text
-    target_item['is_corrected'] = True
-    # Translations of the old wording are no longer this line's.
-    target_item.pop('translations', None)
-
-    # Re-detect Bible references in the corrected text so the panel updates
-    # if the admin fixed a transcription error into a proper Bible citation.
-    if bible_detector is not None:
-        try:
-            new_refs = bible_detector.detect_and_lookup(corrected_text)
-            target_item['bible_refs'] = new_refs if new_refs else []
-        except Exception:
-            pass  # keep original refs on failure
 
     # Persist correction to DB
     if db is not None:
@@ -507,8 +439,7 @@ def handle_clear_history():
         return
 
     room_id = _admin_room(request.sid)
-    state = _room(room_id)
-    state['history'].clear()
+    clear_room(room_id)
     # Off the live screens only: the lines stay in the database for the
     # transcript of the service they were said in, and the room goes on
     # numbering after them. Deleting a service is in the console's Services.
@@ -556,7 +487,7 @@ def handle_import_transcription(data):
 
     # Add to history (scoped to admin's room)
     room_id = _admin_room(request.sid)
-    add_translation(translation_data, room_id=room_id)
+    translation_data = add_translation(translation_data, room_id=room_id)
 
     # Broadcast to clients in the admin's room
     socketio.emit('new_translation', translation_data, room=f'room:{room_id}')
@@ -587,10 +518,7 @@ def handle_delete_items(data):
 
     # Scope deletion to the admin's own room
     room_id = _admin_room(request.sid)
-    state = _room(room_id)
-    original_count = len(state['history'])
-    state['history'][:] = [item for item in state['history'] if item.get('id') not in item_ids]
-    deleted_count = original_count - len(state['history'])
+    deleted_count = len(remove_lines(room_id, item_ids))
 
     # Persist deletion
     if db is not None:

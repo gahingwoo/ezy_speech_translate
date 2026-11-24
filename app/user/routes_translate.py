@@ -81,6 +81,8 @@ def translate_text():
         success, translated, from_cache = translation_service.translate(
             text, target_lang, glossary=glossary_terms
         )
+        if success and not from_cache:
+            count_translation()
 
         return jsonify({
             'success': success,
@@ -172,6 +174,8 @@ def translate_batch():
             success, translated, from_cache = translation_service.translate(
                 sanitized, target_lang, glossary=glossary_terms
             )
+            if success and not from_cache:
+                count_translation()
             results.append({
                 'original': sanitized,
                 'translated': translated,

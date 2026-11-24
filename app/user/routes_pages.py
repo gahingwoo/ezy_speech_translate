@@ -322,7 +322,7 @@ def get_scripture():
     """
     room_id = normalize_room_id(request.args.get('room'))
     passages = {}
-    for item in _room(room_id)['history']:
+    for item in history_snapshot(room_id):
         for ref in item.get('bible_refs') or []:
             if not isinstance(ref, dict) or not ref.get('display'):
                 continue
@@ -367,7 +367,7 @@ def get_translations():
         limit = 100
 
     room_id = normalize_room_id(request.args.get('room'))
-    history = _room(room_id)['history']
+    history = history_snapshot(room_id)
 
     # Validate parameters
     offset = max(0, min(offset, len(history)))
@@ -410,15 +410,13 @@ def save_translated(translation_id):
         return jsonify({'success': False, 'error': 'invalid'}), 400
 
     room_id = normalize_room_id(request.args.get('room') or (request.get_json(silent=True) or {}).get('room'))
-    history = _room(room_id)['history']
+    def keep(item):
+        if item.get('translated_lang') != lang:
+            item['translated'] = translated
+            item['translated_lang'] = lang
 
     # Update in-memory history (scoped to room)
-    for item in history:
-        if item.get('id') == translation_id:
-            if item.get('translated_lang') != lang:
-                item['translated'] = translated
-                item['translated_lang'] = lang
-            break
+    update_line(room_id, translation_id, keep)
 
     # Persist to DB
     if db is not None:
@@ -434,8 +432,7 @@ def clear_translations():
     """Clear translation history for the specified room (default room if omitted)."""
     room_id = normalize_room_id(request.args.get('room') or
                                 (request.get_json(silent=True) or {}).get('room'))
-    state = _room(room_id)
-    state['history'].clear()
+    clear_room(room_id)
     # As the console's clear: off the screens, kept for the transcript.
     if db is not None:
         db.clear_live(room_id)
@@ -522,7 +519,7 @@ def health_check():
 def get_history():
     """Get all transcription history for the given room (default room if omitted)."""
     room_id = normalize_room_id(request.args.get('room'))
-    history = _room(room_id)['history']
+    history = history_snapshot(room_id)
     return jsonify({
         'success': True,
         'room_id': room_id,

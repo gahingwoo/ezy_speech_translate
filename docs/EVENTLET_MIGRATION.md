@@ -1,6 +1,6 @@
 # Moving off eventlet: a plan
 
-Status: planned, not started. Written October 2026, against 4.1.13.
+Status: steps 1 and 2 done (4.2.11, 4.2.12). Written October 2026, against 4.1.13.
 
 ## Why
 
@@ -71,11 +71,25 @@ Each is shipped on its own, with the Tests workflow (all three ways of
 installing) passing.
 
 1. **One place for concurrency.** `app/core/concurrency.py` with `spawn`,
-   `sleep`, `pool(n)`, `run_blocking(fn, ...)` and `serve(app, host, port,
-   ssl)`; the twenty lines above call it instead of eventlet. Behaviour is
-   unchanged: it is eventlet underneath.
+   `spawn_n`, `sleep`, `run_all(fn, items, n)`, `run_blocking(fn, ...)` and
+   `serve(app, host, port, certfile=, keyfile=)`; the twenty lines above call
+   it instead of eventlet. Behaviour is unchanged: it is eventlet underneath.
+   *Done in 4.2.11.*
 2. **Locks.** The audit above, one structure at a time, each with a test
    that hammers it from threads. Harmless under eventlet, needed after.
+   *Done in 4.2.12:* `state_lock` in `app/user/core.py` covers the rooms,
+   who is connected, the tokens and the counters, held only while they
+   change, never while sending, translating or writing the database; what a
+   socket arriving or leaving changes is one function each
+   (`listener_joined`, `client_left`); lines are sent as copies
+   (`history_snapshot`, `update_line`), since sending a line while another
+   thread adds its translation fails half-way. The blocking tables of both
+   servers have their own lock. `tests/unit/test_threads.py` hammers each
+   from eight threads; with the locks taken out, six or seven of its eleven
+   tests fail. (The others count numbers, which Python 3.12's GIL happens to
+   keep whole; they are there for a Python without it.) The caches that
+   are only ever replaced whole (the Bible languages, the gzip cache) are
+   left as they are: at worst a value is worked out twice.
 3. **A threading implementation** of the same module, chosen by
    `EZY_CONCURRENCY=threading` (eventlet stays the default). gunicorn and
    simple-websocket join requirements.txt; the systemd units, the container

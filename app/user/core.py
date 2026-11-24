@@ -391,6 +391,10 @@ failed_login_attempts = defaultdict(list)  # Session key: [timestamps]
 rate_limit_violations = defaultdict(int)  # Session key: count
 suspicious_patterns = defaultdict(int)  # Session key: count
 blocked_since = {}  # Session key: timestamp when blocked
+# The five tables above change together (an attempt counted, then a block), so
+# under this lock: on real threads two failed sign-ins at once could each
+# count from the same list and one be lost.
+_security_lock = threading.RLock()
 
 MAX_LOGIN_ATTEMPTS = get_config('advanced', 'security', 'max_login_attempts', default=10)
 login_window_min = get_config('advanced', 'security', 'login_attempt_window_minutes', default=15)
@@ -411,17 +415,18 @@ def is_client_blocked(client_key=None):
     if client_key is None:
         client_key = get_client_key()
 
-    if client_key not in blocked_clients:
-        return False
-
-    # Check if block has expired
-    if client_key in blocked_since:
-        if datetime.now() - blocked_since[client_key] > BLOCK_DURATION:
-            blocked_clients.discard(client_key)
-            blocked_since.pop(client_key, None)
+    with _security_lock:
+        if client_key not in blocked_clients:
             return False
 
-    return True
+        # Check if block has expired
+        if client_key in blocked_since:
+            if datetime.now() - blocked_since[client_key] > BLOCK_DURATION:
+                blocked_clients.discard(client_key)
+                blocked_since.pop(client_key, None)
+                return False
+
+        return True
 
 def record_failed_login(client_key=None):
     """Record failed login attempt for a client/session"""
@@ -429,50 +434,48 @@ def record_failed_login(client_key=None):
         client_key = get_client_key()
 
     now = datetime.now()
-    attempts = failed_login_attempts[client_key]
+    with _security_lock:
+        attempts = failed_login_attempts[client_key]
 
-    # Clean old attempts
-    attempts[:] = [t for t in attempts if now - t < LOGIN_ATTEMPT_WINDOW]
-    attempts.append(now)
+        # Clean old attempts
+        attempts[:] = [t for t in attempts if now - t < LOGIN_ATTEMPT_WINDOW]
+        attempts.append(now)
 
-    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+        if len(attempts) < MAX_LOGIN_ATTEMPTS:
+            return False
         blocked_clients.add(client_key)
         blocked_since[client_key] = now
-        security_logger.critical(f"CLIENT BLOCKED due to failed login attempts: {client_key}")
-        return True
-
-    return False
+    security_logger.critical(f"CLIENT BLOCKED due to failed login attempts: {client_key}")
+    return True
 
 def record_rate_violation(client_key=None):
     """Record rate limit violation for a client/session"""
     if client_key is None:
         client_key = get_client_key()
 
-    rate_limit_violations[client_key] += 1
-
-    if rate_limit_violations[client_key] >= MAX_RATE_VIOLATIONS:
+    with _security_lock:
+        rate_limit_violations[client_key] += 1
+        if rate_limit_violations[client_key] < MAX_RATE_VIOLATIONS:
+            return False
         blocked_clients.add(client_key)
         blocked_since[client_key] = datetime.now()
-        security_logger.critical(f"CLIENT BLOCKED due to rate limit violations: {client_key}")
-        return True
-
-    return False
+    security_logger.critical(f"CLIENT BLOCKED due to rate limit violations: {client_key}")
+    return True
 
 def record_suspicious_activity(reason, client_key=None):
     """Record suspicious activity for a client/session"""
     if client_key is None:
         client_key = get_client_key()
 
-    suspicious_patterns[client_key] += 1
     security_logger.warning(f"Suspicious activity from {client_key}: {reason}")
-
-    if suspicious_patterns[client_key] >= MAX_SUSPICIOUS_PATTERNS:
+    with _security_lock:
+        suspicious_patterns[client_key] += 1
+        if suspicious_patterns[client_key] < MAX_SUSPICIOUS_PATTERNS:
+            return False
         blocked_clients.add(client_key)
         blocked_since[client_key] = datetime.now()
-        security_logger.critical(f"CLIENT BLOCKED due to suspicious patterns: {client_key}")
-        return True
-
-    return False
+    security_logger.critical(f"CLIENT BLOCKED due to suspicious patterns: {client_key}")
+    return True
 
 def check_client_access(f):
     """Decorator to check client/session access (not IP-based)"""
@@ -513,10 +516,16 @@ _VALID_ROOM_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_\-]{0,63}$')
 
 # room_id -> {history: list, listeners: dict[client_key]=sid, next_id: int, display_name: str}
 _rooms: dict = {}
-# Guards lazy creation of room state to avoid two concurrent handlers
-# clobbering each other's freshly-created entry. Dict mutations themselves
-# are atomic in CPython, but the get-then-set sequence is not.
-_rooms_lock = threading.Lock()
+# The live state: the rooms (their lines, numbers, listeners, reading
+# languages and microphone), who is connected, the API tokens and the
+# analytics counters. Anything that changes it, or reads more than one piece
+# of it as a whole, holds this lock, and for as short a time as it can: never
+# while sending, translating or writing the database. Under eventlet it is a
+# green lock and costs nothing; on real threads (docs/EVENTLET_MIGRATION.md)
+# it is what keeps a line's number and its place in the room together.
+# Reentrant, so a helper that takes it can be called by another that has it.
+state_lock = threading.RLock()
+_rooms_lock = state_lock
 
 def normalize_room_id(rid) -> str:
     """Validate and normalize a room_id. Falls back to DEFAULT_ROOM_ID."""
@@ -550,10 +559,70 @@ def _room(rid: str) -> dict:
 
 def _all_listener_count() -> int:
     """Total user listeners across all rooms."""
-    return sum(len(s['listeners']) for s in _rooms.values())
+    with state_lock:
+        return sum(len(s['listeners']) for s in _rooms.values())
 
 def _all_history_count() -> int:
-    return sum(len(s['history']) for s in _rooms.values())
+    with state_lock:
+        return sum(len(s['history']) for s in _rooms.values())
+
+
+def rooms_snapshot() -> list:
+    """[(room_id, state)] as they are now, to go through without holding the
+    lock (a room made meanwhile is simply not in it)."""
+    with state_lock:
+        return list(_rooms.items())
+
+
+def history_snapshot(room_id: str) -> list:
+    """A room's lines on screen, each a copy: to send, page or search while
+    lines go on being added, changed or deleted (sending a line while another
+    thread adds its translation would otherwise fail half-way). A line's
+    nested parts (its translations, its Bible references) are replaced when
+    they change, never changed in place, so a copy's are as they were."""
+    state = _room(room_id)
+    with state_lock:
+        return [dict(it) for it in state['history']]
+
+
+def update_line(room_id: str, line_id, change=None):
+    """The line with this id on a room's screens, changed by change(line)
+    under the lock when given; returns a copy of it as it is then, or None
+    when it is no longer on the screens."""
+    state = _room(room_id)
+    with state_lock:
+        for it in state['history']:
+            if it.get('id') == line_id:
+                if change is not None:
+                    change(it)
+                return dict(it)
+    return None
+
+
+def remove_lines(room_id: str, ids) -> list:
+    """Take the lines with these ids off a room's screens; returns the ids
+    that were there."""
+    wanted = set(ids)
+    state = _room(room_id)
+    with state_lock:
+        gone = [it.get('id') for it in state['history'] if it.get('id') in wanted]
+        if gone:
+            state['history'][:] = [it for it in state['history'] if it.get('id') not in wanted]
+    return gone
+
+
+def clear_room(room_id: str) -> None:
+    """Every line off a room's screens (they stay in the database)."""
+    state = _room(room_id)
+    with state_lock:
+        state['history'].clear()
+
+
+def count_translation(n: int = 1) -> None:
+    """A line put into a language by a provider (not from the cache), for the
+    session's analytics."""
+    with state_lock:
+        S._total_translations += n
 
 # Ensure default room exists immediately
 _room(DEFAULT_ROOM_ID)
@@ -579,7 +648,7 @@ S._peak_clients       = 0             # peak concurrent user-type listeners
 S._total_words        = 0             # running word count across all final transcriptions
 S._session_lines      = 0             # lines this service, as against every line ever
 S._total_bible_refs   = 0             # running count of bible references detected
-S._total_translations = 0             # incremented by /api/translate
+S._total_translations = 0             # count_translation(): lines a provider translated
 
 ANALYTICS_ENABLED = get_config('features', 'session_analytics', 'enabled', default=True)
 
@@ -679,21 +748,153 @@ def _sid_room(sid: str) -> str:
     return _admin_room(sid) if sid in admin_sessions else DEFAULT_ROOM_ID
 
 
-def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
-    """Add translation to the given room with size limit, DB persistence, and session stats."""
+# ── Who is connected ────────────────────────────────────────────────────────
+# What a socket arriving or leaving changes, each under state_lock as a whole;
+# the Socket.IO handlers (sockets.py) do the sending, after.
+
+def listener_joined(room_id: str, client_key: str, sid: str, client_type: str) -> None:
+    """A socket is here. A listener's earlier socket (the same phone,
+    reloaded) is forgotten, wherever it was, so the phone counts once."""
     room_id = normalize_room_id(room_id)
     state = _room(room_id)
+    with state_lock:
+        if client_type == 'user':
+            for rs in _rooms.values():
+                old_sid = rs['listeners'].get(client_key)
+                if old_sid and old_sid != sid:
+                    logger.info(f"Evicting stale SID {old_sid} for {client_key} (replaced by {sid})")
+                    sid_to_client_key.pop(old_sid, None)
+                    connected_clients.discard(f"{client_key}:{old_sid}")
+                    rs['listeners'].pop(client_key, None)
+                    rs['reading'].pop(old_sid, None)
+                    _sid_last_seen.pop(old_sid, None)
+            state['listeners'][client_key] = sid
+            _sid_last_seen[sid] = datetime.now()   # start heartbeat tracking
+        if client_type in ('user', 'admin'):
+            connected_clients.add(f"{client_key}:{sid}")
+        sid_to_client_key[sid] = (client_key, client_type, room_id)
+        if client_type == 'user':
+            total = sum(len(rs['listeners']) for rs in _rooms.values())
+            if total > S._peak_clients:
+                S._peak_clients = total
 
-    # Assign stable ID (independent of history size) — per-room counter
-    if 'id' not in data or data['id'] is None:
-        data['id'] = state['next_id']
-        state['next_id'] += 1
-    else:
-        # Keep counter ahead of any imported IDs to avoid collisions
-        try:
-            state['next_id'] = max(state['next_id'], int(data['id']) + 1)
-        except (TypeError, ValueError):
-            pass
+
+def client_left(sid: str) -> dict:
+    """A socket has gone. Returns what it was: {'client_key', 'client_type',
+    'room_id', 'released'} (released: the microphone it held, now free), or
+    {} for a socket this server did not know."""
+    with state_lock:
+        mapping = sid_to_client_key.pop(sid, None)
+        connected_clients.discard(sid)
+        for key in [k for k in connected_clients if k.endswith(f":{sid}")]:
+            connected_clients.discard(key)
+        admin_sessions.pop(sid, None)
+        _sid_last_seen.pop(sid, None)
+        for token in [t for t, info in api_session_tokens.items() if info['sid'] == sid]:
+            del api_session_tokens[token]
+        if not mapping:
+            return {}
+        client_key, client_type = mapping[0], mapping[1]
+        room_id = normalize_room_id(mapping[2] if len(mapping) >= 3 else DEFAULT_ROOM_ID)
+        rs = _rooms.get(room_id)
+        released = False
+        if rs is not None:
+            if client_type == 'user':
+                # Only if this socket is still the phone's own: a reload's
+                # late disconnect must not take the new socket off the count.
+                if rs['listeners'].get(client_key) == sid:
+                    del rs['listeners'][client_key]
+                rs['reading'].pop(sid, None)
+            elif client_type == 'admin' and rs.get('recording') and rs['recording'].get('sid') == sid:
+                rs['recording'] = None
+                released = True
+        return {'client_key': client_key, 'client_type': client_type,
+                'room_id': room_id, 'released': released}
+
+
+def heartbeat(sid: str) -> None:
+    with state_lock:
+        _sid_last_seen[sid] = datetime.now()
+
+
+def stale_sids(timeout: float) -> list:
+    """The listeners' sockets with no heartbeat for `timeout` seconds,
+    forgotten by the sweep (the caller then treats each as gone)."""
+    now = datetime.now()
+    with state_lock:
+        stale = [sid for sid, last in _sid_last_seen.items()
+                 if (now - last).total_seconds() > timeout]
+        for sid in stale:
+            _sid_last_seen.pop(sid, None)
+        return [sid for sid in stale
+                if (sid_to_client_key.get(sid) or (None, None))[1] == 'user']
+
+
+def set_reading(sid: str, room_id: str, lang) -> tuple:
+    """A screen reads in lang now (None: in no other language). Returns
+    (before, now), the same when nothing changed."""
+    state = _room(room_id)
+    with state_lock:
+        reading = state['reading']
+        previous = reading.get(sid)
+        if previous != lang:
+            if lang:
+                reading[sid] = lang
+            else:
+                reading.pop(sid, None)
+        return previous, lang
+
+
+def reading_languages(room_id: str) -> set:
+    """The languages a room's screens read in now."""
+    state = _room(room_id)
+    with state_lock:
+        return set(state['reading'].values())
+
+
+def set_admin_session(sid: str, username: str, room_id: str) -> None:
+    with state_lock:
+        admin_sessions[sid] = {'username': username, 'room_id': normalize_room_id(room_id)}
+
+
+def claim_recording(room_id: str, username: str, sid, expected=None, force: bool = False):
+    """The microphone of a room, for this console, if it is free, already
+    this account's, or (force) still held by `expected`, the owner the caller
+    saw before checking the password. Returns the owner it took it from ({}
+    when it was free or its own), or None when someone else has it: two
+    consoles claiming at once never both get it."""
+    state = _room(room_id)
+    with state_lock:
+        current = state.get('recording')
+        if current and current.get('username') != username:
+            if not force or current is not expected:
+                return None
+        state['recording'] = {
+            'username': username,
+            'sid': sid,
+            'started_at': datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + 'Z',
+        }
+        return current if current and current.get('username') != username else {}
+
+
+def free_recording(room_id: str, username: str):
+    """Free a room's microphone if this account has it, or nobody does.
+    Returns False when another account holds it."""
+    state = _room(room_id)
+    with state_lock:
+        current = state.get('recording')
+        if current and current.get('username') != username:
+            return False
+        state['recording'] = None
+        return True
+
+
+def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
+    """Add translation to the given room with size limit, DB persistence, and
+    session stats. Returns a copy of the line as added, to send: data itself
+    is the room's from here on, changed under state_lock."""
+    room_id = normalize_room_id(room_id)
+    state = _room(room_id)
 
     # Tag the record with its room so DB / clients can filter
     data['room_id'] = room_id
@@ -711,26 +912,47 @@ def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
         except Exception as e:
             logger.warning(f"Bible detection failed: {e}")
 
-    state['history'].append(data)
+    # Its number and its place in the room, together: two lines said at once
+    # in one room never share a number, and the room's lines stay in the
+    # order they were numbered.
+    trimmed = False
+    with state_lock:
+        # Assign stable ID (independent of history size) — per-room counter
+        if 'id' not in data or data['id'] is None:
+            data['id'] = state['next_id']
+            state['next_id'] += 1
+        else:
+            # Keep counter ahead of any imported IDs to avoid collisions
+            try:
+                state['next_id'] = max(state['next_id'], int(data['id']) + 1)
+            except (TypeError, ValueError):
+                pass
+        state['history'].append(data)
 
-    # ── Session analytics ──────────────────────────────────────────
-    if ANALYTICS_ENABLED:
-        text_for_stats = data.get('corrected') or data.get('original') or ''
-        S._total_words    += len(text_for_stats.split())
-        S._session_lines  += 1
-        S._total_bible_refs += len(data.get('bible_refs') or [])
+        # ── Session analytics ──────────────────────────────────────
+        if ANALYTICS_ENABLED:
+            text_for_stats = data.get('corrected') or data.get('original') or ''
+            S._total_words    += len(text_for_stats.split())
+            S._session_lines  += 1
+            S._total_bible_refs += len(data.get('bible_refs') or [])
+
+        # Limit history size (per room)
+        if len(state['history']) > MAX_HISTORY_SIZE:
+            state['history'][:] = state['history'][-MAX_HISTORY_SIZE:]
+            trimmed = True
+        next_id = state['next_id']
+        line = dict(data)
 
     # ── SQLite persistence ─────────────────────────────────────────
     if db is not None:
         db.persist(data)
 
-    # Limit history size (per room)
-    if len(state['history']) > MAX_HISTORY_SIZE:
-        state['history'][:] = state['history'][-MAX_HISTORY_SIZE:]
-        logger.info(
+    if trimmed:
+        logger.debug(
             f"History trimmed to {MAX_HISTORY_SIZE} items for room '{room_id}'. "
-            f"Total IDs generated: {state['next_id']}"
+            f"Total IDs generated: {next_id}"
         )
+    return line
 
 
 # ── Translating once, for everyone ──────────────────────────────────────────
@@ -768,7 +990,7 @@ def _push_translations(room_id: str, item: dict) -> None:
     if not text:
         return
     spoken = _language_base(item.get('source_language') or 'en')
-    wanted = {lang for lang in _room(room_id).get('reading', {}).values()
+    wanted = {lang for lang in reading_languages(room_id)
               if _language_base(lang) != spoken}
     if not wanted:
         return
@@ -776,10 +998,10 @@ def _push_translations(room_id: str, item: dict) -> None:
 
     def one(lang):
         try:
-            ok, translated, _ = service.translate(text, lang, glossary=_get_glossary_for(room_id, lang))
+            ok, translated, cached = service.translate(text, lang, glossary=_get_glossary_for(room_id, lang))
         except Exception as exc:                 # never fatal: the screen asks itself
             logger.warning(f"Push translation to {lang} failed: {exc}")
-            ok, translated = False, None
+            ok, translated, cached = False, None, False
         if not ok or not translated:
             # Said at once, so the screens stop waiting and ask for themselves
             # (the browser can still reach the service when this server cannot).
@@ -790,7 +1012,14 @@ def _push_translations(room_id: str, item: dict) -> None:
             return
         # Kept on the line, so a screen that loads it later has it already,
         # and in the database, so the service's transcript has it too.
-        item.setdefault('translations', {})[lang] = {'source': text, 'text': translated}
+        def keep(line):
+            if (line.get('corrected') or line.get('original') or '') == text:
+                line['translations'] = dict(line.get('translations') or {},
+                                            **{lang: {'source': text, 'text': translated}})
+        if item.get('id') is not None:
+            update_line(room_id, item['id'], keep)
+        if not cached:
+            count_translation()
         if db is not None and item.get('id') is not None:
             db.save_line_translation(room_id, item['id'], lang, text, translated)
         socketio.emit('line_translated', {
@@ -938,26 +1167,32 @@ def generate_api_session_token():
 def create_api_token(sid):
     """Create a new API token for this WebSocket session"""
     token = generate_api_session_token()
-    api_session_tokens[token] = {
-        'sid': sid,
-        'created_at': datetime.now(),
-        'expires_at': datetime.now() + timedelta(hours=24)  # Valid for 24 hours
-    }
+    with state_lock:
+        api_session_tokens[token] = {
+            'sid': sid,
+            'created_at': datetime.now(),
+            'expires_at': datetime.now() + timedelta(hours=24)  # Valid for 24 hours
+        }
     return token
 
 def validate_api_token(token):
     """Validate and return session info if token is valid"""
-    if token not in api_session_tokens:
-        return None
-    
-    session_info = api_session_tokens[token]
-    
-    # Check if expired
-    if datetime.now() > session_info['expires_at']:
-        del api_session_tokens[token]
-        return None
-    
-    return session_info
+    with state_lock:
+        session_info = api_session_tokens.get(token)
+        if session_info is None:
+            return None
+        # Check if expired
+        if datetime.now() > session_info['expires_at']:
+            api_session_tokens.pop(token, None)
+            return None
+        return session_info
+
+
+def drop_api_tokens(sid) -> None:
+    """The tokens a socket was given, when it goes."""
+    with state_lock:
+        for token in [t for t, info in api_session_tokens.items() if info['sid'] == sid]:
+            del api_session_tokens[token]
 
 def require_api_token(f):
     """Decorator to validate API session token"""

@@ -59,7 +59,7 @@ def get_analytics():
                 'listeners': len(st['listeners']),
                 'history': len(st['history']),
             }
-            for rid, st in _rooms.items()
+            for rid, st in rooms_snapshot()
         ],
     })
 
@@ -68,12 +68,13 @@ def get_analytics():
 @require_admin_auth
 def reset_analytics():
     """Reset session analytics counters (admin only)."""
-    S._session_start_time = datetime.now()
-    S._peak_clients = _all_listener_count()
-    S._total_words = 0
-    S._session_lines = 0
-    S._total_bible_refs = 0
-    S._total_translations = 0
+    with state_lock:
+        S._session_start_time = datetime.now()
+        S._peak_clients = _all_listener_count()
+        S._total_words = 0
+        S._session_lines = 0
+        S._total_bible_refs = 0
+        S._total_translations = 0
     logger.info("Session analytics reset by %s", getattr(request, 'user', {}).get('username', 'unknown'))
     return jsonify({'success': True, 'reset_at': S._session_start_time.isoformat()})
 
@@ -91,7 +92,7 @@ def export_translations(export_format):
     # Limit export size (scoped to the requested room, default room if omitted)
     room_id = normalize_room_id(request.args.get('room'))
     max_export = 5000
-    export_data = _room(room_id)['history'][-max_export:]
+    export_data = history_snapshot(room_id)[-max_export:]
 
     # The console can export the lines the operator ticked rather than the
     # whole service. Filtering here rather than in the browser keeps one
@@ -188,7 +189,7 @@ def list_rooms():
             logger.warning(f"db.list_rooms failed: {exc}")
     # Merge with in-memory rooms (ensures default 'main' always shows)
     by_id = {r['room_id']: dict(r) for r in db_rooms if r.get('is_active', True)}
-    for rid, st in _rooms.items():
+    for rid, st in rooms_snapshot():
         entry = by_id.get(rid, {
             'room_id': rid,
             'display_name': st.get('display_name') or rid,
@@ -416,6 +417,7 @@ def acquire_recording():
     sid = data.get('sid')  # optional Socket.IO sid of this admin tab
 
     current = state.get('recording')
+    force = False
     if current and current.get('username') != username:
         # Lock held by someone else
         if not data.get('force'):
@@ -431,23 +433,28 @@ def acquire_recording():
                 f"Force-recording rejected: bad password from {username} for room '{rid}'"
             )
             return jsonify({'success': False, 'error': 'invalid_password'}), 401
+        force = True
+
+    # Taken only if it is still as it was seen above: the password check
+    # takes a moment, and another console may have claimed it meanwhile.
+    taken_from = claim_recording(rid, username, sid, expected=current, force=force)
+    if taken_from is None:
+        return jsonify({
+            'success': False, 'error': 'locked',
+            'owner': _recording_owner_dict(state),
+        }), 423
+    if taken_from:
         # Notify the displaced owner so their browser stops recognition
-        evicted = current.get('username')
-        evicted_sid = current.get('sid')
+        evicted_sid = taken_from.get('sid')
         socketio.emit(
             'recording_force_stopped',
             {'room_id': rid, 'by': username, 'reason': 'admin_takeover'},
             room=evicted_sid if evicted_sid else f'admin:{rid}',
         )
         logger.warning(
-            f"[RECORDING] {username} force-stopped {evicted} in room '{rid}'"
+            f"[RECORDING] {username} force-stopped {taken_from.get('username')} in room '{rid}'"
         )
 
-    state['recording'] = {
-        'username': username,
-        'sid': sid,
-        'started_at': datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + 'Z',
-    }
     socketio.emit(
         'recording_state',
         {'room_id': rid, 'recording': _recording_owner_dict(state)},
@@ -469,11 +476,9 @@ def release_recording():
     rid = normalize_room_id(data.get('room'))
     state = _room(rid)
     username = (request.user.get('username') if request.user else '') or 'admin'
-    current = state.get('recording')
-    if current and current.get('username') != username:
+    if not free_recording(rid, username):
         return jsonify({'success': False, 'error': 'not_owner',
                         'owner': _recording_owner_dict(state)}), 403
-    state['recording'] = None
     socketio.emit(
         'recording_state',
         {'room_id': rid, 'recording': None},

@@ -266,10 +266,9 @@ def delete_transcript(room_id, day):
     if not _DAY.match(day or '') or db is None:
         return jsonify({'success': False, 'error': 'invalid'}), 400
     removed = db.delete_service(room_id, day)
-    state = _room(room_id)
-    gone = [it.get('id') for it in state['history'] if (it.get('at') or '')[:10] == day]
+    gone = remove_lines(room_id, [it.get('id') for it in history_snapshot(room_id)
+                                  if (it.get('at') or '')[:10] == day])
     if gone:
-        state['history'][:] = [it for it in state['history'] if it.get('id') not in gone]
         socketio.emit('items_deleted', {'ids': gone, 'room_id': room_id}, room=f'room:{room_id}')
         socketio.emit('items_deleted', {'ids': gone, 'room_id': room_id}, room=f'admin:{room_id}')
     logger.info(f"[TRANSCRIPT DELETED] room={room_id} day={day} lines={removed} "
