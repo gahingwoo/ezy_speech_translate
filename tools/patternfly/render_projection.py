@@ -27,8 +27,7 @@ SETUP_STEPS = (
     ("room", "Room", "proj_nav_room", "proj_step_room",
      "Which room's speaker is this screen following?"),
     ("language", "Language", "proj_nav_language", "proj_step_language",
-     "The language the room reads here. The words the speaker actually said "
-     "stay under it, quieter."),
+     "The language the room reads here."),
     ("look", "The room", "proj_nav_look", "proj_step_look",
      "A bright room reads better off a light screen, a dark one off a dark "
      "screen. Nothing else about the page changes."),
@@ -204,7 +203,6 @@ def build():
       <p class="proj-past proj-past-2" id="projPast2"></p>
       <p class="proj-past proj-past-1" id="projPast1"></p>
       <p class="proj-now" id="projNow"></p>
-      <p class="proj-source" id="projSource"></p>
     </div>
 
     <!-- A verse, when one was read. Looked up in a Bible rather than

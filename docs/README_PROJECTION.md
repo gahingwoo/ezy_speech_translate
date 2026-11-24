@@ -76,15 +76,18 @@ language being read is the language being spoken, nothing is being translated
 and the screen does not say "English → English".
 
 **The stage** — three lines. The one being said now is the large one; the two
-above it are quieter, and are there for anyone who looked away. Under the big
-line, quieter still, are the speaker's own words, when they differ from what is
-being shown.
+above it are quieter, and are there for anyone who looked away. A translating
+screen shows the translation only: the speaker's own words are not put under
+it, because the room read them as the big line's original when they were
+already the next sentence.
 
-The line being read is **typed as it arrives** rather than appearing whole. The
-screen listens to the interim feed, so the words appear while they are being
-said, and only the part that is new is typed — a sentence that grows a word at
-a time grows on screen instead of being retyped from its first letter. The two
-lines above it have already been read, so they move up in place.
+The line being read is **typed as it arrives** rather than appearing whole. A
+screen showing the words as said listens to the interim feed, so the words
+appear while they are being said, and only the part that is new is typed — a
+sentence that grows a word at a time grows on screen instead of being retyped
+from its first letter. A translating screen types each translation when its
+sentence ends. The two lines above have already been read, so they move up in
+place.
 
 **Scripture** — a verse that was read is looked up in a Bible in the projected
 language and shown with its reference and which translation it came from. It

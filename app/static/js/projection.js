@@ -171,7 +171,6 @@ function paint() {
     // reading as it arrives.
     el('projPast2').textContent = older ? older.text : '';
     el('projPast1').textContent = previous ? previous.text : '';
-    say('projSource', now && now.source !== now.text ? now.source : '');
     // Sized before it is typed, so the size is right from the first frame.
     fitNow(now ? now.text : '');
     say('projNow', now ? now.text : '');
@@ -317,19 +316,18 @@ function connect() {
         if (data.bible_refs && data.bible_refs.length) showVerse(data.bible_refs[0]);
     });
 
-    /* What is being said right now, before the sentence is finished. The room
-       sees the words arrive instead of waiting for a pause and then being
-       handed a paragraph. It is the speaker's own words, so it goes on the
-       quiet line under the translation — unless no translation is happening,
-       in which case that quiet line is the line. */
+    /* What is being said right now, before the sentence is finished. Where
+       nothing is translated the room sees the words arrive instead of waiting
+       for a pause and then being handed a paragraph. Where the screen is
+       translating it shows nothing of it: the speaker's words used to go on a
+       quiet line under the big one, and the room read them as that line's
+       original when they were already the next sentence. The translation
+       arrives when the sentence ends. */
     socket.on('realtime_transcription', data => {
         const said = data.original || data.text || '';
         if (!said) return;
         const translating = LANG && !sameLanguage(sourceLang, LANG);
-        if (translating) {
-            say('projSource', said);
-            return;
-        }
+        if (translating) return;
         // Where nothing is being translated this quiet line is the line, and
         // it grows a word at a time as the speaker talks. It has to be sized
         // like any other: paint() fits what it writes, but this path never went

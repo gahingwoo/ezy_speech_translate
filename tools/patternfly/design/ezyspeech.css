@@ -175,7 +175,6 @@
 .proj-past-2 { color: var(--pf-t--global--text--color--disabled); }
 .proj-past-1 { color: var(--pf-t--global--text--color--subtle); font-size: 2rem; }
 .proj-now { margin: var(--pf-t--global--spacer--lg) 0 0; font-size: 4.25rem; line-height: 1.3; font-weight: 400; color: var(--pf-t--global--text--color--regular); text-wrap: pretty; }
-.proj-source { margin: 0; font-size: 1.5rem; line-height: 1.4; color: var(--pf-t--global--text--color--subtle); }
 .proj-verse { padding: var(--pf-t--global--spacer--lg) var(--pf-t--global--spacer--xl); background: var(--pf-t--global--background--color--secondary--default); border-radius: var(--pf-t--global--border--radius--medium); }
 .proj-verse-ref { margin: 0 0 var(--pf-t--global--spacer--sm); font-family: var(--pf-t--global--font--family--heading); font-size: var(--pf-t--global--font--size--heading--sm); color: var(--pf-t--global--text--color--subtle); }
 .proj-verse-ver { color: var(--pf-t--global--text--color--disabled); margin-inline-start: var(--pf-t--global--spacer--sm); }

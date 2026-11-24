@@ -54,10 +54,6 @@ body:has(#projSetupModal.active) {
   min-height: 1.3em;
 }
 
-.proj-source {
-  min-height: 1.4em;
-}
-
 /* If the feed drops, the screen says so once, quietly, at the foot — it does
    not throw a dialog in front of a congregation. */
 .is-offline .proj-foot {
