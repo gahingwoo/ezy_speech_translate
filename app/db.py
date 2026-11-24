@@ -474,7 +474,7 @@ def upsert_room(room_id: str, display_name: str, created_by: str | None = None,
     """Create or update a room."""
     if not _enabled or not _db_path:
         return False
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     with _lock:
         try:
             with _get_conn() as conn:
@@ -487,7 +487,7 @@ def upsert_room(room_id: str, display_name: str, created_by: str | None = None,
                         is_active    = excluded.is_active
                     """,
                     (room_id, display_name, created_by,
-                     _dt.utcnow().isoformat(), 1 if is_active else 0),
+                     _dt.now(_tz.utc).replace(tzinfo=None).isoformat(), 1 if is_active else 0),
                 )
                 conn.commit()
             return True
@@ -567,7 +567,7 @@ def glossary_add(source_term: str, target_lang: str, translation: str,
     """Add a glossary entry. Returns inserted row ID."""
     if not _enabled or not _db_path:
         return None
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     with _lock:
         try:
             with _get_conn() as conn:
@@ -580,7 +580,7 @@ def glossary_add(source_term: str, target_lang: str, translation: str,
                     """,
                     (room_id, source_term, target_lang, translation,
                      1 if case_sensitive else 0, 1 if enabled else 0,
-                     created_by, _dt.utcnow().isoformat()),
+                     created_by, _dt.now(_tz.utc).replace(tzinfo=None).isoformat()),
                 )
                 conn.commit()
                 return cur.lastrowid
@@ -648,7 +648,7 @@ def seed_default_glossary(path: str) -> int:
     if not _enabled or not _db_path or not os.path.exists(path):
         return 0
     import json
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     with _lock:
         try:
             with _get_conn() as conn:
@@ -659,7 +659,7 @@ def seed_default_glossary(path: str) -> int:
                 with open(path, encoding='utf-8') as f:
                     entries = json.load(f).get('entries', [])
                 added = 0
-                now = _dt.utcnow().isoformat()
+                now = _dt.now(_tz.utc).replace(tzinfo=None).isoformat()
                 for e in entries:
                     term = e.get('source_term', '').strip()
                     for lang, translation in e.items():

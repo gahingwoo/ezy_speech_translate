@@ -108,10 +108,10 @@ def login():
                 'role':     acct_role,
                 'channel':  acct_channel,
                 'display_name': acct_display,
-                'exp': datetime.utcnow() + timedelta(
+                'exp': datetime.now(timezone.utc) + timedelta(
                     seconds=get_config('authentication', 'session_timeout', default=7200)
                 ),
-                'iat': datetime.utcnow(),
+                'iat': datetime.now(timezone.utc),
                 'jti': secrets.token_hex(16)
             },
             JWT_SECRET,
@@ -507,7 +507,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'version': APP_VERSION,
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         'clients': clients,
         'peak_clients': S._peak_clients,
         'translations': translations,

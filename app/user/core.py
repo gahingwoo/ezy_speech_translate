@@ -32,7 +32,7 @@ import os
 import sys
 import yaml
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 import jwt
 from functools import wraps

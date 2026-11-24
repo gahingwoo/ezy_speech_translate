@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import jwt
@@ -19,8 +19,8 @@ def encode_jwt(payload: dict, secret: str, exp_seconds: Optional[int] = None) ->
     """
     body = dict(payload)
     if exp_seconds is not None:
-        body.setdefault("iat", datetime.utcnow())
-        body.setdefault("exp", datetime.utcnow() + timedelta(seconds=exp_seconds))
+        body.setdefault("iat", datetime.now(timezone.utc))
+        body.setdefault("exp", datetime.now(timezone.utc) + timedelta(seconds=exp_seconds))
     return jwt.encode(body, secret, algorithm="HS256")
 
 

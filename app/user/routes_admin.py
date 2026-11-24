@@ -446,7 +446,7 @@ def acquire_recording():
     state['recording'] = {
         'username': username,
         'sid': sid,
-        'started_at': datetime.utcnow().isoformat() + 'Z',
+        'started_at': datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + 'Z',
     }
     socketio.emit(
         'recording_state',
