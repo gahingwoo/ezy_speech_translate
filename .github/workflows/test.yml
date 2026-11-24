@@ -14,6 +14,28 @@ permissions:
   contents: read
 
 jobs:
+  # The code itself: the unit tests, and every generated file as its
+  # generator makes it (a template or language file edited by hand is lost
+  # the next time anyone runs the generator, so it fails here first).
+  code:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: pip install -q -r requirements.txt pytest
+      - name: Unit tests
+        run: python -m pytest -q -W error::DeprecationWarning tests/unit
+      - name: Generated files are their generators' output
+        run: |
+          for r in render_user render_admin render_config render_projection render_transcript; do
+            python3 tools/patternfly/$r.py
+          done
+          node tools/i18n/build.mjs
+          git diff --exit-code -- app/templates app/static/js/i18n
+
   install-and-use:
     strategy:
       fail-fast: false
@@ -39,6 +61,15 @@ jobs:
 
       - name: Used as people use it
         run: /tmp/smoke/bin/python tests/smoke/check.py live --password "$PW"
+
+      # The pages in a real browser, once: they are the same pages however
+      # EzySpeech is installed.
+      - name: The pages, in a browser
+        if: matrix.mode == 'native'
+        run: |
+          /tmp/smoke/bin/pip install -q playwright
+          /tmp/smoke/bin/python -m playwright install --with-deps chromium
+          /tmp/smoke/bin/python tests/browser/pages.py --password "$PW"
 
       - name: Status says what it is
         run: |
