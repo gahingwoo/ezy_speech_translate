@@ -125,10 +125,8 @@ def _fill_translations(room_id: str, lines: list, lang: str) -> None:
         if text and _wanted(lang, item.get('source_language')) and have.get('source') != text:
             todo.append(item)
     if todo:
-        pool = eventlet.GreenPool(4)
-        for k in range(0, len(todo), _LINES_PER_PARAGRAPH):
-            pool.spawn_n(group, todo[k:k + _LINES_PER_PARAGRAPH])
-        pool.waitall()
+        concurrency.run_all(group, [todo[k:k + _LINES_PER_PARAGRAPH]
+                                    for k in range(0, len(todo), _LINES_PER_PARAGRAPH)], 4)
         logger.info(f"Transcript {room_id} {lines[0].get('at', '')[:10]}: translated "
                     f"{len(done)} of {len(todo)} line(s) into {lang}"
                     + (" (the translation service refused the rest)" if refused else ""))

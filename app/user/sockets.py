@@ -213,7 +213,7 @@ def _heartbeat_cleanup_loop():
     HEARTBEAT_TIMEOUT = 45   # seconds — 3× client interval (15 s)
     CHECK_INTERVAL   = 15   # how often we scan
     while True:
-        eventlet.sleep(CHECK_INTERVAL)
+        concurrency.sleep(CHECK_INTERVAL)
         now = datetime.now()
         stale = [
             sid for sid, last in list(_sid_last_seen.items())
@@ -397,7 +397,7 @@ def handle_new_transcription(data):
         # Emit to listeners in this room only
         socketio.emit('new_translation', translation_data,
                       room=f'room:{room_id}', skip_sid=[request.sid])
-        eventlet.spawn_n(_push_translations, room_id, translation_data)
+        concurrency.spawn_n(_push_translations, room_id, translation_data)
         # Echo back to the sending admin for confirmation
         emit('transcription_confirmed', translation_data)
         logger.info(f"[FINAL] room={room_id} ID={translation_data.get('id')}")
@@ -407,7 +407,7 @@ def _translation_health_loop():
     minute while it is not well, so one opened later hears of it too."""
     last_state, last_sent = 'ok', 0.0
     while True:
-        eventlet.sleep(10)
+        concurrency.sleep(10)
         try:
             health = get_translation_service().health_summary()
         except Exception as exc:                # never the reason the server stops
@@ -494,7 +494,7 @@ def handle_correct_translation(data):
 
     socketio.emit('translation_corrected', target_item, room=f'room:{room_id}')
     socketio.emit('translation_corrected', target_item, room=f'admin:{room_id}')
-    eventlet.spawn_n(_push_translations, room_id, target_item)
+    concurrency.spawn_n(_push_translations, room_id, target_item)
     logger.info(f"[CORRECTED] room={room_id} ID {translation_id}")
     emit('correction_success', {'id': translation_id})
 
@@ -560,7 +560,7 @@ def handle_import_transcription(data):
 
     # Broadcast to clients in the admin's room
     socketio.emit('new_translation', translation_data, room=f'room:{room_id}')
-    eventlet.spawn_n(_push_translations, room_id, translation_data)
+    concurrency.spawn_n(_push_translations, room_id, translation_data)
     socketio.emit('new_translation', translation_data, room=f'admin:{room_id}')
     logger.info(f"[IMPORTED] room={room_id} ID={translation_data['id']} from {_admin_username(request.sid)}")
 

@@ -121,8 +121,8 @@ if __name__ == '__main__':
                 logger.info(f"Restored {len(persisted)} translations from DB – rooms: {room_summary}")
 
     # Start heartbeat cleanup greenlet
-    eventlet.spawn(_heartbeat_cleanup_loop)
-    eventlet.spawn(_translation_health_loop)
+    concurrency.spawn(_heartbeat_cleanup_loop)
+    concurrency.spawn(_translation_health_loop)
     logger.info("Heartbeat cleanup greenlet started (timeout=45s, interval=15s)")
 
     for directory in ['logs']:
@@ -142,9 +142,6 @@ if __name__ == '__main__':
         logger.warning(f"Open-file limit left as it is ({exc})")
 
     try:
-        # A backlog for the moment a restart sends every phone back at once
-        listener = eventlet.listen((host, port), backlog=1024)
-
         if use_https:
             cert_file = os.path.join(SSL_DIR, 'cert.pem')
             key_file = os.path.join(SSL_DIR, 'key.pem')
@@ -158,17 +155,13 @@ if __name__ == '__main__':
                 print('    -subj "/CN=localhost"\n')
                 exit(1)
 
-            ssl_listener = eventlet.wrap_ssl(
-                listener,
-                certfile=cert_file,
-                keyfile=key_file,
-                server_side=True
-            )
             logger.info(f"Server running at https://{host}:{port}")
-            eventlet.wsgi.server(ssl_listener, app, max_size=MAX_LISTENER_CONNECTIONS)
         else:
+            cert_file = key_file = None
             logger.info(f"Server running at http://{host}:{port}")
-            eventlet.wsgi.server(listener, app, max_size=MAX_LISTENER_CONNECTIONS)
+        # A backlog for the moment a restart sends every phone back at once
+        concurrency.serve(app, host, port, certfile=cert_file, keyfile=key_file,
+                          backlog=1024, max_size=MAX_LISTENER_CONNECTIONS)
 
     except PermissionError:
         logger.error(f"Permission denied on port {port}. Use port > 1024 or run with sudo.")

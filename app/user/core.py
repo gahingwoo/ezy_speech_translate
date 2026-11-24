@@ -37,8 +37,7 @@ from logging.handlers import RotatingFileHandler
 import jwt
 from functools import wraps
 import hashlib
-import eventlet
-import eventlet.wsgi
+from app.core import concurrency
 # Everything, sockets included. This server is one thread: a call that waits
 # on a socket eventlet has not patched waits with the whole server, so every
 # translation, Bible lookup and admin push queued behind the slowest of them,
@@ -264,7 +263,7 @@ def get_rate_limit_key():
 socketio = SocketIO(
     app,
     cors_allowed_origins=allowed_origins,
-    async_mode='eventlet',
+    async_mode=concurrency.ASYNC_MODE,
     ping_timeout=get_config('advanced', 'websocket', 'ping_timeout', default=20),
     ping_interval=get_config('advanced', 'websocket', 'ping_interval', default=10),
     max_http_buffer_size=get_config('advanced', 'websocket', 'max_message_size', default=1048576)
@@ -799,10 +798,7 @@ def _push_translations(room_id: str, item: dict) -> None:
             'source': text, 'translated': translated,
         }, room=_reading_room(room_id, lang))
 
-    pool = eventlet.GreenPool(8)
-    for lang in sorted(wanted):
-        pool.spawn_n(one, lang)
-    pool.waitall()
+    concurrency.run_all(one, sorted(wanted), 8)
 
 
 def _get_glossary_for(room_id: str, target_lang: str) -> list:

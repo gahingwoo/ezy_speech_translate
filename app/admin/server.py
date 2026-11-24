@@ -65,8 +65,7 @@ except ImportError:
 from flask import Flask, render_template, jsonify, redirect, url_for, request, session, Response
 from flask_cors import CORS
 from flask_socketio import SocketIO
-import eventlet
-import eventlet.wsgi
+from app.core import concurrency
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
 SSL_DIR = os.path.join(CONFIG_DIR, "ssl")
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
@@ -877,8 +876,6 @@ if __name__ == "__main__":
         logger.info(f"User Client expected at: {protocol}://{ADMIN_HOST}:{MAIN_SERVER_PORT}")
 
     try:
-        listener = eventlet.listen((ADMIN_HOST, ADMIN_PORT))
-
         if USE_HTTPS:
             cert_file = os.path.join(SSL_DIR, "cert.pem")
             key_file = os.path.join(SSL_DIR, "key.pem")
@@ -890,15 +887,9 @@ if __name__ == "__main__":
                 print("openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
                 exit(1)
 
-            ssl_listener = eventlet.wrap_ssl(
-                listener,
-                certfile=cert_file,
-                keyfile=key_file,
-                server_side=True
-            )
-            eventlet.wsgi.server(ssl_listener, app)
         else:
-            eventlet.wsgi.server(listener, app)
+            cert_file = key_file = None
+        concurrency.serve(app, ADMIN_HOST, ADMIN_PORT, certfile=cert_file, keyfile=key_file)
 
     except PermissionError:
         logger.error(f"Permission denied on port {ADMIN_PORT}. Use port >1024 or run with sudo.")

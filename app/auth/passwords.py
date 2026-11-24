@@ -30,12 +30,12 @@ def verify(client_hex: str, verifier: str | None) -> bool:
 
     The hash takes a fifth of a second of CPU by design, and the servers run
     on one thread: done in place, every sign-in would stop live captions for
-    everyone for that long. Under eventlet it runs on a real thread instead.
+    everyone for that long. It runs on a real thread instead.
     """
     if not verifier or not isinstance(client_hex, str) or len(client_hex) != 64:
         return False
     try:
-        from eventlet import tpool
-        return bool(tpool.execute(check_verifier, client_hex, verifier))
+        from app.core.concurrency import run_blocking
+        return bool(run_blocking(check_verifier, client_hex, verifier))
     except Exception:
         return check_verifier(client_hex, verifier)
