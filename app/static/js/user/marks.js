@@ -216,31 +216,14 @@ function _marksAsText() {
 }
 
 function copyMarks() {
-    const text = _marksAsText();
-    const done = () => showToast(t('mk_copied', 'Marked lines copied'), 'success', 2000);
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(done).catch(() => _copyByHand(text, done));
-    } else {
-        _copyByHand(text, done);
-    }
-}
-
-function _copyByHand(text, done) {
-    const area = document.createElement('textarea');
-    area.value = text;
-    area.setAttribute('readonly', '');
-    area.style.position = 'fixed';
-    area.style.opacity = '0';
-    document.body.appendChild(area);
-    area.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    document.body.removeChild(area);
-    if (ok) done();
-    else showToast(t('mk_copyFailed', 'This browser would not copy; use Download text'), 'warning', 3000);
+    copyText(_marksAsText()).then(ok => {
+        if (ok) showToast(t('mk_copied', 'Marked lines copied'), 'success', 2000);
+        else showToast(t('mk_copyFailed', 'This browser would not copy; use Download text'), 'warning', 3000);
+    });
 }
 
 function downloadMarks() {
+    if (wechatInsteadOfDownload(_marksAsText())) return;
     const blob = new Blob([_marksAsText()], { type: 'text/plain;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

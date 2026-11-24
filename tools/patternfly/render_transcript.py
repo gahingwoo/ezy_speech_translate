@@ -126,12 +126,12 @@ def build():
                   </div>
 {%% endif %%}
                   <div class="pf-v6-c-toolbar__item pf-m-align-end">
-                    <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="window.print()">
+                    <button class="pf-v6-c-button pf-m-secondary" type="button" onclick="transcriptPrint()">
                       %(print)s<span class="pf-v6-c-button__text" data-i18n="tr_print">Print or save as PDF</span>
                     </button>
                   </div>
                   <div class="pf-v6-c-toolbar__item">
-                    <a class="pf-v6-c-button pf-m-link" id="transcriptText"
+                    <a class="pf-v6-c-button pf-m-link" id="transcriptText" onclick="return transcriptDownload(this)"
                        href="/transcript/{{ room_id }}/{{ day }}.txt?k={{ key }}&amp;lang={{ lang }}">
                       %(download)s<span class="pf-v6-c-button__text" data-i18n="tr_download">Download text</span>
                     </a>

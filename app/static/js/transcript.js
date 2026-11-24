@@ -61,6 +61,49 @@
         updateThemeLabel(root.classList.contains('pf-v6-theme-dark') ? 'dark' : 'light');
     });
 
+    /* WeChat's own browser, where a shared transcript link most often opens:
+       it neither prints nor saves files, and says nothing when asked to. */
+    const IN_WECHAT = /MicroMessenger/i.test(navigator.userAgent || '');
+
+    function copyText(text) {
+        const byHand = () => {
+            const area = document.createElement('textarea');
+            area.value = text;
+            area.setAttribute('readonly', '');
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            document.body.appendChild(area);
+            area.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            area.remove();
+            return ok;
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text).then(() => true, () => byHand());
+        }
+        return Promise.resolve(byHand());
+    }
+
+    window.transcriptPrint = function () {
+        if (IN_WECHAT) {
+            alert(t('wx_noPrint', 'WeChat cannot print or save a PDF. Tap ··· at the top right and choose Open in Browser.'));
+            return;
+        }
+        window.print();
+    };
+
+    // The link downloads the text everywhere else; in WeChat it is copied.
+    window.transcriptDownload = function (link) {
+        if (!IN_WECHAT) return true;
+        if (confirm(t('wx_noDownload', 'WeChat cannot save files. Copy the text instead?\n\nFor the file, tap ··· at the top right and choose Open in Browser.'))) {
+            fetch(link.href).then(r => r.text()).then(copyText).then(ok => {
+                alert(ok ? t('toast_copied', 'Copied to clipboard') : t('toast_copyFailed', 'Failed to copy to clipboard'));
+            });
+        }
+        return false;
+    };
+
     window.toggleTheme = function () {
         window.toggleThemeTo(updateThemeLabel);
     };

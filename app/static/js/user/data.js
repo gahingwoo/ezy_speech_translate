@@ -198,13 +198,11 @@ async function copyExport() {
         : format === 'csv' ? exportAsCSV()
         : format === 'srt' ? exportAsSRT()
         : exportAsTXT();
-    try {
-        await navigator.clipboard.writeText(content);
-        showToast(t('toast_copied', 'Copied to clipboard'), 'success');
-    } catch (err) {
-        console.error('copyExport failed', err);
-        showToast(t('toast_copyFailed', 'Failed to copy to clipboard'), 'danger');
-    }
+    // copyText falls back where the clipboard API is not allowed (a page
+    // served over plain http, WeChat's browser), where this used to fail.
+    const ok = await copyText(content);
+    showToast(ok ? t('toast_copied', 'Copied to clipboard') : t('toast_copyFailed', 'Failed to copy to clipboard'),
+        ok ? 'success' : 'danger');
 }
 window.copyExport = copyExport;
 
@@ -243,6 +241,8 @@ function exportData() {
 
     // Add UTF-8 BOM for text files to ensure proper encoding on Windows and other devices
     // BOM (Byte Order Mark) \uFEFF helps Windows and Excel correctly identify UTF-8 encoding
+    if (wechatInsteadOfDownload(content)) return;
+
     if (format !== 'json') {
         content = '\uFEFF' + content;
     }

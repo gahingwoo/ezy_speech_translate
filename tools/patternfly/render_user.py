@@ -1227,6 +1227,18 @@ def build():
                 <p class="pf-v6-c-alert__title" id="connectionBannerText"
                    data-i18n="connectionLost">Connection lost. Reconnecting…</p>
               </div>
+              <!-- Shown once, in WeChat's own browser (ui.js). -->
+              <div class="pf-v6-c-alert pf-m-inline pf-m-info wechat-hint" id="wechatHint" hidden>
+                <div class="pf-v6-c-alert__icon">%(info_icon)s</div>
+                <p class="pf-v6-c-alert__title" data-i18n="wx_title">Opened in WeChat</p>
+                <div class="pf-v6-c-alert__action">
+                  <button class="pf-v6-c-button pf-m-plain" type="button" onclick="dismissWechatHint()"
+                          aria-label="Close" data-i18n-aria-label="close">%(close_icon)s</button>
+                </div>
+                <div class="pf-v6-c-alert__description"><p data-i18n="wx_text">The page works here. If
+                  the screen goes dark by itself, reading aloud is silent, or you want to save a
+                  file, tap ··· at the top right and choose Open in Browser.</p></div>
+              </div>
               <div class="page-head">
                 <h1 class="page-title" id="mainTitle">
                   <span id="mainTitleText" data-i18n="liveTranslations">Live translation</span>
@@ -1980,6 +1992,7 @@ def build():
         "search": icon("search"),
         "status_icon": icon("exclamation-circle"),
         "warn_icon": icon("exclamation-triangle"),
+        "info_icon": icon("info-circle"), "close_icon": btn_icon("times"),
         "times_plain": icon("times"),
         "angle_right": icon("angle-right"),
         "empty": empty_group(),

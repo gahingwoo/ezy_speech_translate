@@ -301,6 +301,18 @@
                 <p class="pf-v6-c-alert__title" id="connectionBannerText"
                    data-i18n="connectionLost">Connection lost. Reconnecting…</p>
               </div>
+              <!-- Shown once, in WeChat's own browser (ui.js). -->
+              <div class="pf-v6-c-alert pf-m-inline pf-m-info wechat-hint" id="wechatHint" hidden>
+                <div class="pf-v6-c-alert__icon"><svg class="pf-v6-svg" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg></div>
+                <p class="pf-v6-c-alert__title" data-i18n="wx_title">Opened in WeChat</p>
+                <div class="pf-v6-c-alert__action">
+                  <button class="pf-v6-c-button pf-m-plain" type="button" onclick="dismissWechatHint()"
+                          aria-label="Close" data-i18n-aria-label="close"><span class="pf-v6-c-button__icon"><svg class="pf-v6-svg" viewBox="0 0 352 512" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"/></svg></span></button>
+                </div>
+                <div class="pf-v6-c-alert__description"><p data-i18n="wx_text">The page works here. If
+                  the screen goes dark by itself, reading aloud is silent, or you want to save a
+                  file, tap ··· at the top right and choose Open in Browser.</p></div>
+              </div>
               <div class="page-head">
                 <h1 class="page-title" id="mainTitle">
                   <span id="mainTitleText" data-i18n="liveTranslations">Live translation</span>

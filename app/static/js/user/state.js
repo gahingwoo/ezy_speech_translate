@@ -350,6 +350,47 @@ const PREPARING_AUTO_PROGRESS_MS = 6000;     // Auto-progress to 'translating' a
 // PatternFly icons for the markup this file builds as strings. The paths are
 // in the page once, as <symbol>s in the sprite render_user.py emits; this only
 // points at them. Never put an emoji here — the page is PatternFly 6.
+/* WeChat's own browser, where the page also opens when a link is shared in a
+   chat. It will not save files, and it may not keep the screen on or read
+   aloud; the page says so and offers what does work. */
+const IN_WECHAT = /MicroMessenger/i.test(navigator.userAgent || '');
+
+/* Text to the clipboard: the clipboard API where the page may use it (a
+   secure page, not every WeChat), else the old select-and-copy. Resolves
+   true when it worked. */
+function copyText(text) {
+    const byHand = () => {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        area.remove();
+        return ok;
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text).then(() => true, () => byHand());
+    }
+    return Promise.resolve(byHand());
+}
+
+/* A download in WeChat goes nowhere, and says nothing. Asked first: copy the
+   same text instead, or open the page in a browser for the file. Returns true
+   when it has dealt with it, so the caller does not try to download. */
+function wechatInsteadOfDownload(text) {
+    if (!IN_WECHAT) return false;
+    if (confirm(t('wx_noDownload', 'WeChat cannot save files. Copy the text instead?\n\n'
+        + 'For the file, tap ··· at the top right and choose Open in Browser.'))) {
+        copyText(text).then(ok => showToast(ok ? t('toast_copied', 'Copied to clipboard')
+            : t('toast_copyFailed', 'Failed to copy to clipboard'), ok ? 'success' : 'danger'));
+    }
+    return true;
+}
+
 function svgIcon(name, cls) {
     return '<svg class="pf-v6-svg' + (cls ? ' ' + cls : '') + '" aria-hidden="true"'
         + ' role="img" width="1em" height="1em" fill="currentColor">'

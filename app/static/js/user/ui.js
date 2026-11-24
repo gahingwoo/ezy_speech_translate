@@ -1185,3 +1185,18 @@ function highlightSearchText(card, query) {
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+/* In WeChat's own browser, a word once about what does not work there and how
+   to leave it. Closed, it stays closed on this phone. */
+function dismissWechatHint() {
+    const hint = document.getElementById('wechatHint');
+    if (hint) hint.hidden = true;
+    try { localStorage.setItem('wechatHintSeen', '1'); } catch (e) { /* fine */ }
+}
+document.addEventListener('DOMContentLoaded', function () {
+    if (!IN_WECHAT) return;
+    let seen = false;
+    try { seen = localStorage.getItem('wechatHintSeen') === '1'; } catch (e) { /* show it */ }
+    const hint = document.getElementById('wechatHint');
+    if (hint && !seen) hint.hidden = false;
+});
