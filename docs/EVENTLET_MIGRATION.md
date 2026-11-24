@@ -1,6 +1,6 @@
 # Moving off eventlet: a plan
 
-Status: steps 1 to 3 done (4.2.11 to 4.2.13). Written October 2026, against 4.1.13.
+Status: steps 1 to 4 done (4.2.11 to 4.2.14). Written October 2026, against 4.1.13.
 
 ## Why
 
@@ -110,6 +110,32 @@ installing) passing.
    install way is exercised both ways; a load script (300 Socket.IO clients
    reading two languages, a line a second for ten minutes) is run against
    each, comparing memory, latency to the listener, and errors.
+   *Done in 4.2.14:* six jobs, each way of installing serving each way; the
+   smoke check makes both servers say which way they serve
+   (`/api/health` and `/health` report `concurrency`), and the browser
+   pages run against both on the native install. Every job then has 300
+   listeners for a minute (not ten: the release workflow runs these first,
+   and ten minutes would hold up every release; the ten-minute run is for a
+   machine of one's own) and fails on a line missed, a disconnect, or a
+   line slower than two seconds at the 95th centile; latency and memory go
+   in the job's summary, to compare. The first run, a line to the listener
+   in ms at the median / 95th / 99th centile:
+
+   | | eventlet | threading |
+   |---|---|---|
+   | native | 37 / 50 / 52 | 44 / 570 / 989 (run again: 29 / 136 / 197) |
+   | Docker | 26 / 34 / 49 | 54 / 69 / 80 |
+   | Podman | 23 / 40 / 47 | 30 / 37 / 39 |
+
+   No line missed and no disconnect in any. Threading's tail on the native
+   install is longer and varies from run to run (the runner is shared, and
+   300 listeners there is thirty times a Sunday's); it is what to watch.
+
+**Before step 5:** threading has to have served a real Sunday, on the
+church's own server, without a restart (`sudo ezyspeech concurrency
+threading`; `sudo ezyspeech concurrency eventlet` to go back). Step 5 changes
+what every install runs at its next update: an install made before 4.2.13
+has no EZY_CONCURRENCY of its own, so it takes the default.
 5. **Threading by default**, eventlet still selectable for one release.
 6. **eventlet removed**, with the monkey-patching and its import-order rules.
 
