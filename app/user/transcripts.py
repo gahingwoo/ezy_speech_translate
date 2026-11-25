@@ -265,6 +265,7 @@ def delete_transcript(room_id, day):
     room_id = normalize_room_id(room_id)
     if not _DAY.match(day or '') or db is None:
         return jsonify({'success': False, 'error': 'invalid'}), 400
+    db_flush()                     # every line said so far is in what is deleted
     removed = db.delete_service(room_id, day)
     gone = remove_lines(room_id, [it.get('id') for it in history_snapshot(room_id)
                                   if (it.get('at') or '')[:10] == day])

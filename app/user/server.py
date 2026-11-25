@@ -123,6 +123,7 @@ if __name__ == '__main__':
                 logger.info(f"Restored {len(persisted)} translations from DB – rooms: {room_summary}")
 
     # Start heartbeat cleanup greenlet
+    concurrency.spawn(db_writer_loop)
     concurrency.spawn(_heartbeat_cleanup_loop)
     concurrency.spawn(_translation_health_loop)
     logger.info("Heartbeat cleanup greenlet started (timeout=45s, interval=15s)")

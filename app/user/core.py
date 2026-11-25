@@ -52,6 +52,7 @@ import hmac
 import re
 from collections import defaultdict
 import time
+import queue
 import threading
 import types
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -889,10 +890,74 @@ def free_recording(room_id: str, username: str):
         return True
 
 
-def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
-    """Add translation to the given room with size limit, DB persistence, and
-    session stats. Returns a copy of the line as added, to send: data itself
-    is the room's from here on, changed under state_lock."""
+# ── The database, after the sending ─────────────────────────────────────────
+# A line used to wait for its row to be committed before it was sent, and its
+# translation for another commit: on a slow disk (a hard disk, an SD card), a
+# sync on every commit, and under eventlet, where SQLite does not yield, every
+# screen waited with it. Now what changes the lines' rows is put on one queue
+# and written by one writer, in the order it was put there, after the sending.
+# The transcript and the console's Services read the database; they can be a
+# moment behind the screens, never out of order. Before the writer runs (at
+# startup, in the tests) a write is made at once, as before.
+
+_db_writes = queue.Queue()
+_db_writer_running = False
+
+
+def db_write(fn, *args) -> None:
+    """fn(*args) on the database, after what is being sent, in order."""
+    if db is None:
+        return
+    if not _db_writer_running:
+        fn(*args)
+        return
+    _db_writes.put((fn, args))
+
+
+def db_flush(timeout: float = 10.0) -> bool:
+    """Wait until every write put on the queue so far is made (before
+    something that must see them, as deleting a service counts its rows)."""
+    if not _db_writer_running:
+        return True
+    done = threading.Event()
+    _db_writes.put((done.set, ()))
+    return done.wait(timeout)
+
+
+def db_writer_loop() -> None:
+    """The one writer; the listener server starts it before serving."""
+    global _db_writer_running
+    _db_writer_running = True
+    try:
+        while True:
+            job = _db_writes.get()
+            if job is None:                  # stop (the tests)
+                return
+            fn, args = job
+            try:
+                fn(*args)
+            except Exception as exc:         # a write lost is logged, not fatal
+                logger.warning(f"Database write {getattr(fn, '__name__', fn)} failed: {exc}")
+    finally:
+        _db_writer_running = False
+
+
+def _persist_line(room_id: str, line_id, fallback: dict) -> None:
+    """A line's row as the line is when it is written: with the translations
+    and references it has by then. One taken off the screens meanwhile (a
+    clear) is written as it was when it was said."""
+    db.persist(update_line(room_id, line_id) or fallback)
+
+
+def add_translation(data, room_id: str = DEFAULT_ROOM_ID, on_numbered=None):
+    """Add a line to a room: its number, its place, the session's counts,
+    then its Bible references, then its row in the database (after the
+    sending, see db_write). Returns a copy of the line to send: data itself
+    is the room's from here on, changed under state_lock.
+
+    on_numbered(line), when given, is called as soon as the line has its
+    number, before the references are looked for: what starts translating
+    it, so a translation does not wait for anything it does not need."""
     room_id = normalize_room_id(room_id)
     state = _room(room_id)
 
@@ -901,16 +966,6 @@ def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
     # When it was said, with the date: what a service's transcript is
     # gathered by. An imported line is dated by when it was imported.
     data.setdefault('at', local_now().isoformat(timespec='seconds'))
-
-    # Bible reference detection — opt-in via config.
-    if bible_detector is not None and 'bible_refs' not in data:
-        try:
-            scan_text = data.get('corrected') or data.get('original') or ''
-            results = bible_detector.detect_and_lookup(scan_text)
-            if results:
-                data['bible_refs'] = results
-        except Exception as e:
-            logger.warning(f"Bible detection failed: {e}")
 
     # Its number and its place in the room, together: two lines said at once
     # in one room never share a number, and the room's lines stay in the
@@ -943,9 +998,27 @@ def add_translation(data, room_id: str = DEFAULT_ROOM_ID):
         next_id = state['next_id']
         line = dict(data)
 
-    # ── SQLite persistence ─────────────────────────────────────────
-    if db is not None:
-        db.persist(data)
+    if on_numbered is not None:
+        on_numbered(line)
+
+    # Bible reference detection — opt-in via config.
+    if bible_detector is not None and 'bible_refs' not in line:
+        try:
+            scan_text = line.get('corrected') or line.get('original') or ''
+            results = bible_detector.detect_and_lookup(scan_text)
+        except Exception as e:
+            results = None
+            logger.warning(f"Bible detection failed: {e}")
+        if results:
+            def refer(item):
+                item['bible_refs'] = results
+            line = update_line(room_id, line['id'], refer) or dict(line, bible_refs=results)
+            if ANALYTICS_ENABLED:
+                with state_lock:
+                    S._total_bible_refs += len(results)
+
+    # ── SQLite persistence, after the sending ──────────────────────
+    db_write(_persist_line, room_id, line['id'], line)
 
     if trimmed:
         logger.debug(
@@ -1018,14 +1091,14 @@ def _push_translations(room_id: str, item: dict) -> None:
                                             **{lang: {'source': text, 'text': translated}})
         if item.get('id') is not None:
             update_line(room_id, item['id'], keep)
-        if not cached:
-            count_translation()
-        if db is not None and item.get('id') is not None:
-            db.save_line_translation(room_id, item['id'], lang, text, translated)
         socketio.emit('line_translated', {
             'id': item.get('id'), 'room_id': room_id, 'lang': lang,
             'source': text, 'translated': translated,
         }, room=_reading_room(room_id, lang))
+        if not cached:
+            count_translation()
+        if db is not None and item.get('id') is not None:
+            db_write(db.save_line_translation, room_id, item['id'], lang, text, translated)
 
     concurrency.run_all(one, sorted(wanted), 8)
 

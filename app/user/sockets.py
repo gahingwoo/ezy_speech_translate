@@ -328,11 +328,14 @@ def handle_new_transcription(data):
             'confidence': data.get('confidence'),
         }
 
-        translation_data = add_translation(translation_data, room_id=room_id)
+        # Translating starts the moment the line has its number; the line is
+        # sent once its Bible references are found, and written after.
+        translation_data = add_translation(
+            translation_data, room_id=room_id,
+            on_numbered=lambda line: concurrency.spawn_n(_push_translations, room_id, line))
         # Emit to listeners in this room only
         socketio.emit('new_translation', translation_data,
                       room=f'room:{room_id}', skip_sid=[request.sid])
-        concurrency.spawn_n(_push_translations, room_id, translation_data)
         # Echo back to the sending admin for confirmation
         emit('transcription_confirmed', translation_data)
         logger.info(f"[FINAL] room={room_id} ID={translation_data.get('id')}")
@@ -416,13 +419,13 @@ def handle_correct_translation(data):
         emit('error', {'message': 'Translation not found (may have been removed from history)'})
         return
 
-    # Persist correction to DB
+    # Persist correction to DB (after the sending, in order)
     if db is not None:
-        db.update_correction(
+        db_write(lambda: db.update_correction(
             room_id, translation_id, corrected_text, True,
             bible_refs=target_item.get('bible_refs'),
             full_item=target_item,
-        )
+        ))
 
     socketio.emit('translation_corrected', target_item, room=f'room:{room_id}')
     socketio.emit('translation_corrected', target_item, room=f'admin:{room_id}')
@@ -444,7 +447,7 @@ def handle_clear_history():
     # transcript of the service they were said in, and the room goes on
     # numbering after them. Deleting a service is in the console's Services.
     if db is not None:
-        db.clear_live(room_id)
+        db_write(db.clear_live, room_id)
     socketio.emit('history_cleared', {'room_id': room_id}, room=f'room:{room_id}')
     socketio.emit('history_cleared', {'room_id': room_id}, room=f'admin:{room_id}')
     logger.info(f"[CLEARED] room={room_id} by {_admin_username(request.sid)}")
@@ -487,11 +490,12 @@ def handle_import_transcription(data):
 
     # Add to history (scoped to admin's room)
     room_id = _admin_room(request.sid)
-    translation_data = add_translation(translation_data, room_id=room_id)
+    translation_data = add_translation(
+        translation_data, room_id=room_id,
+        on_numbered=lambda line: concurrency.spawn_n(_push_translations, room_id, line))
 
     # Broadcast to clients in the admin's room
     socketio.emit('new_translation', translation_data, room=f'room:{room_id}')
-    concurrency.spawn_n(_push_translations, room_id, translation_data)
     socketio.emit('new_translation', translation_data, room=f'admin:{room_id}')
     logger.info(f"[IMPORTED] room={room_id} ID={translation_data['id']} from {_admin_username(request.sid)}")
 
@@ -522,7 +526,7 @@ def handle_delete_items(data):
 
     # Persist deletion
     if db is not None:
-        db.delete_ids(item_ids, room_id=room_id)
+        db_write(lambda: db.delete_ids(item_ids, room_id=room_id))
 
     # Broadcast deletion to all connected clients in this room
     socketio.emit('items_deleted', {'ids': item_ids, 'room_id': room_id}, room=f'room:{room_id}')
