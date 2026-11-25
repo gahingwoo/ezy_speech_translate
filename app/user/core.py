@@ -55,6 +55,7 @@ import time
 import queue
 import threading
 import types
+from urllib.parse import unquote_plus
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
@@ -1166,9 +1167,12 @@ def before_request():
         record_suspicious_activity("Path traversal attempt", client_key)
         return jsonify({'error': 'Invalid request'}), 400
 
-    # Check for SQL injection patterns
-    sql_patterns = ['union select', 'drop table', 'insert into', '--', ';--']
-    query_string = request.query_string.decode('utf-8', 'ignore').lower()
+    # Check for SQL injection patterns. (Every query here binds its values,
+    # so this is a tripwire, not the protection; a bare '--' is in too much
+    # that is innocent to be one.)
+    sql_patterns = ['union select', 'drop table', 'insert into', ';--']
+    # Decoded: a space comes as %20 or +, and undecoded none of these matched.
+    query_string = unquote_plus(request.query_string.decode('utf-8', 'ignore')).lower()
     if any(pattern in query_string for pattern in sql_patterns):
         record_suspicious_activity("SQL injection attempt", client_key)
         return jsonify({'error': 'Invalid request'}), 400
@@ -1235,7 +1239,10 @@ def after_request(response):
 
 def generate_api_session_token():
     """Generate a temporary API session token"""
-    return secrets.token_urlsafe(32)
+    # Hex, not URL-safe base64: that has '-', and a token with '--' in it
+    # was refused below as an SQL comment, so about one page in a hundred
+    # opened with no lines.
+    return secrets.token_hex(32)
 
 def create_api_token(sid):
     """Create a new API token for this WebSocket session"""
