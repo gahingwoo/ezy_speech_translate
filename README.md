@@ -637,13 +637,22 @@ python3 tools/patternfly/render_config.py      # app/templates/config.html
 python3 tools/patternfly/render_projection.py  # app/templates/projection.html
 ```
 
-Rebuilding the vendored assets, which is only needed when a new PatternFly
-component or icon is used:
+Rebuilding the vendored assets, which is needed when a new PatternFly
+component or icon is used, and whenever a page starts using a PatternFly
+class it did not (CI fails until it is rebuilt):
 
 ```sh
-sh tools/patternfly/build.sh          # app/static/patternfly/patternfly.css
+sh tools/patternfly/build.sh          # app/static/patternfly/patternfly*.css
 python3 tools/patternfly/extract_icons.py   # tools/patternfly/icons.json
 ```
+
+Each page loads a stylesheet of its own, `patternfly-PAGE.css`, with only
+the rules it can use: `tools/patternfly/page_css.py` reads the page's
+template and scripts for the classes it names, so write a class whole in a
+script (`'pf-m-danger'`, never `'pf-m-' + type`; the build refuses the
+latter). `tools/patternfly/same_look.py PAGE --password PW` compares a page
+with its own stylesheet and with the full one, element by element, in each
+state it can be put in; CI runs it for the listener page.
 
 A component whose classes are used but whose name is not in the `COMPONENTS`
 list in `build.sh` will simply have no styles. The same goes for an icon that

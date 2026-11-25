@@ -692,8 +692,13 @@ function showToast(message, type, duration) {
     const item = document.createElement('li');
     item.className = 'pf-v6-c-alert-group__item';
 
+    // Each class written whole, so tools/patternfly/page_css.py sees it and
+    // keeps its style in the page's stylesheet.
+    const TYPES = {
+        info: 'pf-m-info', success: 'pf-m-success', warning: 'pf-m-warning', danger: 'pf-m-danger',
+    };
     const alert = document.createElement('div');
-    alert.className = 'pf-v6-c-alert pf-m-' + type;
+    alert.className = 'pf-v6-c-alert ' + (TYPES[type] || TYPES.info);
     alert.setAttribute('role', type === 'danger' ? 'alert' : 'status');
 
     const icon = document.createElement('div');

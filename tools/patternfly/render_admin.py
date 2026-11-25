@@ -1299,7 +1299,7 @@ def build():
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- PatternFly carries Red Hat Text, Display and Mono itself, so the fonts
        no longer come from Google. -->
-  <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+  <link href="{{ static_url('patternfly/patternfly-admin.css') }}" rel="stylesheet">
   <!-- The house layer both pages sit in, then the design's own classes, then
        what is left that is only this page's. -->
   <link href="{{ static_url('css/shell.css') }}" rel="stylesheet">

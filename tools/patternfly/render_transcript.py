@@ -51,7 +51,7 @@ def build():
     } catch (e) {}
   </script>
   <title>{%% if missing %%}EzySpeech{%% else %%}{{ room_name }} · {{ day }}{%% endif %%}</title>
-  <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+  <link href="{{ static_url('patternfly/patternfly-transcript.css') }}" rel="stylesheet">
   <link href="{{ static_url('css/shell.css') }}" rel="stylesheet">
   <link href="{{ static_url('css/ezyspeech.css') }}" rel="stylesheet">
   <link href="{{ static_url('css/transcript.css') }}" rel="stylesheet">

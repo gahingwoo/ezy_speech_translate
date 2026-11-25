@@ -7,6 +7,9 @@
 #
 # The output is committed, so a normal checkout needs no build step.
 #
+# The version is pinned, so a rebuild changes only what was meant to change;
+# PF_VERSION=6.x.y sh tools/patternfly/build.sh to move to another.
+#
 # The component list grows as pages are converted. Add what a page needs, run
 # this, and commit the result.
 set -e
@@ -31,11 +34,12 @@ COMPONENTS="Login/login Form/form FormControl/form-control \
 LAYOUTS="Bullseye/bullseye Stack/stack Flex/flex Grid/grid Split/split Level/level \
          Gallery/gallery"
 
+PF_VERSION=${PF_VERSION:-6.7.0}
 OUT=app/static/patternfly
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-( cd "$WORK" && npm pack @patternfly/patternfly@6 >/dev/null 2>&1 && tar xzf patternfly-patternfly-*.tgz )
+( cd "$WORK" && npm pack "@patternfly/patternfly@$PF_VERSION" >/dev/null 2>&1 && tar xzf patternfly-patternfly-*.tgz )
 PKG="$WORK/package"
 mkdir -p "$OUT"
 
@@ -64,3 +68,10 @@ echo "components: $COMPONENTS" >> "$OUT/VERSION"
 echo "layouts: $LAYOUTS" >> "$OUT/VERSION"
 
 wc -c "$OUT/patternfly.css"
+
+# The pages with a stylesheet of their own: the base and only the parts each
+# uses (tools/patternfly/page_css.py says how it tells).
+PARTS="$COMPONENTS"
+for l in $LAYOUTS; do PARTS="$PARTS layouts/$l"; done
+# shellcheck disable=SC2086  # one argument per part
+python3 tools/patternfly/page_css.py "$PKG" "$OUT" user,admin,config,login,projection,transcript -- $PARTS

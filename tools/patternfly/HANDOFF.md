@@ -50,7 +50,8 @@ helper registered on both servers, used by every template.
 
 ## Tools
 
-    sh     tools/patternfly/build.sh              # vendor the CSS bundle
+    sh     tools/patternfly/build.sh              # vendor the CSS, and each page's own
+    python3 tools/patternfly/same_look.py PAGE --password PW   # own CSS looks the same as full
     python3 tools/patternfly/extract_icons.py     # refresh icons.json
     python3 tools/patternfly/render_user.py
     python3 tools/patternfly/render_admin.py
@@ -58,7 +59,9 @@ helper registered on both servers, used by every template.
     python3 tools/patternfly/check_contract.py A.html B.html
 
 `build.sh` takes a component list — **check a component is in it before using
-that component's classes.** Backups of the originals are in `backup/`.
+that component's classes**, and rebuild after a page starts using a class it
+did not: each page's `patternfly-PAGE.css` keeps only the rules for classes
+its template and scripts name (`page_css.py`), so write classes whole. Backups of the originals are in `backup/`.
 
 ## check_contract.py, and what it does not catch
 

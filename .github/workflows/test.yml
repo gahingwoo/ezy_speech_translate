@@ -34,7 +34,10 @@ jobs:
             python3 tools/patternfly/$r.py
           done
           node tools/i18n/build.mjs
-          git diff --exit-code -- app/templates app/static/js/i18n
+          # Each page's own PatternFly stylesheet, from what the page names:
+          # a class added to a page and not built in fails here.
+          sh tools/patternfly/build.sh
+          git diff --exit-code -- app/templates app/static/js/i18n app/static/patternfly
 
   # Each way of installing, serving each way (app/core/concurrency.py):
   # eventlet's green threads, and real threads under gunicorn, which are to
@@ -78,6 +81,15 @@ jobs:
           /tmp/smoke/bin/pip install -q playwright
           /tmp/smoke/bin/python -m playwright install --with-deps chromium
           /tmp/smoke/bin/python tests/browser/pages.py --password "$PW"
+
+      # The listener page looks the same with its own stylesheet as with the
+      # full one, element by element, in each state a listener can reach.
+      - name: The listener page's own stylesheet
+        if: matrix.mode == 'native' && matrix.concurrency == 'eventlet'
+        run: |
+          # a line naming a passage, for the passage dialog
+          /tmp/smoke/bin/python tests/smoke/check.py live --password "$PW" --say "Turn with me to Romans 8:28"
+          /tmp/smoke/bin/python tools/patternfly/same_look.py user --phone --password "$PW"
 
       - name: Status says what it is
         run: |

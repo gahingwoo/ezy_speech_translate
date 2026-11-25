@@ -56,8 +56,13 @@ function showToast(message, type, duration) {
     const item = document.createElement('li');
     item.className = 'pf-v6-c-alert-group__item';
 
+    // Each class written whole, so tools/patternfly/page_css.py sees it and
+    // keeps its style in the page's stylesheet.
+    const TYPES = {
+        info: 'pf-m-info', success: 'pf-m-success', warning: 'pf-m-warning', danger: 'pf-m-danger',
+    };
     const alert = document.createElement('div');
-    alert.className = 'pf-v6-c-alert pf-m-' + type;
+    alert.className = 'pf-v6-c-alert ' + (TYPES[type] || TYPES.info);
     alert.setAttribute('role', type === 'danger' ? 'alert' : 'status');
 
     const icon = document.createElement('div');
@@ -2208,14 +2213,15 @@ async function renderGlossaryTable() {
         const tr = document.createElement('tr');
         tr.className = 'pf-v6-c-table__tr';
         const scope = e.room_id ? e.room_id : '(global)';
-        const flag = (name, colour) =>
-            `<span class="pf-v6-c-label pf-m-${colour} pf-m-compact"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${name}</span></span></span>`;
+        // The colour class written whole, as page_css.py needs it
+        const flag = (name, colourClass) =>
+            `<span class="pf-v6-c-label ${colourClass} pf-m-compact"><span class="pf-v6-c-label__content"><span class="pf-v6-c-label__text">${name}</span></span></span>`;
         tr.innerHTML = `
             <td class="pf-v6-c-table__td" data-label="Scope">${escapeHTML(scope)}</td>
             <td class="pf-v6-c-table__td" data-label="Source">${escapeHTML(e.source_term)}</td>
             <td class="pf-v6-c-table__td" data-label="Lang">${escapeHTML(e.target_lang)}</td>
             <td class="pf-v6-c-table__td" data-label="Translation">${escapeHTML(e.translation)}</td>
-            <td class="pf-v6-c-table__td" data-label="Flags">${e.case_sensitive ? flag('Case sensitive', 'blue') : ''} ${e.enabled ? '' : flag('Off', 'grey')}</td>
+            <td class="pf-v6-c-table__td" data-label="Flags">${e.case_sensitive ? flag('Case sensitive', 'pf-m-blue') : ''} ${e.enabled ? '' : flag('Off', 'pf-m-grey')}</td>
             <td class="pf-v6-c-table__td pf-v6-c-table__action">
                 <button class="pf-v6-c-button pf-m-plain" type="button" aria-label="Remove entry" data-id="${Number(e.id)}" onclick="removeGlossaryEntry(${Number(e.id)})">&times;</button>
             </td>

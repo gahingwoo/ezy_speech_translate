@@ -194,7 +194,7 @@ def build():
   </script>
   <title>EzySpeech - Settings</title>
   <!-- Favicon will be set by OEM loader -->
-  <link href="{{ static_url('patternfly/patternfly.css') }}" rel="stylesheet">
+  <link href="{{ static_url('patternfly/patternfly-config.css') }}" rel="stylesheet">
   <link href="{{ static_url('css/admin.css') }}" rel="stylesheet">
   <script src="{{ static_url('js/oem-loader.js') }}"></script>
 </head>
