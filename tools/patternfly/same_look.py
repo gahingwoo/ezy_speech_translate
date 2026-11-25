@@ -51,7 +51,8 @@ PAGES = {
             ('offline', "setConnectionStatus('offline')"),
             ('announcement', "showAnnouncement('Notice for everyone', 0, 'warning')"),
             ('wechat notice', "document.getElementById('wechatHint').hidden = false"),
-            ('passage', "showPassage(translations.find(t => (t.bible_refs || []).length).bible_refs[0])"),
+            # Only where a line has named a passage (Bible detection on)
+            ('passage', "showPassage(translations.find(t => (t.bible_refs || []).length).bible_refs[0])", 'optional'),
             ('jump links', "document.querySelector('#jumpNav .pf-v6-c-jump-links__toggle button').click()"),
             ('welcome', 'FIRST_VISIT'),
             ('welcome dark', 'FIRST_VISIT_DARK'),
@@ -179,7 +180,7 @@ def main():
         browser = pw.chromium.launch()
         widths = ((390, 844, True),) if args.phone else ((390, 844, True), (1440, 900, False))
         for width, height, mobile in widths:
-            for name, action in spec['states']:
+            for name, action, *optional in spec['states']:
                 if mobile is False and name.startswith('mobile'):
                     continue
                 ctx = browser.new_context(viewport={'width': width, 'height': height}, is_mobile=mobile,
@@ -206,7 +207,7 @@ def main():
                         page.evaluate(f'() => {{ {action} }}')
                 except Exception as exc:                # a state it could not reach
                     print(f'SKIP  {width}px {name}: {str(exc).splitlines()[0]}')
-                    unreached += 1
+                    unreached += not optional
                     ctx.close()
                     continue
                 # Transitions and animations off, the same for both: a
